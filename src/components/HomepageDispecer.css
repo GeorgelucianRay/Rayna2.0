@@ -105,7 +105,7 @@
   background: transparent;
   border: none;
   padding: 0.25rem;
-  color: white;
+  color: #1f2937; /* Culoare default pentru butoane header */
   opacity: 0.8;
   transition: opacity 200ms;
   cursor: pointer;
@@ -113,6 +113,11 @@
 .close-button-menu:hover, .menu-button-header:hover {
     opacity: 1;
 }
+/* Butonul de închidere din meniu este mereu alb */
+.nav-menu .close-button-menu {
+    color: white;
+}
+
 
 .header-icons {
     display: flex;
@@ -192,7 +197,7 @@
   font-weight: 600;
 }
 
-/* --- Conținutul Paginii --- */
+/* --- Conținutul Paginii (Stiluri Generale și Specifice) --- */
 .page-content {
   flex: 1;
   display: flex;
@@ -206,9 +211,20 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: transparent; /* Header transparent pe mobil */
+  /* Stiluri default pentru toate paginile */
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
+
+/* Stiluri specifice pentru header DOAR pe homepage */
+.layout-wrapper.homepage-background .header {
+  background-color: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.layout-wrapper.homepage-background .menu-button-header {
+  color: white; /* Butonul de meniu este alb pe homepage */
+}
+
 
 .main-content {
   padding: 1.5rem 2rem;
