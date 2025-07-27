@@ -47,44 +47,6 @@
   text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
-/* --- Stiluri Generale Modal (pentru Adăugare) --- */
-.modal-content {
-  background-color: white;
-  border-radius: 1rem;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-header, .modal-footer {
-  padding: 1.5rem;
-  flex-shrink: 0;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-body {
-  padding: 1.5rem;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.modal-footer {
-  border-top: 1px solid #e5e7eb;
-}
-
-
 /* --- Stiluri Specifice Modal Vizualizare --- */
 .location-modal {
   padding: 0;
@@ -105,7 +67,6 @@
   text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
 }
 
-/* Stiluri NOI pentru butoanele din header-ul modalului */
 .modal-header-actions {
     display: flex;
     align-items: center;
@@ -141,7 +102,7 @@
 .location-modal .modal-body {
   padding: 0;
   grid-template-columns: 1fr;
-  overflow-y: hidden; /* Nu vrem scroll aici */
+  overflow-y: hidden;
 }
 .location-details {
   padding: 1.5rem;
@@ -165,7 +126,7 @@
   background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
 }
 
-/* Stiluri NOI pentru geolocație */
+/* Stiluri pentru geolocație */
 .geolocation-group {
     display: flex;
     gap: 0.5rem;
