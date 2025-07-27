@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // MODIFICARE: Schimbăm din 'autoUpdate' în 'prompt' pentru a afișa butonul
+      registerType: 'prompt',
       injectRegister: 'auto',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}']
@@ -24,17 +25,17 @@ export default defineConfig({
         scope: '/',
         icons: [
           {
-            src: '192x192.png', // Corectat pentru a se potrivi cu fișierul dumneavoastră
+            src: '192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '512x512.png', // Corectat pentru a se potrivi cu fișierul dumneavoastră
+            src: '512x512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: '512x512.png', // Corectat pentru a se potrivi cu fișierul dumneavoastră
+            src: '512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
