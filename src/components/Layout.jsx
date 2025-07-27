@@ -30,6 +30,7 @@ const PushMenuStyles = () => (
             position: relative;
             overflow-x: hidden;
             width: 100%;
+            min-height: 100vh;
         }
 
         .nav-menu {
@@ -51,6 +52,8 @@ const PushMenuStyles = () => (
             transition: transform 0.3s ease-in-out;
             width: 100%;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .layout-wrapper.menu-open .page-content-wrapper {
@@ -119,7 +122,8 @@ const Layout = ({ children, backgroundClassName }) => {
     return (
         <>
             <PushMenuStyles />
-            <div className={`layout-wrapper ${isMenuOpen ? 'menu-open' : ''}`}>
+            {/* MODIFICARE: Am mutat backgroundClassName pe wrapper-ul principal */}
+            <div className={`layout-wrapper ${isMenuOpen ? 'menu-open' : ''} ${backgroundClassName}`}>
                 <aside className={`nav-menu ${isMenuOpen ? 'open' : ''}`}>
                     <div className="nav-header">
                         <div>
@@ -147,7 +151,8 @@ const Layout = ({ children, backgroundClassName }) => {
 
                 {isMenuOpen && <div className="menu-overlay" onClick={() => setIsMenuOpen(false)}></div>}
 
-                <div className={`page-content-wrapper ${backgroundClassName}`}>
+                {/* MODIFICARE: Am scos backgroundClassName de aici */}
+                <div className="page-content-wrapper">
                     <header className="header">
                         <button onClick={() => setIsMenuOpen(true)} className="menu-button"><MenuIcon /></button>
                     </header>

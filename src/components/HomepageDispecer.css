@@ -1,15 +1,15 @@
 /* src/components/HomepageDispecer.css */
 
 /* --- Stiluri de Bază (Layout General) --- */
-.homepage-container {
+.layout-wrapper {
   display: flex;
   min-height: 100vh;
   position: relative;
 }
 
 /* --- Fundal Specific pentru Homepage --- */
-.homepage-container.homepage-background {
-  background-color: #111827; 
+.layout-wrapper.homepage-background {
+  background-color: #111827;
   background-image: url('/homepage.jpg');
   background-size: cover;
   background-position: center;
@@ -17,7 +17,7 @@
   overflow: hidden;
 }
 
-.homepage-container.homepage-background::before {
+.layout-wrapper.homepage-background::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -26,32 +26,25 @@
   z-index: 0;
 }
 
-.homepage-container.homepage-background .nav-menu, 
-.homepage-container.homepage-background .page-content {
+.layout-wrapper.homepage-background .nav-menu,
+.layout-wrapper.homepage-background .page-content-wrapper {
   position: relative;
   z-index: 1;
+  background-color: transparent; /* Asigurăm transparența pentru a vedea fundalul */
 }
 
 
 /* --- Meniu Lateral (Sidebar) --- */
 .nav-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 18rem;
+  /* position, top, left, height, width, etc. sunt acum în componenta <style> din Layout.jsx */
   background-color: rgba(17, 24, 39, 0.3);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 40;
-  transform: translateX(-100%);
-  transition: transform 300ms ease-in-out;
   display: flex;
   flex-direction: column;
 }
 .nav-menu.open {
-  transform: translateX(0);
   box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
 }
 
@@ -171,7 +164,6 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  transition: margin-left 300ms ease-in-out;
 }
 
 .header {
@@ -389,15 +381,25 @@
 
 /* --- Desktop --- */
 @media (min-width: 1024px) {
+  .layout-wrapper {
+    overflow-x: visible; /* Permite meniului să fie static pe desktop */
+  }
   .nav-menu {
     position: static;
     transform: translateX(0);
     box-shadow: none;
   }
-  .page-content {
+  .page-content-wrapper {
     margin-left: 0;
+    transform: translateX(0) !important; /* Suprascrie transformarea de la push */
+  }
+  .layout-wrapper.menu-open .page-content-wrapper {
+    transform: translateX(0);
   }
   .header {
     display: none;
+  }
+  .menu-overlay {
+    display: none !important; /* Ascunde overlay-ul pe desktop */
   }
 }
