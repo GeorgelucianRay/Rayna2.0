@@ -1,0 +1,60 @@
+/* src/components/UpdatePrompt.css */
+
+.update-prompt-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  padding: 1rem;
+  background-color: #1f2937;
+  color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slide-in 0.5s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.update-prompt-container span {
+  font-weight: 600;
+}
+
+.update-prompt-button {
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.update-prompt-button:hover {
+    transform: scale(1.05);
+}
+
+.update-prompt-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 1rem;
+    line-height: 1;
+}
+.update-prompt-close:hover {
+    color: white;
+}

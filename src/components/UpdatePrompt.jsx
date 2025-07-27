@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import './UpdatePrompt.css'; // Importăm stilurile dedicate
 
 // Componenta pentru afișarea butonului de actualizare
 function UpdatePrompt() {

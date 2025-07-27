@@ -47,7 +47,7 @@
   text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
-/* --- Stiluri Specifice Modal Vizualizare --- */
+/* --- Stiluri Specifice Modal Vizualizare Locație --- */
 .location-modal {
   padding: 0;
   overflow: hidden;
@@ -97,13 +97,15 @@
   width: 100%;
   max-height: 300px;
   object-fit: cover;
+  flex-shrink: 0; /* Previne micșorarea imaginii */
 }
 
 .location-modal .modal-body {
-  padding: 0;
-  grid-template-columns: 1fr;
-  overflow-y: hidden;
+  padding: 0; /* Resetează padding-ul pentru a nu avea spații goale */
+  display: flex; /* Folosim flexbox pentru a controla conținutul */
+  flex-direction: column;
 }
+
 .location-details {
   padding: 1.5rem;
   color: #374151;
@@ -126,7 +128,7 @@
   background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
 }
 
-/* Stiluri pentru geolocație */
+/* Stiluri pentru geolocație în formulare */
 .geolocation-group {
     display: flex;
     gap: 0.5rem;
@@ -153,4 +155,35 @@
 .geolocation-button:disabled {
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+/* Stiluri generale pentru input-uri în formularele din GpsPage */
+.modal-body .input-group {
+    display: flex;
+    flex-direction: column;
+}
+.modal-body .input-group.full-width {
+    grid-column: 1 / -1;
+}
+.modal-body .input-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #374151;
+    font-size: 0.875rem;
+}
+.modal-body .input-group input,
+.modal-body .input-group select,
+.modal-body .input-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 1rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.modal-body .input-group textarea {
+    resize: vertical;
+    min-height: 100px;
 }
