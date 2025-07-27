@@ -5,7 +5,6 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
-  /* overflow-x: hidden; a fost eliminat pentru a repara vizibilitatea ferestrelor modale */
   background-color: #f3f4f6; /* Fundal default pentru pagini */
 }
 
@@ -32,15 +31,18 @@
 .page-content-wrapper {
   width: 100%;
   min-height: 100vh;
-  transition: transform 0.3s ease-in-out;
+  /* MODIFICARE: Folosim margin-left pentru tranziție, nu transform */
+  transition: margin-left 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  position: relative;
 }
 
-.layout-wrapper.menu-open .page-content-wrapper {
-  transform: translateX(260px);
+/* Doar pe ecrane non-desktop, aplicăm efectul de push cu margin */
+@media (max-width: 1279px) {
+  .layout-wrapper.menu-open .page-content-wrapper {
+    margin-left: 260px;
+  }
 }
 
 .nav-menu-overlay {
@@ -92,7 +94,7 @@
   background-color: rgba(10, 10, 20, 0.85); 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 0;
+  z-index: -1;
 }
 
 .layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
@@ -147,8 +149,7 @@
     display: flex; 
   }
   .nav-menu { position: static; transform: none; box-shadow: none; width: 18rem; flex-shrink: 0; }
-  .page-content-wrapper { transform: none !important; }
-  .layout-wrapper.menu-open .page-content-wrapper { transform: none; }
+  .page-content-wrapper { margin-left: 0 !important; }
   .header { display: none; }
   .nav-menu-overlay { display: none !important; }
 }
@@ -159,7 +160,7 @@
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(5px);
-  z-index: 1001;
+  z-index: 2000; /* Z-index mai mare decât meniul */
   display: flex;
   justify-content: center;
   align-items: center;
