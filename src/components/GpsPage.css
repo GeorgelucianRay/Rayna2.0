@@ -1,24 +1,5 @@
 /* src/components/GpsPage.css */
 
-.gps-background {
-  background-image: url('/rayna ubicacion.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-.gps-background::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(2px);
-  z-index: 0;
-}
-.gps-background .nav-menu, .gps-background .page-content {
-  position: relative;
-  z-index: 1;
-}
-
 .location-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

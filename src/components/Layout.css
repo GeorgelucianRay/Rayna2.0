@@ -88,14 +88,17 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-color: rgba(17, 24, 39, 0.7); /* Overlay mai intens */
+  background-color: rgba(17, 24, 39, 0.7);
   backdrop-filter: blur(3px);
   z-index: -1;
 }
 
 .layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
 .layout-wrapper.depot-background { background-image: url('/depot.jpg'); }
-.layout-wrapper.taller-background { background-image: url('/taller.jpg'); } /* Adăugat */
+.layout-wrapper.taller-background { background-image: url('/taller.jpg'); }
+.layout-wrapper.profile-background { background-image: url('/miprofile.jpg'); }
+.layout-wrapper.gps-background { background-image: url('/rayna ubicacion.jpg'); }
+
 
 /* Suprascrie stilurile default pentru paginile cu fundal special */
 .layout-wrapper.has-background .nav-menu {

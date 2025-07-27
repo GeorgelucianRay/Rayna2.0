@@ -1,27 +1,5 @@
 /* src/components/MiPerfilPage.css */
 
-.profile-background {
-  background-image: url('/miprofile.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.profile-background::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(2px);
-  z-index: 0;
-}
-
-.profile-background .nav-menu, 
-.profile-background .page-content {
-  position: relative;
-  z-index: 1;
-}
-
 .profile-header {
     display: flex;
     justify-content: space-between;
