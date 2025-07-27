@@ -73,9 +73,9 @@
 /* --- Stiluri pentru Fundal Special (Sticlă Neagră) --- */
 .layout-wrapper.has-background {
   position: relative;
-  background-color: #111827; /* Culoare de rezervă */
 }
 
+/* Pseudo-element pentru imaginea blurată (în spate) */
 .layout-wrapper.has-background::before {
   content: '';
   position: fixed;
@@ -83,29 +83,40 @@
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  filter: blur(8px);
-  z-index: -1; /* În spatele a tot */
+  filter: blur(5px); /* Efect suav de blur */
+  z-index: -2; /* Cel mai în spate */
 }
 
-/* Aplicăm imaginile pe pseudo-element */
+/* Pseudo-element pentru filtrul de sticlă neagră (deasupra imaginii blurate) */
+.layout-wrapper.has-background::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 10, 20, 0.75); /* Culoare neagră-albăstruie, transparentă */
+  z-index: -1; /* Între imagine și conținut */
+}
+
+/* Aplicăm imaginile pe pseudo-elementul din spate */
 .layout-wrapper.homepage-background::before { background-image: url('/homepage.jpg'); }
 .layout-wrapper.depot-background::before { background-image: url('/depot.jpg'); }
 .layout-wrapper.taller-background::before { background-image: url('/taller.jpg'); }
 .layout-wrapper.profile-background::before { background-image: url('/miprofile.jpg'); }
 .layout-wrapper.gps-background::before { background-image: url('/rayna ubicacion.jpg'); }
 
-/* Aplicăm filtrul de culoare pe wrapper */
-.layout-wrapper.has-background .page-content-wrapper,
-.layout-wrapper.has-background .nav-menu {
-    background-color: rgba(17, 24, 39, 0.8);
+/* Facem conținutul transparent pentru a vedea efectul de fundal */
+.layout-wrapper.has-background .page-content-wrapper {
+    background-color: transparent;
 }
 
+/* Stil specific pentru meniul lateral pe fundal special */
 .layout-wrapper.has-background .nav-menu {
+  background-color: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Stil specific pentru header-ul mobil pe fundal special */
 .layout-wrapper.has-background .header {
   background-color: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -114,6 +125,7 @@
 .layout-wrapper.has-background .menu-button-header {
   color: white;
 }
+
 
 /* --- Media Queries (Desktop vs Mobil/Tabletă) --- */
 @media (max-width: 1279px) {
