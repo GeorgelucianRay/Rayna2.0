@@ -1,104 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import './ReparatiiPage.css';
+import './ReparatiiPage.css'; // Asigură-te că importezi CSS-ul corectat
 
 // --- Iconițe SVG ---
+const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"></path></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
-const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
+
 
 function ReparatiiPage() {
     const { type, id } = useParams();
     const navigate = useNavigate();
-    
+    const { profile } = useAuth();
+
     const [vehicle, setVehicle] = useState(null);
     const [repairs, setRepairs] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newRepair, setNewRepair] = useState({
-        km_reparatie: '',
-        operatiune: '',
-        detalii: ''
+        data: new Date().toISOString().slice(0, 10),
+        detalii: '',
+        cost: ''
     });
 
-    const tableName = type === 'camion' ? 'camioane' : 'remorci';
-
-    const fetchVehicleData = async () => {
-        const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single();
-        if (error) console.error("Error fetching vehicle data:", error);
-        else setVehicle(data);
-    };
-
-    const fetchRepairs = async () => {
-        const filterColumn = `${type}_id`;
-        const { data, error } = await supabase.from('reparatii').select('*').eq(filterColumn, id).order('created_at', { ascending: false });
-        if (error) console.error("Error fetching repairs:", error);
-        else setRepairs(data);
-    };
-
     useEffect(() => {
-        fetchVehicleData();
-        fetchRepairs();
+        const fetchData = async () => {
+            setLoading(true);
+            const tableName = type === 'camion' ? 'camioane' : 'remorci';
+            const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
+
+            // 1. Fetch vehicle details
+            const { data: vehicleData, error: vehicleError } = await supabase
+                .from(tableName)
+                .select('matricula')
+                .eq('id', id)
+                .single();
+
+            if (vehicleError) {
+                console.error(`Error fetching vehicle:`, vehicleError);
+            } else {
+                setVehicle(vehicleData);
+            }
+
+            // 2. Fetch repairs
+            const { data: repairsData, error: repairsError } = await supabase
+                .from('reparatii')
+                .select('*')
+                .eq(foreignKey, id)
+                .order('data', { ascending: false });
+
+            if (repairsError) {
+                console.error(`Error fetching repairs:`, repairsError);
+            } else {
+                setRepairs(repairsData);
+            }
+
+            setLoading(false);
+        };
+
+        fetchData();
     }, [id, type]);
 
     const handleAddRepair = async (e) => {
         e.preventDefault();
+        const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
+        
         const repairData = {
-            [`${type}_id`]: id,
-            km_reparatie: newRepair.km_reparatie || null,
-            operatiune: newRepair.operatiune || null,
-            detalii: newRepair.detalii || null,
+            ...newRepair,
+            [foreignKey]: id,
+            cost: parseFloat(newRepair.cost) || 0
         };
 
         const { error } = await supabase.from('reparatii').insert([repairData]);
+
         if (error) {
             alert(`Error al añadir la reparación: ${error.message}`);
         } else {
             alert('Reparación añadida con éxito!');
-            setIsModalOpen(false);
-            fetchRepairs();
-            setNewRepair({ km_reparatie: '', operatiune: '', detalii: '' });
+            setIsAddModalOpen(false);
+            setNewRepair({ data: new Date().toISOString().slice(0, 10), detalii: '', cost: '' });
+            // Re-fetch repairs
+            const { data: repairsData } = await supabase.from('reparatii').select('*').eq(foreignKey, id).order('data', { ascending: false });
+            setRepairs(repairsData);
         }
     };
+    
+    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
+
+    if (loading) {
+        return <div className="loading-screen">Cargando...</div>;
+    }
 
     return (
         <Layout backgroundClassName="taller-background">
             <main className="main-content">
-                <div className="profile-header">
-                    <button onClick={() => navigate('/taller')} className="back-button"><BackIcon /> Volver a Taller</button>
-                    <h1>Historial de Reparaciones</h1>
-                    <button className="add-button" onClick={() => setIsModalOpen(true)}><PlusIcon /> Añadir Reparación</button>
+                <div className="repairs-header-container">
+                    <h1 className="page-title">Historial de Reparaciones</h1>
+                    <div className="header-actions">
+                        {canEdit && (
+                            <button className="add-button" onClick={() => setIsAddModalOpen(true)}>
+                                <PlusIcon /> Añadir Reparación
+                            </button>
+                        )}
+                        <button onClick={() => navigate('/taller')} className="back-button">
+                            <BackIcon /> Volver a Taller
+                        </button>
+                    </div>
                 </div>
-                <h2 className="vehicle-subtitle">Vehículo: {vehicle?.matricula || 'Cargando...'}</h2>
 
-                <div className="repairs-list">
-                    {repairs.length > 0 ? (
-                        repairs.map(repair => (
+                {vehicle && <h2 className="vehicle-subtitle">{vehicle.matricula}</h2>}
+
+                {repairs.length > 0 ? (
+                    <div className="repairs-list">
+                        {repairs.map(repair => (
                             <div className="repair-card" key={repair.id}>
                                 <div className="repair-header">
-                                    <h4>{repair.operatiune}</h4>
-                                    <span>{new Date(repair.created_at).toLocaleDateString('es-ES')}</span>
+                                    <h4>Reparación del {new Date(repair.data).toLocaleDateString()}</h4>
+                                    <span><strong>Coste:</strong> {repair.cost} €</span>
                                 </div>
-                                {repair.km_reparatie && <p><strong>KM:</strong> {repair.km_reparatie.toLocaleString('es-ES')}</p>}
-                                {repair.detalii && <p className="repair-details"><strong>Detalles:</strong> {repair.detalii}</p>}
+                                <p className="repair-details">{repair.detalii}</p>
                             </div>
-                        ))
-                    ) : (
-                        <p className="no-repairs">No hay reparaciones registradas para este vehículo.</p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="no-repairs">No hay reparaciones registradas para este vehículo.</p>
+                )}
             </main>
 
-            {isModalOpen && (
+            {isAddModalOpen && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-                        <div className="modal-header"><h3 className="modal-title">Añadir Reparación para {vehicle.matricula}</h3><button onClick={() => setIsModalOpen(false)} className="close-button"><CloseIcon /></button></div>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Añadir Nueva Reparación</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="close-button"><CloseIcon /></button>
+                        </div>
                         <form onSubmit={handleAddRepair} className="modal-body">
-                            <div className="input-group full-width"><label>Operación / Pieza cambiada</label><input type="text" value={newRepair.operatiune} onChange={(e) => setNewRepair({...newRepair, operatiune: e.target.value})} autoFocus /></div>
-                            <div className="input-group"><label>KM en la reparación</label><input type="number" value={newRepair.km_reparatie} onChange={(e) => setNewRepair({...newRepair, km_reparatie: e.target.value})} /></div>
-                            <div className="input-group full-width"><label>Detalles (opcional)</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})}></textarea></div>
-                            <div className="modal-footer"><button type="button" className="modal-button secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button><button type="submit" className="modal-button primary">Guardar</button></div>
+                            <div className="input-group full-width">
+                                <label>Fecha</label>
+                                <input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required />
+                            </div>
+                            <div className="input-group full-width">
+                                <label>Coste (€)</label>
+                                <input type="number" step="0.01" placeholder="Ej: 150.50" value={newRepair.cost} onChange={(e) => setNewRepair({...newRepair, cost: e.target.value})} />
+                            </div>
+                            <div className="input-group full-width">
+                                <label>Detalles de la Reparación</label>
+                                <textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="modal-button secondary" onClick={() => setIsAddModalOpen(false)}>Cancelar</button>
+                                <button type="submit" className="modal-button primary">Guardar</button>
+                            </div>
                         </form>
                     </div>
                 </div>
