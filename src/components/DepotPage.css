@@ -110,8 +110,6 @@
 .card-button.salida { background-color: rgba(239, 68, 68, 0.8); color: white; }
 .card-button:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-/* Modal Styles specific to Depot Page */
-.close-button { background: none; border: none; cursor: pointer; color: #6b7280; }
 .modal-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .input-group { display: flex; flex-direction: column; }
 .input-group.full-width { grid-column: 1 / -1; }
@@ -141,7 +139,7 @@
   font-weight: 600;
 }
 
-.modal-footer { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+.modal-footer { grid-column: 1 / -1; }
 .modal-button { padding: 0.75rem 1.25rem; border-radius: 0.5rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; }
 .modal-button.secondary { background-color: #e5e7eb; color: #374151; }
 .modal-button.primary { background-color: #2563eb; color: white; }

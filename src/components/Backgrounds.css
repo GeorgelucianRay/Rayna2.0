@@ -1,0 +1,45 @@
+/* src/components/Backgrounds.css */
+
+.layout-wrapper.has-background {
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  position: relative; /* Necesar pentru ::before */
+}
+
+.layout-wrapper.has-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(10, 10, 20, 0.85); 
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 0; /* Sub conținut */
+}
+
+/* Asigurăm că meniul și conținutul sunt deasupra filtrului */
+.nav-menu, .page-content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Facem conținutul transparent pentru a vedea filtrul */
+.layout-wrapper.has-background .page-content-wrapper,
+.layout-wrapper.has-background .nav-menu {
+    background-color: transparent;
+}
+
+.layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
+.layout-wrapper.depot-background { background-image: url('/depot.jpg'); }
+.layout-wrapper.taller-background { background-image: url('/taller.jpg'); }
+.layout-wrapper.profile-background { background-image: url('/miprofile.jpg'); }
+.layout-wrapper.gps-background { background-image: url('/rayna ubicacion.jpg'); }
+
+.layout-wrapper.has-background .header {
+  background-color: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.layout-wrapper.has-background .menu-button-header {
+  color: white;
+}

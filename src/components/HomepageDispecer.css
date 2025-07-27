@@ -1,231 +1,5 @@
 /* src/components/HomepageDispecer.css */
 
-/* --- Structura de Bază și Efect Push --- */
-.layout-wrapper {
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden; /* Previne scroll orizontal la animație */
-}
-
-.nav-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 260px;
-  z-index: 1000;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-wrapper.menu-open .nav-menu {
-  transform: translateX(0);
-  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
-}
-
-.page-content-wrapper {
-  width: 100%;
-  min-height: 100vh;
-  transition: transform 0.3s ease-in-out;
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-
-.layout-wrapper.menu-open .page-content-wrapper {
-  transform: translateX(260px);
-}
-
-.menu-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-}
-
-.layout-wrapper.menu-open .menu-overlay {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* --- Fundal Specific pentru Homepage --- */
-.layout-wrapper.homepage-background {
-  background-color: #111827;
-  background-image: url('/homepage.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.layout-wrapper.homepage-background::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgba(17, 24, 39, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: -1; /* Asigură-te că este în spatele conținutului */
-}
-
-/* --- Stiluri Meniu (Header, Link-uri) --- */
-.nav-menu {
-  background-color: rgba(17, 24, 39, 0.8);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.nav-header {
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.nav-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  line-height: 1;
-}
-.user-email {
-  font-size: 0.8rem;
-  color: #a5f3fc;
-  font-weight: 500;
-  margin-top: 0.35rem;
-  opacity: 0.9;
-}
-
-.close-button-menu, .menu-button-header {
-  background: transparent;
-  border: none;
-  padding: 0.25rem;
-  color: #1f2937; /* Culoare default pentru butoane header */
-  opacity: 0.8;
-  transition: opacity 200ms;
-  cursor: pointer;
-}
-.close-button-menu:hover, .menu-button-header:hover {
-    opacity: 1;
-}
-/* Butonul de închidere din meniu este mereu alb */
-.nav-menu .close-button-menu {
-    color: white;
-}
-
-
-.header-icons {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.notification-bell {
-    position: relative;
-    color: white;
-    padding: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 200ms;
-}
-.notification-bell:hover {
-    opacity: 1;
-}
-
-.notification-badge {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    background-color: #ef4444;
-    color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    border: 2px solid rgba(17, 24, 39, 0.5);
-}
-
-.nav-links {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.nav-link {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  color: #d1d5db;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  transition: all 200ms;
-  border-left: 4px solid transparent;
-}
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  transform: translateX(5px);
-}
-.nav-link.active {
-  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-  color: white;
-  border-left-color: #f59e0b;
-  box-shadow: 0 4px 10px -2px rgba(249, 115, 22, 0.3);
-}
-.nav-link.active:hover {
-  transform: translateX(0);
-}
-.nav-link-logout {
-  color: #fca5a5;
-}
-.nav-link-logout:hover {
-  border-left-color: #ef4444;
-}
-.nav-link span {
-  margin-left: 1rem;
-  font-weight: 600;
-}
-
-/* --- Conținutul Paginii (Stiluri Generale și Specifice) --- */
-.page-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  /* Stiluri default pentru toate paginile */
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* Stiluri specifice pentru header DOAR pe homepage */
-.layout-wrapper.homepage-background .header {
-  background-color: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.layout-wrapper.homepage-background .menu-button-header {
-  color: white; /* Butonul de meniu este alb pe homepage */
-}
-
-
 .main-content {
   padding: 1.5rem 2rem;
   flex-grow: 1;
@@ -259,56 +33,81 @@
   color: #a5f3fc;
 }
 
-/* --- Desktop --- */
-@media (min-width: 1024px) {
-  .layout-wrapper {
-    display: flex;
-    overflow-x: visible;
-  }
-  .nav-menu {
-    position: static;
-    transform: translateX(0);
-    box-shadow: none;
-    width: 18rem;
-    flex-shrink: 0;
-  }
-  .page-content-wrapper {
-    transform: translateX(0) !important;
-  }
-  .layout-wrapper.menu-open .page-content-wrapper {
-    transform: translateX(0);
-  }
-  .header {
-    display: none;
-  }
-  .menu-overlay {
-    display: none !important;
-  }
+.update-button {
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms ease-in-out;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+}
+.update-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
-/* Restul stilurilor (link-uri externe, modal, etc.) rămân la fel */
-.external-links-container { margin-top: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
-.links-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; }
-.social-links-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.5rem; }
-.social-link { color: white; display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); transition: transform 200ms; text-decoration: none; font-size: 1rem; font-weight: 600; }
-.social-link:hover { transform: scale(1.05) translateY(-5px); }
-.social-link span { margin-left: 0.5rem; }
+.external-links-container {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.links-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+}
+
+.social-links-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.social-link {
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.social-link:hover {
+  transform: scale(1.05) translateY(-5px);
+}
+.social-link span {
+  margin-left: 0.5rem;
+}
+
 .instagram-link { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
 .tiktok-link { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
 .whatsapp-link { background: #25d366; }
-.camera-link { background-color: rgba(251, 146, 60, 0.2); backdrop-filter: blur(10px); border: 1px solid rgba(251, 146, 60, 0.4); background-image: linear-gradient(45deg, rgba(251, 146, 60, 0.3), rgba(249, 115, 22, 0.4)); position: relative; overflow: hidden; }
-.camera-link::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); opacity: 0.08; pointer-events: none; }
-.modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 50; display: flex; justify-content: center; align-items: center; }
-.modal-content { background-color: white; padding: 1.5rem; border-radius: 1rem; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
-.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem; }
-.modal-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
-.modal-body textarea { width: 100%; min-height: 150px; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid #d1d5db; font-family: inherit; resize: vertical; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
-.modal-button { padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; }
-.modal-button.secondary { background-color: #e5e7eb; color: #374151; }
-.modal-button.primary { background-color: #2563eb; color: white; }
-.notifications-modal { max-height: 60vh; }
-.notifications-list { list-style-type: none; padding: 0; margin: 0; }
-.notifications-list li { padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
-.notifications-list li:last-child { border-bottom: none; }
-.notifications-list li.expired, .alarm-section ul li.expired { color: #dc2626; font-weight: 600; }
+.camera-link {
+  background-color: rgba(251, 146, 60, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+  background-image: linear-gradient(45deg, rgba(251, 146, 60, 0.3), rgba(249, 115, 22, 0.4));
+  position: relative;
+  overflow: hidden;
+}
+.camera-link::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    pointer-events: none;
+}
