@@ -142,7 +142,8 @@
 .main-content { padding: 1.5rem 2rem; flex-grow: 1; }
 
 /* --- Desktop --- */
-@media (min-width: 1024px) {
+/* MODIFICARE: Pragul a fost mărit la 1280px pentru a include tabletele */
+@media (min-width: 1280px) {
   .layout-wrapper { display: flex; overflow-x: visible; }
   .nav-menu { position: static; transform: translateX(0); box-shadow: none; width: 18rem; flex-shrink: 0; }
   .page-content-wrapper { transform: translateX(0) !important; }
