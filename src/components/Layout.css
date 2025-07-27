@@ -142,18 +142,26 @@
 .main-content { padding: 1.5rem 2rem; flex-grow: 1; }
 
 /* --- Desktop --- */
-/* MODIFICARE: Pragul a fost mărit la 1280px pentru a include tabletele */
 @media (min-width: 1280px) {
   .layout-wrapper { display: flex; overflow-x: visible; }
-  .nav-menu { position: static; transform: translateX(0); box-shadow: none; width: 18rem; flex-shrink: 0; }
-  .page-content-wrapper { transform: translateX(0) !important; }
-  .layout-wrapper.menu-open .page-content-wrapper { transform: translateX(0); }
+  .nav-menu { position: static; transform: none; box-shadow: none; width: 18rem; flex-shrink: 0; }
+  .page-content-wrapper { transform: none !important; }
+  .layout-wrapper.menu-open .page-content-wrapper { transform: none; }
   .header { display: none; }
   .nav-menu-overlay { display: none !important; }
 }
 
 /* --- Modal --- */
-.modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 50; display: flex; justify-content: center; align-items: center; }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  z-index: 1001; /* MODIFICARE: Z-index mai mare decât meniul */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 .modal-content { background-color: white; padding: 1.5rem; border-radius: 1rem; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem; }
 .modal-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
