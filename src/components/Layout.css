@@ -29,12 +29,10 @@
 }
 
 .page-content-wrapper {
-  width: 100%;
-  min-height: 100vh;
   transition: margin-left 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
-  flex-grow: 1;
+  min-height: 100vh;
 }
 
 .nav-menu-overlay {
@@ -82,19 +80,12 @@
 
 .layout-wrapper.has-background::before {
   content: '';
-  position: absolute;
+  position: fixed; /* Folosim fixed pentru a acoperi tot ecranul */
   inset: 0;
   background-color: rgba(10, 10, 20, 0.85); 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 0;
-}
-
-.layout-wrapper.has-background .page-content-wrapper,
-.layout-wrapper.has-background .nav-menu {
-    position: relative;
-    z-index: 1;
-    background-color: transparent;
+  z-index: -1; /* În spatele a tot */
 }
 
 .layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
@@ -124,6 +115,7 @@
 @media (max-width: 1279px) {
   .layout-wrapper.menu-open .page-content-wrapper {
     margin-left: 260px;
+    border-radius: 10px 0 0 10px; /* Efect vizual subtil */
     overflow: hidden;
   }
 }
@@ -221,5 +213,4 @@
 .nav-link-logout { color: #fca5a5; }
 .nav-link-logout:hover { border-left-color: #ef4444; }
 .nav-link span { margin-left: 1rem; font-weight: 600; }
-.page-content { flex: 1; display: flex; flex-direction: column; }
 .main-content { padding: 1.5rem 2rem; flex-grow: 1; }

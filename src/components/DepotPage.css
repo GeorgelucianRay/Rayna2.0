@@ -1,152 +1,189 @@
-/* src/components/DepotPage.css */
+/* src/components/GpsPage.css */
 
-/* Stiluri pentru header-ul cu tab-uri */
-.depot-header {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.depot-tab-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: transparent;
-  color: #d1d5db;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 200ms;
-  border-bottom: 3px solid transparent;
-  position: relative;
-  top: 1px;
-}
-.depot-tab-button:hover {
-  color: white;
-}
-.depot-tab-button.active {
-  color: #fb923c;
-  border-bottom-color: #fb923c;
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  flex-grow: 1;
-  max-width: 400px;
-}
-.search-bar svg { color: #d1d5db; margin-right: 0.5rem; }
-.search-bar input { background: transparent; border: none; color: white; width: 100%; }
-.search-bar input:focus { outline: none; }
-.search-bar input::placeholder { color: #9ca3af; }
-
-.add-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-  color: white;
-  font-weight: 600;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 200ms;
-  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
-}
-.add-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
-}
-
-.containers-grid {
+.location-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
-.container-card {
+.location-card {
   background-color: rgba(17, 24, 39, 0.5);
-  backdrop-filter: blur(10px);
-  padding: 1.5rem;
   border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  aspect-ratio: 4 / 3;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  color: #d1d5db;
+}
+.location-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.location-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+.location-card:hover .location-card-image {
+  transform: scale(1.05);
+}
+
+.location-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 1rem 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.location-card-title {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+/* --- Stiluri Specifice Modal Vizualizare Locație --- */
+.location-modal {
+  padding: 0;
+  overflow: hidden;
+}
+.location-modal .modal-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border: none;
+  padding: 1rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+}
+.location-modal .modal-title {
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.location-modal .close-button,
+.edit-button-modal {
+  color: white;
+  background-color: rgba(0,0,0,0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.location-modal .close-button:hover,
+.edit-button-modal:hover {
+    background-color: rgba(0,0,0,0.5);
+}
+
+
+.location-modal-image {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  flex-shrink: 0; /* Previne micșorarea imaginii */
+}
+
+.location-modal .modal-body {
+  padding: 0; /* Resetează padding-ul pentru a nu avea spații goale */
+  display: flex; /* Folosim flexbox pentru a controla conținutul */
   flex-direction: column;
 }
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
+
+.location-details {
+  padding: 1.5rem;
+  color: #374151;
 }
-.card-matricula { font-size: 1.25rem; font-weight: 700; color: white; }
-.card-tipo { background-color: rgba(251, 146, 60, 0.2); color: #fb923c; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
-.card-tipo-roto { background-color: rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
-
-.card-body { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-.card-body p { margin: 0; }
-.card-body strong { color: white; margin-right: 0.5rem; }
-
-.card-footer { margin-top: 1.5rem; display: flex; gap: 0.75rem; }
-.card-button { flex-grow: 1; padding: 0.6rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; transition: all 200ms; }
-.card-button.edit { background-color: rgba(59, 130, 246, 0.8); color: white; }
-.card-button.salida { background-color: rgba(239, 68, 68, 0.8); color: white; }
-.card-button:hover { filter: brightness(1.1); transform: translateY(-1px); }
-
-.modal-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.input-group { display: flex; flex-direction: column; }
-.input-group.full-width { grid-column: 1 / -1; }
-.input-group label { display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151; font-size: 0.875rem; }
-.input-group input, .input-group select, .input-group textarea { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #d1d5db; font-size: 1rem; box-sizing: border-box; font-family: inherit; }
-.input-group textarea { resize: vertical; min-height: 100px; }
-
-.checkbox-group {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  background-color: #f9fafb;
+.location-details p {
+  margin: 0 0 0.75rem;
 }
-.checkbox-group input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-}
-.checkbox-group label {
-  margin-bottom: 0;
-  cursor: pointer;
-  font-weight: 600;
+.location-details strong {
+  color: #1f2937;
 }
 
-.modal-footer { grid-column: 1 / -1; }
-.modal-button { padding: 0.75rem 1.25rem; border-radius: 0.5rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; }
-.modal-button.secondary { background-color: #e5e7eb; color: #374151; }
-.modal-button.primary { background-color: #2563eb; color: white; }
+.location-modal .modal-footer {
+  padding: 0 1.5rem 1.5rem;
+  justify-content: stretch;
+  border-top: none;
+}
+.ir-button {
+  width: 100%;
+  text-align: center;
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+}
 
-.placeholder-content {
-    padding: 2rem;
-    text-align: center;
-    color: white;
-    font-size: 1.2rem;
+/* Stiluri pentru geolocație în formulare */
+.geolocation-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.geolocation-group input {
+    flex-grow: 1;
+}
+
+.geolocation-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 200ms;
+}
+.geolocation-button:hover {
+    background-color: #f3f4f6;
+}
+.geolocation-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Stiluri generale pentru input-uri în formularele din GpsPage */
+.modal-body .input-group {
+    display: flex;
+    flex-direction: column;
+}
+.modal-body .input-group.full-width {
+    grid-column: 1 / -1;
+}
+.modal-body .input-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #374151;
+    font-size: 0.875rem;
+}
+.modal-body .input-group input,
+.modal-body .input-group select,
+.modal-body .input-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 1rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.modal-body .input-group textarea {
+    resize: vertical;
+    min-height: 100px;
 }

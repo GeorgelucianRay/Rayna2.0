@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
-import './Layout.css'; // Importăm fișierul CSS centralizat
+import './Layout.css'; // Un singur import CSS centralizat
 import UpdatePrompt from './UpdatePrompt';
 
 // --- Iconițe SVG ---
@@ -48,12 +48,12 @@ const Layout = ({ children, backgroundClassName }) => {
         { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
     ];
 
-    let navLinksData;
+    let navLinksData = [];
     if (profile?.role === 'sofer') {
         navLinksData = soferMenu;
     } else if (profile?.role === 'mecanic') {
         navLinksData = mecanicMenu;
-    } else {
+    } else if (profile?.role === 'dispecer') {
         navLinksData = dispecerMenu;
     }
 
@@ -62,7 +62,7 @@ const Layout = ({ children, backgroundClassName }) => {
         navigate('/login');
     };
 
-    const wrapperClass = `layout-wrapper ${isMenuOpen ? 'menu-open' : ''} ${backgroundClassName ? 'has-background' : ''} ${backgroundClassName || ''}`;
+    const wrapperClass = `layout-wrapper ${isMenuOpen ? 'menu-open' : ''} ${backgroundClassName || ''}`;
 
     return (
         <div className={wrapperClass}>
@@ -97,9 +97,9 @@ const Layout = ({ children, backgroundClassName }) => {
                 <header className="header">
                     <button onClick={() => setIsMenuOpen(true)} className="menu-button-header"><MenuIcon /></button>
                 </header>
-                <div className="page-content">
+                <main className="main-content">
                     {children}
-                </div>
+                </main>
             </div>
 
             {isNotificationsOpen && (
