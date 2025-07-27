@@ -23,6 +23,61 @@ const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => (
   </Link>
 );
 
+// Componenta de stiluri pentru efectul de push
+const PushMenuStyles = () => (
+    <style>{`
+        .layout-wrapper {
+            position: relative;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        .nav-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px; /* Lățimea meniului */
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .nav-menu.open {
+            transform: translateX(0);
+        }
+
+        .page-content-wrapper {
+            transition: transform 0.3s ease-in-out;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .layout-wrapper.menu-open .page-content-wrapper {
+            transform: translateX(260px);
+        }
+        
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .layout-wrapper.menu-open .menu-overlay {
+            opacity: 1;
+            visibility: visible;
+        }
+    `}</style>
+);
+
+
 const Layout = ({ children, backgroundClassName }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -62,60 +117,68 @@ const Layout = ({ children, backgroundClassName }) => {
     };
 
     return (
-        <div className={`homepage-container ${backgroundClassName}`}>
-            <aside className={`nav-menu ${isMenuOpen && 'open'}`}>
-                <div className="nav-header">
-                    <div>
-                        <h2 className="nav-title">Rayna</h2>
-                        {user && <p className="user-email">{user.email}</p>}
-                    </div>
-                    <div className="header-icons">
-                        {alarms.length > 0 && (
-                            <button className="notification-bell" onClick={() => setIsNotificationsOpen(true)}>
-                                <BellIcon />
-                                <span className="notification-badge">{alarms.length}</span>
-                            </button>
-                        )}
-                        <button onClick={() => setIsMenuOpen(false)} className="menu-button"><CloseIcon /></button>
-                    </div>
-                </div>
-                <nav className="nav-links">
-                    {navLinksData.map((link) => (
-                        <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} />
-                    ))}
-                    <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
-                    <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} />
-                </nav>
-            </aside>
-            <div className="page-content">
-                <header className="header">
-                    <button onClick={() => setIsMenuOpen(true)} className="menu-button"><MenuIcon /></button>
-                </header>
-                {children}
-            </div>
-
-            {isNotificationsOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content notifications-modal">
-                        <div className="modal-header">
-                            <h3 className="modal-title">Notificaciones</h3>
-                            <button onClick={() => setIsNotificationsOpen(false)} className="close-button"><CloseIcon /></button>
+        <>
+            <PushMenuStyles />
+            <div className={`layout-wrapper ${isMenuOpen ? 'menu-open' : ''}`}>
+                <aside className={`nav-menu ${isMenuOpen ? 'open' : ''}`}>
+                    <div className="nav-header">
+                        <div>
+                            <h2 className="nav-title">Rayna</h2>
+                            {user && <p className="user-email">{user.email}</p>}
                         </div>
-                        <div className="modal-body">
-                            {alarms.length > 0 ? (
-                                <ul className="notifications-list">
-                                    {alarms.map((alarm, index) => (
-                                        <li key={index} className={alarm.expired ? 'expired' : ''}>{alarm.message}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No hay notificaciones nuevas.</p>
+                        <div className="header-icons">
+                            {alarms.length > 0 && (
+                                <button className="notification-bell" onClick={() => setIsNotificationsOpen(true)}>
+                                    <BellIcon />
+                                    <span className="notification-badge">{alarms.length}</span>
+                                </button>
                             )}
+                            <button onClick={() => setIsMenuOpen(false)} className="menu-button"><CloseIcon /></button>
                         </div>
                     </div>
+                    <nav className="nav-links">
+                        {navLinksData.map((link) => (
+                            <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} />
+                        ))}
+                        <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
+                        <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} />
+                    </nav>
+                </aside>
+
+                {isMenuOpen && <div className="menu-overlay" onClick={() => setIsMenuOpen(false)}></div>}
+
+                <div className={`page-content-wrapper ${backgroundClassName}`}>
+                    <header className="header">
+                        <button onClick={() => setIsMenuOpen(true)} className="menu-button"><MenuIcon /></button>
+                    </header>
+                    <div className="page-content">
+                        {children}
+                    </div>
                 </div>
-            )}
-        </div>
+
+                {isNotificationsOpen && (
+                    <div className="modal-overlay">
+                        <div className="modal-content notifications-modal">
+                            <div className="modal-header">
+                                <h3 className="modal-title">Notificaciones</h3>
+                                <button onClick={() => setIsNotificationsOpen(false)} className="close-button"><CloseIcon /></button>
+                            </div>
+                            <div className="modal-body">
+                                {alarms.length > 0 ? (
+                                    <ul className="notifications-list">
+                                        {alarms.map((alarm, index) => (
+                                            <li key={index} className={alarm.expired ? 'expired' : ''}>{alarm.message}</li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p>No hay notificaciones nuevas.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </>
     );
 };
 
