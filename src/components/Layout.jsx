@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
-import './Layout.css'; // Stiluri pentru structura
-import './Menu.css';   // Stiluri pentru meniu
-import './Backgrounds.css'; // Stiluri pentru fundaluri
+import './Layout.css'; // Importăm fișierul CSS centralizat
 import UpdatePrompt from './UpdatePrompt';
 
 // --- Iconițe SVG ---
