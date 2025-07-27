@@ -14,7 +14,7 @@
   left: 0;
   height: 100%;
   width: 260px;
-  z-index: 2000; /* Deasupra a tot, cu excepția ferestrelor modale */
+  z-index: 2000;
   transform: translateX(-100%);
   transition: transform 0.3s ease-in-out;
   display: flex;
@@ -39,7 +39,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 1999; /* Sub meniu, deasupra conținutului */
+  z-index: 1999;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-in-out;
@@ -72,31 +72,35 @@
 
 /* --- Stiluri pentru Fundal Special (Sticlă Neagră) --- */
 .layout-wrapper.has-background {
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
   position: relative;
+  background-color: #111827; /* Culoare de rezervă */
 }
 
 .layout-wrapper.has-background::before {
   content: '';
-  position: fixed; /* Folosim fixed pentru a acoperi tot ecranul */
+  position: fixed;
   inset: 0;
-  background-color: rgba(10, 10, 20, 0.85); 
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  filter: blur(8px);
   z-index: -1; /* În spatele a tot */
 }
 
-.layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
-.layout-wrapper.depot-background { background-image: url('/depot.jpg'); }
-.layout-wrapper.taller-background { background-image: url('/taller.jpg'); }
-.layout-wrapper.profile-background { background-image: url('/miprofile.jpg'); }
-.layout-wrapper.gps-background { background-image: url('/rayna ubicacion.jpg'); }
+/* Aplicăm imaginile pe pseudo-element */
+.layout-wrapper.homepage-background::before { background-image: url('/homepage.jpg'); }
+.layout-wrapper.depot-background::before { background-image: url('/depot.jpg'); }
+.layout-wrapper.taller-background::before { background-image: url('/taller.jpg'); }
+.layout-wrapper.profile-background::before { background-image: url('/miprofile.jpg'); }
+.layout-wrapper.gps-background::before { background-image: url('/rayna ubicacion.jpg'); }
 
+/* Aplicăm filtrul de culoare pe wrapper */
+.layout-wrapper.has-background .page-content-wrapper,
+.layout-wrapper.has-background .nav-menu {
+    background-color: rgba(17, 24, 39, 0.8);
+}
 
 .layout-wrapper.has-background .nav-menu {
-  background-color: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -115,7 +119,7 @@
 @media (max-width: 1279px) {
   .layout-wrapper.menu-open .page-content-wrapper {
     margin-left: 260px;
-    border-radius: 10px 0 0 10px; /* Efect vizual subtil */
+    border-radius: 10px 0 0 10px;
     overflow: hidden;
   }
 }
@@ -149,7 +153,7 @@
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(5px);
-  z-index: 3000; /* Z-index maxim, deasupra a tot */
+  z-index: 3000;
   display: flex;
   justify-content: center;
   align-items: center;
