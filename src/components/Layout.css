@@ -6,7 +6,7 @@
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
-  background-color: #f9fafb; /* Fundal default pentru pagini simple (ex: Taller) */
+  background-color: #f3f4f6; /* Fundal default pentru pagini (gri deschis) */
 }
 
 .nav-menu {
@@ -20,6 +20,8 @@
   transition: transform 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
+  background-color: #111827; /* Culoare default meniu */
+  border-right: 1px solid #374151;
 }
 
 .layout-wrapper.menu-open .nav-menu {
@@ -63,7 +65,6 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  /* Stil default pentru header */
   background-color: #ffffff;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -72,7 +73,7 @@
   background: transparent;
   border: none;
   padding: 0.25rem;
-  color: #1f2937; /* Culoare default */
+  color: #1f2937;
   cursor: pointer;
 }
 
@@ -87,14 +88,14 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-color: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(2px);
+  background-color: rgba(17, 24, 39, 0.7); /* Overlay mai intens */
+  backdrop-filter: blur(3px);
   z-index: -1;
 }
 
 .layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
 .layout-wrapper.depot-background { background-image: url('/depot.jpg'); }
-/* Adăugați aici alte clase de fundal dacă este necesar */
+.layout-wrapper.taller-background { background-image: url('/taller.jpg'); } /* Adăugat */
 
 /* Suprascrie stilurile default pentru paginile cu fundal special */
 .layout-wrapper.has-background .nav-menu {

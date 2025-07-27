@@ -1,27 +1,5 @@
 /* src/components/DepotPage.css */
 
-/* Fundalul specific pentru pagina Depot */
-.depot-background {
-  background-image: url('/depot.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-/* Overlay pentru a face textul mai lizibil */
-.depot-background::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(2px);
-  z-index: 0;
-}
-/* Asigură-te că meniul și conținutul sunt deasupra overlay-ului */
-.depot-background .nav-menu, .depot-background .page-content {
-  position: relative;
-  z-index: 1;
-}
-
 /* Stiluri pentru header-ul cu tab-uri */
 .depot-header {
   display: flex;
@@ -132,11 +110,7 @@
 .card-button.salida { background-color: rgba(239, 68, 68, 0.8); color: white; }
 .card-button:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-/* Modal Styles */
-.modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 50; display: flex; justify-content: center; align-items: center; padding: 1rem; }
-.modal-content { background-color: white; padding: 1.5rem; border-radius: 1rem; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
-.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem; }
-.modal-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
+/* Modal Styles specific to Depot Page */
 .close-button { background: none; border: none; cursor: pointer; color: #6b7280; }
 .modal-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .input-group { display: flex; flex-direction: column; }
