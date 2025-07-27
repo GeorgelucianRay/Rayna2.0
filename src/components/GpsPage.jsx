@@ -103,7 +103,8 @@ const LocationList = ({ tableName, title }) => {
         return null;
     };
 
-    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
+    // MODIFICARE: Doar dispecerii și șoferii pot edita.
+    const canEdit = profile?.role === 'dispecer' || profile?.role === 'sofer';
 
     return (
         <>

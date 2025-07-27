@@ -104,7 +104,16 @@
   color: white;
   text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
 }
-.location-modal .close-button {
+
+/* Stiluri NOI pentru butoanele din header-ul modalului */
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.location-modal .close-button,
+.edit-button-modal {
   color: white;
   background-color: rgba(0,0,0,0.3);
   border-radius: 50%;
@@ -113,7 +122,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
+.location-modal .close-button:hover,
+.edit-button-modal:hover {
+    background-color: rgba(0,0,0,0.5);
+}
+
 
 .location-modal-image {
   width: 100%;
