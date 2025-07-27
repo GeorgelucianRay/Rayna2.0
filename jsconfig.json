@@ -1,0 +1,13 @@
+    {
+      "compilerOptions": {
+        "jsx": "react-jsx",
+        "baseUrl": "./src",
+        "allowJs": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "node"
+      },
+      "include": ["src"]
+    }
+    

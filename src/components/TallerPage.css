@@ -1,0 +1,55 @@
+/* src/components/TallerPage.css */
+
+.taller-background {
+  background-image: url('/taller.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.taller-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.7); /* Overlay mai intens */
+  backdrop-filter: blur(3px);
+  z-index: 0;
+}
+.taller-background .nav-menu, 
+.taller-background .page-content {
+  position: relative;
+  z-index: 1;
+}
+
+.vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.vehicle-card {
+    background-color: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #d1d5db;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+.vehicle-card:hover {
+    transform: translateY(-5px);
+    background-color: rgba(17, 24, 39, 0.8);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.vehicle-card h3 {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+
+.vehicle-card p {
+    margin: 0;
+    font-size: 1rem;
+}

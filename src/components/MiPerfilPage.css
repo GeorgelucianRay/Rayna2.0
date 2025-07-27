@@ -1,0 +1,119 @@
+/* src/components/MiPerfilPage.css */
+
+.profile-background {
+  background-image: url('/miprofile.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.profile-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 0;
+}
+
+.profile-background .nav-menu, 
+.profile-background .page-content {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    color: white;
+}
+.profile-header h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+}
+.edit-profile-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 200ms;
+}
+.edit-profile-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.profile-card {
+    background-color: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.profile-card h3 {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+.profile-card p {
+    font-size: 1.125rem;
+    color: white;
+    font-weight: 500;
+    margin: 0;
+}
+
+.profile-card.vehicle-link {
+    cursor: pointer;
+    transition: background-color 200ms;
+}
+.profile-card.vehicle-link:hover {
+    background-color: rgba(17, 24, 39, 0.7);
+}
+
+.profile-card.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Stiluri pentru formularul de adăugare vehicul nou */
+.new-vehicle-form {
+    grid-column: 1 / -1;
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: -0.5rem;
+    margin-bottom: 0.5rem;
+    display: grid;
+    gap: 0.75rem;
+    border: 1px solid #e5e7eb;
+}
+.new-vehicle-form input {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+}
+
+.loading-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    background-color: #111827;
+    color: white;
+    font-size: 1.5rem;
+}

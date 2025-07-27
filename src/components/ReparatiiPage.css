@@ -1,0 +1,82 @@
+/* src/components/ReparatiiPage.css */
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 200ms;
+    text-decoration: none;
+}
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.vehicle-subtitle {
+    color: #d1d5db;
+    font-size: 1.25rem;
+    text-align: center;
+    margin-top: -1.5rem;
+    margin-bottom: 2rem;
+}
+
+.repairs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.repair-card {
+    background-color: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #d1d5db;
+}
+
+.repair-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+.repair-header h4 {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+.repair-header span {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.repair-card p {
+    margin: 0.5rem 0 0;
+}
+.repair-card strong {
+    color: white;
+}
+.repair-details {
+    white-space: pre-wrap;
+    background-color: rgba(0,0,0,0.2);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.no-repairs {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #9ca3af;
+    padding: 2rem;
+}

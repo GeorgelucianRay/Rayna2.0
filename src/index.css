@@ -1,0 +1,39 @@
+/* src/index.css - Stiluri globale de bază și font */
+html, body, #root {
+  height: 100%; /* Asigură că HTML, body și div-ul root ocupă toată înălțimea */
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif; /* Aplică fontul Inter global */
+}
+
+/* Stiluri utilitare globale (pentru App.jsx) */
+.container-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+  background-color: #f3f4f6; /* Gri deschis */
+}
+
+.card {
+  background-color: #fff;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 384px;
+  border: 1px solid #e5e7eb;
+}
+
+.text-center { text-align: center; }
+.text-blue-600 { color: #2563eb; }
+.text-red-600 { color: #dc2626; }
+.text-gray-700 { color: #374151; }
+.text-gray-600 { color: #4b5563; }
+.font-bold { font-weight: 700; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.mb-4 { margin-bottom: 16px; }
+.mt-4 { margin-top: 16px; }
+.block { display: block; }
+.hover-underline:hover { text-decoration: underline; }

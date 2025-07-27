@@ -1,0 +1,133 @@
+/* src/components/iniciarsesion.css */
+
+/* Stiluri specifice pentru componenta IniciarSesion */
+.login-container {
+  min-height: 100vh; /* Ocupă toată înălțimea vizibilă */
+  display: flex; /* Folosește Flexbox pentru centrare */
+  align-items: center; /* Centrează vertical */
+  justify-content: center; /* Centrează orizontal */
+  padding: 16px; /* Padding general */
+  /* Imaginea ta de fundal */
+  background-image: url('/rayna.jpg'); /* Calea către imaginea ta din directorul public */
+  background-size: cover; /* Acoperă toată suprafața */
+  background-position: center; /* Centrează imaginea */
+  background-repeat: no-repeat; /* Nu repetă imaginea */
+  background-color: #f3f4f6; /* Culoare de fundal de rezervă */
+}
+
+.login-card {
+  /* Chenarul cu transparență și blur */
+  background-color: rgba(255, 255, 255, 0.8); /* Fundal alb cu 80% opacitate */
+  padding: 32px; /* Padding interior */
+  border-radius: 12px; /* Colțuri rotunjite */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Umbră pronunțată */
+  width: 100%; /* Lățime 100% în interiorul max-width */
+  max-width: 384px; /* Lățime maximă de 384px */
+  border: 1px solid #e5e7eb; /* Bordură subțire */
+  backdrop-filter: blur(2px); /* Efect de blur pe fundalul din spatele chenarului */
+  box-sizing: border-box; /* Asigură că padding-ul și bordura nu măresc lățimea totală */
+}
+
+/* Stiluri pentru titlul paginii de login */
+.login-title {
+  font-size: 2.25rem; /* 36px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 800; /* Foarte bold */
+  text-align: center;
+  color: #1d4ed8; /* Albastru închis */
+  margin-bottom: 32px; /* Margine jos */
+}
+
+/* Stiluri pentru mesajele de eroare */
+.error-message {
+  color: #dc2626; /* Roșu */
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  text-align: center;
+  margin-bottom: 16px; /* Margine jos */
+}
+
+/* Stiluri pentru spațierea grupurilor de formular */
+.form-group-spacing > div + div {
+  margin-top: 24px; /* Spațiu între div-urile din formular */
+}
+
+/* Stiluri pentru etichetele câmpurilor de formular */
+.form-label {
+  display: block;
+  color: #374151; /* Gri închis */
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 600; /* Semi-bold */
+  margin-bottom: 8px; /* Margine jos */
+}
+
+/* Stiluri pentru câmpurile de input */
+.form-input {
+  width: 100%;
+  padding: 8px 16px; /* Padding interior */
+  border: 1px solid #d1d5db; /* Bordură gri */
+  border-radius: 0.5rem; /* Colțuri rotunjite */
+  transition: all 200ms ease-in-out; /* Tranziție lină la focus */
+  box-sizing: border-box; /* Asigură că padding-ul și bordura nu măresc lățimea totală */
+}
+
+.form-input:focus {
+  outline: 2px solid transparent; /* Elimină outline-ul implicit */
+  outline-offset: 2px;
+  box-shadow: 0 0 0 calc(2px + 2px) #3b82f6; /* Inel de focus albastru */
+  border-color: transparent; /* Bordură transparentă la focus */
+}
+
+/* Stiluri pentru butonul principal */
+.btn-primary {
+  margin-top: 24px; /* Spațiere adăugată pentru a nu se suprapune */
+  width: 100%;
+  background-color: #2563eb; /* Albastru */
+  color: #fff; /* Text alb */
+  font-weight: 700; /* Bold */
+  padding: 12px 16px; /* Padding interior */
+  border-radius: 0.5rem; /* Colțuri rotunjite */
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.75rem; /* 28px */
+  transition: all 200ms ease-in-out; /* Tranziție lină la hover */
+  border: none; /* Fără bordură */
+  cursor: pointer; /* Cursor pointer la hover */
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8; /* Albastru mai închis la hover */
+}
+
+.btn-primary:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 calc(2px + 2px) #3b82f6;
+}
+
+/* Stiluri pentru textele de link (sub butoane) */
+.link-text {
+  margin-top: 24px; /* Margine sus */
+  text-align: center;
+  color: #4b5563; /* Gri */
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+}
+
+/* Stiluri pentru link-uri */
+.link-style {
+  color: #2563eb; /* Albastru */
+  font-weight: 500; /* Mediu bold */
+  transition: all 200ms ease-in-out; /* Tranziție lină la hover */
+  text-decoration: none; /* Fără subliniere implicită */
+}
+
+.link-style:hover {
+  text-decoration: underline; /* Subliniere la hover */
+  color: #1e40af; /* Albastru mai închis la hover */
+}
+
+/* Margine suplimentară pentru al doilea link */
+.mt-2-px {
+  margin-top: 8px; /* Margine sus */
+}

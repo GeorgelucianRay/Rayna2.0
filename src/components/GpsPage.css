@@ -1,0 +1,197 @@
+/* src/components/GpsPage.css */
+
+.gps-background {
+  background-image: url('/rayna ubicacion.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.gps-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 0;
+}
+.gps-background .nav-menu, .gps-background .page-content {
+  position: relative;
+  z-index: 1;
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.location-card {
+  background-color: rgba(17, 24, 39, 0.5);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  aspect-ratio: 4 / 3;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.location-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.location-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+.location-card:hover .location-card-image {
+  transform: scale(1.05);
+}
+
+.location-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 1rem 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.location-card-title {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+/* --- Stiluri Generale Modal (pentru Adăugare) --- */
+.modal-content {
+  background-color: white;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header, .modal-footer {
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modal-footer {
+  border-top: 1px solid #e5e7eb;
+}
+
+
+/* --- Stiluri Specifice Modal Vizualizare --- */
+.location-modal {
+  padding: 0;
+  overflow: hidden;
+}
+.location-modal .modal-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border: none;
+  padding: 1rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+}
+.location-modal .modal-title {
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+.location-modal .close-button {
+  color: white;
+  background-color: rgba(0,0,0,0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-modal-image {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+.location-modal .modal-body {
+  padding: 0;
+  grid-template-columns: 1fr;
+  overflow-y: hidden; /* Nu vrem scroll aici */
+}
+.location-details {
+  padding: 1.5rem;
+  color: #374151;
+}
+.location-details p {
+  margin: 0 0 0.75rem;
+}
+.location-details strong {
+  color: #1f2937;
+}
+
+.location-modal .modal-footer {
+  padding: 0 1.5rem 1.5rem;
+  justify-content: stretch;
+  border-top: none;
+}
+.ir-button {
+  width: 100%;
+  text-align: center;
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+}
+
+/* Stiluri NOI pentru geolocație */
+.geolocation-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.geolocation-group input {
+    flex-grow: 1;
+}
+
+.geolocation-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 200ms;
+}
+.geolocation-button:hover {
+    background-color: #f3f4f6;
+}
+.geolocation-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
