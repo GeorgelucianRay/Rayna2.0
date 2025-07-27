@@ -88,9 +88,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  /* MODIFICARE: Filtru mai întunecat și blur mai puternic */
-  background-color: rgba(17, 24, 39, 0.8); 
-  backdrop-filter: blur(5px);
+  /* MODIFICARE: Filtru mai întunecat și blur mai puternic pentru efect de sticlă neagră */
+  background-color: rgba(10, 10, 20, 0.85); 
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); /* Pentru compatibilitate Safari */
   z-index: -1;
 }
 
