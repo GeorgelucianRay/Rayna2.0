@@ -75,7 +75,6 @@
   position: relative;
 }
 
-/* Pseudo-element pentru imaginea blurată (în spate) */
 .layout-wrapper.has-background::before {
   content: '';
   position: fixed;
@@ -83,16 +82,15 @@
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  filter: blur(5px); /* Efect suav de blur */
+  filter: blur(5px);
   z-index: -2; /* Cel mai în spate */
 }
 
-/* Pseudo-element pentru filtrul de sticlă neagră (deasupra imaginii blurate) */
 .layout-wrapper.has-background::after {
   content: '';
   position: fixed;
   inset: 0;
-  background-color: rgba(10, 10, 20, 0.75); /* Culoare neagră-albăstruie, transparentă */
+  background-color: rgba(10, 10, 20, 0.75);
   z-index: -1; /* Între imagine și conținut */
 }
 
