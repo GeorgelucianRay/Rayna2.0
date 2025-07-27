@@ -96,10 +96,9 @@
   z-index: 0; /* Asigură că este deasupra fundalului, dar sub conținut */
 }
 
-/* Conținutul trebuie să fie deasupra filtrului */
-.nav-menu, .page-content-wrapper {
-    position: relative;
-    z-index: 1;
+/* MODIFICARE CHEIE: Facem conținutul transparent pentru a vedea filtrul */
+.layout-wrapper.has-background .page-content-wrapper {
+    background-color: transparent;
 }
 
 .layout-wrapper.homepage-background { background-image: url('/homepage.jpg'); }
