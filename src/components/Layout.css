@@ -5,7 +5,7 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; /* Previne scroll orizontal la animație */
+  /* overflow-x: hidden; a fost eliminat pentru a repara vizibilitatea ferestrelor modale */
   background-color: #f3f4f6; /* Fundal default pentru pagini */
 }
 
@@ -145,7 +145,6 @@
 @media (min-width: 1280px) {
   .layout-wrapper { 
     display: flex; 
-    overflow-x: visible; /* Corecție: Previne tăierea elementelor 'fixed' */
   }
   .nav-menu { position: static; transform: none; box-shadow: none; width: 18rem; flex-shrink: 0; }
   .page-content-wrapper { transform: none !important; }
@@ -160,13 +159,45 @@
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(5px);
-  z-index: 1001; /* Z-index mai mare decât meniul */
+  z-index: 1001;
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 1rem;
+  overflow-y: auto; /* Permite scroll pe verticală */
 }
-.modal-content { background-color: white; padding: 1.5rem; border-radius: 1rem; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
-.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem; }
+.modal-content {
+  background-color: white;
+  padding: 0; /* Padding-ul va fi gestionat de header, body, footer */
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-height: 90vh; /* Înălțime maximă */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Ascunde colțurile rotunjite ale conținutului */
+}
+.modal-header {
+  padding: 1.5rem;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+.modal-body {
+    overflow-y: auto; /* Face corpul formularului derulabil */
+    padding: 1.5rem;
+}
+.modal-footer {
+    padding: 1.5rem;
+    flex-shrink: 0;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
 .modal-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
 .notifications-modal { max-height: 60vh; }
 .notifications-list { list-style-type: none; padding: 0; margin: 0; }
