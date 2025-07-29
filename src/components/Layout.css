@@ -1,14 +1,13 @@
-/* src/components/Layout.css */
+/* src/components/Layout.module.css */
 
-/* --- Structura de Bază și Efect Push --- */
-.layout-wrapper {
+.layoutWrapper {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  background-color: #f3f4f6; /* Fundal default pentru pagini */
+  background-color: #f3f4f6;
 }
 
-.nav-menu {
+.navMenu {
   position: fixed;
   top: 0;
   left: 0;
@@ -23,19 +22,19 @@
   border-right: 1px solid #374151;
 }
 
-.layout-wrapper.menu-open .nav-menu {
+.menuOpen .navMenu {
   transform: translateX(0);
   box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
 }
 
-.page-content-wrapper {
+.pageContentWrapper {
   transition: margin-left 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-.nav-menu-overlay {
+.navMenuOverlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -45,12 +44,11 @@
   transition: opacity 0.3s ease-in-out;
 }
 
-.layout-wrapper.menu-open .nav-menu-overlay {
+.menuOpen .navMenuOverlay {
   opacity: 1;
   visibility: visible;
 }
 
-/* --- Header Mobil --- */
 .header {
   padding: 1rem;
   display: flex;
@@ -62,7 +60,7 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.menu-button-header {
+.menuButtonHeader {
   background: transparent;
   border: none;
   padding: 0.25rem;
@@ -70,14 +68,14 @@
   cursor: pointer;
 }
 
-/* --- Stiluri pentru Fundal Special (Sticlă Neagră) --- */
-.layout-wrapper.has-background {
+.hasBackground {
   position: relative;
-  background-color: #111827; /* Culoare de rezervă */
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
-/* Pseudo-element pentru imaginea blurată (în spate) */
-.layout-wrapper.has-background::before {
+.hasBackground::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -85,52 +83,45 @@
   background-position: center;
   background-attachment: fixed;
   filter: blur(5px);
-  z-index: -2; /* Cel mai în spate */
+  z-index: -2;
 }
 
-/* Pseudo-element pentru filtrul de sticlă neagră (deasupra imaginii blurate) */
-.layout-wrapper.has-background::after {
+.hasBackground::after {
   content: '';
   position: fixed;
   inset: 0;
-  background-color: rgba(10, 10, 20, 0.75); /* Culoare neagră-albăstruie, transparentă */
-  z-index: -1; /* Între imagine și conținut */
+  background-color: rgba(10, 10, 20, 0.75);
+  z-index: -1;
 }
 
-/* Aplicăm imaginile pe pseudo-elementul din spate */
-.layout-wrapper.homepage-background::before { background-image: url('/homepage.jpg'); }
-.layout-wrapper.depot-background::before { background-image: url('/depot.jpg'); }
-.layout-wrapper.taller-background::before { background-image: url('/taller.jpg'); }
-.layout-wrapper.profile-background::before { background-image: url('/miprofile.jpg'); }
-.layout-wrapper.gps-background::before { background-image: url('/rayna ubicacion.jpg'); }
+.homepageBackground::before { background-image: url('/homepage.jpg'); }
+.depotBackground::before { background-image: url('/depot.jpg'); }
+.tallerBackground::before { background-image: url('/taller.jpg'); }
+.profileBackground::before { background-image: url('/miprofile.jpg'); }
+.gpsBackground::before { background-image: url('/rayna ubicacion.jpg'); }
 
-/* Facem conținutul transparent pentru a vedea efectul de fundal */
-.layout-wrapper.has-background .page-content-wrapper {
+.hasBackground .pageContentWrapper {
     background-color: transparent;
 }
 
-/* Stil specific pentru meniul lateral pe fundal special */
-.layout-wrapper.has-background .nav-menu {
+.hasBackground .navMenu {
   background-color: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Stil specific pentru header-ul mobil pe fundal special */
-.layout-wrapper.has-background .header {
+.hasBackground .header {
   background-color: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.layout-wrapper.has-background .menu-button-header {
+.hasBackground .menuButtonHeader {
   color: white;
 }
 
-
-/* --- Media Queries (Desktop vs Mobil/Tabletă) --- */
 @media (max-width: 1279px) {
-  .layout-wrapper.menu-open .page-content-wrapper {
+  .menuOpen .pageContentWrapper {
     margin-left: 260px;
     border-radius: 10px 0 0 10px;
     overflow: hidden;
@@ -138,30 +129,29 @@
 }
 
 @media (min-width: 1280px) {
-  .layout-wrapper { 
+  .layoutWrapper { 
     display: flex; 
   }
-  .nav-menu { 
+  .navMenu { 
     position: static; 
     transform: none; 
     box-shadow: none; 
     width: 18rem; 
     flex-shrink: 0; 
   }
-  .page-content-wrapper { 
+  .pageContentWrapper { 
     margin-left: 0 !important; 
     flex-grow: 1;
   }
   .header { 
     display: none; 
   }
-  .nav-menu-overlay { 
+  .navMenuOverlay { 
     display: none !important; 
   }
 }
 
-/* --- Modal --- */
-.modal-overlay {
+.modalOverlay {
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
@@ -173,7 +163,7 @@
   padding: 1rem;
   overflow-y: auto;
 }
-.modal-content {
+.modalContent {
   background-color: white;
   padding: 0;
   border-radius: 1rem;
@@ -185,7 +175,7 @@
   flex-direction: column;
   overflow: hidden;
 }
-.modal-header {
+.modalHeader {
   padding: 1.5rem;
   flex-shrink: 0;
   display: flex;
@@ -193,11 +183,11 @@
   align-items: center;
   border-bottom: 1px solid #e5e7eb;
 }
-.modal-body {
+.modalBody {
     overflow-y: auto;
     padding: 1.5rem;
 }
-.modal-footer {
+.modalFooter {
     padding: 1.5rem;
     flex-shrink: 0;
     border-top: 1px solid #e5e7eb;
@@ -205,29 +195,28 @@
     justify-content: flex-end;
     gap: 0.5rem;
 }
-.modal-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
-.notifications-modal { max-height: 60vh; }
-.notifications-list { list-style-type: none; padding: 0; margin: 0; }
-.notifications-list li { padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
-.notifications-list li:last-child { border-bottom: none; }
-.notifications-list li.expired { color: #dc2626; font-weight: 600; }
-
-/* ... Restul stilurilor (link-uri, butoane, etc.) rămân la fel ... */
-.nav-header { padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.nav-title { font-size: 1.5rem; font-weight: 700; color: white; line-height: 1; }
-.user-email { font-size: 0.8rem; color: #a5f3fc; font-weight: 500; margin-top: 0.35rem; opacity: 0.9; }
-.close-button-menu { background: transparent; border: none; padding: 0.25rem; color: white; opacity: 0.8; transition: opacity 200ms; cursor: pointer; }
-.close-button-menu:hover { opacity: 1; }
-.header-icons { display: flex; align-items: center; gap: 0.5rem; }
-.notification-bell { position: relative; color: white; padding: 0.5rem; background: none; border: none; cursor: pointer; opacity: 0.8; transition: opacity 200ms; }
-.notification-bell:hover { opacity: 1; }
-.notification-badge { position: absolute; top: 2px; right: 2px; background-color: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 2px solid rgba(17, 24, 39, 0.5); }
-.nav-links { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.nav-link { display: flex; align-items: center; padding: 0.75rem; color: #d1d5db; border-radius: 0.5rem; text-decoration: none; transition: all 200ms; border-left: 4px solid transparent; }
-.nav-link:hover { background-color: rgba(255, 255, 255, 0.1); color: white; transform: translateX(5px); }
-.nav-link.active { background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c); color: white; border-left-color: #f59e0b; box-shadow: 0 4px 10px -2px rgba(249, 115, 22, 0.3); }
-.nav-link.active:hover { transform: translateX(0); }
-.nav-link-logout { color: #fca5a5; }
-.nav-link-logout:hover { border-left-color: #ef4444; }
-.nav-link span { margin-left: 1rem; font-weight: 600; }
-.main-content { padding: 1.5rem 2rem; flex-grow: 1; }
+.modalTitle { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
+.notificationsModal { max-height: 60vh; }
+.notificationsList { list-style-type: none; padding: 0; margin: 0; }
+.notificationsList li { padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
+.notificationsList li:last-child { border-bottom: none; }
+.notificationsList li.expired { color: #dc2626; font-weight: 600; }
+.navHeader { padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.navTitle { font-size: 1.5rem; font-weight: 700; color: white; line-height: 1; }
+.userEmail { font-size: 0.8rem; color: #a5f3fc; font-weight: 500; margin-top: 0.35rem; opacity: 0.9; }
+.closeButtonMenu { background: transparent; border: none; padding: 0.25rem; color: white; opacity: 0.8; transition: opacity 200ms; cursor: pointer; }
+.closeButtonMenu:hover { opacity: 1; }
+.headerIcons { display: flex; align-items: center; gap: 0.5rem; }
+.notificationBell { position: relative; color: white; padding: 0.5rem; background: none; border: none; cursor: pointer; opacity: 0.8; transition: opacity 200ms; }
+.notificationBell:hover { opacity: 1; }
+.notificationBadge { position: absolute; top: 2px; right: 2px; background-color: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 2px solid rgba(17, 24, 39, 0.5); }
+.navLinks { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.navLink { display: flex; align-items: center; padding: 0.75rem; color: #d1d5db; border-radius: 0.5rem; text-decoration: none; transition: all 200ms; border-left: 4px solid transparent; }
+.navLink:hover { background-color: rgba(255, 255, 255, 0.1); color: white; transform: translateX(5px); }
+.navLink.active { background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c); color: white; border-left-color: #f59e0b; box-shadow: 0 4px 10px -2px rgba(249, 115, 22, 0.3); }
+.navLink.active:hover { transform: translateX(0); }
+.navLinkLogout { color: #fca5a5; }
+.navLinkLogout:hover { border-left-color: #ef4444; }
+.navLink span { margin-left: 1rem; font-weight: 600; }
+.pageContent { flex: 1; display: flex; flex-direction: column; }
+.mainContent { padding: 1.5rem 2rem; flex-grow: 1; }
