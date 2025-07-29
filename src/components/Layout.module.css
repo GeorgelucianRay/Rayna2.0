@@ -5,30 +5,9 @@
   width: 100%;
   min-height: 100vh;
   background-color: #f3f4f6;
-}
-
-/* Container pentru efectele de fundal */
-.backgroundContainer {
-    position: fixed;
-    inset: 0;
-    z-index: -1; /* În spatele a tot */
-    overflow: hidden; /* Previne orice depășire */
-}
-
-/* Div-ul pentru imaginea blurată */
-.backgroundImage {
-    position: absolute;
-    inset: -20px; /* Mărim puțin pentru a ascunde marginile blurate */
-    background-size: cover;
-    background-position: center;
-    filter: blur(8px);
-}
-
-/* Div-ul pentru filtrul de sticlă neagră */
-.backgroundOverlay {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(10, 10, 20, 0.80);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 /* Definițiile imaginilor */
@@ -63,7 +42,6 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: transparent; /* Asigurăm transparența */
 }
 
 .navMenuOverlay {
@@ -100,26 +78,6 @@
   cursor: pointer;
 }
 
-.layoutWrapper:not([class*="Background"]) .pageContentWrapper {
-    background-color: #f3f4f6; /* Fundal solid doar dacă nu avem imagine */
-}
-
-.hasBackground .navMenu {
-  background-color: rgba(17, 24, 39, 0.8);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.hasBackground .header {
-  background-color: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.hasBackground .menuButtonHeader {
-  color: white;
-}
-
 @media (max-width: 1279px) {
   .menuOpen .pageContentWrapper {
     margin-left: 260px;
@@ -151,50 +109,12 @@
   }
 }
 
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
-  z-index: 3000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-  overflow-y: auto;
-}
-.modalContent {
-  background-color: white;
-  padding: 0;
-  border-radius: 1rem;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.modalHeader {
-  padding: 1.5rem;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-}
-.modalBody {
-    overflow-y: auto;
-    padding: 1.5rem;
-}
-.modalFooter {
-    padding: 1.5rem;
-    flex-shrink: 0;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-}
+/* ... restul stilurilor pentru modal, link-uri, etc. rămân la fel ... */
+.modalOverlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 1rem; overflow-y: auto; }
+.modalContent { background-color: white; padding: 0; border-radius: 1rem; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.modalHeader { padding: 1.5rem; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; }
+.modalBody { overflow-y: auto; padding: 1.5rem; }
+.modalFooter { padding: 1.5rem; flex-shrink: 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 0.5rem; }
 .modalTitle { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
 .notificationsModal { max-height: 60vh; }
 .notificationsList { list-style-type: none; padding: 0; margin: 0; }
