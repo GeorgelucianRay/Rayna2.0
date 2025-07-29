@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
-import './HomepageDispecer.css';
+import styles from './HomepageSofer.module.css'; // Importăm ca modul
 
 // --- Iconițe SVG ---
 const RssIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>;
@@ -14,7 +14,7 @@ const renderIcon = (iconType) => {
         case 'instagram': return <InstagramIcon />;
         case 'tiktok': return <TiktokIcon />;
         case 'whatsapp': return <WhatsappIcon />;
-        case 'camera': return null; // Am eliminat pictograma
+        case 'camera': return null;
         default: return null;
     }
 };
@@ -47,36 +47,41 @@ function HomepageSofer() {
 
   return (
     <Layout backgroundClassName="homepage-background">
-        <main className="main-content">
-          <div className="announcements-card">
-            <div className="announcements-header"><div className="announcements-header-title"><RssIcon /><h2 className="announcements-title">Anuncios Importantes</h2></div></div>
-            <div className="announcements-content" style={{ whiteSpace: 'pre-wrap' }}>{announcements}</div>
-          </div>
-          <div className="external-links-container">
-            <div className="links-row">
-                {cameraLinks.map(link => {
-                    const icon = renderIcon(link.icon_type);
-                    return (
-                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`social-link ${link.icon_type}-link`}>
-                            {icon}
-                            <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
-                        </a>
-                    );
-                })}
-            </div>
-            <div className="social-links-row">
-                {socialLinks.map(link => {
-                    const icon = renderIcon(link.icon_type);
-                    return (
-                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`social-link ${link.icon_type}-link`}>
-                            {icon}
-                            <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
-                        </a>
-                    );
-                })}
+        <div className={styles.announcementsCard}>
+          <div className={styles.announcementsHeader}>
+            <div className={styles.announcementsHeaderTitle}>
+              <RssIcon />
+              <h2 className={styles.announcementsTitle}>Anuncios Importantes</h2>
             </div>
           </div>
-        </main>
+          <div className={styles.announcementsContent}>{announcements}</div>
+        </div>
+        
+        <div className={styles.externalLinksContainer}>
+          <div className={styles.linksRow}>
+              {cameraLinks.map(link => {
+                  const icon = renderIcon(link.icon_type);
+                  return (
+                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`${styles.socialLink} ${styles.cameraLink}`}>
+                          {icon}
+                          <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
+                      </a>
+                  );
+              })}
+          </div>
+          <div className={styles.socialLinksRow}>
+              {socialLinks.map(link => {
+                  const icon = renderIcon(link.icon_type);
+                  const linkStyle = styles[`${link.icon_type}Link`];
+                  return (
+                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`${styles.socialLink} ${linkStyle}`}>
+                          {icon}
+                          <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
+                      </a>
+                  );
+              })}
+          </div>
+        </div>
     </Layout>
   );
 }
