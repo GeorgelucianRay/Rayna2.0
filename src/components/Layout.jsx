@@ -70,17 +70,10 @@ const Layout = ({ children, backgroundClassName }) => {
         navigate('/login');
     };
 
-    const wrapperClass = `${styles.layoutWrapper} ${isMenuOpen ? styles.menuOpen : ''}`;
+    const wrapperClass = `${styles.layoutWrapper} ${isMenuOpen ? styles.menuOpen : ''} ${styles[backgroundClassName] || ''}`;
 
     return (
         <div className={wrapperClass}>
-            {backgroundClassName && (
-              <div className={styles.backgroundContainer}>
-                <div className={`${styles.backgroundImage} ${styles[backgroundClassName]}`} />
-                <div className={styles.backgroundOverlay} />
-              </div>
-            )}
-
             <aside className={styles.navMenu}>
                 <div className={styles.navHeader}>
                     <div>
