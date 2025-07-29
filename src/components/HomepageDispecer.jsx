@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
-import styles from './HomepageDispecer.module.css'; // Importăm ca modul
+import styles from './HomepageDispecer.module.css';
 
 // --- Iconițe SVG ---
 const RssIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>;
@@ -46,7 +46,7 @@ function HomepageDispecer() {
   }, []);
 
   return (
-    <Layout backgroundClassName="homepagebackground">
+    <Layout backgroundClassName="homepageBackground">
         <div className={styles.announcementsCard}>
           <div className={styles.announcementsHeader}>
             <div className={styles.announcementsHeaderTitle}>
