@@ -70,9 +70,6 @@
 
 .hasBackground {
   position: relative;
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
 }
 
 .hasBackground::before {
@@ -218,5 +215,4 @@
 .navLinkLogout { color: #fca5a5; }
 .navLinkLogout:hover { border-left-color: #ef4444; }
 .navLink span { margin-left: 1rem; font-weight: 600; }
-.pageContent { flex: 1; display: flex; flex-direction: column; }
 .mainContent { padding: 1.5rem 2rem; flex-grow: 1; }
