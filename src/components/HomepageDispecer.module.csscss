@@ -1,6 +1,6 @@
-/* src/components/HomepageDispecer.css */
+/* src/components/HomepageDispecer.module.css */
 
-.announcements-card {
+.announcementsCard {
   background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   padding: 1.5rem;
@@ -9,66 +9,55 @@
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   color: white;
 }
-.announcements-header {
+
+.announcementsHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
 }
-.announcements-header-title {
+
+.announcementsHeaderTitle {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     color: white;
 }
-.announcements-title {
+
+.announcementsTitle {
   font-size: 1.5rem;
   font-weight: 700;
 }
-.announcements-content {
+
+.announcementsContent {
     white-space: pre-wrap;
 }
-.announcements-content strong {
+
+.announcementsContent strong {
   color: #a5f3fc;
 }
 
-.update-button {
-  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-  color: white;
-  font-weight: 600;
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 200ms ease-in-out;
-  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
-}
-.update-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
-}
-
-.external-links-container {
+.externalLinksContainer {
   margin-top: 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.links-row {
+.linksRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1.5rem;
 }
 
-.social-links-row {
+.socialLinksRow {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 1.5rem;
 }
 
-.social-link {
+.socialLink {
   color: white;
   display: flex;
   align-items: center;
@@ -81,17 +70,20 @@
   font-size: 1rem;
   font-weight: 600;
 }
-.social-link:hover {
+
+.socialLink:hover {
   transform: scale(1.05) translateY(-5px);
 }
-.social-link span {
+
+.socialLink span {
   margin-left: 0.5rem;
 }
 
-.instagram-link { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-.tiktok-link { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
-.whatsapp-link { background: #25d366; }
-.camera-link {
+.instagramLink { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+.tiktokLink { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
+.whatsappLink { background: #25d366; }
+
+.cameraLink {
   background-color: rgba(251, 146, 60, 0.2);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(251, 146, 60, 0.4);
@@ -99,7 +91,8 @@
   position: relative;
   overflow: hidden;
 }
-.camera-link::after {
+
+.cameraLink::after {
     content: "";
     position: absolute;
     top: 0;
@@ -109,37 +102,4 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     opacity: 0.08;
     pointer-events: none;
-}
-
-/* Stilurile pentru modalul de editare anunturi, dacă există */
-.modal-body textarea {
-  width: 100%;
-  min-height: 150px;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #d1d5db;
-  font-family: inherit;
-  resize: vertical;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-}
-.modal-button {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
-  font-weight: 600;
-  cursor: pointer;
-}
-.modal-button.secondary {
-  background-color: #e5e7eb;
-  color: #374151;
-}
-.modal-button.primary {
-  background-color: #2563eb;
-  color: white;
 }
