@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
-import './Layout.css'; // Un singur import CSS centralizat
+import styles from './Layout.module.css'; // Importăm ca modul
 import UpdatePrompt from './UpdatePrompt';
 
 // --- Iconițe SVG ---
@@ -17,12 +17,20 @@ const LogoutIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 
-const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => (
-  <Link to={to} className={`nav-link ${isLogout ? 'nav-link-logout' : ''} ${isActive ? 'active' : ''}`} onClick={onClick}>
-    {icon}
-    <span>{text}</span>
-  </Link>
-);
+const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
+    const linkClasses = [
+        styles.navLink,
+        isLogout ? styles.navLinkLogout : '',
+        isActive ? styles.active : ''
+    ].join(' ');
+
+    return (
+        <Link to={to} className={linkClasses} onClick={onClick}>
+            {icon}
+            <span>{text}</span>
+        </Link>
+    );
+};
 
 const Layout = ({ children, backgroundClassName }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -62,27 +70,32 @@ const Layout = ({ children, backgroundClassName }) => {
         navigate('/login');
     };
 
-    const wrapperClass = `layout-wrapper ${isMenuOpen ? 'menu-open' : ''} ${backgroundClassName || ''}`;
+    const wrapperClass = [
+        styles.layoutWrapper,
+        isMenuOpen ? styles.menuOpen : '',
+        backgroundClassName ? styles.hasBackground : '',
+        backgroundClassName ? styles[backgroundClassName] : ''
+    ].join(' ');
 
     return (
         <div className={wrapperClass}>
-            <aside className="nav-menu">
-                <div className="nav-header">
+            <aside className={styles.navMenu}>
+                <div className={styles.navHeader}>
                     <div>
-                        <h2 className="nav-title">Rayna</h2>
-                        {user && <p className="user-email">{user.email}</p>}
+                        <h2 className={styles.navTitle}>Rayna</h2>
+                        {user && <p className={styles.userEmail}>{user.email}</p>}
                     </div>
-                    <div className="header-icons">
+                    <div className={styles.headerIcons}>
                         {alarms.length > 0 && (
-                            <button className="notification-bell" onClick={() => setIsNotificationsOpen(true)}>
+                            <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
                                 <BellIcon />
-                                <span className="notification-badge">{alarms.length}</span>
+                                <span className={styles.notificationBadge}>{alarms.length}</span>
                             </button>
                         )}
-                        <button onClick={() => setIsMenuOpen(false)} className="close-button-menu"><CloseIcon /></button>
+                        <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}><CloseIcon /></button>
                     </div>
                 </div>
-                <nav className="nav-links">
+                <nav className={styles.navLinks}>
                     {navLinksData.map((link) => (
                         <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} />
                     ))}
@@ -91,29 +104,29 @@ const Layout = ({ children, backgroundClassName }) => {
                 </nav>
             </aside>
 
-            {isMenuOpen && <div className="nav-menu-overlay" onClick={() => setIsMenuOpen(false)}></div>}
+            {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)}></div>}
 
-            <div className="page-content-wrapper">
-                <header className="header">
-                    <button onClick={() => setIsMenuOpen(true)} className="menu-button-header"><MenuIcon /></button>
+            <div className={styles.pageContentWrapper}>
+                <header className={styles.header}>
+                    <button onClick={() => setIsMenuOpen(true)} className={styles.menuButtonHeader}><MenuIcon /></button>
                 </header>
-                <main className="main-content">
+                <main className={styles.mainContent}>
                     {children}
                 </main>
             </div>
 
             {isNotificationsOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content notifications-modal">
-                        <div className="modal-header">
-                            <h3 className="modal-title">Notificaciones</h3>
+                <div className={styles.modalOverlay}>
+                    <div className={`${styles.modalContent} ${styles.notificationsModal}`}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>Notificaciones</h3>
                             <button onClick={() => setIsNotificationsOpen(false)} className="close-button"><CloseIcon /></button>
                         </div>
-                        <div className="modal-body">
+                        <div className={styles.modalBody}>
                             {alarms.length > 0 ? (
-                                <ul className="notifications-list">
+                                <ul className={styles.notificationsList}>
                                     {alarms.map((alarm, index) => (
-                                        <li key={index} className={alarm.expired ? 'expired' : ''}>{alarm.message}</li>
+                                        <li key={index} className={alarm.expired ? styles.expired : ''}>{alarm.message}</li>
                                     ))}
                                 </ul>
                             ) : (
