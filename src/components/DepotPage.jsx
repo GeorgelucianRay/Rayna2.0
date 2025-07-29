@@ -54,7 +54,7 @@ function DepotPage() {
     };
 
     return (
-        <Layout backgroundClassName="depot-background">
+        <Layout backgroundClassName="depotbackground">
             <div className={styles.depotHeader}>
                 <button className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`} onClick={() => handleTabChange('contenedores')}>En Depósito</button>
                 <button className={`${styles.depotTabButton} ${activeTab === 'contenedores_rotos' ? styles.active : ''}`} onClick={() => handleTabChange('contenedores_rotos')}>Defectos</button>
