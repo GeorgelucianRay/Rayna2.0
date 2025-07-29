@@ -1,0 +1,73 @@
+/* src/components/RemorcaPage.module.css */
+
+.pageHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    color: white;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pageHeader h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 200ms;
+    text-decoration: none;
+}
+
+.backButton:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.detailsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.detailCard {
+    background-color: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.detailCard h3 {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.detailCard p {
+    font-size: 1.125rem;
+    color: white;
+    font-weight: 500;
+    margin: 0;
+}
+
+.sectionTitle {
+    color: white;
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.5rem;
+}
