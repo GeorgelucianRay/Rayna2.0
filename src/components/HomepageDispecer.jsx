@@ -46,7 +46,7 @@ function HomepageDispecer() {
   }, []);
 
   return (
-    <Layout backgroundClassName="homepage-background">
+    <Layout backgroundClassName="homepagebackground">
         <div className={styles.announcementsCard}>
           <div className={styles.announcementsHeader}>
             <div className={styles.announcementsHeaderTitle}>
