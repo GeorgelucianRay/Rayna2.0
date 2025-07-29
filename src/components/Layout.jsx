@@ -2,6 +2,139 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
+import styles from './Layout.module.css';
+import UpdatePrompt from './UpdatePrompt';
+
+// --- Iconițe SVG ---
+const BellIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
+// [restul iconițelor rămân neschimbate – le poți lăsa exact cum le aveai]
+
+const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
+    const linkClasses = [
+        styles.navLink,
+        isLogout ? styles.navLinkLogout : '',
+        isActive ? styles.active : ''
+    ].join(' ');
+
+    return (
+        <Link to={to} className={linkClasses} onClick={onClick}>
+            {icon}
+            <span>{text}</span>
+        </Link>
+    );
+};
+
+const Layout = ({ children, backgroundClassName }) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const location = useLocation();
+    const { user, profile, alarms } = useAuth();
+    const navigate = useNavigate();
+
+    const soferMenu = [
+        { id: '/sofer-homepage', icon: <BellIcon />, text: 'Homepage' },
+        { id: '/gps', icon: <BellIcon />, text: 'GPS' },
+        { id: '/mi-perfil', icon: <BellIcon />, text: 'Mi Perfil' },
+    ];
+
+    const dispecerMenu = [
+        { id: '/dispecer-homepage', icon: <BellIcon />, text: 'Homepage' },
+        { id: '/depot', icon: <BellIcon />, text: 'Depot' },
+        { id: '/choferes', icon: <BellIcon />, text: 'Choferes' },
+        { id: '/gps', icon: <BellIcon />, text: 'GPS' },
+        { id: '/taller', icon: <BellIcon />, text: 'Taller' },
+    ];
+
+    const mecanicMenu = [
+        { id: '/taller', icon: <BellIcon />, text: 'Taller' },
+        { id: '/depot', icon: <BellIcon />, text: 'Depot' },
+    ];
+
+    let navLinksData = [];
+    if (profile?.role === 'sofer') navLinksData = soferMenu;
+    else if (profile?.role === 'mecanic') navLinksData = mecanicMenu;
+    else if (profile?.role === 'dispecer') navLinksData = dispecerMenu;
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+    };
+
+    const wrapperClass = [
+        styles.layoutWrapper,
+        backgroundClassName ? styles.hasBackground : '',
+        backgroundClassName ? styles[backgroundClassName] : ''
+    ].join(' ');
+
+    return (
+        <div className={wrapperClass}>
+            <aside className={styles.navMenu}>
+                <div className={styles.navHeader}>
+                    <div>
+                        <h2 className={styles.navTitle}>Rayna</h2>
+                        {user && <p className={styles.userEmail}>{user.email}</p>}
+                    </div>
+                    <div className={styles.headerIcons}>
+                        {alarms.length > 0 && (
+                            <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
+                                <BellIcon />
+                                <span className={styles.notificationBadge}>{alarms.length}</span>
+                            </button>
+                        )}
+                        <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>×</button>
+                    </div>
+                </div>
+                <nav className={styles.navLinks}>
+                    {navLinksData.map((link) => (
+                        <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} />
+                    ))}
+                    <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
+                    <NavLink to="#" icon={<BellIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} />
+                </nav>
+            </aside>
+
+            {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)}></div>}
+
+            <div className={styles.pageContentWrapper}>
+                <header className={styles.header}>
+                    <button onClick={() => setIsMenuOpen(true)} className={styles.menuButtonHeader}>☰</button>
+                </header>
+                <main className={styles.mainContent}>
+                    {children}
+                </main>
+            </div>
+
+            {isNotificationsOpen && (
+                <div className={styles.modalOverlay}>
+                    <div className={`${styles.modalContent} ${styles.notificationsModal}`}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>Notificaciones</h3>
+                            <button onClick={() => setIsNotificationsOpen(false)} className="close-button">×</button>
+                        </div>
+                        <div className={styles.modalBody}>
+                            {alarms.length > 0 ? (
+                                <ul className={styles.notificationsList}>
+                                    {alarms.map((alarm, index) => (
+                                        <li key={index} className={alarm.expired ? styles.expired : ''}>{alarm.message}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>No hay notificaciones nuevas.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <UpdatePrompt />
+        </div>
+    );
+};
+
+export default Layout;import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
+import { supabase } from '../supabaseClient';
 import styles from './Layout.module.css'; // MODIFICARE CRITICĂ: Importăm ca modul
 import UpdatePrompt from './UpdatePrompt';
 
