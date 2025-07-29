@@ -1,5 +1,11 @@
 /* src/components/HomepageDispecer.module.css */
 
+/* Definiția specifică pentru fundalul acestei pagini */
+.homepageBackground::before {
+  background-image: url('/homepage.jpg');
+}
+
+/* Stiluri pentru conținutul paginii */
 .announcementsCard {
   background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
