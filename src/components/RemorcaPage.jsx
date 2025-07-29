@@ -1,164 +1,105 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import './MiPerfilPage.css';
-import './ReparatiiPage.css';
+import styles from './RemorcaPage.module.css'; // Importăm ca modul
+import reparatiiStyles from './ReparatiiPage.module.css'; // Refolosim stiluri
 
 // --- Iconițe SVG ---
-const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
-const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
-const PlusIcon = () => <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"></path></svg>;
-const SearchIcon = () => <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
+const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 
 function RemorcaPage() {
     const { id } = useParams();
-    const { profile: authProfile, loading: authLoading } = useAuth();
-    const [remorcaData, setRemorcaData] = useState(null);
+    const navigate = useNavigate();
+    const [remorca, setRemorca] = useState(null);
     const [repairs, setRepairs] = useState([]);
-    const [repairSearchTerm, setRepairSearchTerm] = useState('');
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
-    const [editableRemorca, setEditableRemorca] = useState(null);
-    const [newRepair, setNewRepair] = useState({ km_reparatie: '', operatiune: '', detalles: '' });
-
-    const fetchRemorcaData = async () => {
-        if (!id) return;
-        const { data, error } = await supabase.from('remorci').select('*').eq('id', id).single();
-        if (error) console.error("Error fetching remorca data:", error);
-        else setRemorcaData(data);
-    };
-
-    const fetchRepairs = async () => {
-        if (!id) return;
-        const { data, error } = await supabase.from('reparatii').select('*').eq('remorca_id', id).order('created_at', { ascending: false });
-        if (error) console.error("Error fetching repairs:", error);
-        else setRepairs(data);
-    };
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const fetchRemorcaData = async () => {
+            setLoading(true);
+
+            // Fetch remorca details
+            const { data: remorcaData, error: remorcaError } = await supabase
+                .from('remorci')
+                .select('*')
+                .eq('id', id)
+                .single();
+            
+            if (remorcaError) {
+                console.error("Error fetching remorca:", remorcaError);
+            } else {
+                setRemorca(remorcaData);
+            }
+
+            // Fetch repairs for the remorca
+            const { data: repairsData, error: repairsError } = await supabase
+                .from('reparatii')
+                .select('*')
+                .eq('remorca_id', id)
+                .order('data', { ascending: false });
+
+            if (repairsError) {
+                console.error("Error fetching repairs:", repairsError);
+            } else {
+                setRepairs(repairsData || []);
+            }
+
+            setLoading(false);
+        };
+
         fetchRemorcaData();
-        fetchRepairs();
     }, [id]);
 
-    const handleEditClick = () => {
-        setEditableRemorca({ ...remorcaData });
-        setIsEditModalOpen(true);
-    };
-
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        const { id: remorcaId, created_at, ...updateData } = editableRemorca;
-        const { error } = await supabase.from('remorci').update(updateData).eq('id', remorcaId);
-        if (error) { alert(`Error al actualizar: ${error.message}`); } 
-        else {
-            alert('Vehículo actualizado con éxito!');
-            setIsEditModalOpen(false);
-            fetchRemorcaData();
-        }
-    };
-
-    const handleAddRepair = async (e) => {
-        e.preventDefault();
-        const repairData = { remorca_id: id, ...newRepair };
-        Object.keys(repairData).forEach(key => { if (repairData[key] === '') repairData[key] = null; });
-        const { error } = await supabase.from('reparatii').insert([repairData]);
-        if (error) { alert(`Error al añadir la reparación: ${error.message}`); } 
-        else {
-            alert('Reparación añadida con éxito!');
-            setIsRepairModalOpen(false);
-            fetchRepairs();
-            setNewRepair({ km_reparatie: '', operatiune: '', detalles: '' });
-        }
-    };
-
-    if (authLoading || !remorcaData) {
-        return <div className="loading-screen">Cargando...</div>;
+    if (loading) {
+        return <div className="loading-screen">Cargando datos de la remorca...</div>;
     }
 
-    const canEdit = authProfile?.role === 'dispecer' || String(authProfile?.remorca_id) === id;
-
-    const filteredRepairs = repairs.filter(r => 
-        r.operatiune && r.operatiune.toLowerCase().includes(repairSearchTerm.toLowerCase())
-    );
+    if (!remorca) {
+        return (
+            <Layout backgroundClassName="depot-background">
+                <p style={{color: 'white', textAlign: 'center'}}>No se encontró la remorca.</p>
+            </Layout>
+        );
+    }
 
     return (
-        <Layout backgroundClassName="profile-background">
-            <main className="main-content">
-                <div className="profile-header">
-                    <h1>Profil Remorca: {remorcaData.matricula}</h1>
-                    {canEdit && (
-                        <button className="edit-profile-button" onClick={handleEditClick}><EditIcon /> Editar Vehículo</button>
-                    )}
-                </div>
-                <div className="profile-grid">
-                    <div className="profile-card"><h3>Tipo</h3><p>{remorcaData.tipo || 'N/A'}</p></div>
-                    <div className="profile-card"><h3>Structura</h3><p>{remorcaData.tipo_estructura || 'N/A'}</p></div>
-                    <div className="profile-card"><h3>Fecha ITV</h3><p>{remorcaData.fecha_itv || 'N/A'}</p></div>
-                    <div className="profile-card full-width"><h3>Detalles</h3><p>{remorcaData.detalles || 'Sin detalles.'}</p></div>
-                </div>
-                
-                <div className="profile-header" style={{ marginTop: '2rem' }}>
-                    <h2>Historial de Reparaciones</h2>
-                    {canEdit && (
-                        <button className="add-button" onClick={() => setIsRepairModalOpen(true)}><PlusIcon /> Añadir Reparación</button>
-                    )}
-                </div>
+        <Layout backgroundClassName="depot-background">
+            <div className={styles.pageHeader}>
+                <h1>Detalles Remorca: {remorca.matricula}</h1>
+                <button onClick={() => navigate(-1)} className={styles.backButton}>
+                    <BackIcon /> Volver
+                </button>
+            </div>
 
-                <div className="toolbar" style={{ justifyContent: 'flex-start', marginBottom: '1.5rem' }}>
-                    <div className="search-bar">
-                        <SearchIcon />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por operación..."
-                            value={repairSearchTerm}
-                            onChange={(e) => setRepairSearchTerm(e.target.value)}
-                        />
-                    </div>
+            <div className={styles.detailsGrid}>
+                <div className={styles.detailCard}>
+                    <h3>Matrícula</h3>
+                    <p>{remorca.matricula}</p>
                 </div>
+                <div className={styles.detailCard}>
+                    <h3>Fecha ITV</h3>
+                    <p>{remorca.fecha_itv || 'N/A'}</p>
+                </div>
+                {/* Adăugați aici alte carduri pentru alte detalii ale remorcii */}
+            </div>
 
-                <div className="repairs-list">
-                    {filteredRepairs.length > 0 ? (
-                        filteredRepairs.map(repair => (
-                            <div className="repair-card" key={repair.id}>
-                                <div className="repair-header"><h4>{repair.operatiune}</h4><span>{new Date(repair.created_at).toLocaleDateString('es-ES')}</span></div>
-                                {repair.km_reparatie && <p><strong>KM:</strong> {repair.km_reparatie.toLocaleString('es-ES')}</p>}
-                                {repair.detalles && <p className="repair-details"><strong>Detalles:</strong> {repair.detalles}</p>}
-                            </div>
-                        ))
-                    ) : (
-                        <p className="no-repairs">No hay reparaciones registradas para este vehículo.</p>
-                    )}
-                </div>
-            </main>
+            <h2 className={styles.sectionTitle}>Historial de Reparaciones</h2>
             
-            {isEditModalOpen && editableRemorca && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header"><h3 className="modal-title">Editar Remorca: {editableRemorca.matricula}</h3><button onClick={() => setIsEditModalOpen(false)} className="close-button"><CloseIcon /></button></div>
-                        <form onSubmit={handleUpdate} className="modal-body">
-                            <div className="input-group"><label>Tipo</label><input type="text" value={editableRemorca.tipo || ''} onChange={(e) => setEditableRemorca({...editableRemorca, tipo: e.target.value})} /></div>
-                            <div className="input-group"><label>Structura</label><select value={editableRemorca.tipo_estructura || ''} onChange={(e) => setEditableRemorca({...editableRemorca, tipo_estructura: e.target.value})}><option value="">N/A</option><option value="Extensible">Extensible</option><option value="Fija">Fija</option></select></div>
-                            <div className="input-group"><label>Fecha ITV</label><input type="date" value={editableRemorca.fecha_itv || ''} onChange={(e) => setEditableRemorca({...editableRemorca, fecha_itv: e.target.value})} /></div>
-                            <div className="input-group full-width"><label>Detalles</label><textarea value={editableRemorca.detalles || ''} onChange={(e) => setEditableRemorca({...editableRemorca, detalles: e.target.value})}></textarea></div>
-                            <div className="modal-footer"><button type="button" className="modal-button secondary" onClick={() => setIsEditModalOpen(false)}>Cancelar</button><button type="submit" className="modal-button primary">Guardar Cambios</button></div>
-                        </form>
-                    </div>
+            {repairs.length > 0 ? (
+                <div className={reparatiiStyles.repairsList}>
+                    {repairs.map(repair => (
+                        <div className={reparatiiStyles.repairCard} key={repair.id}>
+                            <div className={reparatiiStyles.repairHeader}>
+                                <h4>Reparación del {new Date(repair.data).toLocaleDateString()}</h4>
+                                <span><strong>Coste:</strong> {repair.cost} €</span>
+                            </div>
+                            <p className={reparatiiStyles.repairDetails}>{repair.detalii}</p>
+                        </div>
+                    ))}
                 </div>
-            )}
-            {isRepairModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header"><h3 className="modal-title">Añadir Reparación para {remorcaData.matricula}</h3><button onClick={() => setIsRepairModalOpen(false)} className="close-button"><CloseIcon /></button></div>
-                        <form onSubmit={handleAddRepair} className="modal-body">
-                            <div className="input-group full-width"><label>Operación / Pieza cambiada</label><input type="text" value={newRepair.operatiune} onChange={(e) => setNewRepair({...newRepair, operatiune: e.target.value})} autoFocus /></div>
-                            <div className="input-group"><label>KM en la reparación</label><input type="number" value={newRepair.km_reparatie} onChange={(e) => setNewRepair({...newRepair, km_reparatie: e.target.value})} /></div>
-                            <div className="input-group full-width"><label>Detalles (opcional)</label><textarea value={newRepair.detalles} onChange={(e) => setNewRepair({...newRepair, detalles: e.target.value})}></textarea></div>
-                            <div className="modal-footer"><button type="button" className="modal-button secondary" onClick={() => setIsRepairModalOpen(false)}>Cancelar</button><button type="submit" className="modal-button primary">Guardar</button></div>
-                        </form>
-                    </div>
-                </div>
+            ) : (
+                <p className={reparatiiStyles.noRepairs}>No hay reparaciones registradas para esta remorca.</p>
             )}
         </Layout>
     );
