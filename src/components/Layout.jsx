@@ -70,10 +70,17 @@ const Layout = ({ children, backgroundClassName }) => {
         navigate('/login');
     };
 
-    const wrapperClass = `${styles.layoutWrapper} ${isMenuOpen ? styles.menuOpen : ''} ${styles[backgroundClassName] || ''}`;
+    const wrapperClass = `${styles.layoutWrapper} ${isMenuOpen ? styles.menuOpen : ''}`;
 
     return (
         <div className={wrapperClass}>
+            {backgroundClassName && (
+              <div className={styles.backgroundContainer}>
+                <div className={`${styles.backgroundImage} ${styles[backgroundClassName]}`} />
+                <div className={styles.backgroundOverlay} />
+              </div>
+            )}
+
             <aside className={styles.navMenu}>
                 <div className={styles.navHeader}>
                     <div>
@@ -102,7 +109,7 @@ const Layout = ({ children, backgroundClassName }) => {
             {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)}></div>}
 
             <div className={styles.pageContentWrapper}>
-                <header className={styles.header}>
+                <header className={`${styles.header} ${backgroundClassName ? styles.headerTransparent : ''}`}>
                     <button onClick={() => setIsMenuOpen(true)} className={styles.menuButtonHeader}><MenuIcon /></button>
                 </header>
                 <main className={styles.mainContent}>
