@@ -1,4 +1,128 @@
-/* src/components/HomepageDispecer.module.css */
+/* Fundal specific doar pentru homepage */
+.homepageBackground::before {
+  background-image: url('/homepage.jpg'); /* asigură-te că acest fișier există în public/ */
+}
+
+/* Cardul de anunțuri */
+.announcementsCard {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  color: white;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Headerul cardului */
+.announcementsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Titlu + iconiță */
+.announcementsHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: white;
+}
+
+.announcementsTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.announcementsContent {
+  white-space: pre-wrap;
+  font-size: 1rem;
+}
+
+.announcementsContent strong {
+  color: #a5f3fc;
+}
+
+/* Containerul pentru linkuri externe */
+.externalLinksContainer {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Linkuri tip cameră */
+.linksRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+}
+
+.socialLinksRow {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.socialLink {
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.socialLink:hover {
+  transform: scale(1.05) translateY(-5px);
+}
+
+.socialLink span {
+  margin-left: 0.5rem;
+}
+
+/* Stiluri personalizate pentru fiecare tip */
+.instagramLink {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+
+.tiktokLink {
+  background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55);
+}
+
+.whatsappLink {
+  background: #25d366;
+}
+
+.cameraLink {
+  background-color: rgba(251, 146, 60, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+  background-image: linear-gradient(45deg, rgba(251, 146, 60, 0.3), rgba(249, 115, 22, 0.4));
+  position: relative;
+  overflow: hidden;
+}
+
+.cameraLink::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.08;
+  pointer-events: none;
+}/* src/components/HomepageDispecer.module.css */
 
 /* Definiția specifică pentru fundalul acestei pagini */
 .homepageBackground::before {
