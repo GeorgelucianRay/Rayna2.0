@@ -101,7 +101,7 @@
 }
 
 .layoutWrapper:not([class*="Background"]) .pageContentWrapper {
-    background-color: #f3f4f6; /* Fundal solid doar dacă nu avem imagine */
+    background-color: #41557d; /* Fundal solid doar dacă nu avem imagine */
 }
 
 .hasBackground .navMenu {
