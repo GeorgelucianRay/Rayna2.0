@@ -1,12 +1,12 @@
-/* src/components/TallerPage.css */
+/* src/components/TallerPage.module.css */
 
-.vehicle-grid {
+.vehicleGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
 }
 
-.vehicle-card {
+.vehicleCard {
     background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
     padding: 1.5rem;
@@ -15,21 +15,41 @@
     color: #d1d5db;
     cursor: pointer;
     transition: all 200ms ease;
+    text-decoration: none; /* Elimină sublinierea de la link */
 }
-.vehicle-card:hover {
+.vehicleCard:hover {
     transform: translateY(-5px);
     background-color: rgba(17, 24, 39, 0.8);
     border-color: rgba(255, 255, 255, 0.4);
 }
 
-.vehicle-card h3 {
+.vehicleCard h3 {
     color: white;
     font-size: 1.5rem;
     font-weight: 700;
     margin: 0 0 0.5rem;
 }
 
-.vehicle-card p {
+.vehicleCard p {
     margin: 0;
     font-size: 1rem;
+}
+
+/* Stiluri refolosite din alte pagini pentru consistență */
+.pageHeader {
+    color: white;
+    margin-bottom: 2rem;
+}
+
+.pageHeader h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+}
+
+.sectionTitle {
+    color: white;
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.5rem;
 }
