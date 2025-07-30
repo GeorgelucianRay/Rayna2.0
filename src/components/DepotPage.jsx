@@ -45,7 +45,7 @@ function DepotPage() {
 
   // Tab activ (contenedores, contenedores_rotos, contenedores_salidos)
   const [activeTab, setActiveTab] = useState('contenedores');
-  // Lista contenedores
+  // Lista de contenedores
   const [containers, setContainers] = useState([]);
   // Loader
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ function DepotPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Pentru navigare (ex. redirecționare la login dacă nu e sesiune)
+  // Pentru navigare
   const navigate = useNavigate();
 
   // Stări pentru modalul de adăugare
@@ -75,11 +75,11 @@ function DepotPage() {
   // Stări pentru modalul de ieșire
   const [isSalidaModalOpen, setIsSalidaModalOpen] = useState(false);
   const [salidaMatriculaCamion, setSalidaMatriculaCamion] = useState('');
-  // Container selectat pentru editare / ieșire
+  // Container selectat pentru editare/ieșire
   const [selectedContainer, setSelectedContainer] = useState(null);
 
-  /* Efect pentru verificarea sesiunii. 
-     Dacă utilizatorul nu este autentificat, se poate redirecționa către login. */
+  /* Efect pentru verificarea sesiunii. Dacă utilizatorul nu este autentificat,
+     se poate redirecționa către login. */
   useEffect(() => {
     const checkSession = async () => {
       const {
@@ -97,7 +97,7 @@ function DepotPage() {
     checkSession();
   }, []);
 
-  /* Efect pentru încărcarea datelor */
+  /* Efect pentru încărcarea datelor în funcție de tab, pagină și termen de căutare */
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -128,14 +128,14 @@ function DepotPage() {
   /* Calcul număr total de pagini */
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
-  /* Schimbare tab */
+  /* Schimbă tab-ul și resetează căutarea/paginarea */
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1);
     setSearchTerm('');
   };
 
-  /* Deschide modal de adăugare și resetează câmpurile */
+  /* Deschide modalul de adăugare și resetează câmpurile */
   const openAddModal = () => {
     setNewMatricula('');
     setNewNaviera('');
@@ -148,15 +148,15 @@ function DepotPage() {
     setIsAddModalOpen(true);
   };
 
-  /* Adăugăm un container nou */
+  /* Trimite cererea de inserare a unui container nou */
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     const data = {
-      // setăm null dacă stringul e gol pentru a respecta regula că niciun câmp nu este obligatoriu
-      matricula_contenedor: newMatricula || null,
-      naviera: newNaviera || null,
-      tipo: newTipo || null,
-      posicion: newPosicion || null,
+      // câmpurile principale sunt necesare; cele opționale pot fi null
+      matricula_contenedor: newMatricula,
+      naviera: newNaviera,
+      tipo: newTipo,
+      posicion: newPosicion,
       matricula_camion: newMatriculaCamion || null,
     };
 
@@ -168,7 +168,7 @@ function DepotPage() {
         console.error('Error adding broken container:', error);
       }
     } else {
-      data.estado = newEstado || null; // coloana pentru lleno/vacio; poate fi null
+      data.estado = newEstado || null; // poate fi null
       // Inserăm în tabela contenedores
       const { error } = await supabase.from('contenedores').insert(data);
       if (error) {
@@ -176,19 +176,18 @@ function DepotPage() {
       }
     }
     setIsAddModalOpen(false);
-    // Reîncărcăm lista de la pagina 1
     setCurrentPage(1);
     setSearchTerm('');
   };
 
-  /* Deschidem modalul de editare și setăm containerul */
+  /* Deschide modalul de editare și setează containerul curent */
   const openEditModal = (container) => {
     setSelectedContainer(container);
     setEditPosicion(container.posicion || '');
     setIsEditModalOpen(true);
   };
 
-  /* Salvăm noua poziție */
+  /* Actualizează poziția containerului */
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
@@ -209,14 +208,14 @@ function DepotPage() {
     setIsEditModalOpen(false);
   };
 
-  /* Deschidem modalul de ieșire */
+  /* Deschide modalul de ieșire și selectează containerul */
   const openSalidaModal = (container) => {
     setSelectedContainer(container);
     setSalidaMatriculaCamion('');
     setIsSalidaModalOpen(true);
   };
 
-  /* Mutăm containerul în contenedores_salidos */
+  /* Mută containerul în tabela contenedores_salidos și îl șterge din tabelul curent */
   const handleSalidaSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
@@ -244,8 +243,6 @@ function DepotPage() {
     }
     setIsSalidaModalOpen(false);
   };
-
-  // Nu verificăm rolul aici – logica de autorizare este gestionată în altă parte.
 
   return (
     <Layout backgroundClassName="depotBackground">
@@ -289,7 +286,6 @@ function DepotPage() {
             }}
           />
         </div>
-        {/* Butonul de adăugare apare doar în tabul contenedores */}
         {activeTab === 'contenedores' && (
           <button className={styles.addButton} onClick={openAddModal}>
             <PlusIcon />
@@ -314,7 +310,6 @@ function DepotPage() {
                     </h3>
                     <p className={styles.cardNaviera}>{container.naviera}</p>
                   </div>
-                  {/* Ascundem acțiunile pe tabul Salidos */}
                   {activeTab !== 'contenedores_salidos' && (
                     <div className={styles.cardActions}>
                       <button
@@ -374,7 +369,9 @@ function DepotPage() {
           <div className={styles.paginationContainer}>
             <button
               className={styles.paginationButton}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() =>
+                setCurrentPage((p) => Math.max(1, p - 1))
+              }
               disabled={currentPage === 1}
             >
               Anterior
@@ -408,6 +405,7 @@ function DepotPage() {
                   type="text"
                   value={newMatricula}
                   onChange={(e) => setNewMatricula(e.target.value)}
+                  required
                 />
               </div>
               <div className={styles.formGroup}>
@@ -417,6 +415,7 @@ function DepotPage() {
                   type="text"
                   value={newNaviera}
                   onChange={(e) => setNewNaviera(e.target.value)}
+                  required
                 />
               </div>
               <div className={styles.formGroup}>
@@ -441,6 +440,7 @@ function DepotPage() {
                   type="text"
                   value={newPosicion}
                   onChange={(e) => setNewPosicion(e.target.value)}
+                  required
                 />
               </div>
               <div className={styles.formGroup}>
@@ -505,7 +505,7 @@ function DepotPage() {
         </div>
       )}
 
-      {/* Modal: Editar posición */}
+      {/* Modal: Editar posisián */}
       {isEditModalOpen && selectedContainer && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -518,6 +518,7 @@ function DepotPage() {
                   type="text"
                   value={editPosicion}
                   onChange={(e) => setEditPosicion(e.target.value)}
+                  required
                 />
               </div>
               <div className={styles.modalActions}>
@@ -554,6 +555,7 @@ function DepotPage() {
                   onChange={(e) =>
                     setSalidaMatriculaCamion(e.target.value)
                   }
+                  required
                 />
               </div>
               <div className={styles.modalActions}>
