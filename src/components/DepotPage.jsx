@@ -33,7 +33,7 @@ const PlusIcon = () => (
   >
     <path
       fillRule="evenodd"
-      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a 1 1 0 011-1z"
       clipRule="evenodd"
     />
   </svg>
@@ -166,10 +166,8 @@ function DepotPage() {
       const { error } = await supabase.from('contenedores_rotos').insert([data]);
       if (error) {
         console.error('Error adding broken container:', error);
-        // Afișăm o alertă pentru a notifica utilizatorul despre eroare
         alert('A apărut o eroare la adăugarea containerului defect. Vă rugăm să încercați din nou.');
       } else {
-        // dacă a reușit, trecem la tabul Defectos
         setActiveTab('contenedores_rotos');
       }
     } else {
@@ -223,7 +221,6 @@ function DepotPage() {
   const handleSalidaSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
-    // extragem id și created_at pentru a nu le trimite în tabelul salidos
     const {
       id,
       created_at,
@@ -232,16 +229,13 @@ function DepotPage() {
       ...rest
     } = selectedContainer;
 
-    // construim noua înregistrare; garantăm existența câmpurilor estado și detalles
     const newRecord = {
       ...rest,
       estado: selectedEstado || null,
       detalles: selectedDetalles || null,
-      // preluăm matricula_camion din formular; dacă este gol, trimitem null
       matricula_camion: salidaMatriculaCamion || null,
     };
 
-    // inserăm în tabela contenedores_salidos
     const { error: insertError } = await supabase
       .from('contenedores_salidos')
       .insert([newRecord]);
@@ -249,7 +243,6 @@ function DepotPage() {
       console.error('Error moving container to salidos:', insertError);
       alert('A apărut o eroare la înregistrarea ieșirii containerului. Vă rugăm să încercați din nou.');
     } else {
-      // dacă insertul reușește, eliminăm înregistrarea din tabela activă
       const { error: deleteError } = await supabase
         .from(activeTab)
         .delete()
@@ -258,9 +251,7 @@ function DepotPage() {
         console.error('Error deleting container:', deleteError);
         alert('A apărut o eroare la ștergerea containerului din tabla curentă.');
       } else {
-        // actualizăm state-ul local pentru a elimina containerul
         setContainers((prev) => prev.filter((c) => c.id !== id));
-        // comutăm pe tab-ul Salidos pentru a vedea containerul transferat
         setActiveTab('contenedores_salidos');
       }
     }
@@ -305,7 +296,6 @@ function DepotPage() {
             }}
           />
         </div>
-        {/* Butonul de adăugare apare doar în tabul contenedores */}
         {activeTab === 'contenedores' && (
           <button className={styles.addButton} onClick={openAddModal}>
             <PlusIcon />
@@ -328,7 +318,6 @@ function DepotPage() {
                     <h3 className={styles.cardMatricula}>{container.matricula_contenedor}</h3>
                     <p className={styles.cardNaviera}>{container.naviera}</p>
                   </div>
-                  {/* Ascundem acțiunile pe tabul Salidos */}
                   {activeTab !== 'contenedores_salidos' && (
                     <div className={styles.cardActions}>
                       <button className={styles.cardButton} onClick={() => openEditModal(container)}>
@@ -390,9 +379,7 @@ function DepotPage() {
             </span>
             <button
               className={styles.paginationButton}
-              onClick={() =>
-                setCurrentPage((p) => Math.min(totalPages, p + 1))
-              }
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
             >
               Siguiente
@@ -418,7 +405,7 @@ function DepotPage() {
                 />
               </div>
               <div className={styles.formGroup}>
-                <label htmlFor "newNaviera">Naviera</label>
+                <label htmlFor="newNaviera">Naviera</label>
                 <input
                   id="newNaviera"
                   type="text"
@@ -502,7 +489,7 @@ function DepotPage() {
         </div>
       )}
 
-      {/* Modal: Editar posición */}
+      {/* Modal: Editar poziție */}
       {isEditModalOpen && selectedContainer && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
