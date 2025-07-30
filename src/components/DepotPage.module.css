@@ -226,7 +226,7 @@
   font-weight: 700;
 }
 
-/* Grupa de câmpuri */
+/* Grupurile de câmpuri */
 .formGroup {
   display: flex;
   flex-direction: column;
@@ -251,7 +251,7 @@
   border-color: rgba(249, 115, 22, 0.7);
 }
 
-/* Linie cu checkbox */
+/* Checkbox + label */
 .formGroupInline {
   display: flex;
   align-items: center;
@@ -260,7 +260,7 @@
   color: white;
 }
 
-/* Butoanele din modal */
+/* Butoane Cancelar/Guardar */
 .modalActions {
   display: flex;
   justify-content: flex-end;
