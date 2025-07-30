@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import Layout from './Layout';
 import { supabase } from '../supabaseClient';
 import styles from './DepotPage.module.css';
@@ -54,6 +55,10 @@ function DepotPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  // rolul utilizatorului curent
+  const [userRole, setUserRole] = useState(null);
+  const navigate = useNavigate();
+
   // Stări pentru modalul de adăugare
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newMatricula, setNewMatricula] = useState('');
@@ -74,8 +79,37 @@ function DepotPage() {
   // Container selectat pentru editare / ieșire
   const [selectedContainer, setSelectedContainer] = useState(null);
 
+  /* Efect pentru verificarea rolului utilizatorului. 
+     Dacă utilizatorul nu este autentificat sau nu are un rol permis, 
+     redirecționăm către pagina principală sau login. 
+     Se presupune că rolul este stocat în user_metadata.role. */
+  useEffect(() => {
+    const getUserRole = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error fetching user:', error);
+        return;
+      }
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      // încercăm să citim rolul din user_metadata sau altă sursă
+      const role = user.user_metadata?.role;
+      setUserRole(role);
+    };
+    getUserRole();
+  }, []);
+
   /* Efect pentru încărcarea datelor */
   useEffect(() => {
+    // doar dacă utilizatorul are rol permis sau nu s-a determinat încă rolul
+    if (userRole !== null && !['dispecer', 'mecanic'].includes(userRole)) {
+      return;
+    }
     const fetchData = async () => {
       setLoading(true);
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -100,7 +134,7 @@ function DepotPage() {
     };
 
     fetchData();
-  }, [activeTab, currentPage, searchTerm]);
+  }, [activeTab, currentPage, searchTerm, userRole]);
 
   /* Calcul număr total de pagini */
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
@@ -139,18 +173,14 @@ function DepotPage() {
     if (isBroken) {
       data.detalles = newDetalles || null;
       // Inserăm în tabela contenedores_rotos
-      const { error } = await supabase
-        .from('contenedores_rotos')
-        .insert(data);
+      const { error } = await supabase.from('contenedores_rotos').insert(data);
       if (error) {
         console.error('Error adding broken container:', error);
       }
     } else {
       data.estado = newEstado; // coloana pentru lleno/vacio
       // Inserăm în tabela contenedores
-      const { error } = await supabase
-        .from('contenedores')
-        .insert(data);
+      const { error } = await supabase.from('contenedores').insert(data);
       if (error) {
         console.error('Error adding container:', error);
       }
@@ -224,6 +254,11 @@ function DepotPage() {
     }
     setIsSalidaModalOpen(false);
   };
+
+  // Dacă s-a determinat rolul iar acesta nu este permis, redirecționăm.
+  if (userRole !== null && !['dispecer', 'mecanic'].includes(userRole)) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <Layout backgroundClassName="depotBackground">
@@ -315,35 +350,35 @@ function DepotPage() {
                     <strong>Fecha de entrada:</strong>{' '}
                     {new Date(container.created_at).toLocaleDateString()}
                   </p>
-                  {container.tipo && (
-                    <p>
-                      <strong>Tipo:</strong> {container.tipo}
-                    </p>
-                  )}
-                  {container.posicion && (
-                    <p>
-                      <strong>Posición:</strong> {container.posicion}
-                    </p>
-                  )}
-                  {activeTab === 'contenedores' && container.estado && (
-                    <p>
-                      <strong>Estado:</strong> {container.estado}
-                    </p>
-                  )}
-                  {(activeTab === 'contenedores_rotos' ||
-                    activeTab === 'contenedores_salidos') &&
-                    container.detalles && (
+                    {container.tipo && (
                       <p>
-                        <strong>Detalles:</strong> {container.detalles}
+                        <strong>Tipo:</strong> {container.tipo}
                       </p>
                     )}
-                  {activeTab === 'contenedores_salidos' &&
-                    container.matricula_camion && (
+                    {container.posicion && (
                       <p>
-                        <strong>Matrícula Camión:</strong>{' '}
-                        {container.matricula_camion}
+                        <strong>Posición:</strong> {container.posicion}
                       </p>
                     )}
+                    {activeTab === 'contenedores' && container.estado && (
+                      <p>
+                        <strong>Estado:</strong> {container.estado}
+                      </p>
+                    )}
+                    {(activeTab === 'contenedores_rotos' ||
+                      activeTab === 'contenedores_salidos') &&
+                      container.detalles && (
+                        <p>
+                          <strong>Detalles:</strong> {container.detalles}
+                        </p>
+                      )}
+                    {activeTab === 'contenedores_salidos' &&
+                      container.matricula_camion && (
+                        <p>
+                          <strong>Matrícula Camión:</strong>{' '}
+                          {container.matricula_camion}
+                        </p>
+                      )}
                 </div>
               </div>
             ))}
@@ -458,7 +493,7 @@ function DepotPage() {
               )}
               <div className={styles.formGroup}>
                 <label htmlFor="newMatriculaCamion">
-                  Matrícula Camión (opcional)
+                  Matrícula Camión (opțional)
                 </label>
                 <input
                   id="newMatriculaCamion"
