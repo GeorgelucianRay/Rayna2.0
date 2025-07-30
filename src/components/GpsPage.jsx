@@ -1,18 +1,88 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import Layout from './Layout';
 import styles from './GpsPage.module.css';
 import depotStyles from './DepotPage.module.css';
-import {
-  SearchIcon,
-  PlusIcon,
-  CloseIcon,
-  GpsFixedIcon,
-  EditIcon
-} from './Icons'; // presupunem că iconițele sunt exportate dintr-un fișier separat
+
+// --- Iconițe SVG (inline) ---
+const SearchIcon = () => (
+  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+    />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+    <path
+      fillRule="evenodd"
+      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a 1 1 0 011-1z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" x2="6" y1="6" y2="18" />
+    <line x1="6" x2="18" y1="6" y2="18" />
+  </svg>
+);
+
+const GpsFixedIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3" />
+    <line x1="12" y1="2" x2="12" y2="6" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+    <line x1="22" y1="12" x2="18" y2="12" />
+    <line x1="6" y1="12" x2="2" y2="12" />
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+  </svg>
+);
 
 const ITEMS_PER_PAGE = 25;
 
+// --- LISTA LOCATIILOR ---
 const LocationList = ({ tableName, title }) => {
   const { profile } = useAuth();
   const [locations, setLocations] = useState([]);
@@ -344,7 +414,7 @@ const LocationList = ({ tableName, title }) => {
                 />
               </div>
               <div className={depotStyles.inputGroup}>
-                <label>Link Google Maps (opțional)</label>
+                <label>Link Google Maps (opcional)</label>
                 <input
                   type="text"
                   value={newLocation.link_maps}
@@ -488,7 +558,10 @@ const LocationList = ({ tableName, title }) => {
                     type="text"
                     value={editingLocation.tiempo_espera || ''}
                     onChange={(e) =>
-                      setEditingLocation({ ...editingLocation, tiempo_espera: e.target.value })
+                      setEditingLocation({
+                        ...editingLocation,
+                        tiempo_espera: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -532,4 +605,57 @@ const LocationList = ({ tableName, title }) => {
   );
 };
 
-export default LocationList;
+// --- Componenta Principală GPS ---
+function GpsPage() {
+  const [activeView, setActiveView] = useState('clientes');
+
+  const handleTabChange = (tab) => {
+    setActiveView(tab);
+  };
+
+  return (
+    <Layout backgroundClassName="gpsBackground">
+      <div className={depotStyles.depotHeader}>
+        <button
+          className={`${depotStyles.depotTabButton} ${
+            activeView === 'clientes' ? depotStyles.active : ''
+          }`}
+          onClick={() => handleTabChange('clientes')}
+        >
+          Clientes
+        </button>
+        <button
+          className={`${depotStyles.depotTabButton} ${
+            activeView === 'parkings' ? depotStyles.active : ''
+          }`}
+          onClick={() => handleTabChange('parkings')}
+        >
+          Parkings
+        </button>
+        <button
+          className={`${depotStyles.depotTabButton} ${
+            activeView === 'servicios' ? depotStyles.active : ''
+          }`}
+          onClick={() => handleTabChange('servicios')}
+        >
+          Servicios
+        </button>
+        <button
+          className={`${depotStyles.depotTabButton} ${
+            activeView === 'terminale' ? depotStyles.active : ''
+          }`}
+          onClick={() => handleTabChange('terminale')}
+        >
+          Terminale
+        </button>
+      </div>
+
+      {activeView === 'clientes' && <LocationList tableName="gps_clientes" title="Cliente" />}
+      {activeView === 'parkings' && <LocationList tableName="gps_parkings" title="Parking" />}
+      {activeView === 'servicios' && <LocationList tableName="gps_servicios" title="Servicio" />}
+      {activeView === 'terminale' && <LocationList tableName="gps_terminale" title="Terminal" />}
+    </Layout>
+  );
+}
+
+export default GpsPage;
