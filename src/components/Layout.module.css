@@ -1,5 +1,6 @@
 /* src/components/Layout.module.css */
 
+/* Structură generală a wrapper-ului */
 .layoutWrapper {
   position: relative;
   width: 100%;
@@ -28,16 +29,17 @@
 .backgroundOverlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(10, 10, 20, 0.80);
+  background-color: rgba(10, 10, 20, 0.8);
 }
 
-/* Definițiile imaginilor */
+/* Definițiile imaginilor de fundal */
 .homepageBackground { background-image: url('/homepage.jpg'); }
 .depotBackground    { background-image: url('/depot.jpg'); }
 .tallerBackground   { background-image: url('/taller.jpg'); }
 .profileBackground  { background-image: url('/miprofile.jpg'); }
 .gpsBackground      { background-image: url('/rayna ubicacion.jpg'); }
 
+/* Stilurile meniului lateral */
 .navMenu {
   position: fixed;
   top: 0;
@@ -66,16 +68,17 @@
   background-color: transparent;
 }
 
-/* aplicăm fundal gri doar când wrapper-ul nu are clasa hasBackground */
+/* aplicăm fundal gri doar dacă lipsește hasBackground */
 .layoutWrapper:not(.hasBackground) .pageContentWrapper {
   background-color: #f3f4f6;
 }
 
-/* când există fundal, nu forțăm culoarea de fundal */
+/* când există fundal, lăsăm pagina transparentă */
 .hasBackground .pageContentWrapper {
   background-color: transparent;
 }
 
+/* Overlay-ul care apare când meniul este deschis (pe mobil) */
 .navMenuOverlay {
   position: fixed;
   inset: 0;
@@ -91,6 +94,7 @@
   visibility: visible;
 }
 
+/* Header-ul paginii (bara din dreapta pe mobil) */
 .header {
   padding: 1rem;
   display: flex;
@@ -115,7 +119,7 @@
   cursor: pointer;
 }
 
-/* restul regulilor (nav-menu, hasBackground etc.) rămân neschimbate */
+/* Adaptăm culorile atunci când există fundal */
 .hasBackground .navMenu {
   background-color: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(15px);
@@ -132,10 +136,9 @@
   color: white;
 }
 
-/* ================================
-   NAVIGATION MENU STYLES
-   ================================ */
+/* === NAVIGATION MENU STYLES === */
 
+/* facem header-ul relativ pentru a ancora elementele absolute (buton X) */
 .navHeader {
   display: flex;
   justify-content: space-between;
@@ -143,6 +146,7 @@
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
+  position: relative;
 }
 
 .navTitle {
@@ -190,7 +194,11 @@
   font-weight: 600;
 }
 
+/* Butonul de închidere (X) devine absolut relativ la navHeader */
 .closeButtonMenu {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: white;
@@ -240,13 +248,14 @@
   font-weight: 600;
 }
 
-/* pentru elementele de notificări expirate */
+/* Stil pentru elementele de notificare expirate */
 .expired {
   color: #ef4444;
   font-weight: 600;
 }
 
-/* Media queries existente */
+/* === MEDIA QUERIES === */
+
 @media (max-width: 1279px) {
   .menuOpen .pageContentWrapper {
     margin-left: 260px;
@@ -278,7 +287,7 @@
   }
 }
 
-/* ...restul regulilor pentru modale... */
+/* === MODAL === */
 .modalOverlay {
   position: fixed;
   inset: 0;
