@@ -271,7 +271,294 @@ function DepotPage() {
 
   return (
     <Layout backgroundClassName="depotBackground">
-      {/* ... restul codului rămâne neschimbat ... */}
+      <div className={styles.depotHeader}>
+        <button
+          className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`}
+          onClick={() => handleTabChange('contenedores')}
+        >
+          En Depósito
+        </button>
+        <button
+          className={`${styles.depotTabButton} ${activeTab === 'contenedores_rotos' ? styles.active : ''}`}
+          onClick={() => handleTabChange('contenedores_rotos')}
+        >
+          Defectos
+        </button>
+        <button
+          className={`${styles.depotTabButton} ${activeTab === 'contenedores_salidos' ? styles.active : ''}`}
+          onClick={() => handleTabChange('contenedores_salidos')}
+        >
+          Salidos
+        </button>
+      </div>
+
+      <div className={styles.toolbar}>
+        <div className={styles.searchBar}>
+          <SearchIcon />
+          <input
+            type="text"
+            placeholder="Buscar por matrícula..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+        {/* Butonul de adăugare apare doar în tabul contenedores */}
+        {activeTab === 'contenedores' && (
+          <button className={styles.addButton} onClick={openAddModal}>
+            <PlusIcon />
+            Añadir Contenedor
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <p className={styles.loadingText}>Cargando...</p>
+      ) : containers.length === 0 ? (
+        <p className={styles.noDataText}>No hay contenedores.</p>
+      ) : (
+        <>
+          <div className={styles.containersGrid}>
+            {containers.map((container) => (
+              <div key={container.id} className={styles.containerCard}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <h3 className={styles.cardMatricula}>{container.matricula_contenedor}</h3>
+                    <p className={styles.cardNaviera}>{container.naviera}</p>
+                  </div>
+                  {/* Ascundem acțiunile pe tabul Salidos */}
+                  {activeTab !== 'contenedores_salidos' && (
+                    <div className={styles.cardActions}>
+                      <button className={styles.cardButton} onClick={() => openEditModal(container)}>
+                        Editar
+                      </button>
+                      <button className={styles.cardButtonSalida} onClick={() => openSalidaModal(container)}>
+                        Salida
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.cardBody}>
+                  <p>
+                    <strong>Fecha de entrada:</strong>{' '}
+                    {new Date(container.created_at).toLocaleDateString()}
+                  </p>
+                  {container.tipo && (
+                    <p>
+                      <strong>Tipo:</strong> {container.tipo}
+                    </p>
+                  )}
+                  {container.posicion && (
+                    <p>
+                      <strong>Posición:</strong> {container.posicion}
+                    </p>
+                  )}
+                  {activeTab === 'contenedores' && container.estado && (
+                    <p>
+                      <strong>Estado:</strong> {container.estado}
+                    </p>
+                  )}
+                  {(activeTab === 'contenedores_rotos' || activeTab === 'contenedores_salidos') &&
+                    container.detalles && (
+                      <p>
+                        <strong>Detalles:</strong> {container.detalles}
+                      </p>
+                    )}
+                  {activeTab === 'contenedores_salidos' && container.matricula_camion && (
+                    <p>
+                      <strong>Matrícula Camión:</strong>{' '}
+                      {container.matricula_camion}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.paginationContainer}>
+            <button
+              className={styles.paginationButton}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </button>
+            <span className={styles.pageIndicator}>
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              className={styles.paginationButton}
+              onClick={() =>
+                setCurrentPage((p) => Math.min(totalPages, p + 1))
+              }
+              disabled={currentPage >= totalPages}
+            >
+              Siguiente
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Modal: Añadir contenedor */}
+      {isAddModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Añadir Contenedor</h3>
+            <form onSubmit={handleAddSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="newMatricula">Matrícula Contenedor</label>
+                <input
+                  id="newMatricula"
+                  type="text"
+                  value={newMatricula}
+                  onChange={(e) => setNewMatricula(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor "newNaviera">Naviera</label>
+                <input
+                  id="newNaviera"
+                  type="text"
+                  value={newNaviera}
+                  onChange={(e) => setNewNaviera(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newTipo">Tipo</label>
+                <select id="newTipo" value={newTipo} onChange={(e) => setNewTipo(e.target.value)}>
+                  <option value="20">20</option>
+                  <option value="20 OpenTop">20 OpenTop</option>
+                  <option value="40 Alto">40 Alto</option>
+                  <option value="40 Bajo">40 Bajo</option>
+                  <option value="40 OpenTop">40 OpenTop</option>
+                  <option value="45">45</option>
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newPosicion">Posición</label>
+                <input
+                  id="newPosicion"
+                  type="text"
+                  value={newPosicion}
+                  onChange={(e) => setNewPosicion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newEstado">Estado</label>
+                <select
+                  id="newEstado"
+                  value={newEstado}
+                  onChange={(e) => setNewEstado(e.target.value)}
+                  disabled={isBroken}
+                >
+                  <option value="lleno">Lleno</option>
+                  <option value="vacio">Vacío</option>
+                </select>
+              </div>
+              <div className={styles.formGroupInline}>
+                <input
+                  id="brokenCheckbox"
+                  type="checkbox"
+                  checked={isBroken}
+                  onChange={(e) => setIsBroken(e.target.checked)}
+                />
+                <label htmlFor="brokenCheckbox">Roto</label>
+              </div>
+              {isBroken && (
+                <div className={styles.formGroup}>
+                  <label htmlFor="newDetalles">Detalles</label>
+                  <input
+                    id="newDetalles"
+                    type="text"
+                    value={newDetalles}
+                    onChange={(e) => setNewDetalles(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className={styles.formGroup}>
+                <label htmlFor="newMatriculaCamion">Matrícula Camión (opțional)</label>
+                <input
+                  id="newMatriculaCamion"
+                  type="text"
+                  value={newMatriculaCamion}
+                  onChange={(e) => setNewMatriculaCamion(e.target.value)}
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.cancelButton} onClick={() => setIsAddModalOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.saveButton}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar posición */}
+      {isEditModalOpen && selectedContainer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Editar Posición</h3>
+            <form onSubmit={handleEditSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="editPosicion">Nueva Posición</label>
+                <input
+                  id="editPosicion"
+                  type="text"
+                  value={editPosicion}
+                  onChange={(e) => setEditPosicion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.cancelButton} onClick={() => setIsEditModalOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.saveButton}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Registrar salida */}
+      {isSalidaModalOpen && selectedContainer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Registrar Salida</h3>
+            <form onSubmit={handleSalidaSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="salidaMatriculaCamion">Matrícula Camión</label>
+                <input
+                  id="salidaMatriculaCamion"
+                  type="text"
+                  value={salidaMatriculaCamion}
+                  onChange={(e) => setSalidaMatriculaCamion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.cancelButton} onClick={() => setIsSalidaModalOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.saveButton}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
