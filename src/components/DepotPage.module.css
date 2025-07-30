@@ -1,12 +1,13 @@
-/* src/components/DepotPage.module.css */
-
+/* Header cu taburi (En Depósito, Defectos, Salidos) */
 .depotHeader {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
 }
+
+/* Butoanele de tab */
 .depotTabButton {
   padding: 0.75rem 1.5rem;
   border: none;
@@ -14,10 +15,8 @@
   color: #d1d5db;
   font-weight: 600;
   cursor: pointer;
-  transition: all 200ms;
+  transition: all 0.2s ease;
   border-bottom: 3px solid transparent;
-  position: relative;
-  top: 1px;
 }
 .depotTabButton:hover {
   color: white;
@@ -27,30 +26,43 @@
   border-bottom-color: #fb923c;
 }
 
+/* Bara cu căutare și buton de adăugare */
 .toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
+  margin-bottom: 1.5rem;
 }
-
 .searchBar {
   display: flex;
   align-items: center;
   background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
   flex-grow: 1;
   max-width: 400px;
 }
-.searchBar svg { color: #d1d5db; margin-right: 0.5rem; }
-.searchBar input { background: transparent; border: none; color: white; width: 100%; }
-.searchBar input:focus { outline: none; }
-.searchBar input::placeholder { color: #9ca3af; }
+.searchBar svg {
+  color: #d1d5db;
+  margin-right: 0.5rem;
+}
+.searchBar input {
+  background: transparent;
+  border: none;
+  color: white;
+  width: 100%;
+}
+.searchBar input:focus {
+  outline: none;
+}
+.searchBar input::placeholder {
+  color: #9ca3af;
+}
 
+/* Butonul de adăugare */
 .addButton {
   display: flex;
   align-items: center;
@@ -62,7 +74,7 @@
   border-radius: 0.5rem;
   border: none;
   cursor: pointer;
-  transition: all 200ms;
+  transition: all 0.2s;
   box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
 }
 .addButton:hover {
@@ -70,19 +82,29 @@
   box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
+/* Texte pentru loading/no data */
+.loadingText,
+.noDataText {
+  color: white;
+  text-align: center;
+  margin-top: 2rem;
+  font-weight: 600;
+}
+
+/* Grid-ul de carduri */
 .containersGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
+/* Card individual */
 .containerCard {
-  background-color: rgba(17, 24, 39, 0.5);
+  background-color: rgba(17, 24, 39, 0.6);
   backdrop-filter: blur(10px);
-  padding: 1.5rem;
-  border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
   color: #d1d5db;
   display: flex;
   flex-direction: column;
@@ -91,53 +113,186 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   padding-bottom: 0.75rem;
   margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
-.cardMatricula { font-size: 1.25rem; font-weight: 700; color: white; }
-.cardTipo { background-color: rgba(251, 146, 60, 0.2); color: #fb923c; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
-.cardTipoRoto { background-color: rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
+.cardMatricula {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+.cardNaviera {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin: 0;
+}
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+.cardButton,
+.cardButtonSalida {
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+  font-size: 0.875rem;
+}
+.cardButton {
+  background-color: rgba(59, 130, 246, 0.8); /* albastru */
+  color: white;
+}
+.cardButtonSalida {
+  background-color: rgba(239, 68, 68, 0.8); /* roșu */
+  color: white;
+}
+.cardButton:hover,
+.cardButtonSalida:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cardBody p {
+  margin: 0;
+}
+.cardBody strong {
+  color: white;
+  margin-right: 0.25rem;
+}
 
-.cardBody { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-.cardBody p { margin: 0; }
-.cardBody strong { color: white; margin-right: 0.5rem; }
-
-.cardFooter { margin-top: 1.5rem; display: flex; gap: 0.75rem; }
-.cardButton { flex-grow: 1; padding: 0.6rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; transition: all 200ms; }
-.cardButton.edit { background-color: rgba(59, 130, 246, 0.8); color: white; }
-.cardButton.salida { background-color: rgba(239, 68, 68, 0.8); color: white; }
-.cardButton:hover { filter: brightness(1.1); transform: translateY(-1px); }
-
+/* Paginare */
 .paginationContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 2rem;
-    color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  color: white;
 }
-
 .paginationButton {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 200ms;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
-
-.paginationButton:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
 .paginationButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.paginationButton:not(:disabled):hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.pageIndicator {
+  font-weight: 600;
 }
 
-.pageIndicator {
-    font-weight: 600;
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+.modalContent {
+  background-color: #1f2937;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.modalContent h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Grupa de câmpuri */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+.formGroup label {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.formGroup input,
+.formGroup select {
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  transition: border-color 0.2s;
+}
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.7);
+}
+
+/* Linie cu checkbox */
+.formGroupInline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+/* Butoanele din modal */
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.cancelButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.saveButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.saveButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
