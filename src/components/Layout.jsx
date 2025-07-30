@@ -135,11 +135,10 @@ const Layout = ({ children, backgroundClassName }) => {
     navigate('/login');
   };
 
-  // Construim clasa pentru wrapper: adăugăm hasBackground și clasa efectivă dacă este cazul
+  // Wrapper-ul primește doar hasBackground și starea meniului; clasa imaginii de fundal se aplică doar pe backgroundImage
   const wrapperClass = [
     styles.layoutWrapper,
     backgroundClassName ? styles.hasBackground : '',
-    backgroundClassName ? styles[backgroundClassName] : '',
     isMenuOpen ? styles.menuOpen : '',
   ].join(' ');
 
@@ -165,7 +164,6 @@ const Layout = ({ children, backgroundClassName }) => {
                 <span className={styles.notificationBadge}>{alarms.length}</span>
               </button>
             )}
-            {/* Butonul de închidere se află în interiorul headerIcons, dar va fi poziționat absolut relativ la navHeader */}
             <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>
               <CloseIcon />
             </button>
