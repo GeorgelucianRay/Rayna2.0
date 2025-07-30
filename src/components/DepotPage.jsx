@@ -1,54 +1,96 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import Layout from './Layout';
+import { supabase } from '../supabaseClient';
 import styles from './DepotPage.module.css';
 
-// Iconițe SVG
+// Pictograme pentru bara de căutare și butonul de adăugare
 const SearchIcon = () => (
-  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 24 24"
+  >
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
 );
 const PlusIcon = () => (
-  <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"></path>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    fill="currentColor"
+    viewBox="0 0 20 20"
+  >
+    <path
+      fillRule="evenodd"
+      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+      clipRule="evenodd"
+    />
   </svg>
 );
 
-const ITEMS_PER_PAGE = 25;
-
 function DepotPage() {
+  // Numărul de elemente per pagină
+  const ITEMS_PER_PAGE = 25;
+
+  // Tab-ul activ: contenedores, contenedores_rotos, contenedores_salidos
   const [activeTab, setActiveTab] = useState('contenedores');
+  // Lista containerelor
   const [containers, setContainers] = useState([]);
+  // Indicator de încărcare
   const [loading, setLoading] = useState(true);
+  // Căutare după matriculă
   const [searchTerm, setSearchTerm] = useState('');
+  // Paginarea
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   // Stări pentru modalul de adăugare
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newContainerId, setNewContainerId] = useState('');
-  const [newContainerEstado, setNewContainerEstado] = useState('lleno');
-  const [newContainerProblema, setNewContainerProblema] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newMatricula, setNewMatricula] = useState('');
+  const [newNaviera, setNewNaviera] = useState('');
+  const [newTipo, setNewTipo] = useState('20');
+  const [newPosicion, setNewPosicion] = useState('');
+  const [newEstado, setNewEstado] = useState('lleno');
+  const [newMatriculaCamion, setNewMatriculaCamion] = useState('');
+  const [isBroken, setIsBroken] = useState(false);
+  const [newDetalles, setNewDetalles] = useState('');
 
+  // Stări pentru modalul de editare
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPosicion, setEditPosicion] = useState('');
+  // Stări pentru modalul de ieșire
+  const [isSalidaModalOpen, setIsSalidaModalOpen] = useState(false);
+  const [salidaMatriculaCamion, setSalidaMatriculaCamion] = useState('');
+  // Containerul selectat pentru acțiunile de editare sau ieșire
+  const [selectedContainer, setSelectedContainer] = useState(null);
+
+  // Efect pentru încărcarea datelor la schimbarea tab-ului, paginii sau termenului de căutare
   useEffect(() => {
-    const fetchContainers = async () => {
+    const fetchData = async () => {
       setLoading(true);
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // interogăm tabelul în funcție de tab-ul activ
       let query = supabase.from(activeTab).select('*', { count: 'exact' });
 
-      // căutare după id_container
       if (searchTerm) {
-        query = query.ilike('id_container', `%${searchTerm}%`);
+        query = query.ilike('matricula_contenedor', `%${searchTerm}%`);
       }
 
-      const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, to);
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) {
-        console.error(`Error fetching ${activeTab}:`, error);
+        console.error('Error fetching containers:', error);
       } else {
         setContainers(data || []);
         setTotalCount(count || 0);
@@ -56,43 +98,125 @@ function DepotPage() {
       setLoading(false);
     };
 
-    fetchContainers();
+    fetchData();
   }, [activeTab, currentPage, searchTerm]);
 
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  // Calculăm numărul total de pagini
+  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
+  // Schimbăm tab-ul și resetăm pagina și căutarea
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1);
     setSearchTerm('');
   };
 
-  // handler pentru salvarea unui container nou
-  const handleAddContainer = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase
-      .from(activeTab)
-      .insert({
-        id_container: newContainerId,
-        estado: newContainerEstado,
-        problema: newContainerProblema || null,
-      });
+  // Deschidem modalul de adăugare și resetăm câmpurile
+  const openAddModal = () => {
+    setNewMatricula('');
+    setNewNaviera('');
+    setNewTipo('20');
+    setNewPosicion('');
+    setNewEstado('lleno');
+    setNewMatriculaCamion('');
+    setIsBroken(false);
+    setNewDetalles('');
+    setIsAddModalOpen(true);
+  };
 
-    if (error) {
-      console.error('Error adding container:', error);
+  // Salvăm un container nou în tabelul corespunzător
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    const data = {
+      matricula_contenedor: newMatricula,
+      naviera: newNaviera,
+      tipo: newTipo,
+      posicion: newPosicion,
+      matricula_camion: newMatriculaCamion || null,
+    };
+
+    if (isBroken) {
+      data.detalles = newDetalles || null;
+      const { error } = await supabase.from('contenedores_rotos').insert(data);
+      if (error) {
+        console.error('Error adding broken container:', error);
+      }
     } else {
-      // Resetăm formularul și închidem modalul
-      setNewContainerId('');
-      setNewContainerEstado('lleno');
-      setNewContainerProblema('');
-      setIsModalOpen(false);
-      // Resetăm pagina la prima pentru a reîncărca lista
-      setCurrentPage(1);
+      data.estado = newEstado;
+      const { error } = await supabase.from('contenedores').insert(data);
+      if (error) {
+      console.error('Error adding container:', error);
+      }
     }
+    setIsAddModalOpen(false);
+    // Forțăm reîncărcarea listei de la pagina 1
+    setCurrentPage(1);
+    setSearchTerm('');
+  };
+
+  // Deschidem modalul de editare și setăm containerul selectat
+  const openEditModal = (container) => {
+    setSelectedContainer(container);
+    setEditPosicion(container.posicion || '');
+    setIsEditModalOpen(true);
+  };
+
+  // Salvăm poziția actualizată
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedContainer) return;
+    const { id } = selectedContainer;
+    const { error } = await supabase.from(activeTab).update({ posicion: editPosicion }).eq('id', id);
+    if (error) {
+      console.error('Error updating position:', error);
+    } else {
+      // Actualizăm starea locală
+      setContainers((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, posicion: editPosicion } : c))
+      );
+    }
+    setIsEditModalOpen(false);
+  };
+
+  // Deschidem modalul de ieșire și setăm containerul selectat
+  const openSalidaModal = (container) => {
+    setSelectedContainer(container);
+    setSalidaMatriculaCamion('');
+    setIsSalidaModalOpen(true);
+  };
+
+  // Mutăm containerul în tabelul contenedores_salidos
+  const handleSalidaSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedContainer) return;
+    const { id, ...rest } = selectedContainer;
+    const newRecord = {
+      ...rest,
+      matricula_camion: salidaMatriculaCamion,
+    };
+
+    const { error: insertError } = await supabase
+      .from('contenedores_salidos')
+      .insert(newRecord);
+    if (insertError) {
+      console.error('Error moving container to salidos:', insertError);
+    } else {
+      const { error: deleteError } = await supabase
+        .from(activeTab)
+        .delete()
+        .eq('id', id);
+      if (deleteError) {
+        console.error('Error deleting container:', deleteError);
+      } else {
+        // Eliminăm din starea locală
+        setContainers((prev) => prev.filter((c) => c.id !== id));
+      }
+    }
+    setIsSalidaModalOpen(false);
   };
 
   return (
-    <Layout backgroundClassName="depotBackground">{/* nume corect */}
+    <Layout backgroundClassName="depotBackground">
       <div className={styles.depotHeader}>
         <button
           className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`}
@@ -119,47 +243,87 @@ function DepotPage() {
           <SearchIcon />
           <input
             type="text"
-            placeholder="Buscar por ID..."
+            placeholder="Buscar por matrícula..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
-        {/* buton pentru a deschide modalul de adăugare */}
-        <button className={styles.addButton} onClick={() => setIsModalOpen(true)}>
-          <PlusIcon />
-          Añadir Contenedor
-        </button>
+        {activeTab === 'contenedores' && (
+          <button className={styles.addButton} onClick={openAddModal}>
+            <PlusIcon />
+            Añadir Contenedor
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <p style={{ color: 'white', textAlign: 'center' }}>Cargando...</p>
+        <p className={styles.loadingText}>Cargando...</p>
+      ) : containers.length === 0 ? (
+        <p className={styles.noDataText}>No hay contenedores.</p>
       ) : (
         <>
           <div className={styles.containersGrid}>
             {containers.map((container) => (
               <div key={container.id} className={styles.containerCard}>
                 <div className={styles.cardHeader}>
-                  <h3 className={styles.cardMatricula}>{container.id_container}</h3>
-                  {/* Aici puteți afișa starea (lleno/vacio) dacă doriți */}
+                  <div>
+                    <h3 className={styles.cardMatricula}>
+                      {container.matricula_contenedor}
+                    </h3>
+                    <p className={styles.cardNaviera}>{container.naviera}</p>
+                  </div>
+                    <div className={styles.cardActions}>
+                      <button
+                        className={styles.cardButton}
+                        onClick={() => openEditModal(container)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className={styles.cardButtonSalida}
+                        onClick={() => openSalidaModal(container)}
+                      >
+                        Salida
+                      </button>
+                    </div>
                 </div>
                 <div className={styles.cardBody}>
                   <p>
                     <strong>Fecha de entrada:</strong>{' '}
                     {new Date(container.created_at).toLocaleDateString()}
                   </p>
-                  {container.problema && (
+                  {container.tipo && (
                     <p>
-                      <strong>Problema:</strong> {container.problema}
+                      <strong>Tipo:</strong> {container.tipo}
                     </p>
                   )}
-                  {container.estado && (
+                  {container.posicion && (
+                    <p>
+                      <strong>Posición:</strong> {container.posicion}
+                    </p>
+                  )}
+                  {activeTab === 'contenedores' && container.estado && (
                     <p>
                       <strong>Estado:</strong> {container.estado}
                     </p>
                   )}
-                </div>
-                <div className={styles.cardFooter}>
-                  {/* butoane de editare / mutare, dacă sunt necesare */}
+                  {(activeTab === 'contenedores_rotos' ||
+                    activeTab === 'contenedores_salidos') &&
+                    container.detalles && (
+                      <p>
+                        <strong>Detalles:</strong> {container.detalles}
+                      </p>
+                    )}
+                  {activeTab === 'contenedores_salidos' &&
+                    container.matricula_camion && (
+                      <p>
+                        <strong>Matrícula Camión:</strong>{' '}
+                        {container.matricula_camion}
+                      </p>
+                    )}
                 </div>
               </div>
             ))}
@@ -168,7 +332,7 @@ function DepotPage() {
           <div className={styles.paginationContainer}>
             <button
               className={styles.paginationButton}
-              onClick={() => setCurrentPage((p) => p - 1)}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               Anterior
@@ -178,7 +342,9 @@ function DepotPage() {
             </span>
             <button
               className={styles.paginationButton}
-              onClick={() => setCurrentPage((p) => p + 1)}
+              onClick={() =>
+                setCurrentPage((p) => Math.min(totalPages, p + 1))
+              }
               disabled={currentPage >= totalPages}
             >
               Siguiente
@@ -187,47 +353,173 @@ function DepotPage() {
         </>
       )}
 
-      {/* Modalul pentru adăugare container */}
-      {isModalOpen && (
+      {/* Modal pentru adăugare */}
+      {isAddModalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <h3>Añadir Contenedor</h3>
-            <form onSubmit={handleAddContainer}>
+            <form onSubmit={handleAddSubmit}>
               <div className={styles.formGroup}>
-                <label htmlFor="idContainer">ID Contenedor</label>
+                <label htmlFor="newMatricula">Matrícula Contenedor</label>
                 <input
-                  id="idContainer"
+                  id="newMatricula"
                   type="text"
-                  value={newContainerId}
-                  onChange={(e) => setNewContainerId(e.target.value)}
+                  value={newMatricula}
+                  onChange={(e) => setNewMatricula(e.target.value)}
                   required
                 />
               </div>
               <div className={styles.formGroup}>
-                <label htmlFor="estadoContainer">Estado</label>
+                <label htmlFor="newNaviera">Naviera</label>
+                <input
+                  id="newNaviera"
+                  type="text"
+                  value={newNaviera}
+                  onChange={(e) => setNewNaviera(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newTipo">Tipo</label>
                 <select
-                  id="estadoContainer"
-                  value={newContainerEstado}
-                  onChange={(e) => setNewContainerEstado(e.target.value)}
+                  id="newTipo"
+                  value={newTipo}
+                  onChange={(e) => setNewTipo(e.target.value)}
+                >
+                  <option value="20">20</option>
+                  <option value="20 OpenTop">20 OpenTop</option>
+                  <option value="40 Alto">40 Alto</option>
+                  <option value="40 Bajo">40 Bajo</option>
+                  <option value="40 OpenTop">40 OpenTop</option>
+                  <option value="45">45</option>
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newPosicion">Posición</label>
+                <input
+                  id="newPosicion"
+                  type="text"
+                  value={newPosicion}
+                  onChange={(e) => setNewPosicion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="newEstado">Estado</label>
+                <select
+                  id="newEstado"
+                  value={newEstado}
+                  onChange={(e) => setNewEstado(e.target.value)}
+                  disabled={isBroken}
                 >
                   <option value="lleno">Lleno</option>
                   <option value="vacio">Vacío</option>
                 </select>
               </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="problemaContainer">Problema (opțional)</label>
+              <div className={styles.formGroupInline}>
                 <input
-                  id="problemaContainer"
+                  id="brokenCheckbox"
+                  type="checkbox"
+                  checked={isBroken}
+                  onChange={(e) => setIsBroken(e.target.checked)}
+                />
+                <label htmlFor="brokenCheckbox">Rupto</label>
+              </div>
+              {isBroken && (
+                <div className={styles.formGroup}>
+                  <label htmlFor="newDetalles">Detalles</label>
+                  <input
+                    id="newDetalles"
+                    type="text"
+                    value={newDetalles}
+                    onChange={(e) => setNewDetalles(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className={styles.formGroup}>
+                <label htmlFor="newMatriculaCamion">
+                  Matrícula Camión (opcional)
+                </label>
+                <input
+                  id="newMatriculaCamion"
                   type="text"
-                  value={newContainerProblema}
-                  onChange={(e) => setNewContainerProblema(e.target.value)}
+                  value={newMatriculaCamion}
+                  onChange={(e) => setNewMatriculaCamion(e.target.value)}
                 />
               </div>
               <div className={styles.modalActions}>
                 <button
                   type="button"
                   className={styles.cancelButton}
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.saveButton}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pentru editare poziție */}
+      {isEditModalOpen && selectedContainer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Editar Posición</h3>
+            <form onSubmit={handleEditSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="editPosicion">Noua Poziție</label>
+                <input
+                  id="editPosicion"
+                  type="text"
+                  value={editPosicion}
+                  onChange={(e) => setEditPosicion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.saveButton}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pentru ieșire (salida) */}
+      {isSalidaModalOpen && selectedContainer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Registrar Salida</h3>
+            <form onSubmit={handleSalidaSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="salidaMatriculaCamion">
+                  Matrícula Camión
+                </label>
+                <input
+                  id="salidaMatriculaCamion"
+                  type="text"
+                  value={salidaMatriculaCamion}
+                  onChange={(e) => setSalidaMatriculaCamion(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={() => setIsSalidaModalOpen(false)}
                 >
                   Cancelar
                 </button>
