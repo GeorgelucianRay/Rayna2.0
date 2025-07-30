@@ -44,7 +44,7 @@ function DepotPage() {
 
   // Tab activ (contenedores, contenedores_rotos, contenedores_salidos)
   const [activeTab, setActiveTab] = useState('contenedores');
-  // Listă contenedores
+  // Lista contenedores
   const [containers, setContainers] = useState([]);
   // Loader
   const [loading, setLoading] = useState(true);
@@ -138,13 +138,19 @@ function DepotPage() {
 
     if (isBroken) {
       data.detalles = newDetalles || null;
-      const { error } = await supabase.from('contenedores_rotos').insert(data);
+      // Inserăm în tabela contenedores_rotos
+      const { error } = await supabase
+        .from('contenedores_rotos')
+        .insert(data);
       if (error) {
         console.error('Error adding broken container:', error);
       }
     } else {
-      data.estado = newEstado;
-      const { error } = await supabase.from('contenedores').insert(data);
+      data.estado = newEstado; // coloana pentru lleno/vacio
+      // Inserăm în tabela contenedores
+      const { error } = await supabase
+        .from('contenedores')
+        .insert(data);
       if (error) {
         console.error('Error adding container:', error);
       }
@@ -367,7 +373,7 @@ function DepotPage() {
         </>
       )}
 
-      {/* Modal: Adăugare contenedor */}
+      {/* Modal: Añadir contenedor */}
       {isAddModalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -437,7 +443,7 @@ function DepotPage() {
                   checked={isBroken}
                   onChange={(e) => setIsBroken(e.target.checked)}
                 />
-                <label htmlFor="brokenCheckbox">Rupto</label>
+                <label htmlFor="brokenCheckbox">Roto</label>
               </div>
               {isBroken && (
                 <div className={styles.formGroup}>
@@ -452,13 +458,15 @@ function DepotPage() {
               )}
               <div className={styles.formGroup}>
                 <label htmlFor="newMatriculaCamion">
-                  Matrícula Camión (opțional)
+                  Matrícula Camión (opcional)
                 </label>
                 <input
                   id="newMatriculaCamion"
                   type="text"
                   value={newMatriculaCamion}
-                  onChange={(e) => setNewMatriculaCamion(e.target.value)}
+                  onChange={(e) =>
+                    setNewMatriculaCamion(e.target.value)
+                  }
                 />
               </div>
               <div className={styles.modalActions}>
@@ -478,14 +486,14 @@ function DepotPage() {
         </div>
       )}
 
-      {/* Modal: Editare poziție */}
+      {/* Modal: Editar posición */}
       {isEditModalOpen && selectedContainer && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <h3>Editar Posición</h3>
             <form onSubmit={handleEditSubmit}>
               <div className={styles.formGroup}>
-                <label htmlFor="editPosicion">Noua Poziție</label>
+                <label htmlFor="editPosicion">Nueva Posición</label>
                 <input
                   id="editPosicion"
                   type="text"
@@ -511,7 +519,7 @@ function DepotPage() {
         </div>
       )}
 
-      {/* Modal: Ieșire (salida) */}
+      {/* Modal: Registrar salida */}
       {isSalidaModalOpen && selectedContainer && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
