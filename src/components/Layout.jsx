@@ -12,12 +12,14 @@ const BellIcon = () => (
     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
   </svg>
 );
+
 const HomeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
     <polyline points="9 22 9 12 15 12 15 22"></polyline>
   </svg>
 );
+
 const DepotIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 19H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"></path>
@@ -27,12 +29,14 @@ const DepotIcon = () => (
     <path d="M18 5v14"></path>
   </svg>
 );
+
 const ProfileIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
     <circle cx="12" cy="7" r="4"></circle>
   </svg>
 );
+
 const UsersIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -41,17 +45,20 @@ const UsersIcon = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
   </svg>
 );
+
 const GpsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
     <circle cx="12" cy="10" r="3"></circle>
   </svg>
 );
+
 const WrenchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
   </svg>
 );
+
 const LogoutIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -59,6 +66,7 @@ const LogoutIcon = () => (
     <line x1="21" x2="9" y1="12" y2="12"></line>
   </svg>
 );
+
 const MenuIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="4" x2="20" y1="12" y2="12"></line>
@@ -66,6 +74,7 @@ const MenuIcon = () => (
     <line x1="4" x2="20" y1="18" y2="18"></line>
   </svg>
 );
+
 const CloseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="18" x2="6" y1="6" y2="18"></line>
@@ -126,7 +135,7 @@ const Layout = ({ children, backgroundClassName }) => {
     navigate('/login');
   };
 
-  // combinăm clasele pentru wrapper: aplicăm hasBackground și clasa efectivă (e.g. homepageBackground)
+  // Construim clasa pentru wrapper: adăugăm hasBackground și clasa efectivă dacă este cazul
   const wrapperClass = [
     styles.layoutWrapper,
     backgroundClassName ? styles.hasBackground : '',
@@ -156,6 +165,7 @@ const Layout = ({ children, backgroundClassName }) => {
                 <span className={styles.notificationBadge}>{alarms.length}</span>
               </button>
             )}
+            {/* Butonul de închidere se află în interiorul headerIcons, dar va fi poziționat absolut relativ la navHeader */}
             <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>
               <CloseIcon />
             </button>
@@ -163,7 +173,14 @@ const Layout = ({ children, backgroundClassName }) => {
         </div>
         <nav className={styles.navLinks}>
           {navLinksData.map((link) => (
-            <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} />
+            <NavLink
+              key={link.id}
+              to={link.id}
+              icon={link.icon}
+              text={link.text}
+              isActive={location.pathname === link.id}
+              onClick={() => setIsMenuOpen(false)}
+            />
           ))}
           <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
           <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} />
@@ -206,6 +223,7 @@ const Layout = ({ children, backgroundClassName }) => {
           </div>
         </div>
       )}
+
       <UpdatePrompt />
     </div>
   );
