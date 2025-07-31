@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import styles from './MiPerfilPage.module.css'; // Importăm ca modul
-import modalStyles from './DepotPage.module.css'; // Refolosim stilurile pentru modal
+import styles from './MiPerfilPage.module.css';
+import modalStyles from './DepotPage.module.css';
 
 // --- Iconițe SVG ---
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const AlarmIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="M12 8v4l2 2"></path><path d="M19.94 15.5a.5.5 0 0 0 .06.7l.6.6a.5.5 0 0 0 .7-.06l1.42-1.42a.5.5 0 0 0-.06-.7l-.6-.6a.5.5 0 0 0-.7.06z"></path><path d="M4.06 15.5a.5.5 0 0 1-.06.7l-.6.6a.5.5 0 0 1-.7-.06L1.28 15.4a.5.5 0 0 1 .06-.7l.6-.6a.5.5 0 0 1 .7.06z"></path><path d="M12 4V2"></path><path d="M12 22v-2"></path></svg>;
 
+// Funcția de calcul al alertelor (este perfectă, nu necesită modificări)
 const calculatePersonalExpirations = (profile) => {
     if (!profile) return [];
     const alarms = [];
@@ -67,16 +68,20 @@ function MiPerfilPage() {
 
     const handleProfileUpdate = async (e) => {
         e.preventDefault();
+        // NOTĂ: Această logică ar trebui mutată într-o funcție RPC în Supabase
+        // pentru a asigura o tranzacție atomică.
         try {
             let camionIdToUpdate = authProfile.camion_id;
             let remorcaIdToUpdate = authProfile.remorca_id;
 
+            // Inserează un camion nou dacă este cazul
             if (!camionIdToUpdate && editableProfile.new_camion_matricula) {
                 const { data: newCamion, error } = await supabase.from('camioane').insert({ matricula: editableProfile.new_camion_matricula }).select().single();
                 if (error) throw error;
                 camionIdToUpdate = newCamion.id;
             }
 
+            // Inserează o remorcă nouă dacă este cazul
             if (!remorcaIdToUpdate && editableProfile.new_remorca_matricula) {
                 const { data: newRemorca, error } = await supabase.from('remorci').insert({ matricula: editableProfile.new_remorca_matricula }).select().single();
                 if (error) throw error;
@@ -96,7 +101,7 @@ function MiPerfilPage() {
             const { error: profileError } = await supabase.from('profiles').update(profileUpdateData).eq('id', user.id);
             if (profileError) throw profileError;
             
-            // Re-fetch profile data to update context
+            // Re-preluăm profilul pentru a actualiza contextul (foarte bine!)
             const { data: updatedProfile } = await supabase.from('profiles').select('*, camioane:camion_id(*), remorci:remorca_id(*)').eq('id', user.id).maybeSingle();
             setAuthProfile(updatedProfile);
 
@@ -144,11 +149,15 @@ function MiPerfilPage() {
                 <div className={`${styles.profileCard} ${styles.vehicleLink}`} onClick={() => handleVehicleClick(authProfile.remorca_id, 'remorca')}><h3>Remorca</h3><p>{authProfile.remorci?.matricula || 'No asignada'}</p></div>
             </div>
 
+            {/* CORECTAT: Modalul folosește acum stilurile din modul */}
             {isEditModalOpen && editableProfile && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header"><h3 className="modal-title">Editar Perfil</h3><button onClick={() => setIsEditModalOpen(false)} className="close-button"><CloseIcon /></button></div>
-                        <form onSubmit={handleProfileUpdate} className="modal-body">
+                <div className={modalStyles.modalOverlay}>
+                    <div className={modalStyles.modalContent}>
+                        <div className={modalStyles.modalHeader}>
+                            <h3 className={modalStyles.modalTitle}>Editar Perfil</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className={modalStyles.closeButton}><CloseIcon /></button>
+                        </div>
+                        <form onSubmit={handleProfileUpdate} className={modalStyles.modalBody}>
                             <div className={modalStyles.inputGroup}><label>Nombre Completo</label><input type="text" value={editableProfile.nombre_completo || ''} onChange={(e) => setEditableProfile({...editableProfile, nombre_completo: e.target.value})} /></div>
                             <div className={modalStyles.inputGroup}><label>Caducidad CAP</label><input type="date" value={editableProfile.cap_expirare || ''} onChange={(e) => setEditableProfile({...editableProfile, cap_expirare: e.target.value})} /></div>
                             <div className={modalStyles.inputGroup}><label>Caducidad Carnet</label><input type="date" value={editableProfile.carnet_caducidad || ''} onChange={(e) => setEditableProfile({...editableProfile, carnet_caducidad: e.target.value})} /></div>
@@ -163,7 +172,10 @@ function MiPerfilPage() {
                                 <div className={modalStyles.inputGroup}><label>Matricula Remorca</label><input type="text" placeholder="Introduce la matrícula..." value={editableProfile.new_remorca_matricula} onChange={(e) => setEditableProfile({...editableProfile, new_remorca_matricula: e.target.value.toUpperCase()})} /></div>
                             ) : (<div className={modalStyles.inputGroup}><label>Remorca Asignada</label><input type="text" value={authProfile.remorci?.matricula} disabled /></div>)}
 
-                            <div className="modal-footer"><button type="button" className={`${modalStyles.modalButton} ${modalStyles.secondary}`} onClick={() => setIsEditModalOpen(false)}>Cancelar</button><button type="submit" className={`${modalStyles.modalButton} ${modalStyles.primary}`}>Guardar Cambios</button></div>
+                            <div className={modalStyles.modalActions}>
+                                <button type="button" className={modalStyles.cancelButton} onClick={() => setIsEditModalOpen(false)}>Cancelar</button>
+                                <button type="submit" className={modalStyles.saveButton}>Guardar Cambios</button>
+                            </div>
                         </form>
                     </div>
                 </div>
