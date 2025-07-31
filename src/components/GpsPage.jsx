@@ -133,14 +133,14 @@ const LocationList = ({ tableName, title }) => {
   );
 
   useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+    fetchLocations(currentPage, searchTerm);
+  }, [fetchLocations, currentPage, searchTerm]);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset page to 1 on new search
   };
 
   const handleGetLocation = (setter) => {
@@ -164,7 +164,6 @@ const LocationList = ({ tableName, title }) => {
 
   const handleAddLocation = async (e) => {
     e.preventDefault();
-    // Transformă câmpurile goale în null
     const locationToInsert = {};
     Object.keys(newLocation).forEach((key) => {
       locationToInsert[key] = newLocation[key] === '' ? null : newLocation[key];
@@ -175,10 +174,7 @@ const LocationList = ({ tableName, title }) => {
     } else {
       alert('Ubicación añadida con éxito!');
       setIsAddModalOpen(false);
-      setCurrentPage(1);
-      setSearchTerm('');
-      fetchLocations(1, '');
-      setNewLocation({
+      setNewLocation({ // Reset form
         nombre: '',
         direccion: '',
         link_maps: '',
@@ -187,13 +183,17 @@ const LocationList = ({ tableName, title }) => {
         coordenadas: '',
         link_foto: '',
       });
+      // Reset search and go to first page to see the new item
+      setSearchTerm('');
+      setCurrentPage(1);
+      fetchLocations(1, '');
     }
   };
-
+  
   const handleEditClick = (location) => {
     setEditingLocation(location);
     setIsEditModalOpen(true);
-    setSelectedLocation(null);
+    setSelectedLocation(null); // Close details modal if open
   };
 
   const handleUpdateLocation = async (e) => {
@@ -206,20 +206,19 @@ const LocationList = ({ tableName, title }) => {
       alert('Ubicación actualizada con éxito!');
       setIsEditModalOpen(false);
       setEditingLocation(null);
-      fetchLocations();
+      fetchLocations(currentPage, searchTerm); // Refetch current page
     }
   };
 
-  // Calculează linkul pentru Maps
+  // ✅ CORECTAT: Calculează linkul pentru Maps
   const getMapsLink = (location) => {
     if (location.link_maps) return location.link_maps;
     if (location.coordenadas) {
-      return `https://www.google.com/maps/search/?api=1&query=${location.coordenadas}`;
+      return `https://maps.google.com/?q=${location.coordenadas}`;
     }
     return null;
   };
 
-  // Roluri care pot adăuga/edita
   const canEdit = profile?.role === 'dispecer' || profile?.role === 'sofer';
 
   return (
@@ -268,11 +267,9 @@ const LocationList = ({ tableName, title }) => {
                       'https://placehold.co/600x400/cccccc/ffffff?text=Eroare+Imagine';
                   }}
                 />
-                {/* Titlu pe card */}
                 <div className={styles.locationCardOverlay}>
                   <h3 className={styles.locationCardTitle}>{location.nombre}</h3>
                 </div>
-                {/* Buton de editare pe card */}
                 {canEdit && (
                   <button
                     className={styles.locationCardEditBtn}
@@ -292,7 +289,7 @@ const LocationList = ({ tableName, title }) => {
             <div className={styles.paginationContainer}>
               <button
                 className={styles.paginationButton}
-                onClick={() => setCurrentPage((p) => p - 1)}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 Anterior
@@ -302,7 +299,7 @@ const LocationList = ({ tableName, title }) => {
               </span>
               <button
                 className={styles.paginationButton}
-                onClick={() => setCurrentPage((p) => p + 1)}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
               >
                 Siguiente
@@ -352,7 +349,6 @@ const LocationList = ({ tableName, title }) => {
                     <strong>Dirección:</strong> {selectedLocation.direccion}
                   </p>
                 )}
-                {/* Arată Tiempo de Espera doar pentru clienți */}
                 {selectedLocation.tiempo_espera && tableName === 'gps_clientes' && (
                   <p>
                     <strong>Tiempo de Espera:</strong> {selectedLocation.tiempo_espera}
@@ -398,220 +394,97 @@ const LocationList = ({ tableName, title }) => {
             <form onSubmit={handleAddLocation} className={styles.modalBody}>
               <div className={styles.inputGroup}>
                 <label htmlFor="nombre">Nombre</label>
-                <input
-                  id="nombre"
-                  type="text"
-                  value={newLocation.nombre}
-                  onChange={(e) => setNewLocation({ ...newLocation, nombre: e.target.value })}
-                  required
-                />
+                <input id="nombre" type="text" value={newLocation.nombre} onChange={(e) => setNewLocation({ ...newLocation, nombre: e.target.value })} required />
               </div>
               <div className={styles.inputGroup}>
                 <label htmlFor="direccion">Dirección</label>
-                <input
-                  id="direccion"
-                  type="text"
-                  value={newLocation.direccion}
-                  onChange={(e) => setNewLocation({ ...newLocation, direccion: e.target.value })}
-                />
+                <input id="direccion" type="text" value={newLocation.direccion} onChange={(e) => setNewLocation({ ...newLocation, direccion: e.target.value })} />
               </div>
               <div className={styles.inputGroup}>
                 <label htmlFor="link_maps">Link Google Maps (opcional)</label>
-                <input
-                  id="link_maps"
-                  type="text"
-                  value={newLocation.link_maps}
-                  onChange={(e) => setNewLocation({ ...newLocation, link_maps: e.target.value })}
-                />
+                <input id="link_maps" type="text" value={newLocation.link_maps} onChange={(e) => setNewLocation({ ...newLocation, link_maps: e.target.value })} />
               </div>
               <div className={styles.inputGroup}>
                 <label htmlFor="coordenadas">Coordenadas</label>
                 <div className={styles.geolocationGroup}>
-                  <input
-                    id="coordenadas"
-                    type="text"
-                    value={newLocation.coordenadas}
-                    onChange={(e) =>
-                      setNewLocation({ ...newLocation, coordenadas: e.target.value })
-                    }
-                    placeholder="Ej: 41.15, 1.10"
-                  />
-                  <button
-                    type="button"
-                    className={styles.geolocationButton}
-                    onClick={() => handleGetLocation(setNewLocation)}
-                    disabled={gettingLocation}
-                  >
+                  <input id="coordenadas" type="text" value={newLocation.coordenadas} onChange={(e) => setNewLocation({ ...newLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" />
+                  <button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setNewLocation)} disabled={gettingLocation}>
                     {gettingLocation ? '...' : <GpsFixedIcon />}
                   </button>
                 </div>
               </div>
-              {/* Campo Tiempo de Espera doar pentru clienți */}
               {tableName === 'gps_clientes' && (
                 <div className={styles.inputGroup}>
                   <label htmlFor="tiempo_espera">Tiempo de Espera</label>
-                  <input
-                    id="tiempo_espera"
-                    type="text"
-                    value={newLocation.tiempo_espera}
-                    onChange={(e) =>
-                      setNewLocation({ ...newLocation, tiempo_espera: e.target.value })
-                    }
-                  />
+                  <input id="tiempo_espera" type="text" value={newLocation.tiempo_espera} onChange={(e) => setNewLocation({ ...newLocation, tiempo_espera: e.target.value })} />
                 </div>
               )}
               <div className={styles.inputGroup}>
                 <label htmlFor="link_foto">Link Foto</label>
-                <input
-                  id="link_foto"
-                  type="text"
-                  value={newLocation.link_foto}
-                  onChange={(e) => setNewLocation({ ...newLocation, link_foto: e.target.value })}
-                />
+                <input id="link_foto" type="text" value={newLocation.link_foto} onChange={(e) => setNewLocation({ ...newLocation, link_foto: e.target.value })} />
               </div>
               <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}>
                 <label htmlFor="detalles">Detalles</label>
-                <textarea
-                  id="detalles"
-                  value={newLocation.detalles}
-                  onChange={(e) => setNewLocation({ ...newLocation, detalles: e.target.value })}
-                  rows="4"
-                ></textarea>
+                <textarea id="detalles" value={newLocation.detalles} onChange={(e) => setNewLocation({ ...newLocation, detalles: e.target.value })} rows="4"></textarea>
               </div>
               <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={`${styles.modalButton} ${styles.modalButtonSecondary}`}
-                  onClick={() => setIsAddModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>
-                  Guardar
-                </button>
+                <button type="button" className={`${styles.modalButton} ${styles.modalButtonSecondary}`} onClick={() => setIsAddModalOpen(false)}>Cancelar</button>
+                <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>Guardar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal de editare */}
+      {/* ✅ CORECTAT: Modal de editare cu clase de stil corecte */}
       {isEditModalOpen && editingLocation && (
-        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Editar {editingLocation.nombre}</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="close-button">
+        <div className={styles.modalOverlay} onClick={() => setIsEditModalOpen(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Editar {editingLocation.nombre}</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className={styles.closeButton}>
                 <CloseIcon />
               </button>
             </div>
-            <form onSubmit={handleUpdateLocation} className="modal-body">
-              <div className="input-group">
+            <form onSubmit={handleUpdateLocation} className={styles.modalBody}>
+              <div className={styles.inputGroup}>
                 <label htmlFor="edit-nombre">Nombre</label>
-                <input
-                  id="edit-nombre"
-                  type="text"
-                  value={editingLocation.nombre || ''}
-                  onChange={(e) =>
-                    setEditingLocation({ ...editingLocation, nombre: e.target.value })
-                  }
-                  required
-                />
+                <input id="edit-nombre" type="text" value={editingLocation.nombre || ''} onChange={(e) => setEditingLocation({ ...editingLocation, nombre: e.target.value })} required />
               </div>
-              <div className="input-group">
+              <div className={styles.inputGroup}>
                 <label htmlFor="edit-direccion">Dirección</label>
-                <input
-                  id="edit-direccion"
-                  type="text"
-                  value={editingLocation.direccion || ''}
-                  onChange={(e) =>
-                    setEditingLocation({ ...editingLocation, direccion: e.target.value })
-                  }
-                />
+                <input id="edit-direccion" type="text" value={editingLocation.direccion || ''} onChange={(e) => setEditingLocation({ ...editingLocation, direccion: e.target.value })} />
               </div>
-              <div className="input-group">
+              <div className={styles.inputGroup}>
                 <label htmlFor="edit-link_maps">Link Google Maps (opcional)</label>
-                <input
-                  id="edit-link_maps"
-                  type="text"
-                  value={editingLocation.link_maps || ''}
-                  onChange={(e) =>
-                    setEditingLocation({ ...editingLocation, link_maps: e.target.value })
-                  }
-                />
+                <input id="edit-link_maps" type="text" value={editingLocation.link_maps || ''} onChange={(e) => setEditingLocation({ ...editingLocation, link_maps: e.target.value })} />
               </div>
-              <div className="input-group">
+              <div className={styles.inputGroup}>
                 <label htmlFor="edit-coordenadas">Coordenadas</label>
                 <div className={styles.geolocationGroup}>
-                  <input
-                    id="edit-coordenadas"
-                    type="text"
-                    value={editingLocation.coordenadas || ''}
-                    onChange={(e) =>
-                      setEditingLocation({ ...editingLocation, coordenadas: e.target.value })
-                    }
-                    placeholder="Ej: 41.15, 1.10"
-                  />
-                  <button
-                    type="button"
-                    className={styles.geolocationButton}
-                    onClick={() => handleGetLocation(setEditingLocation)}
-                    disabled={gettingLocation}
-                  >
+                  <input id="edit-coordenadas" type="text" value={editingLocation.coordenadas || ''} onChange={(e) => setEditingLocation({ ...editingLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" />
+                  <button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setEditingLocation)} disabled={gettingLocation}>
                     {gettingLocation ? '...' : <GpsFixedIcon />}
                   </button>
                 </div>
               </div>
-              {/* Afișează Tiempo de Espera doar la clienți */}
               {tableName === 'gps_clientes' && (
-                <div className="input-group">
+                <div className={styles.inputGroup}>
                   <label htmlFor="edit-tiempo_espera">Tiempo de Espera</label>
-                  <input
-                    id="edit-tiempo_espera"
-                    type="text"
-                    value={editingLocation.tiempo_espera || ''}
-                    onChange={(e) =>
-                      setEditingLocation({
-                        ...editingLocation,
-                        tiempo_espera: e.target.value,
-                      })
-                    }
-                  />
+                  <input id="edit-tiempo_espera" type="text" value={editingLocation.tiempo_espera || ''} onChange={(e) => setEditingLocation({ ...editingLocation, tiempo_espera: e.target.value })} />
                 </div>
               )}
-              <div className="input-group">
+              <div className={styles.inputGroup}>
                 <label htmlFor="edit-link_foto">Link Foto</label>
-                <input
-                  id="edit-link_foto"
-                  type="text"
-                  value={editingLocation.link_foto || ''}
-                  onChange={(e) =>
-                    setEditingLocation({ ...editingLocation, link_foto: e.target.value })
-                  }
-                />
+                <input id="edit-link_foto" type="text" value={editingLocation.link_foto || ''} onChange={(e) => setEditingLocation({ ...editingLocation, link_foto: e.target.value })} />
               </div>
-              <div className="input-group full-width">
+              <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}>
                 <label htmlFor="edit-detalles">Detalles</label>
-                <textarea
-                  id="edit-detalles"
-                  value={editingLocation.detalles || ''}
-                  onChange={(e) =>
-                    setEditingLocation({ ...editingLocation, detalles: e.target.value })
-                  }
-                  rows="4"
-                ></textarea>
+                <textarea id="edit-detalles" value={editingLocation.detalles || ''} onChange={(e) => setEditingLocation({ ...editingLocation, detalles: e.target.value })} rows="4"></textarea>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="modal-button secondary"
-                  onClick={() => setIsEditModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="modal-button primary">
-                  Guardar Cambios
-                </button>
+              <div className={styles.modalFooter}>
+                <button type="button" className={`${styles.modalButton} ${styles.modalButtonSecondary}`} onClick={() => setIsEditModalOpen(false)}>Cancelar</button>
+                <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>Guardar Cambios</button>
               </div>
             </form>
           </div>
@@ -625,42 +498,30 @@ const LocationList = ({ tableName, title }) => {
 function GpsPage() {
   const [activeView, setActiveView] = useState('clientes');
 
-  const handleTabChange = (tab) => {
-    setActiveView(tab);
-  };
-
   return (
     <Layout backgroundClassName="gpsBackground">
       <div className={depotStyles.depotHeader}>
         <button
-          className={`${depotStyles.depotTabButton} ${
-            activeView === 'clientes' ? depotStyles.active : ''
-          }`}
-          onClick={() => handleTabChange('clientes')}
+          className={`${depotStyles.depotTabButton} ${activeView === 'clientes' ? depotStyles.active : ''}`}
+          onClick={() => setActiveView('clientes')}
         >
           Clientes
         </button>
         <button
-          className={`${depotStyles.depotTabButton} ${
-            activeView === 'parkings' ? depotStyles.active : ''
-          }`}
-          onClick={() => handleTabChange('parkings')}
+          className={`${depotStyles.depotTabButton} ${activeView === 'parkings' ? depotStyles.active : ''}`}
+          onClick={() => setActiveView('parkings')}
         >
           Parkings
         </button>
         <button
-          className={`${depotStyles.depotTabButton} ${
-            activeView === 'servicios' ? depotStyles.active : ''
-          }`}
-          onClick={() => handleTabChange('servicios')}
+          className={`${depotStyles.depotTabButton} ${activeView === 'servicios' ? depotStyles.active : ''}`}
+          onClick={() => setActiveView('servicios')}
         >
           Servicios
         </button>
         <button
-          className={`${depotStyles.depotTabButton} ${
-            activeView === 'terminale' ? depotStyles.active : ''
-          }`}
-          onClick={() => handleTabChange('terminale')}
+          className={`${depotStyles.depotTabButton} ${activeView === 'terminale' ? depotStyles.active : ''}`}
+          onClick={() => setActiveView('terminale')}
         >
           Terminale
         </button>
