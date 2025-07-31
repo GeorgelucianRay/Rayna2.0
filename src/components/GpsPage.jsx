@@ -21,7 +21,7 @@ const PlusIcon = () => (
   <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
     <path
       fillRule="evenodd"
-      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a 1 1 0 011-1z"
+      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
       clipRule="evenodd"
     />
   </svg>
@@ -314,10 +314,10 @@ const LocationList = ({ tableName, title }) => {
 
       {/* Modal cu detalii */}
       {selectedLocation && (
-        <div className="modal-overlay" onClick={() => setSelectedLocation(null)}>
-          <div className={`modal-content ${styles.locationModal}`} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">{selectedLocation.nombre}</h3>
+        <div className={styles.modalOverlay} onClick={() => setSelectedLocation(null)}>
+          <div className={`${styles.modalContent} ${styles.locationModal}`} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>{selectedLocation.nombre}</h3>
               <div className={styles.modalHeaderActions}>
                 {canEdit && (
                   <button
@@ -327,12 +327,12 @@ const LocationList = ({ tableName, title }) => {
                     <EditIcon />
                   </button>
                 )}
-                <button onClick={() => setSelectedLocation(null)} className="close-button">
+                <button onClick={() => setSelectedLocation(null)} className={styles.closeButton}>
                   <CloseIcon />
                 </button>
               </div>
             </div>
-            <div className="modal-body">
+            <div className={styles.modalBody}>
               <img
                 src={
                   selectedLocation.link_foto ||
@@ -365,18 +365,18 @@ const LocationList = ({ tableName, title }) => {
                 )}
               </div>
             </div>
-            <div className="modal-footer">
+            <div className={styles.modalFooter}>
               {getMapsLink(selectedLocation) ? (
                 <a
                   href={getMapsLink(selectedLocation)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`modal-button primary ${styles.irButton}`}
+                  className={`${styles.modalButton} ${styles.modalButtonPrimary} ${styles.irButton}`}
                 >
                   Cómo llegar
                 </a>
               ) : (
-                <button className={`modal-button secondary ${styles.irButton}`} disabled>
+                <button className={`${styles.modalButton} ${styles.modalButtonSecondary} ${styles.irButton}`} disabled>
                   Maps no disponible
                 </button>
               )}
@@ -387,44 +387,48 @@ const LocationList = ({ tableName, title }) => {
 
       {/* Modal de adăugare */}
       {isAddModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 className="modal-title">Añadir Nuevo {title}</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="close-button">
+        <div className={styles.modalOverlay} onClick={() => setIsAddModalOpen(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Añadir Nuevo {title}</h3>
+              <button onClick={() => setIsAddModalOpen(false)} className={styles.closeButton}>
                 <CloseIcon />
               </button>
             </div>
-            <form onSubmit={handleAddLocation} className="modal-body">
-              <div className={depotStyles.inputGroup}>
-                <label>Nombre</label>
+            <form onSubmit={handleAddLocation} className={styles.modalBody}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="nombre">Nombre</label>
                 <input
+                  id="nombre"
                   type="text"
                   value={newLocation.nombre}
                   onChange={(e) => setNewLocation({ ...newLocation, nombre: e.target.value })}
                   required
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Dirección</label>
+              <div className={styles.inputGroup}>
+                <label htmlFor="direccion">Dirección</label>
                 <input
+                  id="direccion"
                   type="text"
                   value={newLocation.direccion}
                   onChange={(e) => setNewLocation({ ...newLocation, direccion: e.target.value })}
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Link Google Maps (opcional)</label>
+              <div className={styles.inputGroup}>
+                <label htmlFor="link_maps">Link Google Maps (opcional)</label>
                 <input
+                  id="link_maps"
                   type="text"
                   value={newLocation.link_maps}
                   onChange={(e) => setNewLocation({ ...newLocation, link_maps: e.target.value })}
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Coordenadas</label>
+              <div className={styles.inputGroup}>
+                <label htmlFor="coordenadas">Coordenadas</label>
                 <div className={styles.geolocationGroup}>
                   <input
+                    id="coordenadas"
                     type="text"
                     value={newLocation.coordenadas}
                     onChange={(e) =>
@@ -444,9 +448,10 @@ const LocationList = ({ tableName, title }) => {
               </div>
               {/* Campo Tiempo de Espera doar pentru clienți */}
               {tableName === 'gps_clientes' && (
-                <div className={depotStyles.inputGroup}>
-                  <label>Tiempo de Espera</label>
+                <div className={styles.inputGroup}>
+                  <label htmlFor="tiempo_espera">Tiempo de Espera</label>
                   <input
+                    id="tiempo_espera"
                     type="text"
                     value={newLocation.tiempo_espera}
                     onChange={(e) =>
@@ -455,30 +460,33 @@ const LocationList = ({ tableName, title }) => {
                   />
                 </div>
               )}
-              <div className={depotStyles.inputGroup}>
-                <label>Link Foto</label>
+              <div className={styles.inputGroup}>
+                <label htmlFor="link_foto">Link Foto</label>
                 <input
+                  id="link_foto"
                   type="text"
                   value={newLocation.link_foto}
                   onChange={(e) => setNewLocation({ ...newLocation, link_foto: e.target.value })}
                 />
               </div>
-              <div className={`${depotStyles.inputGroup} ${depotStyles.fullWidth}`}>
-                <label>Detalles</label>
+              <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}>
+                <label htmlFor="detalles">Detalles</label>
                 <textarea
+                  id="detalles"
                   value={newLocation.detalles}
                   onChange={(e) => setNewLocation({ ...newLocation, detalles: e.target.value })}
+                  rows="4"
                 ></textarea>
               </div>
-              <div className="modal-footer">
+              <div className={styles.modalFooter}>
                 <button
                   type="button"
-                  className="modal-button secondary"
+                  className={`${styles.modalButton} ${styles.modalButtonSecondary}`}
                   onClick={() => setIsAddModalOpen(false)}
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="modal-button primary">
+                <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>
                   Guardar
                 </button>
               </div>
@@ -489,8 +497,8 @@ const LocationList = ({ tableName, title }) => {
 
       {/* Modal de editare */}
       {isEditModalOpen && editingLocation && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Editar {editingLocation.nombre}</h3>
               <button onClick={() => setIsEditModalOpen(false)} className="close-button">
@@ -498,9 +506,10 @@ const LocationList = ({ tableName, title }) => {
               </button>
             </div>
             <form onSubmit={handleUpdateLocation} className="modal-body">
-              <div className={depotStyles.inputGroup}>
-                <label>Nombre</label>
+              <div className="input-group">
+                <label htmlFor="edit-nombre">Nombre</label>
                 <input
+                  id="edit-nombre"
                   type="text"
                   value={editingLocation.nombre || ''}
                   onChange={(e) =>
@@ -509,9 +518,10 @@ const LocationList = ({ tableName, title }) => {
                   required
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Dirección</label>
+              <div className="input-group">
+                <label htmlFor="edit-direccion">Dirección</label>
                 <input
+                  id="edit-direccion"
                   type="text"
                   value={editingLocation.direccion || ''}
                   onChange={(e) =>
@@ -519,9 +529,10 @@ const LocationList = ({ tableName, title }) => {
                   }
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Link Google Maps (opcional)</label>
+              <div className="input-group">
+                <label htmlFor="edit-link_maps">Link Google Maps (opcional)</label>
                 <input
+                  id="edit-link_maps"
                   type="text"
                   value={editingLocation.link_maps || ''}
                   onChange={(e) =>
@@ -529,10 +540,11 @@ const LocationList = ({ tableName, title }) => {
                   }
                 />
               </div>
-              <div className={depotStyles.inputGroup}>
-                <label>Coordenadas</label>
+              <div className="input-group">
+                <label htmlFor="edit-coordenadas">Coordenadas</label>
                 <div className={styles.geolocationGroup}>
                   <input
+                    id="edit-coordenadas"
                     type="text"
                     value={editingLocation.coordenadas || ''}
                     onChange={(e) =>
@@ -552,9 +564,10 @@ const LocationList = ({ tableName, title }) => {
               </div>
               {/* Afișează Tiempo de Espera doar la clienți */}
               {tableName === 'gps_clientes' && (
-                <div className={depotStyles.inputGroup}>
-                  <label>Tiempo de Espera</label>
+                <div className="input-group">
+                  <label htmlFor="edit-tiempo_espera">Tiempo de Espera</label>
                   <input
+                    id="edit-tiempo_espera"
                     type="text"
                     value={editingLocation.tiempo_espera || ''}
                     onChange={(e) =>
@@ -566,9 +579,10 @@ const LocationList = ({ tableName, title }) => {
                   />
                 </div>
               )}
-              <div className={depotStyles.inputGroup}>
-                <label>Link Foto</label>
+              <div className="input-group">
+                <label htmlFor="edit-link_foto">Link Foto</label>
                 <input
+                  id="edit-link_foto"
                   type="text"
                   value={editingLocation.link_foto || ''}
                   onChange={(e) =>
@@ -576,13 +590,15 @@ const LocationList = ({ tableName, title }) => {
                   }
                 />
               </div>
-              <div className={`${depotStyles.inputGroup} ${depotStyles.fullWidth}`}>
-                <label>Detalles</label>
+              <div className="input-group full-width">
+                <label htmlFor="edit-detalles">Detalles</label>
                 <textarea
+                  id="edit-detalles"
                   value={editingLocation.detalles || ''}
                   onChange={(e) =>
                     setEditingLocation({ ...editingLocation, detalles: e.target.value })
                   }
+                  rows="4"
                 ></textarea>
               </div>
               <div className="modal-footer">
