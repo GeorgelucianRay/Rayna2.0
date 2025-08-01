@@ -7,10 +7,12 @@
     margin-bottom: 2rem;
     color: white;
 }
+
 .profileHeader h1 {
     font-size: 2.25rem;
     font-weight: 700;
 }
+
 .editProfileButton {
     display: flex;
     align-items: center;
@@ -24,6 +26,7 @@
     cursor: pointer;
     transition: background-color 200ms;
 }
+
 .editProfileButton:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
@@ -41,12 +44,14 @@
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
 .profileCard h3 {
     font-size: 0.875rem;
     color: #9ca3af;
     text-transform: uppercase;
     margin-bottom: 0.5rem;
 }
+
 .profileCard p {
     font-size: 1.125rem;
     color: white;
@@ -58,6 +63,7 @@
     cursor: pointer;
     transition: background-color 200ms;
 }
+
 .vehicleLink:hover {
     background-color: rgba(17, 24, 39, 0.7);
 }
@@ -70,6 +76,7 @@
     margin-bottom: 2rem;
     color: #fca5a5;
 }
+
 .alarmHeader {
     display: flex;
     align-items: center;
@@ -79,6 +86,7 @@
     font-weight: 600;
     margin-bottom: 1rem;
 }
+
 .alarmSection ul {
     list-style-type: none;
     padding: 0;
@@ -87,6 +95,7 @@
     flex-direction: column;
     gap: 0.5rem;
 }
+
 .alarmSection ul li.expired {
     color: #dc2626;
     font-weight: 600;
@@ -101,4 +110,129 @@
     background-color: #111827;
     color: white;
     font-size: 1.5rem;
+}
+
+/* --- Stiluri pentru MODAL --- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.modalContent {
+  background-color: #1f2937;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modalTitle {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.closeButton {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+}
+
+.closeButton:hover {
+    color: white;
+}
+
+.modalBody {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inputGroup label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #d1d5db;
+}
+
+.inputGroup input,
+.inputGroup select {
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 1rem;
+}
+
+.inputGroup input:focus,
+.inputGroup select:focus {
+  outline: none;
+  border-color: #fb923c;
+}
+
+.inputGroup input:disabled {
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 0.7;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.cancelButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.saveButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-image: linear-gradient(to right, #fb923c, #f97316);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.saveButton:hover {
+  transform: translateY(-2px);
 }
