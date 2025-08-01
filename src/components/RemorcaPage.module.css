@@ -1,63 +1,182 @@
-/* src/components/ReparatiiPage.module.css */
+/* src/components/RemorcaPage.module.css */
 
-.repairsList {
+.pageHeader {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    color: white;
+    flex-wrap: wrap;
     gap: 1rem;
 }
 
-.noRepairs {
-    color: #9ca3af;
-    text-align: center;
-    padding: 2rem;
-    background-color: rgba(17, 24, 39, 0.5);
-    border-radius: 1rem;
-    margin-top: 1rem;
+.pageHeader h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0;
 }
 
-.repairCard {
-  background-color: #2c3545;
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  border-left: 4px solid #fb923c;
-}
-
-.repairHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.repairHeader h4 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: white;
-}
-
-.repairHeader span {
-  font-size: 0.875rem;
-  color: #9ca3af;
-}
-
-.repairDetails {
-  margin: 0.5rem 0;
-  color: #d1d5db;
-  line-height: 1.5;
-}
-
-/* Stilul pentru footer este aici, dar nu este folosit în componenta RemorcaPage */
-.repairFooter {
-  margin-top: 1rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: right;
-  font-size: 0.875rem;
-  color: #9ca3af;
-}
-
-.repairFooter strong {
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 200ms;
+    text-decoration: none;
+}
+
+.backButton:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.detailsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.detailCard {
+    background-color: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.detailCard h3 {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.detailCard p {
+    font-size: 1.125rem;
+    color: white;
+    font-weight: 500;
+    margin: 0;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 1rem;
+}
+
+.sectionTitle {
+    color: white;
+    font-size: 1.75rem;
+    margin: 0;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-image: linear-gradient(to right, #fb923c, #f97316);
+  color: white;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.addButton:hover {
+  transform: translateY(-2px);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.modalContent {
+  background-color: #1f2937;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modalContent h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.inputGroup label {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #d1d5db;
+}
+
+.inputGroup input,
+.inputGroup textarea {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: #374151;
+  color: white;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.inputGroup input:focus,
+.inputGroup textarea:focus {
+  outline: none;
+  border-color: #fb923c;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cancelButton {
+  padding: 0.6rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: transparent;
+  color: #e5e7eb;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton {
+  padding: 0.6rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-image: linear-gradient(to right, #fb923c, #f97316);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
 }
