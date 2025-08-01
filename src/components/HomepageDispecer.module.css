@@ -1,141 +1,164 @@
 /* src/components/HomepageDispecer.module.css */
 
+/* --- Definirea Variabilelor Globale --- */
+:root {
+    --color-text-primary: white;
+    --color-text-secondary: #e5e7eb;
+    --color-accent-primary: #fb923c;
+    --color-accent-secondary: #a5f3fc;
+    --color-whatsapp: #25d366;
+
+    --bg-card: rgba(31, 41, 55, 0.8); /* Ușor mai opac pentru lizibilitate */
+    --bg-interactive: rgba(255, 255, 255, 0.1);
+    --bg-interactive-hover: rgba(255, 255, 255, 0.15);
+    --bg-textarea: rgba(17, 24, 39, 0.85);
+
+    --border-color-soft: rgba(255, 255, 255, 0.15);
+    --border-color-medium: rgba(255, 255, 255, 0.25);
+
+    --radius-lg: 1rem;
+    --radius-md: 0.75rem;
+    --radius-sm: 0.5rem;
+
+    --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    --shadow-lifted: 0 15px 25px -5px rgba(0, 0, 0, 0.3);
+
+    --transition-speed: 250ms;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Cardul Principal de Anunțuri --- */
 .announcementsCard {
-  background-color: rgba(31, 41, 55, 0.75); /* Un pic mai opac */
-  backdrop-filter: blur(12px);
-  padding: 1.5rem 2rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
-  color: white;
+    background-color: var(--bg-card);
+    backdrop-filter: blur(14px);
+    padding: 1.5rem 2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color-medium);
+    box-shadow: var(--shadow-card);
+    color: var(--color-text-primary);
+    animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .announcementsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color-soft);
+    padding-bottom: 1rem;
 }
 
 .announcementsHeaderTitle {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: white;
+    color: var(--color-text-primary);
 }
 
 .announcementsTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
 }
 
 .announcementsContent {
-    white-space: pre-wrap; /* Păstrează formatarea textului (linii noi) */
+    white-space: pre-wrap;
     line-height: 1.6;
     font-size: 1rem;
-    color: #e5e7eb;
+    color: var(--color-text-secondary);
 }
 
 .announcementsContent strong {
-  color: #a5f3fc;
+    color: var(--color-accent-secondary);
+    font-weight: 600;
 }
 
+/* --- Linkuri Externe și Social Media --- */
 .externalLinksContainer {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
-.linksRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
-}
-
-.socialLinksRow {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
+.linksRow, .socialLinksRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
 }
 
 .socialLink {
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-  transition: transform 200ms, box-shadow 200ms;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform var(--transition-speed) ease-in-out, box-shadow var(--transition-speed) ease-in-out;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .socialLink:hover {
-  transform: scale(1.05) translateY(-5px);
-  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.3);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: var(--shadow-lifted);
 }
 
 .socialLink span {
-  margin-left: 0.5rem;
+    margin-left: 0.5rem;
 }
 
-.instagramLink { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+.instagramLink { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
 .tiktokLink { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
-.whatsappLink { background: #25d366; }
-
-.cameraLink {
-  background-color: rgba(251, 146, 60, 0.2);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(251, 146, 60, 0.4);
-  background-image: linear-gradient(45deg, rgba(251, 146, 60, 0.3), rgba(249, 115, 22, 0.4));
-}
-
+.whatsappLink { background: var(--color-whatsapp); }
 
 /* --- Stiluri pentru Editarea Anunțurilor --- */
-
 .actionsContainer {
     display: flex;
     gap: 0.75rem;
 }
 
 .actionButton {
-    padding: 0.4rem 1rem;
-    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
     border: none;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.editButton {
+    transition: all var(--transition-speed) ease-in-out;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+.editButton {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
+    border: 1px solid var(--border-color-medium);
+    color: var(--color-text-primary);
 }
 .editButton:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-interactive-hover);
+    border-color: var(--border-color-soft);
 }
 
 .saveButton {
-    background-color: #fb923c;
-    color: white;
+    background-color: var(--color-accent-primary);
+    color: var(--color-text-primary);
 }
-.saveButton:hover {
-    filter: brightness(1.1);
+.saveButton:hover:not(:disabled) {
+    filter: brightness(1.15);
+    box-shadow: 0 4px 15px rgba(251, 146, 60, 0.3);
 }
 .saveButton:disabled {
     opacity: 0.6;
@@ -143,29 +166,30 @@
 }
 
 .cancelButton {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: #e5e7eb;
+    background-color: var(--bg-interactive);
+    color: var(--color-text-secondary);
 }
 .cancelButton:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--bg-interactive-hover);
 }
 
 .editTextarea {
     width: 100%;
     min-height: 120px;
-    background-color: rgba(17, 24, 39, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 0.5rem;
-    color: white;
+    background-color: var(--bg-textarea);
+    border: 1px solid var(--border-color-soft);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
     padding: 1rem;
     font-family: inherit;
     font-size: 1rem;
     line-height: 1.6;
     resize: vertical;
+    transition: border-color var(--transition-speed) ease-in-out, box-shadow var(--transition-speed) ease-in-out;
 }
 
-.editTextarea:focus {
+.editTextarea:focus-visible {
     outline: none;
-    border-color: #fb923c;
-    box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.5);
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.4);
 }
