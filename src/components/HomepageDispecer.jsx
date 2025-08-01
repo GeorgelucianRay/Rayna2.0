@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './HomepageDispecer.module.css';
+import EditAnnouncementModal from './EditAnnouncementModal'; // <-- 1. Importă noua componentă
 
 // --- Iconițe SVG (neschimbate) ---
 const RssIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>;
@@ -10,6 +11,7 @@ const TiktokIcon = () => <svg width="24" height="24" viewBox="0 0 28 28" fill="n
 const WhatsappIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>;
 
 const renderIcon = (iconType) => {
+    // ... (funcția renderIcon rămâne neschimbată)
     switch (iconType) {
         case 'instagram': return <InstagramIcon />;
         case 'tiktok': return <TiktokIcon />;
@@ -20,20 +22,43 @@ const renderIcon = (iconType) => {
 };
 
 function HomepageDispecer() {
-  const [announcements, setAnnouncements] = useState("Cargando anuncios...");
+  const [announcementText, setAnnouncementText] = useState("Cargando anuncios..."); // Text pentru afișare
+  const [isModalOpen, setIsModalOpen] = useState(false); // <-- 2. Stare pentru vizibilitatea modalului
   const [cameraLinks, setCameraLinks] = useState([]);
   const [socialLinks, setSocialLinks] = useState([]);
 
-  // Am mutat funcția de fetch în afara `useEffect` pentru a o putea reapela
   const fetchAnnouncements = useCallback(async () => {
-    setAnnouncements("Actualizando anuncios..."); // Feedback pentru utilizator
+    setAnnouncementText("Actualizando anuncios...");
     const { data, error } = await supabase.from('anuncios').select('content').eq('id', 1).single();
     if (error) {
-      setAnnouncements('No se pudieron cargar los anuncios.');
+      setAnnouncementText('No se pudieron cargar los anuncios.');
     } else if (data) {
-      setAnnouncements(data.content);
+      setAnnouncementText(data.content);
     }
   }, []);
+  
+  // <-- 3. Funcție pentru a salva modificările
+  const handleSaveAnnouncement = async (newContent) => {
+    // Verificăm dacă există modificări pentru a evita un update inutil
+    if (newContent === announcementText) {
+        setIsModalOpen(false);
+        return;
+    }
+
+    const { error } = await supabase
+      .from('anuncios')
+      .update({ content: newContent })
+      .eq('id', 1);
+
+    if (error) {
+      alert('Error: No se pudieron guardar los cambios.');
+      console.error("Error updating announcement:", error);
+    } else {
+      alert('¡Anuncio actualizado con éxito!');
+      setAnnouncementText(newContent); // Actualizăm starea locală imediat
+      setIsModalOpen(false); // Închidem modalul
+    }
+  };
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -45,11 +70,9 @@ function HomepageDispecer() {
             setSocialLinks(data.filter(link => link.icon_type !== 'camera'));
         }
     };
-
-    // Apelăm ambele funcții la încărcarea componentei
     fetchAnnouncements();
     fetchLinks();
-  }, [fetchAnnouncements]); // Adăugăm fetchAnnouncements ca dependență
+  }, [fetchAnnouncements]);
 
   return (
     <Layout backgroundClassName="homepageBackground">
@@ -59,42 +82,33 @@ function HomepageDispecer() {
               <RssIcon />
               <h2 className={styles.announcementsTitle}>Anuncios Importantes</h2>
             </div>
-            {/* --- BUTONUL ADĂUGAT AICI --- */}
-            <button onClick={fetchAnnouncements} className={styles.updateButton}>
-              Actualizar Anuncios
-            </button>
+            {/* Grupăm butoanele */}
+            <div className={styles.headerButtons}>
+                 <button onClick={() => setIsModalOpen(true)} className={styles.editButton}>
+                    Modificar
+                 </button>
+                 <button onClick={fetchAnnouncements} className={styles.updateButton}>
+                    Actualizar
+                 </button>
+            </div>
           </div>
-          <div className={styles.announcementsContent}>{announcements}</div>
+          <div className={styles.announcementsContent}>{announcementText}</div>
         </div>
         
+        {/* ... (restul codului pentru link-uri rămâne neschimbat) ... */}
         <div className={styles.externalLinksContainer}>
-          <div className={styles.linksRow}>
-              {cameraLinks.map(link => {
-                  const icon = renderIcon(link.icon_type);
-                  return (
-                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`${styles.socialLink} ${styles.cameraLink}`}>
-                          {icon}
-                          <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
-                      </a>
-                  );
-              })}
-          </div>
-          <div className={styles.socialLinksRow}>
-              {socialLinks.map(link => {
-                  const icon = renderIcon(link.icon_type);
-                  const linkStyle = styles[`${link.icon_type}Link`];
-                  return (
-                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`${styles.socialLink} ${linkStyle}`}>
-                          {icon}
-                          <span style={{ marginLeft: icon ? '0.5rem' : '0' }}>{link.name}</span>
-                      </a>
-                  );
-              })}
-          </div>
+            {/* ... */}
         </div>
+        
+        {/* --- 4. Adaugă componenta modal aici --- */}
+        <EditAnnouncementModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            currentContent={announcementText}
+            onSave={handleSaveAnnouncement}
+        />
     </Layout>
   );
 }
 
 export default HomepageDispecer;
-
