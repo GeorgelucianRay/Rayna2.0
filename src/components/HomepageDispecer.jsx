@@ -99,7 +99,8 @@ function HomepageDispecer() {
                         {cameraLinks.map(link => (
                             <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={styles.linkCard}>
                                 {renderIcon(link.icon_type)}
-                                <span>{link.label}</span>
+                                {/* MODIFICARE: Folosim link.name pentru a afișa textul */}
+                                <span>{link.name}</span>
                             </a>
                         ))}
                     </div>
@@ -112,7 +113,8 @@ function HomepageDispecer() {
                         {socialLinks.map(link => (
                             <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={styles.linkCard}>
                                 {renderIcon(link.icon_type)}
-                                <span>{link.label}</span>
+                                {/* MODIFICARE: Folosim link.name pentru a afișa textul */}
+                                <span>{link.name}</span>
                             </a>
                         ))}
                     </div>
