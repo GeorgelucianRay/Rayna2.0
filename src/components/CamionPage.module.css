@@ -1,4 +1,4 @@
-.profileHeader {
+.pageHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -8,9 +8,10 @@
     gap: 1rem;
 }
 
-.profileHeader h1 {
+.pageHeader h1 {
     font-size: 2.25rem;
     font-weight: 700;
+    margin: 0;
 }
 
 .backButton {
@@ -31,7 +32,47 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-.editProfileButton {
+.detailsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.detailCard {
+    background-color: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.detailCard h3 {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem 0;
+}
+.detailCard p {
+    font-size: 1.125rem;
+    color: white;
+    font-weight: 500;
+    margin: 0;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+    color: white;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.addButton {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -45,46 +86,71 @@
     border: none;
     box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
 }
-.editProfileButton:hover {
+.addButton:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
-.profileGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+.repairsList {
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
 }
 
-.profileCard {
-    background-color: rgba(17, 24, 39, 0.5);
+.repairCard {
+    background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
     padding: 1.5rem;
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    text-decoration: none;
     color: #d1d5db;
 }
-.profileCard h3 {
-    font-size: 0.875rem;
-    color: #9ca3af;
-    text-transform: uppercase;
-    margin: 0 0 0.5rem 0;
+
+.repairHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
-.profileCard p {
-    font-size: 1.125rem;
+.repairHeader h4 {
     color: white;
-    font-weight: 500;
+    font-size: 1.25rem;
+    font-weight: 600;
     margin: 0;
 }
-
-.vehicleLink {
-    cursor: pointer;
-    transition: background-color 200ms, border-color 200ms;
+.repairHeader span {
+    font-size: 0.875rem;
+    color: #9ca3af;
 }
-.vehicleLink:hover {
-    background-color: rgba(17, 24, 39, 0.7);
-    border-color: rgba(251, 146, 60, 0.5);
+.repairDetails {
+    white-space: pre-wrap;
+    background-color: rgba(0,0,0,0.2);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-top: 0.75rem;
+    line-height: 1.6;
+}
+.repairFooter {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: right;
+    font-size: 0.875rem;
+}
+.repairFooter strong {
+    color: white;
+}
+.noRepairs {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #9ca3af;
+    padding: 2rem;
+    background-color: rgba(17, 24, 39, 0.6);
+    border-radius: 1rem;
 }
 
 .loadingScreen {
@@ -96,7 +162,7 @@
     font-size: 1.5rem;
 }
 
-/* --- Stiluri noi pentru Modal --- */
+/* --- Stiluri pentru Modal --- */
 
 .modalOverlay {
     position: fixed;
@@ -115,7 +181,7 @@
     padding: 2rem;
     border-radius: 1rem;
     width: 100%;
-    max-width: 700px;
+    max-width: 600px;
     color: white;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
@@ -172,7 +238,7 @@
     color: #d1d5db;
 }
 
-.formGroup input, .formGroup select, .formGroupFull select {
+.formGroup input, .formGroupFull textarea {
     width: 100%;
     padding: 0.75rem;
     border-radius: 0.5rem;
@@ -182,15 +248,14 @@
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.formGroup option, .formGroupFull option {
-    color: #111827;
-    background-color: #ffffff;
-}
-
-.formGroup input:focus, .formGroup select:focus, .formGroupFull select:focus {
+.formGroup input:focus, .formGroupFull textarea:focus {
     outline: none;
     border-color: #fb923c;
     box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.3);
+}
+
+.formGroupFull textarea {
+    resize: vertical;
 }
 
 .modalActions {
@@ -229,6 +294,11 @@
     cursor: pointer;
     box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
     transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.saveButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
 .saveButton:hover {
