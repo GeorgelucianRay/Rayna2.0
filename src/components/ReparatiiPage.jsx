@@ -20,10 +20,14 @@ function ReparatiiPage() {
     const [repairs, setRepairs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    
+    // Stare actualizată pentru formular
     const [newRepair, setNewRepair] = useState({
         data: new Date().toISOString().slice(0, 10),
+        nombre_operacion: '',
         detalii: '',
-        cost: ''
+        cost: '',
+        kilometri: ''
     });
 
     useEffect(() => {
@@ -60,10 +64,15 @@ function ReparatiiPage() {
         e.preventDefault();
         const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
         
+        // Obiect de date actualizat pentru a include noile câmpuri
         const repairData = {
-            ...newRepair,
+            data: newRepair.data,
+            nombre_operacion: newRepair.nombre_operacion,
+            detalii: newRepair.detalii,
+            cost: parseFloat(newRepair.cost) || 0,
+            // Adăugăm kilometri doar dacă este camion
+            kilometri: type === 'camion' ? parseInt(newRepair.kilometri, 10) || null : null,
             [foreignKey]: id,
-            cost: parseFloat(newRepair.cost) || 0
         };
 
         const { data: newRecord, error } = await supabase.from('reparatii').insert([repairData]).select().single();
@@ -73,8 +82,9 @@ function ReparatiiPage() {
         } else {
             alert('Reparación añadida con éxito!');
             setIsAddModalOpen(false);
-            setNewRepair({ data: new Date().toISOString().slice(0, 10), detalii: '', cost: '' });
-            setRepairs(prevRepairs => [newRecord, ...prevRepairs]); // Adăugăm reparația nouă la începutul listei
+            // Resetăm formularul
+            setNewRepair({ data: new Date().toISOString().slice(0, 10), nombre_operacion: '', detalii: '', cost: '', kilometri: '' });
+            setRepairs(prevRepairs => [newRecord, ...prevRepairs]);
         }
     };
     
@@ -107,8 +117,14 @@ function ReparatiiPage() {
                     {repairs.map(repair => (
                         <div className={styles.repairCard} key={repair.id}>
                             <div className={styles.repairHeader}>
-                                <h4>Reparación del {new Date(repair.data).toLocaleDateString()}</h4>
-                                <span><strong>Coste:</strong> {repair.cost} €</span>
+                                <div className={styles.repairTitle}>
+                                    <h4>{repair.nombre_operacion || 'Reparación'}</h4>
+                                    <span className={styles.repairDate}>del {new Date(repair.data).toLocaleDateString()}</span>
+                                </div>
+                                <div className={styles.repairMeta}>
+                                    {type === 'camion' && repair.kilometri && <span className={styles.repairKilometers}><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
+                                    <span className={styles.repairCost}><strong>Coste:</strong> {repair.cost} €</span>
+                                </div>
                             </div>
                             <p className={styles.repairDetails}>{repair.detalii}</p>
                         </div>
@@ -127,8 +143,17 @@ function ReparatiiPage() {
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
                             <div className={styles.formGroup}><label>Fecha</label><input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required /></div>
+                            <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
+                            
+                            {/* Câmpul pentru kilometri apare doar pentru camioane */}
+                            {type === 'camion' && (
+                                <div className={styles.formGroup}><label>Kilómetros</label><input type="number" placeholder="Ej: 125000" value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
+                            )}
+
                             <div className={styles.formGroup}><label>Coste (€)</label><input type="number" step="0.01" placeholder="Ej: 150.50" value={newRepair.cost} onChange={(e) => setNewRepair({...newRepair, cost: e.target.value})} /></div>
+                            
                             <div className={styles.formGroupFull}><label>Detalles de la Reparación</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea></div>
+                            
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsAddModalOpen(false)}>Cancelar</button>
                                 <button type="submit" className={styles.saveButton}>Guardar</button>
