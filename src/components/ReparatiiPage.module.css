@@ -61,10 +61,8 @@
 .vehicleSubtitle {
     color: #d1d5db;
     font-size: 1.25rem;
-    text-align: center;
-    margin-top: 0;
+    margin-top: 0.25rem;
     margin-bottom: 2rem;
-    width: 100%;
 }
 
 .repairsList {
@@ -85,7 +83,7 @@
 .repairHeader {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start; /* Aliniem la început pentru a gestiona înălțimi diferite */
+    align-items: flex-start;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     padding-bottom: 1rem;
     margin-bottom: 1rem;
@@ -110,7 +108,7 @@
 .repairMeta {
     display: flex;
     flex-direction: column;
-    align-items: flex-end; /* Aliniem la dreapta */
+    align-items: flex-end;
     gap: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
@@ -213,7 +211,7 @@
 .modalForm {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem; /* Am redus puțin spațiul pentru a încăpea mai bine */
+    gap: 1rem;
 }
 
 .formGroup, .formGroupFull {
@@ -293,8 +291,68 @@
     box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
+/* --- Stiluri noi pentru Căutare și Paginare --- */
 
-.saveButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+.searchBar {
+    display: flex;
+    align-items: center;
+    background-color: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.searchBar svg {
+    color: #9ca3af;
+    margin-right: 0.75rem;
+}
+
+.searchBar input {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 100%;
+    font-size: 1rem;
+}
+
+.searchBar input:focus {
+    outline: none;
+}
+
+.searchBar input::placeholder {
+    color: #6b7280;
+}
+
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    color: white;
+}
+
+.paginationButton {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.paginationButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.paginationButton:not(:disabled):hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.pageIndicator {
+    font-weight: 600;
 }
