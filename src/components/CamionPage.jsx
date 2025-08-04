@@ -50,16 +50,32 @@ function CamionPage() {
 
     const handleAddRepair = async (e) => {
         e.preventDefault();
-        // ... logica de adăugare reparație rămâne neschimbată
+        if (!newRepair.piesa || !newRepair.km || !newRepair.detalii) {
+            alert('Todos los campos son obligatorios.');
+            return;
+        }
+        const repairDataToInsert = {
+            camion_id: id,
+            data_reparatie: newRepair.data_reparatie,
+            piesa: newRepair.piesa,
+            km: parseInt(newRepair.km, 10),
+            detalii: newRepair.detalii,
+        };
+        const { data: insertedRepair, error } = await supabase.from('reparatii').insert(repairDataToInsert).select().single();
+        if (error) {
+            alert(`Error al añadir la reparación: ${error.message}`);
+        } else {
+            setRepairs([insertedRepair, ...repairs]);
+            setIsAddRepairModalOpen(false);
+            setNewRepair({ data_reparatie: new Date().toISOString().split('T')[0], piesa: '', km: '', detalii: '' });
+        }
     };
 
-    // Funcție pentru a deschide modalul de editare
     const handleEditClick = () => {
         setEditableCamion({ ...camion });
         setIsEditCamionModalOpen(true);
     };
 
-    // Funcție pentru a salva modificările camionului
     const handleUpdateCamion = async (e) => {
         e.preventDefault();
         const { id: camionId, ...updateData } = editableCamion;
@@ -110,16 +126,58 @@ function CamionPage() {
                 </button>
             </div>
             
-            {/* Afișare reparații (neschimbat) */}
-            {/* ... */}
-
-            {/* Modal pentru adăugare reparație (redenumit isAddRepairModalOpen) */}
-            {isAddRepairModalOpen && (
-                // ... JSX pentru modalul de adăugare reparație
-                // Asigură-te că folosești setIsAddRepairModalOpen pentru a-l închide
+            {repairs.length > 0 ? (
+                <div className={styles.repairsList}>
+                    {repairs.map(repair => (
+                        <div className={styles.repairCard} key={repair.id}>
+                            <div className={styles.repairHeader}>
+                                <h4>{repair.piesa}</h4>
+                                <span>{new Date(repair.data_reparatie).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            </div>
+                            <p className={styles.repairDetails}>{repair.detalii}</p>
+                            <div className={styles.repairFooter}>
+                                <span><strong>KM:</strong> {repair.km.toLocaleString('es-ES')}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className={styles.noRepairs}>No hay reparaciones registradas para este camión.</p>
             )}
 
-            {/* Modal nou pentru editare camion */}
+            {isAddRepairModalOpen && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>Añadir Nueva Reparación</h3>
+                            <button onClick={() => setIsAddRepairModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
+                        </div>
+                        <form onSubmit={handleAddRepair} className={styles.modalForm}>
+                            <div className={styles.formGroup}>
+                                <label htmlFor="data_reparatie">Fecha de Reparación</label>
+                                <input id="data_reparatie" type="date" value={newRepair.data_reparatie} onChange={(e) => setNewRepair({...newRepair, data_reparatie: e.target.value})} required />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label htmlFor="piesa">Pieza Cambiada / Tarea Realizada</label>
+                                <input id="piesa" type="text" placeholder="Ej: Cambio de aceite" value={newRepair.piesa} onChange={(e) => setNewRepair({...newRepair, piesa: e.target.value})} required />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label htmlFor="km">Kilómetros</label>
+                                <input id="km" type="number" placeholder="Ej: 250000" value={newRepair.km} onChange={(e) => setNewRepair({...newRepair, km: e.target.value})} required />
+                            </div>
+                            <div className={styles.formGroupFull}>
+                                <label htmlFor="detalii">Descripción / Detalles</label>
+                                <textarea id="detalii" rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required />
+                            </div>
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelButton} onClick={() => setIsAddRepairModalOpen(false)}>Cancelar</button>
+                                <button type="submit" className={styles.saveButton}>Guardar Reparación</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {isEditCamionModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
