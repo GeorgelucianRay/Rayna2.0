@@ -82,7 +82,7 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* --- Stiluri pentru Link-uri Externe (NOU) --- */
+/* --- Stiluri pentru Link-uri Externe (Stil nou, tip butoane) --- */
 .externalLinksContainer {
     display: flex;
     flex-direction: column;
@@ -107,33 +107,50 @@
 .linkCard {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    background-color: rgba(31, 41, 55, 0.6);
-    padding: 1rem;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #d1d5db;
+    border: 1px solid transparent;
+    color: white;
     text-decoration: none;
+    font-weight: 600;
     transition: all 0.2s ease;
+    text-align: center;
 }
 
 .linkCard:hover {
-    transform: translateY(-3px);
-    background-color: rgba(31, 41, 55, 0.8);
-    border-color: rgba(251, 146, 60, 0.5);
-    color: white;
+    transform: scale(1.05) translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .linkCard svg {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-    color: #fb923c;
 }
 
-.linkCard span {
-    font-weight: 500;
+/* Stiluri specifice bazate pe URL pentru a colora butoanele */
+.linkCard[href*="instagram"] {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
 }
+
+.linkCard[href*="tiktok"] {
+    background: linear-gradient(45deg, #000000 0%, #222222 100%);
+    border: 1px solid #ff0050;
+}
+
+.linkCard[href*="whatsapp"] {
+    background: linear-gradient(45deg, #25D366 0%, #128C7E 100%);
+}
+
+/* Stil generic pentru camere sau alte link-uri care nu sunt rețele sociale */
+.linkCard:not([href*="instagram"]):not([href*="tiktok"]):not([href*="whatsapp"]) {
+    background-color: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 
 /* --- Stiluri pentru Modal (formular) --- */
 .modalOverlay {
