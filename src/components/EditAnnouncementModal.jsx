@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import styles from './HomepageDispecer.module.css'; // Refolosim stilurile
+import styles from './HomepageDispecer.module.css'; // Refolosește stilurile pentru consistență
 
 function EditAnnouncementModal({ isOpen, onClose, currentContent, onSave }) {
   const [newContent, setNewContent] = useState(currentContent);
 
-  // Actualizează starea internă dacă se schimbă proprietatea din exterior
   useEffect(() => {
     setNewContent(currentContent);
   }, [currentContent]);
@@ -20,7 +19,7 @@ function EditAnnouncementModal({ isOpen, onClose, currentContent, onSave }) {
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
-        <h3>Editar Anuncio</h3>
+        <h3 className={styles.modalTitle}>Editar Anuncio</h3>
         <textarea
           className={styles.modalTextarea}
           value={newContent}
