@@ -85,22 +85,41 @@
 .repairHeader {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start; /* Aliniem la început pentru a gestiona înălțimi diferite */
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding-bottom: 0.75rem;
+    padding-bottom: 1rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 1rem;
 }
-.repairHeader h4 {
+.repairTitle {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.repairTitle h4 {
     color: white;
     font-size: 1.25rem;
     font-weight: 600;
     margin: 0;
 }
-.repairHeader span {
+.repairDate {
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+.repairMeta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Aliniem la dreapta */
+    gap: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
+    text-align: right;
+}
+.repairKilometers, .repairCost {
+    background-color: rgba(0,0,0,0.2);
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.375rem;
 }
 
 .repairCard p {
@@ -136,7 +155,7 @@
     font-size: 1.5rem;
 }
 
-/* --- Stiluri noi pentru Modal --- */
+/* --- Stiluri pentru Modal --- */
 
 .modalOverlay {
     position: fixed;
@@ -194,7 +213,7 @@
 .modalForm {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 1rem; /* Am redus puțin spațiul pentru a încăpea mai bine */
 }
 
 .formGroup, .formGroupFull {
