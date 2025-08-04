@@ -78,7 +78,7 @@ function TallerPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
   return (
-    <Layout>
+    <Layout backgroundClassName="taller-background">
       <div className={styles.pageHeader}>
         <h1>Taller</h1>
       </div>
