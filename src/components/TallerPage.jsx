@@ -14,8 +14,8 @@ const SearchIcon = () => (
 
 function TallerPage() {
   const ITEMS_PER_PAGE = 10;
-  // MODIFICARE: Folosim numele la singular pentru tabele
-  const [activeTab, setActiveTab] = useState('camion');
+  // MODIFICARE: Folosim numele corecte la plural pentru tabele
+  const [activeTab, setActiveTab] = useState('camioane');
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,14 +82,14 @@ function TallerPage() {
       <div className={styles.controlsHeader}>
         <div className={styles.tabContainer}>
           <button
-            className={`${styles.tabButton} ${activeTab === 'camion' ? styles.active : ''}`}
-            onClick={() => handleTabChange('camion')}
+            className={`${styles.tabButton} ${activeTab === 'camioane' ? styles.active : ''}`}
+            onClick={() => handleTabChange('camioane')}
           >
             Camiones
           </button>
           <button
-            className={`${styles.tabButton} ${activeTab === 'remorca' ? styles.active : ''}`}
-            onClick={() => handleTabChange('remorca')}
+            className={`${styles.tabButton} ${activeTab === 'remorci' ? styles.active : ''}`}
+            onClick={() => handleTabChange('remorci')}
           >
             Remolques
           </button>
@@ -116,8 +116,8 @@ function TallerPage() {
         <>
           <div className={styles.vehicleGrid}>
             {vehicles.map(vehicle => (
-              // MODIFICARE: Logica pentru link este acum mai simplă
-              <Link to={`/reparatii/${activeTab}/${vehicle.id}`} key={vehicle.id} className={styles.vehicleCard}>
+              // MODIFICARE: Logica pentru link este corectată pentru a mapa numele tabelei la ruta corectă
+              <Link to={`/reparatii/${activeTab === 'camioane' ? 'camion' : 'remorca'}/${vehicle.id}`} key={vehicle.id} className={styles.vehicleCard}>
                 <h3>{vehicle.matricula}</h3>
                 <p>Ver historial de reparaciones</p>
               </Link>
