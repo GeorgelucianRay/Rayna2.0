@@ -242,9 +242,16 @@
   border-radius: 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background-color: rgba(255, 255, 255, 0.15);
-  color: white;
+  color: #e5e7eb; /* MODIFICARE: Culoare gri-deschis pentru vizibilitate */
   transition: border-color 0.2s;
 }
+
+/* ADAUGARE: Asigură vizibilitatea opțiunilor în dropdown */
+.formGroup select option {
+  color: #111827; /* Culoare text închisă pentru opțiuni */
+  background-color: #ffffff; /* Fundal alb pentru opțiuni */
+}
+
 .formGroup input:focus,
 .formGroup select:focus {
   outline: none;
