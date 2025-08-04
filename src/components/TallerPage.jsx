@@ -14,7 +14,7 @@ const SearchIcon = () => (
 
 function TallerPage() {
   const ITEMS_PER_PAGE = 10;
-  const [activeTab, setActiveTab] = useState('camiones'); // 'camiones' sau 'remolques'
+  const [activeTab, setActiveTab] = useState('camioane'); // 'camioane' sau 'remolques'
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,27 +24,38 @@ function TallerPage() {
   // Funcție pentru a prelua vehiculele din Supabase cu paginare și căutare
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
-    const from = (currentPage - 1) * ITEMS_PER_PAGE;
-    const to = from + ITEMS_PER_PAGE - 1;
+    try {
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
 
-    let query = supabase.from(activeTab).select('*', { count: 'exact' });
+      let query = supabase.from(activeTab).select('*', { count: 'exact' });
 
-    if (searchTerm) {
-      query = query.ilike('matricula', `%${searchTerm}%`);
-    }
+      if (searchTerm) {
+        // Căutăm în coloana 'matricula'
+        query = query.ilike('matricula', `%${searchTerm}%`);
+      }
 
-    const { data, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      // Asigură-te că ai o coloană 'created_at' în ambele tabele
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    if (error) {
-      console.error(`Error fetching ${activeTab}:`, error);
-      setVehicles([]);
-    } else {
+      // Dacă Supabase returnează o eroare, o aruncăm pentru a fi prinsă de blocul catch
+      if (error) {
+        throw error;
+      }
+
       setVehicles(data || []);
       setTotalCount(count || 0);
+
+    } catch (error) {
+      console.error(`Error fetching data from '${activeTab}':`, error.message);
+      // Afișăm o eroare în consolă pentru a vedea exact ce nu a funcționat
+      setVehicles([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [activeTab, currentPage, searchTerm]);
 
   useEffect(() => {
@@ -67,7 +78,7 @@ function TallerPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
   return (
-    <Layout backgroundClassName={styles.tallerBackground}>
+    <Layout>
       <div className={styles.pageHeader}>
         <h1>Taller</h1>
       </div>
@@ -76,7 +87,7 @@ function TallerPage() {
       <div className={styles.controlsHeader}>
         <div className={styles.tabContainer}>
           <button
-            className={`${styles.tabButton} ${activeTab === 'camiones' ? styles.active : ''}`}
+            className={`${styles.tabButton} ${activeTab === 'camioane' ? styles.active : ''}`}
             onClick={() => handleTabChange('camiones')}
           >
             Camiones
