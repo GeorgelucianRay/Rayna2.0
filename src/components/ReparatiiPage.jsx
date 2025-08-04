@@ -3,9 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import styles from './ReparatiiPage.module.css'; // Importăm ca modul
-import depotStyles from './DepotPage.module.css'; // Refolosim stiluri din Depot
-import modalStyles from './MiPerfilPage.module.css'; // Refolosim stiluri pentru modal
+import styles from './ReparatiiPage.module.css';
 
 // --- Iconițe SVG ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
@@ -50,7 +48,7 @@ function ReparatiiPage() {
                 .order('data', { ascending: false });
 
             if (repairsError) console.error(`Error fetching repairs:`, repairsError);
-            else setRepairs(repairsData);
+            else setRepairs(repairsData || []);
 
             setLoading(false);
         };
@@ -68,7 +66,7 @@ function ReparatiiPage() {
             cost: parseFloat(newRepair.cost) || 0
         };
 
-        const { error } = await supabase.from('reparatii').insert([repairData]);
+        const { data: newRecord, error } = await supabase.from('reparatii').insert([repairData]).select().single();
 
         if (error) {
             alert(`Error al añadir la reparación: ${error.message}`);
@@ -76,15 +74,14 @@ function ReparatiiPage() {
             alert('Reparación añadida con éxito!');
             setIsAddModalOpen(false);
             setNewRepair({ data: new Date().toISOString().slice(0, 10), detalii: '', cost: '' });
-            const { data: repairsData } = await supabase.from('reparatii').select('*').eq(foreignKey, id).order('data', { ascending: false });
-            setRepairs(repairsData);
+            setRepairs(prevRepairs => [newRecord, ...prevRepairs]); // Adăugăm reparația nouă la începutul listei
         }
     };
     
     const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
 
     if (loading) {
-        return <div className={modalStyles.loadingScreen}>Cargando...</div>;
+        return <div className={styles.loadingScreen}>Cargando...</div>;
     }
 
     return (
@@ -93,7 +90,7 @@ function ReparatiiPage() {
                 <h1 className={styles.pageTitle}>Historial de Reparaciones</h1>
                 <div className={styles.headerActions}>
                     {canEdit && (
-                        <button className={depotStyles.addButton} onClick={() => setIsAddModalOpen(true)}>
+                        <button className={styles.addButton} onClick={() => setIsAddModalOpen(true)}>
                             <PlusIcon /> Añadir Reparación
                         </button>
                     )}
@@ -122,19 +119,19 @@ function ReparatiiPage() {
             )}
 
             {isAddModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h3 className="modal-title">Añadir Nueva Reparación</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="close-button"><CloseIcon /></button>
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>Añadir Nueva Reparación</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
                         </div>
-                        <form onSubmit={handleAddRepair} className="modal-body">
-                            <div className={depotStyles.inputGroup} style={{gridColumn: '1 / -1'}}><label>Fecha</label><input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required /></div>
-                            <div className={depotStyles.inputGroup} style={{gridColumn: '1 / -1'}}><label>Coste (€)</label><input type="number" step="0.01" placeholder="Ej: 150.50" value={newRepair.cost} onChange={(e) => setNewRepair({...newRepair, cost: e.target.value})} /></div>
-                            <div className={depotStyles.inputGroup} style={{gridColumn: '1 / -1'}}><label>Detalles de la Reparación</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea></div>
-                            <div className="modal-footer">
-                                <button type="button" className={`${depotStyles.modalButton} ${depotStyles.secondary}`} onClick={() => setIsAddModalOpen(false)}>Cancelar</button>
-                                <button type="submit" className={`${depotStyles.modalButton} ${depotStyles.primary}`}>Guardar</button>
+                        <form onSubmit={handleAddRepair} className={styles.modalForm}>
+                            <div className={styles.formGroup}><label>Fecha</label><input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required /></div>
+                            <div className={styles.formGroup}><label>Coste (€)</label><input type="number" step="0.01" placeholder="Ej: 150.50" value={newRepair.cost} onChange={(e) => setNewRepair({...newRepair, cost: e.target.value})} /></div>
+                            <div className={styles.formGroupFull}><label>Detalles de la Reparación</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea></div>
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelButton} onClick={() => setIsAddModalOpen(false)}>Cancelar</button>
+                                <button type="submit" className={styles.saveButton}>Guardar</button>
                             </div>
                         </form>
                     </div>
