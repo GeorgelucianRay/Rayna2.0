@@ -21,12 +21,11 @@ function ReparatiiPage() {
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     
-    // Stare actualizată pentru formular
+    // Stare actualizată pentru formular (fără cost)
     const [newRepair, setNewRepair] = useState({
         data: new Date().toISOString().slice(0, 10),
         nombre_operacion: '',
         detalii: '',
-        cost: '',
         kilometri: ''
     });
 
@@ -64,13 +63,11 @@ function ReparatiiPage() {
         e.preventDefault();
         const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
         
-        // Obiect de date actualizat pentru a include noile câmpuri
+        // Obiect de date actualizat (fără cost)
         const repairData = {
             data: newRepair.data,
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
-            cost: parseFloat(newRepair.cost) || 0,
-            // Adăugăm kilometri doar dacă este camion
             kilometri: type === 'camion' ? parseInt(newRepair.kilometri, 10) || null : null,
             [foreignKey]: id,
         };
@@ -82,8 +79,8 @@ function ReparatiiPage() {
         } else {
             alert('Reparación añadida con éxito!');
             setIsAddModalOpen(false);
-            // Resetăm formularul
-            setNewRepair({ data: new Date().toISOString().slice(0, 10), nombre_operacion: '', detalii: '', cost: '', kilometri: '' });
+            // Resetăm formularul (fără cost)
+            setNewRepair({ data: new Date().toISOString().slice(0, 10), nombre_operacion: '', detalii: '', kilometri: '' });
             setRepairs(prevRepairs => [newRecord, ...prevRepairs]);
         }
     };
@@ -123,7 +120,7 @@ function ReparatiiPage() {
                                 </div>
                                 <div className={styles.repairMeta}>
                                     {type === 'camion' && repair.kilometri && <span className={styles.repairKilometers}><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
-                                    <span className={styles.repairCost}><strong>Coste:</strong> {repair.cost} €</span>
+                                    {/* Am eliminat afișarea costului */}
                                 </div>
                             </div>
                             <p className={styles.repairDetails}>{repair.detalii}</p>
@@ -145,12 +142,9 @@ function ReparatiiPage() {
                             <div className={styles.formGroup}><label>Fecha</label><input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required /></div>
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
                             
-                            {/* Câmpul pentru kilometri apare doar pentru camioane */}
                             {type === 'camion' && (
                                 <div className={styles.formGroup}><label>Kilómetros</label><input type="number" placeholder="Ej: 125000" value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
                             )}
-
-                            <div className={styles.formGroup}><label>Coste (€)</label><input type="number" step="0.01" placeholder="Ej: 150.50" value={newRepair.cost} onChange={(e) => setNewRepair({...newRepair, cost: e.target.value})} /></div>
                             
                             <div className={styles.formGroupFull}><label>Detalles de la Reparación</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea></div>
                             
