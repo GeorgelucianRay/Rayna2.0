@@ -21,9 +21,8 @@ function ReparatiiPage() {
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     
-    // Stare actualizată pentru formular (fără cost)
+    // Stare actualizată pentru formular (fără dată manuală)
     const [newRepair, setNewRepair] = useState({
-        data: new Date().toISOString().slice(0, 10),
         nombre_operacion: '',
         detalii: '',
         kilometri: ''
@@ -48,7 +47,7 @@ function ReparatiiPage() {
                 .from('reparatii')
                 .select('*')
                 .eq(foreignKey, id)
-                .order('data', { ascending: false });
+                .order('created_at', { ascending: false }); // Sortăm după data creării
 
             if (repairsError) console.error(`Error fetching repairs:`, repairsError);
             else setRepairs(repairsData || []);
@@ -63,9 +62,8 @@ function ReparatiiPage() {
         e.preventDefault();
         const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
         
-        // Obiect de date actualizat (fără cost)
+        // Obiect de date actualizat (fără dată manuală)
         const repairData = {
-            data: newRepair.data,
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
             kilometri: type === 'camion' ? parseInt(newRepair.kilometri, 10) || null : null,
@@ -79,8 +77,8 @@ function ReparatiiPage() {
         } else {
             alert('Reparación añadida con éxito!');
             setIsAddModalOpen(false);
-            // Resetăm formularul (fără cost)
-            setNewRepair({ data: new Date().toISOString().slice(0, 10), nombre_operacion: '', detalii: '', kilometri: '' });
+            // Resetăm formularul
+            setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
             setRepairs(prevRepairs => [newRecord, ...prevRepairs]);
         }
     };
@@ -116,11 +114,11 @@ function ReparatiiPage() {
                             <div className={styles.repairHeader}>
                                 <div className={styles.repairTitle}>
                                     <h4>{repair.nombre_operacion || 'Reparación'}</h4>
-                                    <span className={styles.repairDate}>del {new Date(repair.data).toLocaleDateString()}</span>
+                                    {/* Folosim created_at pentru a afișa data */}
+                                    <span className={styles.repairDate}>del {new Date(repair.created_at).toLocaleDateString()}</span>
                                 </div>
                                 <div className={styles.repairMeta}>
                                     {type === 'camion' && repair.kilometri && <span className={styles.repairKilometers}><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
-                                    {/* Am eliminat afișarea costului */}
                                 </div>
                             </div>
                             <p className={styles.repairDetails}>{repair.detalii}</p>
@@ -139,7 +137,7 @@ function ReparatiiPage() {
                             <button onClick={() => setIsAddModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
-                            <div className={styles.formGroup}><label>Fecha</label><input type="date" value={newRepair.data} onChange={(e) => setNewRepair({...newRepair, data: e.target.value})} required /></div>
+                            {/* Am eliminat câmpul pentru dată */}
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
                             
                             {type === 'camion' && (
