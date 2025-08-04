@@ -1,12 +1,3 @@
-/*
- * Clasa pentru fundal. Componenta Layout o va folosi.
- * Asigură-te că ai o imagine de fundal în folderul public
- * sau înlocuiește calea cu una corectă.
-*/
-.homepageBackground {
-    /* Această clasă este goală intenționat pentru a lăsa componenta Layout să controleze fundalul */
-}
-
 /* Cardul de anunțuri */
 .announcementsCard {
     background-color: rgba(31, 41, 55, 0.6);
@@ -45,7 +36,7 @@
 .announcementsContent {
     font-size: 1rem;
     line-height: 1.6;
-    white-space: pre-wrap; /* Păstrează formatarea textului */
+    white-space: pre-wrap;
 }
 
 /* Grup de butoane din header */
@@ -91,8 +82,60 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* --- Stiluri pentru Link-uri Externe (NOU) --- */
+.externalLinksContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
 
-/* Stiluri pentru Modal (formular) */
+.sectionTitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.linksGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.linkCard {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: rgba(31, 41, 55, 0.6);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #d1d5db;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.linkCard:hover {
+    transform: translateY(-3px);
+    background-color: rgba(31, 41, 55, 0.8);
+    border-color: rgba(251, 146, 60, 0.5);
+    color: white;
+}
+
+.linkCard svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: #fb923c;
+}
+
+.linkCard span {
+    font-weight: 500;
+}
+
+/* --- Stiluri pentru Modal (formular) --- */
 .modalOverlay {
     position: fixed;
     inset: 0;
@@ -144,4 +187,3 @@
     justify-content: flex-end;
     gap: 1rem;
 }
-
