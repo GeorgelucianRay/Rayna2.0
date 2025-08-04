@@ -14,16 +14,18 @@ const SearchIcon = () => (
 
 function TallerPage() {
   const ITEMS_PER_PAGE = 10;
-  const [activeTab, setActiveTab] = useState('camioane'); // 'camioane' sau 'remolques'
+  const [activeTab, setActiveTab] = useState('camioane');
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [error, setError] = useState(null); // NOU: Stare pentru a reține mesajul de eroare
 
-  // Funcție pentru a prelua vehiculele din Supabase cu paginare și căutare
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
+    setError(null); // Resetăm eroarea la fiecare nouă căutare
+
     try {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
@@ -31,26 +33,24 @@ function TallerPage() {
       let query = supabase.from(activeTab).select('*', { count: 'exact' });
 
       if (searchTerm) {
-        // Căutăm în coloana 'matricula'
         query = query.ilike('matricula', `%${searchTerm}%`);
       }
+      
+      // Am eliminat sortarea (.order) pentru a preveni erorile dacă coloana 'created_at' lipsește
+      const { data, error: queryError, count } = await query.range(from, to);
 
-      // Asigură-te că ai o coloană 'created_at' în ambele tabele
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      // Dacă Supabase returnează o eroare, o aruncăm pentru a fi prinsă de blocul catch
-      if (error) {
-        throw error;
+      if (queryError) {
+        // Dacă Supabase returnează o eroare, o aruncăm pentru a o prinde mai jos
+        throw queryError;
       }
 
       setVehicles(data || []);
       setTotalCount(count || 0);
 
-    } catch (error) {
-      console.error(`Error fetching data from '${activeTab}':`, error.message);
-      // Afișăm o eroare în consolă pentru a vedea exact ce nu a funcționat
+    } catch (err) {
+      // Aici prindem orice eroare și o afișăm utilizatorului
+      console.error(`Error fetching data from '${activeTab}':`, err);
+      setError(`A apărut o eroare: ${err.message}. Verificați consola și regulile de securitate (RLS) din Supabase.`);
       setVehicles([]);
       setTotalCount(0);
     } finally {
@@ -62,17 +62,15 @@ function TallerPage() {
     fetchVehicles();
   }, [fetchVehicles]);
 
-  // Gestionează schimbarea tab-ului
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1);
     setSearchTerm('');
   };
 
-  // Gestionează modificarea textului de căutare
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Resetează la prima pagină la o nouă căutare
+    setCurrentPage(1);
   };
 
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
@@ -83,12 +81,11 @@ function TallerPage() {
         <h1>Taller</h1>
       </div>
 
-      {/* Controale: Tab-uri și Căutare */}
       <div className={styles.controlsHeader}>
         <div className={styles.tabContainer}>
           <button
             className={`${styles.tabButton} ${activeTab === 'camioane' ? styles.active : ''}`}
-            onClick={() => handleTabChange('camiones')}
+            onClick={() => handleTabChange('camioane')}
           >
             Camiones
           </button>
@@ -113,6 +110,9 @@ function TallerPage() {
       {/* Afișare conținut */}
       {loading ? (
         <div className={styles.loadingText}>Cargando vehículos...</div>
+      ) : error ? (
+        // NOU: Afișăm un mesaj de eroare clar pe ecran
+        <div className={styles.noDataText} style={{ color: '#ef4444' }}>{error}</div>
       ) : vehicles.length === 0 ? (
         <div className={styles.noDataText}>No se encontraron vehículos.</div>
       ) : (
@@ -126,7 +126,6 @@ function TallerPage() {
             ))}
           </div>
 
-          {/* Paginare */}
           <div className={styles.paginationContainer}>
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -153,3 +152,4 @@ function TallerPage() {
 }
 
 export default TallerPage;
+
