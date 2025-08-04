@@ -14,17 +14,18 @@ const SearchIcon = () => (
 
 function TallerPage() {
   const ITEMS_PER_PAGE = 10;
-  const [activeTab, setActiveTab] = useState('camioane');
+  // MODIFICARE: Folosim numele la singular pentru tabele
+  const [activeTab, setActiveTab] = useState('camion');
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [error, setError] = useState(null); // NOU: Stare pentru a reține mesajul de eroare
+  const [error, setError] = useState(null);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
-    setError(null); // Resetăm eroarea la fiecare nouă căutare
+    setError(null);
 
     try {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -36,11 +37,9 @@ function TallerPage() {
         query = query.ilike('matricula', `%${searchTerm}%`);
       }
       
-      // Am eliminat sortarea (.order) pentru a preveni erorile dacă coloana 'created_at' lipsește
       const { data, error: queryError, count } = await query.range(from, to);
 
       if (queryError) {
-        // Dacă Supabase returnează o eroare, o aruncăm pentru a o prinde mai jos
         throw queryError;
       }
 
@@ -48,7 +47,6 @@ function TallerPage() {
       setTotalCount(count || 0);
 
     } catch (err) {
-      // Aici prindem orice eroare și o afișăm utilizatorului
       console.error(`Error fetching data from '${activeTab}':`, err);
       setError(`A apărut o eroare: ${err.message}. Verificați consola și regulile de securitate (RLS) din Supabase.`);
       setVehicles([]);
@@ -84,14 +82,14 @@ function TallerPage() {
       <div className={styles.controlsHeader}>
         <div className={styles.tabContainer}>
           <button
-            className={`${styles.tabButton} ${activeTab === 'camioane' ? styles.active : ''}`}
-            onClick={() => handleTabChange('camioane')}
+            className={`${styles.tabButton} ${activeTab === 'camion' ? styles.active : ''}`}
+            onClick={() => handleTabChange('camion')}
           >
             Camiones
           </button>
           <button
-            className={`${styles.tabButton} ${activeTab === 'remolques' ? styles.active : ''}`}
-            onClick={() => handleTabChange('remolques')}
+            className={`${styles.tabButton} ${activeTab === 'remorca' ? styles.active : ''}`}
+            onClick={() => handleTabChange('remorca')}
           >
             Remolques
           </button>
@@ -111,7 +109,6 @@ function TallerPage() {
       {loading ? (
         <div className={styles.loadingText}>Cargando vehículos...</div>
       ) : error ? (
-        // NOU: Afișăm un mesaj de eroare clar pe ecran
         <div className={styles.noDataText} style={{ color: '#ef4444' }}>{error}</div>
       ) : vehicles.length === 0 ? (
         <div className={styles.noDataText}>No se encontraron vehículos.</div>
@@ -119,7 +116,8 @@ function TallerPage() {
         <>
           <div className={styles.vehicleGrid}>
             {vehicles.map(vehicle => (
-              <Link to={`/reparatii/${activeTab === 'camiones' ? 'camion' : 'remorca'}/${vehicle.id}`} key={vehicle.id} className={styles.vehicleCard}>
+              // MODIFICARE: Logica pentru link este acum mai simplă
+              <Link to={`/reparatii/${activeTab}/${vehicle.id}`} key={vehicle.id} className={styles.vehicleCard}>
                 <h3>{vehicle.matricula}</h3>
                 <p>Ver historial de reparaciones</p>
               </Link>
@@ -152,4 +150,3 @@ function TallerPage() {
 }
 
 export default TallerPage;
-
