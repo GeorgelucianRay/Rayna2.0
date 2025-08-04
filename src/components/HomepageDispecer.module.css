@@ -1,195 +1,195 @@
-/* src/components/HomepageDispecer.module.css */
-
-/* --- Definirea Variabilelor Globale --- */
-:root {
-    --color-text-primary: white;
-    --color-text-secondary: #e5e7eb;
-    --color-accent-primary: #fb923c;
-    --color-accent-secondary: #a5f3fc;
-    --color-whatsapp: #25d366;
-
-    --bg-card: rgba(31, 41, 55, 0.8); /* Ușor mai opac pentru lizibilitate */
-    --bg-interactive: rgba(255, 255, 255, 0.1);
-    --bg-interactive-hover: rgba(255, 255, 255, 0.15);
-    --bg-textarea: rgba(17, 24, 39, 0.85);
-
-    --border-color-soft: rgba(255, 255, 255, 0.15);
-    --border-color-medium: rgba(255, 255, 255, 0.25);
-
-    --radius-lg: 1rem;
-    --radius-md: 0.75rem;
-    --radius-sm: 0.5rem;
-
-    --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-    --shadow-lifted: 0 15px 25px -5px rgba(0, 0, 0, 0.3);
-
-    --transition-speed: 250ms;
+/* Stiluri Generale (Păstrate) */
+.depotHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 1.5rem;
+}
+.depotTabButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #d1d5db;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+}
+.depotTabButton:hover {
+  color: white;
+}
+.depotTabButton.active {
+  color: #fb923c;
+  border-bottom-color: #fb923c;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.searchBar {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  flex-grow: 1;
+  max-width: 400px;
+}
+.searchBar svg {
+  color: #d1d5db;
+  margin-right: 0.5rem;
+}
+.searchBar input {
+  background: transparent;
+  border: none;
+  color: white;
+  width: 100%;
+}
+.searchBar input:focus {
+  outline: none;
+}
+.searchBar input::placeholder {
+  color: #9ca3af;
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* --- Cardul Principal de Anunțuri --- */
+/* Cardul de anunțuri (Stiluri Noi) */
 .announcementsCard {
-    background-color: var(--bg-card);
-    backdrop-filter: blur(14px);
-    padding: 1.5rem 2rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color-medium);
-    box-shadow: var(--shadow-card);
-    color: var(--color-text-primary);
-    animation: fadeInUp 0.5s ease-out forwards;
+    background-color: rgba(31, 41, 55, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    color: #d1d5db;
+    margin-bottom: 2rem;
 }
 
 .announcementsHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color-soft);
-    padding-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .announcementsHeaderTitle {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: var(--color-text-primary);
+    color: white;
 }
 
 .announcementsTitle {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
 }
 
 .announcementsContent {
-    white-space: pre-wrap;
+    font-size: 1rem;
     line-height: 1.6;
-    font-size: 1rem;
-    color: var(--color-text-secondary);
+    white-space: pre-wrap;
 }
 
-.announcementsContent strong {
-    color: var(--color-accent-secondary);
-    font-weight: 600;
-}
-
-/* --- Linkuri Externe și Social Media --- */
-.externalLinksContainer {
-    margin-top: 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.linksRow, .socialLinksRow {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
-}
-
-.socialLink {
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform var(--transition-speed) ease-in-out, box-shadow var(--transition-speed) ease-in-out;
-    text-decoration: none;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.socialLink:hover {
-    transform: translateY(-5px) scale(1.05);
-    box-shadow: var(--shadow-lifted);
-}
-
-.socialLink span {
-    margin-left: 0.5rem;
-}
-
-.instagramLink { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-.tiktokLink { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
-.whatsappLink { background: var(--color-whatsapp); }
-
-/* --- Stiluri pentru Editarea Anunțurilor --- */
-.actionsContainer {
+/* Grup de butoane din header (Stiluri Noi) */
+.headerButtons {
     display: flex;
     gap: 0.75rem;
 }
 
-.actionButton {
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-sm);
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-speed) ease-in-out;
+.actionButton, .saveButton {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+    color: white;
+    font-weight: 600;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
 }
 
-.editButton {
-    background-color: transparent;
-    border: 1px solid var(--border-color-medium);
-    color: var(--color-text-primary);
-}
-.editButton:hover {
-    background-color: var(--bg-interactive-hover);
-    border-color: var(--border-color-soft);
+.actionButton:hover, .saveButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
-.saveButton {
-    background-color: var(--color-accent-primary);
-    color: var(--color-text-primary);
-}
-.saveButton:hover:not(:disabled) {
-    filter: brightness(1.15);
-    box-shadow: 0 4px 15px rgba(251, 146, 60, 0.3);
-}
-.saveButton:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.actionButtonSecondary, .cancelButton {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-.cancelButton {
-    background-color: var(--bg-interactive);
-    color: var(--color-text-secondary);
-}
-.cancelButton:hover {
-    background-color: var(--bg-interactive-hover);
+.actionButtonSecondary:hover, .cancelButton:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
-.editTextarea {
-    width: 100%;
-    min-height: 120px;
-    background-color: var(--bg-textarea);
-    border: 1px solid var(--border-color-soft);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
-    padding: 1rem;
-    font-family: inherit;
-    font-size: 1rem;
-    line-height: 1.6;
-    resize: vertical;
-    transition: border-color var(--transition-speed) ease-in-out, box-shadow var(--transition-speed) ease-in-out;
+
+/* Stiluri pentru Modal (formular) (Stiluri Noi) */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
 }
 
-.editTextarea:focus-visible {
-    outline: none;
-    border-color: var(--color-accent-primary);
-    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.4);
+.modalContent {
+  background-color: #1f2937;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 600px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modalContent h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.modalTextarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  margin-bottom: 1.5rem;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.modalTextarea:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.7);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
 }
