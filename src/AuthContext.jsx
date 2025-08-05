@@ -17,30 +17,30 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
         
         if (docDate < today) {
             const daysAgo = Math.floor((today - docDate) / (1000 * 60 * 60 * 24));
-            alarms.push({ message: `${docType} pentru ${ownerName} a expirat de ${daysAgo} zile.`, days: -daysAgo, expired: true });
+            alarms.push({ message: `El ${docType} para ${ownerName} ha caducado hace ${daysAgo} días.`, days: -daysAgo, expired: true });
         } 
         else if (docDate <= thirtyDaysFromNow) {
             const daysLeft = Math.ceil((docDate - today) / (1000 * 60 * 60 * 24));
-            alarms.push({ message: `${docType} pentru ${ownerName} expiră în ${daysLeft} zile.`, days: daysLeft, expired: false });
+            alarms.push({ message: `El ${docType} para ${ownerName} caduca en ${daysLeft} días.`, days: daysLeft, expired: false });
         }
     };
 
     profiles.forEach(driver => {
         if(driver.role === 'sofer') {
-            checkDate(driver.cap_expirare, driver.nombre_completo, 'Certificat CAP');
-            checkDate(driver.carnet_caducidad, driver.nombre_completo, 'Carnet de conducere');
+            checkDate(driver.cap_expirare, driver.nombre_completo, 'Certificado CAP');
+            checkDate(driver.carnet_caducidad, driver.nombre_completo, 'Permiso de Conducir');
             if (driver.tiene_adr) {
-                checkDate(driver.adr_caducidad, driver.nombre_completo, 'Certificat ADR');
+                checkDate(driver.adr_caducidad, driver.nombre_completo, 'Certificado ADR');
             }
         }
     });
     
     camioane.forEach(camion => {
-        checkDate(camion.fecha_itv, camion.matricula, 'ITV Camion');
+        checkDate(camion.fecha_itv, camion.matricula, 'ITV del Camión');
     });
     
     remorci.forEach(remorca => {
-        checkDate(remorca.fecha_itv, remorca.matricula, 'ITV Remorcă');
+        checkDate(remorca.fecha_itv, remorca.matricula, 'ITV del Remolque');
     });
 
     return alarms.sort((a, b) => a.days - b.days);
@@ -59,9 +59,6 @@ export const AuthProvider = ({ children }) => {
 
             if (session?.user) {
                 try {
-                    // MODIFICARE: Aliniem citirea cu modul de salvare.
-                    // Această interogare folosește coloanele 'camion_id' și 'remorca_id' din tabela 'profiles'
-                    // pentru a prelua datele complete ale vehiculelor.
                     const { data: userProfile, error: profileError } = await supabase
                         .from('profiles')
                         .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
@@ -78,7 +75,6 @@ export const AuthProvider = ({ children }) => {
                         const { data: allRemorci } = await supabase.from('remorci').select('*');
                         setAlarms(calculateExpirations(allProfiles, allCamioane, allRemorci));
                     } else if (userProfile?.role === 'sofer') {
-                        // Logica pentru alarme va folosi acum datele corect încărcate
                         const camioaneSofer = userProfile.camioane ? [userProfile.camioane].flat() : [];
                         const remorciSofer = userProfile.remorci ? [userProfile.remorci].flat() : [];
                         setAlarms(calculateExpirations([userProfile], camioaneSofer, remorciSofer));
