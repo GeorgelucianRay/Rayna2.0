@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import styles from './MiPerfilPage.module.css'; // Singurul import de stiluri necesar
+import styles from './MiPerfilPage.module.css';
 
-// --- Iconițe SVG ---
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const AlarmIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="M12 8v4l2 2"></path><path d="M19.94 15.5a.5.5 0 0 0 .06.7l.6.6a.5.5 0 0 0 .7-.06l1.42-1.42a.5.5 0 0 0-.06-.7l-.6-.6a.5.5 0 0 0-.7.06z"></path><path d="M4.06 15.5a.5.5 0 0 1-.06.7l-.6.6a.5.5 0 0 1-.7-.06L1.28 15.4a.5.5 0 0 1 .06-.7l.6-.6a.5.5 0 0 1 .7.06z"></path><path d="M12 4V2"></path><path d="M12 22v-2"></path></svg>;
 
-// Funcția de calcul al alertelor
 const calculatePersonalExpirations = (profile) => {
     if (!profile) return [];
     const alarms = [];
@@ -24,23 +22,23 @@ const calculatePersonalExpirations = (profile) => {
         const docDate = new Date(dateString);
         if (docDate < today) {
             const daysAgo = Math.floor((today - docDate) / (1000 * 60 * 60 * 24));
-            alarms.push({ message: `${docType} pentru ${ownerName} a expirat de ${daysAgo} zile.`, days: -daysAgo, expired: true });
+            alarms.push({ message: `El ${docType} para ${ownerName} ha caducado hace ${daysAgo} días.`, days: -daysAgo, expired: true });
         } else if (docDate <= thirtyDaysFromNow) {
             const daysLeft = Math.ceil((docDate - today) / (1000 * 60 * 60 * 24));
-            alarms.push({ message: `${docType} pentru ${ownerName} expiră în ${daysLeft} zile.`, days: daysLeft, expired: false });
+            alarms.push({ message: `El ${docType} para ${ownerName} caduca en ${daysLeft} días.`, days: daysLeft, expired: false });
         }
     };
 
-    checkDate(profile.cap_expirare, 'tine', 'Certificat CAP');
-    checkDate(profile.carnet_caducidad, 'tine', 'Carnet de conducere');
+    checkDate(profile.cap_expirare, 'ti', 'Certificado CAP');
+    checkDate(profile.carnet_caducidad, 'ti', 'Permiso de Conducir');
     if (profile.tiene_adr) {
-        checkDate(profile.adr_caducidad, 'tine', 'Certificat ADR');
+        checkDate(profile.adr_caducidad, 'ti', 'Certificado ADR');
     }
     if (profile.camioane) {
-        checkDate(profile.camioane.fecha_itv, profile.camioane.matricula, 'ITV Camion');
+        checkDate(profile.camioane.fecha_itv, profile.camioane.matricula, 'ITV del Camión');
     }
     if (profile.remorci) {
-        checkDate(profile.remorci.fecha_itv, profile.remorci.matricula, 'ITV Remorcă');
+        checkDate(profile.remorci.fecha_itv, profile.remorci.matricula, 'ITV del Remolque');
     }
     return alarms.sort((a, b) => a.days - b.days);
 };
