@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext'; // Adăugat pentru a verifica rolul utilizatorului
+import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import styles from './CamionPage.module.css'; // Stilurile rămân aceleași, dar s-ar putea să necesite ajustări
+import styles from './CamionPage.module.css';
 
-// --- Iconițe SVG (nemodificate) ---
+// --- Iconițe SVG ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
@@ -16,15 +16,13 @@ const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heig
 function CamionPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { profile } = useAuth(); // Adăugat
-    const ITEMS_PER_PAGE = 10; // Adăugat
+    const { profile } = useAuth();
+    const ITEMS_PER_PAGE = 10;
 
-    // Stările existente pentru camion și editare
     const [camion, setCamion] = useState(null);
     const [isEditCamionModalOpen, setIsEditCamionModalOpen] = useState(false);
     const [editableCamion, setEditableCamion] = useState(null);
     
-    // Stările pentru reparații, aduse la zi cu funcționalitățile noi
     const [repairs, setRepairs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAddRepairModalOpen, setIsAddRepairModalOpen] = useState(false);
@@ -32,7 +30,6 @@ function CamionPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
 
-    // Stare actualizată pentru formularul de adăugare reparație
     const [newRepair, setNewRepair] = useState({
         nombre_operacion: '',
         detalii: '',
@@ -43,12 +40,10 @@ function CamionPage() {
         const fetchCamionData = async () => {
             setLoading(true);
             
-            // Preluarea datelor camionului (logică păstrată)
             const { data: camionData, error: camionError } = await supabase.from('camioane').select('*').eq('id', id).single();
             if (camionError) console.error("Error fetching camion:", camionError);
             else setCamion(camionData);
 
-            // Logica NOUĂ pentru preluarea reparațiilor cu căutare și paginare
             const from = (currentPage - 1) * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
 
@@ -76,7 +71,6 @@ function CamionPage() {
         fetchCamionData();
     }, [id, currentPage, searchTerm]);
 
-    // Funcția NOUĂ pentru adăugare reparație
     const handleAddRepair = async (e) => {
         e.preventDefault();
         const repairData = {
@@ -94,7 +88,6 @@ function CamionPage() {
             alert('Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
-            // Reîmprospătăm lista pentru a afișa noua reparație
             setSearchTerm('');
             setCurrentPage(1);
         }
@@ -105,7 +98,6 @@ function CamionPage() {
         setCurrentPage(1);
     };
 
-    // Funcțiile pentru editarea camionului (păstrate)
     const handleEditClick = () => {
         setEditableCamion({ ...camion });
         setIsEditCamionModalOpen(true);
@@ -125,7 +117,9 @@ function CamionPage() {
     };
 
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
-    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
+    
+    // --- MODIFICAREA CHEIE ESTE AICI ---
+    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic' || profile?.role === 'sofer';
 
     if (loading) return <div className={styles.loadingScreen}>Cargando datos del camión...</div>;
     if (!camion) return <Layout><p style={{color: 'white', textAlign: 'center'}}>No se encontró el camión.</p></Layout>;
@@ -190,7 +184,6 @@ function CamionPage() {
                 <p className={styles.noRepairs}>No hay reparaciones registradas para este camión.</p>
             )}
 
-            {/* Modal NOU pentru adăugare reparație */}
             {isAddRepairModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -211,7 +204,6 @@ function CamionPage() {
                 </div>
             )}
 
-            {/* Modalul pentru editarea camionului (păstrat, nemodificat) */}
             {isEditCamionModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
