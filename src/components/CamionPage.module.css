@@ -115,6 +115,31 @@
     box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
 }
 
+/* --- STILURI NOI PENTRU BARA DE CĂUTARE --- */
+.searchBar {
+    display: flex;
+    align-items: center;
+    background-color: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    margin-bottom: 2rem;
+    color: #9ca3af;
+}
+.searchBar input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 1rem;
+    padding: 0.5rem;
+    margin-left: 0.75rem;
+}
+.searchBar input::placeholder {
+    color: #6b7280;
+}
+
 .repairsList {
     display: flex;
     flex-direction: column;
@@ -177,6 +202,37 @@
     border-radius: 1rem;
 }
 
+/* --- STILURI NOI PENTRU PAGINARE --- */
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2.5rem;
+    gap: 1rem;
+    color: white;
+}
+.paginationButton {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 200ms;
+}
+.paginationButton:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+.paginationButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.pageIndicator {
+    font-weight: 500;
+}
+
+
 .loadingScreen {
     display: flex;
     justify-content: center;
@@ -186,7 +242,7 @@
     font-size: 1.5rem;
 }
 
-/* --- Stiluri pentru Modal --- */
+/* --- Stiluri pentru Modal (nemodificate, dar necesare) --- */
 
 .modalOverlay {
     position: fixed;
