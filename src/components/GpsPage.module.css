@@ -129,18 +129,22 @@
   }
 }
 
-/* Modal specific pentru locații */
+.formWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .locationModal {
   max-width: 600px;
 }
 
-/* Modal header */
 .modalHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* MODIFICAT: Spațierea verticală redusă pentru a câștiga loc */
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background-color: rgba(31, 41, 55, 0.5);
 }
@@ -170,18 +174,14 @@
   color: white;
 }
 
-/* Modal body */
 .modalBody {
-  /* MODIFICAT: Spațierea verticală redusă */
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
 }
 
-/* Modal footer */
 .modalFooter {
-  /* MODIFICAT: Spațierea verticală redusă */
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   gap: 0.75rem;
@@ -189,7 +189,6 @@
   background-color: rgba(31, 41, 55, 0.5);
 }
 
-/* Modal buttons */
 .modalButton {
   padding: 0.625rem 1.25rem;
   border-radius: 0.5rem;
@@ -221,7 +220,6 @@
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Form input groups in modals */
 .inputGroup {
   margin-bottom: 1rem;
 }
@@ -270,159 +268,34 @@
   min-height: 80px;
 }
 
-/* Modal header actions */
-.modalHeaderActions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+.modalHeaderActions { display: flex; gap: 0.5rem; align-items: center; }
+.editButtonModal { background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0.5rem; border-radius: 0.375rem; transition: all 0.2s ease; }
+.editButtonModal:hover { background-color: rgba(255, 255, 255, 0.1); color: white; }
 
-.editButtonModal {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  transition: all 0.2s ease;
-}
-
-.editButtonModal:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-/* Imaginea din modal */
+/* === AICI ESTE SINGURA MODIFICARE NECESARĂ === */
 .locationModalImage {
   width: 100%;
-  /* MODIFICAT: Înălțimea imaginii redusă și făcută flexibilă */
+  /* MODIFICAT: Înlocuim înălțimea fixă cu una maximă, flexibilă */
   max-height: 250px;
   object-fit: cover;
   border-radius: 0.5rem;
   margin-bottom: 1rem;
 }
 
-/* Detaliile locației în modal */
-.locationDetails {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
+.locationDetails { display: flex; flex-direction: column; gap: 0.75rem; }
+.locationDetails p { margin: 0; color: #d1d5db; line-height: 1.5; }
+.locationDetails strong { color: white; font-weight: 600; }
+.irButton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 600; transition: all 0.2s ease; }
+.irButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.geolocationGroup { display: flex; gap: 0.5rem; align-items: stretch; }
+.geolocationGroup input { flex: 1; }
+.geolocationButton { background-color: rgba(59, 130, 246, 0.8); color: white; border: none; border-radius: 0.375rem; padding: 0.5rem 0.75rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; min-width: 44px; }
+.geolocationButton:hover:not(:disabled) { background-color: rgba(59, 130, 246, 1); transform: translateY(-1px); }
+.geolocationButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.paginationContainer { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; }
+.paginationButton { background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.paginationButton:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.paginationButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.pageIndicator { color: white; font-weight: 600; }
+@media (max-width: 640px) { .modalContent { max-width: 100%; margin: 1rem; } .modalHeader, .modalBody, .modalFooter { padding: 1rem; } .modalFooter { flex-direction: column; } .modalButton { width: 100%; } }
 
-.locationDetails p {
-  margin: 0;
-  color: #d1d5db;
-  line-height: 1.5;
-}
-
-.locationDetails strong {
-  color: white;
-  font-weight: 600;
-}
-
-/* Butonul "Cómo llegar" */
-.irButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.irButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Grup pentru geolocație */
-.geolocationGroup {
-  display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-}
-
-.geolocationGroup input {
-  flex: 1;
-}
-
-.geolocationButton {
-  background-color: rgba(59, 130, 246, 0.8);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-}
-
-.geolocationButton:hover:not(:disabled) {
-  background-color: rgba(59, 130, 246, 1);
-  transform: translateY(-1px);
-}
-
-.geolocationButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Container pentru paginare */
-.paginationContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.paginationButton {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.paginationButton:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-.paginationButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pageIndicator {
-  color: white;
-  font-weight: 600;
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .modalContent {
-    max-width: 100%;
-    margin: 1rem;
-  }
-
-  .modalHeader,
-  .modalBody,
-  .modalFooter {
-    padding: 1rem;
-  }
-
-  .modalFooter {
-    flex-direction: column;
-  }
-
-  .modalButton {
-    width: 100%;
-  }
-}
