@@ -112,7 +112,7 @@
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
-  /* overflow: hidden; -> ACEASTA LINIE A FOST ȘTEARSĂ PENTRU A PERMITE SCROLL-UL */
+  /* overflow: hidden; -> ACEASTA LINIE A FOST ȘTEARSĂ. ESTE SINGURA MODIFICARE. */
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
