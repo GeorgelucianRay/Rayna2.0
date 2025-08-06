@@ -27,7 +27,7 @@ const LocationList = ({ tableName, title }) => {
   const [editingLocation, setEditingLocation] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   
-  // ADĂUGAT: Chei unice pentru localStorage
+  // ADĂUGAT: Chei unice pentru localStorage pentru a preveni conflictele între tab-uri
   const addFormStorageKey = `addForm-${tableName}`;
   const editFormStorageKey = `editForm-${tableName}`;
 
@@ -35,7 +35,7 @@ const LocationList = ({ tableName, title }) => {
     nombre: '', direccion: '', link_maps: '', tiempo_espera: '', detalles: '', coordenadas: '', link_foto: '',
   });
 
-  // ADĂUGAT: Funcții generice pentru actualizarea stării și salvarea în localStorage
+  // ADĂUGAT: Funcții care actualizează starea React ȘI salvează în localStorage
   const updateNewLocationState = (newState) => {
     setNewLocation(newState);
     localStorage.setItem(addFormStorageKey, JSON.stringify(newState));
@@ -70,7 +70,7 @@ const LocationList = ({ tableName, title }) => {
   );
 
   useEffect(() => {
-    // ADĂUGAT: Logica de restaurare a stării la încărcare
+    // ADĂUGAT: Logica de restaurare a stării din localStorage la încărcarea componentei
     try {
       const savedAddForm = localStorage.getItem(addFormStorageKey);
       if (savedAddForm) {
@@ -90,15 +90,16 @@ const LocationList = ({ tableName, title }) => {
     }
     
     fetchLocations(currentPage, searchTerm);
-  }, [fetchLocations, currentPage, searchTerm, addFormStorageKey, editFormStorageKey]); // Dependințe adăugate
+  }, [tableName]); // MODIFICAT: Rulează o singură dată la schimbarea tab-ului
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
+    setCurrentPage(1); 
   };
   
+  // MODIFICAT: Funcția primește acum și funcția de update a stării pentru a salva în localStorage
   const handleGetLocation = (setter, stateUpdater) => {
     if (!navigator.geolocation) {
       alert('Geolocalizarea nu este suportată de acest browser.');
@@ -110,7 +111,7 @@ const LocationList = ({ tableName, title }) => {
         const coordsString = `${latitude},${longitude}`;
         setter((prev) => {
           const newState = { ...prev, coordenadas: coordsString };
-          stateUpdater(newState); // MODIFICAT: Salvează starea actualizată
+          stateUpdater(newState); // Salvează starea actualizată în localStorage
           return newState;
         });
         setGettingLocation(false);
@@ -133,10 +134,7 @@ const LocationList = ({ tableName, title }) => {
       alert(`Error al añadir la ubicación: ${error.message}`);
     } else {
       alert('Ubicación añadida con éxito!');
-      setIsAddModalOpen(false);
-      // MODIFICAT: Curăță localStorage la succes
-      localStorage.removeItem(addFormStorageKey);
-      updateNewLocationState({ nombre: '', direccion: '', link_maps: '', tiempo_espera: '', detalles: '', coordenadas: '', link_foto: '' });
+      closeAddModal(); // MODIFICAT: Folosește funcția de închidere pentru a curăța tot
       setSearchTerm('');
       setCurrentPage(1);
       fetchLocations(1, '');
@@ -144,7 +142,7 @@ const LocationList = ({ tableName, title }) => {
   };
   
   const handleEditClick = (location) => {
-    updateEditingLocationState(location); // MODIFICAT: Salvează starea de editare
+    updateEditingLocationState(location); // Salvează starea de editare
     setIsEditModalOpen(true);
     setSelectedLocation(null);
   };
@@ -157,29 +155,28 @@ const LocationList = ({ tableName, title }) => {
       alert(`Error al actualizar la ubicación: ${error.message}`);
     } else {
       alert('Ubicación actualizada con éxito!');
-      setIsEditModalOpen(false);
-      // MODIFICAT: Curăță localStorage la succes
-      localStorage.removeItem(editFormStorageKey);
-      setEditingLocation(null);
+      closeEditModal(); // MODIFICAT: Folosește funcția de închidere pentru a curăța tot
       fetchLocations(currentPage, searchTerm);
     }
   };
 
-  // MODIFICAT: Funcții de închidere care curăță localStorage
+  // ADĂUGAT: Funcții de închidere care șterg starea din localStorage
   const closeAddModal = () => {
     setIsAddModalOpen(false);
     localStorage.removeItem(addFormStorageKey);
+    setNewLocation({ nombre: '', direccion: '', link_maps: '', tiempo_espera: '', detalles: '', coordenadas: '', link_foto: '' });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     localStorage.removeItem(editFormStorageKey);
+    setEditingLocation(null);
   };
   
   const getMapsLink = (location) => {
     if (location.link_maps) return location.link_maps;
     if (location.coordenadas) {
-      return `https://www.google.com/maps?q=${location.coordenadas}`;
+      return `https://www.google.com/maps/search/?api=1&query=${location.coordenadas}`;
     }
     return null;
   };
@@ -188,6 +185,7 @@ const LocationList = ({ tableName, title }) => {
 
   return (
     <>
+      {/* ... toolbar, lista de locații, paginare, modal de detalii rămân neschimbate în structură ... */}
       <div className={depotStyles.toolbar}>
         <div className={depotStyles.searchBar}>
           <SearchIcon />
@@ -195,7 +193,6 @@ const LocationList = ({ tableName, title }) => {
         </div>
         {canEdit && ( <button className={depotStyles.addButton} onClick={() => setIsAddModalOpen(true)}><PlusIcon /><span>Añadir {title}</span></button> )}
       </div>
-
       {loading ? ( <p style={{ color: 'white', textAlign: 'center' }}>Cargando...</p> ) : (
         <>
           <div className={styles.locationGrid}>
@@ -216,7 +213,6 @@ const LocationList = ({ tableName, title }) => {
           )}
         </>
       )}
-
       {selectedLocation && (
         <div className={styles.modalOverlay} onClick={() => setSelectedLocation(null)}>
           <div className={`${styles.modalContent} ${styles.locationModal}`} onClick={(e) => e.stopPropagation()}>
@@ -232,7 +228,7 @@ const LocationList = ({ tableName, title }) => {
               <div className={styles.locationDetails}>
                 {selectedLocation.direccion && ( <p><strong>Dirección:</strong> {selectedLocation.direccion}</p> )}
                 {selectedLocation.tiempo_espera && tableName === 'gps_clientes' && ( <p><strong>Tiempo de Espera:</strong> {selectedLocation.tiempo_espera}</p> )}
-                {selectedLocation.detalles && ( <p><strong>Detalles:</strong> {selectedLocation.detalles}</p> )}
+                {selectedLocation.detalii && ( <p><strong>Detalles:</strong> {selectedLocation.detalii}</p> )}
               </div>
             </div>
             <div className={styles.modalFooter}>
@@ -242,7 +238,7 @@ const LocationList = ({ tableName, title }) => {
         </div>
       )}
       
-      {/* MODIFICAT: Folosește funcția closeAddModal */}
+      {/* --- MODIFICARE STRUCTURALĂ PENTRU SCROLL ȘI LOGICĂ PENTRU PERSISTENȚĂ --- */}
       {isAddModalOpen && (
         <div className={styles.modalOverlay} onClick={closeAddModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -250,15 +246,16 @@ const LocationList = ({ tableName, title }) => {
               <h3 className={styles.modalTitle}>Añadir Nuevo {title}</h3>
               <button onClick={closeAddModal} className={styles.closeButton}><CloseIcon /></button>
             </div>
-            <form onSubmit={handleAddLocation} className={styles.modalBody}>
-              {/* MODIFICAT: Folosește funcția de update centralizată */}
-              <div className={styles.inputGroup}><label htmlFor="nombre">Nombre</label><input id="nombre" type="text" value={newLocation.nombre} onChange={(e) => updateNewLocationState({ ...newLocation, nombre: e.target.value })} required /></div>
-              <div className={styles.inputGroup}><label htmlFor="direccion">Dirección</label><input id="direccion" type="text" value={newLocation.direccion} onChange={(e) => updateNewLocationState({ ...newLocation, direccion: e.target.value })} /></div>
-              <div className={styles.inputGroup}><label htmlFor="link_maps">Link Google Maps (opcional)</label><input id="link_maps" type="text" value={newLocation.link_maps} onChange={(e) => updateNewLocationState({ ...newLocation, link_maps: e.target.value })} /></div>
-              <div className={styles.inputGroup}><label htmlFor="coordenadas">Coordenadas</label><div className={styles.geolocationGroup}><input id="coordenadas" type="text" value={newLocation.coordenadas} onChange={(e) => updateNewLocationState({ ...newLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" /><button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setNewLocation, updateNewLocationState)} disabled={gettingLocation}>{gettingLocation ? '...' : <GpsFixedIcon />}</button></div></div>
-              {tableName === 'gps_clientes' && ( <div className={styles.inputGroup}><label htmlFor="tiempo_espera">Tiempo de Espera</label><input id="tiempo_espera" type="text" value={newLocation.tiempo_espera} onChange={(e) => updateNewLocationState({ ...newLocation, tiempo_espera: e.target.value })} /></div> )}
-              <div className={styles.inputGroup}><label htmlFor="link_foto">Link Foto</label><input id="link_foto" type="text" value={newLocation.link_foto} onChange={(e) => updateNewLocationState({ ...newLocation, link_foto: e.target.value })} /></div>
-              <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}><label htmlFor="detalles">Detalles</label><textarea id="detalles" value={newLocation.detalles} onChange={(e) => updateNewLocationState({ ...newLocation, detalles: e.target.value })} rows="4"></textarea></div>
+            <form onSubmit={handleAddLocation} className={styles.formWrapper}>
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}><label htmlFor="nombre">Nombre</label><input id="nombre" type="text" value={newLocation.nombre} onChange={(e) => updateNewLocationState({ ...newLocation, nombre: e.target.value })} required /></div>
+                <div className={styles.inputGroup}><label htmlFor="direccion">Dirección</label><input id="direccion" type="text" value={newLocation.direccion} onChange={(e) => updateNewLocationState({ ...newLocation, direccion: e.target.value })} /></div>
+                <div className={styles.inputGroup}><label htmlFor="link_maps">Link Google Maps (opcional)</label><input id="link_maps" type="text" value={newLocation.link_maps} onChange={(e) => updateNewLocationState({ ...newLocation, link_maps: e.target.value })} /></div>
+                <div className={styles.inputGroup}><label htmlFor="coordenadas">Coordenadas</label><div className={styles.geolocationGroup}><input id="coordenadas" type="text" value={newLocation.coordenadas} onChange={(e) => updateNewLocationState({ ...newLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" /><button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setNewLocation, updateNewLocationState)} disabled={gettingLocation}>{gettingLocation ? '...' : <GpsFixedIcon />}</button></div></div>
+                {tableName === 'gps_clientes' && ( <div className={styles.inputGroup}><label htmlFor="tiempo_espera">Tiempo de Espera</label><input id="tiempo_espera" type="text" value={newLocation.tiempo_espera} onChange={(e) => updateNewLocationState({ ...newLocation, tiempo_espera: e.target.value })} /></div> )}
+                <div className={styles.inputGroup}><label htmlFor="link_foto">Link Foto</label><input id="link_foto" type="text" value={newLocation.link_foto} onChange={(e) => updateNewLocationState({ ...newLocation, link_foto: e.target.value })} /></div>
+                <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}><label htmlFor="detalles">Detalles</label><textarea id="detalles" value={newLocation.detalles} onChange={(e) => updateNewLocationState({ ...newLocation, detalles: e.target.value })} rows="4"></textarea></div>
+              </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={`${styles.modalButton} ${styles.modalButtonSecondary}`} onClick={closeAddModal}>Cancelar</button>
                 <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>Guardar</button>
@@ -268,7 +265,6 @@ const LocationList = ({ tableName, title }) => {
         </div>
       )}
       
-      {/* MODIFICAT: Folosește funcția closeEditModal */}
       {isEditModalOpen && editingLocation && (
         <div className={styles.modalOverlay} onClick={closeEditModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -276,15 +272,16 @@ const LocationList = ({ tableName, title }) => {
               <h3 className={styles.modalTitle}>Editar {editingLocation.nombre}</h3>
               <button onClick={closeEditModal} className={styles.closeButton}><CloseIcon /></button>
             </div>
-            <form onSubmit={handleUpdateLocation} className={styles.modalBody}>
-              {/* MODIFICAT: Folosește funcția de update centralizată */}
-              <div className={styles.inputGroup}><label htmlFor="edit-nombre">Nombre</label><input id="edit-nombre" type="text" value={editingLocation.nombre || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, nombre: e.target.value })} required /></div>
-              <div className={styles.inputGroup}><label htmlFor="edit-direccion">Dirección</label><input id="edit-direccion" type="text" value={editingLocation.direccion || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, direccion: e.target.value })} /></div>
-              <div className={styles.inputGroup}><label htmlFor="edit-link_maps">Link Google Maps (opcional)</label><input id="edit-link_maps" type="text" value={editingLocation.link_maps || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, link_maps: e.target.value })} /></div>
-              <div className={styles.inputGroup}><label htmlFor="edit-coordenadas">Coordenadas</label><div className={styles.geolocationGroup}><input id="edit-coordenadas" type="text" value={editingLocation.coordenadas || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" /><button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setEditingLocation, updateEditingLocationState)} disabled={gettingLocation}>{gettingLocation ? '...' : <GpsFixedIcon />}</button></div></div>
-              {tableName === 'gps_clientes' && ( <div className={styles.inputGroup}><label htmlFor="edit-tiempo_espera">Tiempo de Espera</label><input id="edit-tiempo_espera" type="text" value={editingLocation.tiempo_espera || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, tiempo_espera: e.target.value })} /></div> )}
-              <div className={styles.inputGroup}><label htmlFor="edit-link_foto">Link Foto</label><input id="edit-link_foto" type="text" value={editingLocation.link_foto || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, link_foto: e.target.value })} /></div>
-              <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}><label htmlFor="edit-detalles">Detalles</label><textarea id="edit-detalles" value={editingLocation.detalles || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, detalles: e.target.value })} rows="4"></textarea></div>
+            <form onSubmit={handleUpdateLocation} className={styles.formWrapper}>
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}><label htmlFor="edit-nombre">Nombre</label><input id="edit-nombre" type="text" value={editingLocation.nombre || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, nombre: e.target.value })} required /></div>
+                <div className={styles.inputGroup}><label htmlFor="edit-direccion">Dirección</label><input id="edit-direccion" type="text" value={editingLocation.direccion || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, direccion: e.target.value })} /></div>
+                <div className={styles.inputGroup}><label htmlFor="edit-link_maps">Link Google Maps (opcional)</label><input id="edit-link_maps" type="text" value={editingLocation.link_maps || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, link_maps: e.target.value })} /></div>
+                <div className={styles.inputGroup}><label htmlFor="edit-coordenadas">Coordenadas</label><div className={styles.geolocationGroup}><input id="edit-coordenadas" type="text" value={editingLocation.coordenadas || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, coordenadas: e.target.value })} placeholder="Ej: 41.15, 1.10" /><button type="button" className={styles.geolocationButton} onClick={() => handleGetLocation(setEditingLocation, updateEditingLocationState)} disabled={gettingLocation}>{gettingLocation ? '...' : <GpsFixedIcon />}</button></div></div>
+                {tableName === 'gps_clientes' && ( <div className={styles.inputGroup}><label htmlFor="edit-tiempo_espera">Tiempo de Espera</label><input id="edit-tiempo_espera" type="text" value={editingLocation.tiempo_espera || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, tiempo_espera: e.target.value })} /></div> )}
+                <div className={styles.inputGroup}><label htmlFor="edit-link_foto">Link Foto</label><input id="edit-link_foto" type="text" value={editingLocation.link_foto || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, link_foto: e.target.value })} /></div>
+                <div className={`${styles.inputGroup} ${styles.inputGroupFullWidth}`}><label htmlFor="edit-detalles">Detalles</label><textarea id="edit-detalles" value={editingLocation.detalles || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, detalles: e.target.value })} rows="4"></textarea></div>
+              </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={`${styles.modalButton} ${styles.modalButtonSecondary}`} onClick={closeEditModal}>Cancelar</button>
                 <button type="submit" className={`${styles.modalButton} ${styles.modalButtonPrimary}`}>Guardar Cambios</button>
