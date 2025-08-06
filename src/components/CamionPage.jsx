@@ -1,76 +1,111 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../AuthContext'; // Adăugat pentru a verifica rolul utilizatorului
 import Layout from './Layout';
-import styles from './CamionPage.module.css';
+import styles from './CamionPage.module.css'; // Stilurile rămân aceleași, dar s-ar putea să necesite ajustări
 
-// --- Iconițe SVG ---
+// --- Iconițe SVG (nemodificate) ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
+const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
 
 function CamionPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [camion, setCamion] = useState(null);
-    const [repairs, setRepairs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    
-    // Stare pentru modalul de adăugare reparație
-    const [isAddRepairModalOpen, setIsAddRepairModalOpen] = useState(false);
-    const [newRepair, setNewRepair] = useState({
-        data_reparatie: new Date().toISOString().split('T')[0],
-        piesa: '',
-        km: '',
-        detalii: '',
-    });
+    const { profile } = useAuth(); // Adăugat
+    const ITEMS_PER_PAGE = 10; // Adăugat
 
-    // Stare pentru modalul de editare camion
+    // Stările existente pentru camion și editare
+    const [camion, setCamion] = useState(null);
     const [isEditCamionModalOpen, setIsEditCamionModalOpen] = useState(false);
     const [editableCamion, setEditableCamion] = useState(null);
+    
+    // Stările pentru reparații, aduse la zi cu funcționalitățile noi
+    const [repairs, setRepairs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isAddRepairModalOpen, setIsAddRepairModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+
+    // Stare actualizată pentru formularul de adăugare reparație
+    const [newRepair, setNewRepair] = useState({
+        nombre_operacion: '',
+        detalii: '',
+        kilometri: ''
+    });
 
     useEffect(() => {
         const fetchCamionData = async () => {
             setLoading(true);
             
+            // Preluarea datelor camionului (logică păstrată)
             const { data: camionData, error: camionError } = await supabase.from('camioane').select('*').eq('id', id).single();
             if (camionError) console.error("Error fetching camion:", camionError);
             else setCamion(camionData);
 
-            const { data: repairsData, error: repairsError } = await supabase.from('reparatii').select('*').eq('camion_id', id).order('data_reparatie', { ascending: false });
+            // Logica NOUĂ pentru preluarea reparațiilor cu căutare și paginare
+            const from = (currentPage - 1) * ITEMS_PER_PAGE;
+            const to = from + ITEMS_PER_PAGE - 1;
+
+            let repairsQuery = supabase
+                .from('reparatii')
+                .select('*', { count: 'exact' })
+                .eq('camion_id', id);
+            
+            if (searchTerm) {
+                repairsQuery = repairsQuery.ilike('nombre_operacion', `%${searchTerm}%`);
+            }
+
+            const { data: repairsData, error: repairsError, count } = await repairsQuery
+                .order('created_at', { ascending: false })
+                .range(from, to);
+
             if (repairsError) console.error("Error fetching repairs:", repairsError);
-            else setRepairs(repairsData || []);
+            else {
+                setRepairs(repairsData || []);
+                setTotalCount(count || 0);
+            }
 
             setLoading(false);
         };
         fetchCamionData();
-    }, [id]);
+    }, [id, currentPage, searchTerm]);
 
+    // Funcția NOUĂ pentru adăugare reparație
     const handleAddRepair = async (e) => {
         e.preventDefault();
-        if (!newRepair.piesa || !newRepair.km || !newRepair.detalii) {
-            alert('Todos los campos son obligatorios.');
-            return;
-        }
-        const repairDataToInsert = {
+        const repairData = {
             camion_id: id,
-            data_reparatie: newRepair.data_reparatie,
-            piesa: newRepair.piesa,
-            km: parseInt(newRepair.km, 10),
+            nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
+            kilometri: parseInt(newRepair.kilometri, 10) || null,
         };
-        const { data: insertedRepair, error } = await supabase.from('reparatii').insert(repairDataToInsert).select().single();
+
+        const { error } = await supabase.from('reparatii').insert([repairData]);
+
         if (error) {
             alert(`Error al añadir la reparación: ${error.message}`);
         } else {
-            setRepairs([insertedRepair, ...repairs]);
+            alert('Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
-            setNewRepair({ data_reparatie: new Date().toISOString().split('T')[0], piesa: '', km: '', detalii: '' });
+            setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
+            // Reîmprospătăm lista pentru a afișa noua reparație
+            setSearchTerm('');
+            setCurrentPage(1);
         }
     };
 
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1);
+    };
+
+    // Funcțiile pentru editarea camionului (păstrate)
     const handleEditClick = () => {
         setEditableCamion({ ...camion });
         setIsEditCamionModalOpen(true);
@@ -79,12 +114,7 @@ function CamionPage() {
     const handleUpdateCamion = async (e) => {
         e.preventDefault();
         const { id: camionId, ...updateData } = editableCamion;
-
-        const { error } = await supabase
-            .from('camioane')
-            .update(updateData)
-            .eq('id', camionId);
-
+        const { error } = await supabase.from('camioane').update(updateData).eq('id', camionId);
         if (error) {
             alert(`Error al actualizar el camión: ${error.message}`);
         } else {
@@ -94,6 +124,9 @@ function CamionPage() {
         }
     };
 
+    const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
+
     if (loading) return <div className={styles.loadingScreen}>Cargando datos del camión...</div>;
     if (!camion) return <Layout><p style={{color: 'white', textAlign: 'center'}}>No se encontró el camión.</p></Layout>;
 
@@ -102,12 +135,8 @@ function CamionPage() {
             <div className={styles.pageHeader}>
                 <h1>Detalles del Camión: {camion.matricula}</h1>
                 <div className={styles.headerActions}>
-                    <button onClick={handleEditClick} className={styles.editButton}>
-                        <EditIcon /> Editar Detalles
-                    </button>
-                    <button onClick={() => navigate(-1)} className={styles.backButton}>
-                        <BackIcon /> Volver
-                    </button>
+                    <button onClick={handleEditClick} className={styles.editButton}><EditIcon /> Editar Detalles</button>
+                    <button onClick={() => navigate(-1)} className={styles.backButton}><BackIcon /> Volver</button>
                 </div>
             </div>
 
@@ -121,30 +150,47 @@ function CamionPage() {
 
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Historial de Reparaciones</h2>
-                <button className={styles.addButton} onClick={() => setIsAddRepairModalOpen(true)}>
-                    <PlusIcon /> Añadir Reparación
-                </button>
+                {canEdit && (
+                    <button className={styles.addButton} onClick={() => setIsAddRepairModalOpen(true)}>
+                        <PlusIcon /> Añadir Reparación
+                    </button>
+                )}
             </div>
             
+            <div className={styles.searchBar}>
+                <SearchIcon />
+                <input type="text" placeholder="Buscar por nombre de operación..." value={searchTerm} onChange={handleSearchChange}/>
+            </div>
+
             {repairs.length > 0 ? (
-                <div className={styles.repairsList}>
-                    {repairs.map(repair => (
-                        <div className={styles.repairCard} key={repair.id}>
-                            <div className={styles.repairHeader}>
-                                <h4>{repair.piesa}</h4>
-                                <span>{new Date(repair.data_reparatie).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <>
+                    <div className={styles.repairsList}>
+                        {repairs.map(repair => (
+                            <div className={styles.repairCard} key={repair.id}>
+                                <div className={styles.repairHeader}>
+                                    <h4>{repair.nombre_operacion}</h4>
+                                    <span>{new Date(repair.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                </div>
+                                <p className={styles.repairDetails}>{repair.detalii}</p>
+                                <div className={styles.repairFooter}>
+                                    {repair.kilometri && <span><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
+                                </div>
                             </div>
-                            <p className={styles.repairDetails}>{repair.detalii}</p>
-                            <div className={styles.repairFooter}>
-                                <span><strong>KM:</strong> {repair.km.toLocaleString('es-ES')}</span>
-                            </div>
+                        ))}
+                    </div>
+                    {totalPages > 1 && (
+                        <div className={styles.paginationContainer}>
+                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={styles.paginationButton}>Anterior</button>
+                            <span className={styles.pageIndicator}>Página {currentPage} de {totalPages}</span>
+                            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className={styles.paginationButton}>Siguiente</button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                </>
             ) : (
                 <p className={styles.noRepairs}>No hay reparaciones registradas para este camión.</p>
             )}
 
+            {/* Modal NOU pentru adăugare reparație */}
             {isAddRepairModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -153,22 +199,9 @@ function CamionPage() {
                             <button onClick={() => setIsAddRepairModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
-                            <div className={styles.formGroup}>
-                                <label htmlFor="data_reparatie">Fecha de Reparación</label>
-                                <input id="data_reparatie" type="date" value={newRepair.data_reparatie} onChange={(e) => setNewRepair({...newRepair, data_reparatie: e.target.value})} required />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label htmlFor="piesa">Pieza Cambiada / Tarea Realizada</label>
-                                <input id="piesa" type="text" placeholder="Ej: Cambio de aceite" value={newRepair.piesa} onChange={(e) => setNewRepair({...newRepair, piesa: e.target.value})} required />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label htmlFor="km">Kilómetros</label>
-                                <input id="km" type="number" placeholder="Ej: 250000" value={newRepair.km} onChange={(e) => setNewRepair({...newRepair, km: e.target.value})} required />
-                            </div>
-                            <div className={styles.formGroupFull}>
-                                <label htmlFor="detalii">Descripción / Detalles</label>
-                                <textarea id="detalii" rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required />
-                            </div>
+                            <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite y filtros" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
+                            <div className={styles.formGroup}><label>Kilómetros</label><input type="number" placeholder="Ej: 315000" value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
+                            <div className={styles.formGroupFull}><label>Descripción / Detalles</label><textarea rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsAddRepairModalOpen(false)}>Cancelar</button>
                                 <button type="submit" className={styles.saveButton}>Guardar Reparación</button>
@@ -178,6 +211,7 @@ function CamionPage() {
                 </div>
             )}
 
+            {/* Modalul pentru editarea camionului (păstrat, nemodificat) */}
             {isEditCamionModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
