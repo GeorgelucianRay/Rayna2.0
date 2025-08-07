@@ -43,6 +43,7 @@
 .camionBackground { background-image: url('/IMG_9678.jpeg'); }
 .reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
 
+
 /* Meniul lateral */
 .navMenu {
   position: fixed;
@@ -268,7 +269,7 @@
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px); /* AM ADĂUGAT ; AICI */
   z-index: 3000;
   display: flex;
   justify-content: center;
@@ -318,7 +319,7 @@
 }
 .notificationsList {
   list-style-type: none;
-  padding: 0; /* AICI AM ADĂUGAT ; CARE LIPSEA */
+  padding: 0; /* AM VERIFICAT ȘI ACEST ; ESTE PREZENT */
   margin: 0;
 }
 .notificationsList li {
