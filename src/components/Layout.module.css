@@ -5,10 +5,9 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
-  /* Eliminăm culoarea de fundal; o aplicăm doar dacă nu există imagine */
 }
 .layoutWrapper:not(.hasBackground) {
-  background-color: #f3f4f6; /* fundal gri doar când nu există hasBackground */
+  background-color: #f3f4f6;
 }
 
 /* Containerul pentru efectele de fundal (imagine + overlay) */
@@ -37,13 +36,13 @@
 .tallerBackground   { background-image: url('/taller.jpg'); }
 .profileBackground  { background-image: url('/miprofile.jpg'); }
 .gpsBackground      { background-image: url('/rayna ubicacion.jpg'); }
-
-/* --- MODIFICARE: AICI AM ADĂUGAT NOILE RUTE PENTRU IMAGINI --- */
 .choferesBackground { background-image: url('/IMG_9050.jpeg'); }
 .homepageSoferBackground { background-image: url('/homepage.jpg'); }
 .miPerfilBackground { background-image: url('/miprofile.jpg'); }
 .remorcaBackground { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
 .camionBackground { background-image: url('/IMG_9678.jpeg'); }
+/* --- MODIFICARE: AICI AM ADĂUGAT NOUA RUTĂ PENTRU IMAGINE --- */
+.reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
 /* --- SFÂRȘITUL MODIFICĂRII --- */
 
 
@@ -75,12 +74,9 @@
   min-height: 100vh;
   background-color: transparent;
 }
-
-/* Fundal gri pentru conținut atunci când nu există imagine */
 .layoutWrapper:not(.hasBackground) .pageContentWrapper {
   background-color: #f3f4f6;
 }
-/* Conținut transparent când există fundal */
 .hasBackground .pageContentWrapper {
   background-color: transparent;
 }
@@ -216,7 +212,7 @@
   font-weight: 500;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  transition: background-color 0.2s;
+  transition: background-color: 0.2s;
 }
 .navLink:hover {
   background-color: rgba(255, 255, 255, 0.1);
