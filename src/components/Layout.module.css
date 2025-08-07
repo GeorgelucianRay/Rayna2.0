@@ -5,9 +5,10 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
+  /* Eliminăm culoarea de fundal; o aplicăm doar dacă nu există imagine */
 }
 .layoutWrapper:not(.hasBackground) {
-  background-color: #f3f4f6;
+  background-color: #f3f4f6; /* fundal gri doar când nu există hasBackground */
 }
 
 /* Containerul pentru efectele de fundal (imagine + overlay) */
@@ -41,6 +42,7 @@
 .miPerfilBackground { background-image: url('/miprofile.jpg'); }
 .remorcaBackground { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
 .camionBackground { background-image: url('/IMG_9678.jpeg'); }
+/* --- MODIFICARE: Am adăugat imaginea pentru pagina de reparații --- */
 .reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
 
 
@@ -72,9 +74,12 @@
   min-height: 100vh;
   background-color: transparent;
 }
+
+/* Fundal gri pentru conținut atunci când nu există imagine */
 .layoutWrapper:not(.hasBackground) .pageContentWrapper {
   background-color: #f3f4f6;
 }
+/* Conținut transparent când există fundal */
 .hasBackground .pageContentWrapper {
   background-color: transparent;
 }
@@ -210,7 +215,7 @@
   font-weight: 500;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  transition: background-color: 0.2s;
+  transition: background-color 0.2s;
 }
 .navLink:hover {
   background-color: rgba(255, 255, 255, 0.1);
@@ -269,7 +274,7 @@
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px); /* AM ADĂUGAT ; AICI */
+  backdrop-filter: blur(5px);
   z-index: 3000;
   display: flex;
   justify-content: center;
@@ -319,7 +324,7 @@
 }
 .notificationsList {
   list-style-type: none;
-  padding: 0; /* AM VERIFICAT ȘI ACEST ; ESTE PREZENT */
+  padding: 0;
   margin: 0;
 }
 .notificationsList li {
