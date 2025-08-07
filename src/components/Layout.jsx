@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
-import styles from './Layout.module.css'; // Folosim UN SINGUR fișier de stil
+import styles from './Layout.module.css';
 import UpdatePrompt from './UpdatePrompt';
 
-// --- Iconițe SVG (rămân neschimbate) ---
+// Iconițele SVG rămân neschimbate
 const BellIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> );
 const HomeIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> );
 const DepotIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"></path><path d="M14 5v14"></path><path d="M6 5v14"></path><path d="M10 5v14"></path><path d="M18 5v14"></path></svg> );
@@ -22,7 +22,6 @@ const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
   return ( <Link to={to} className={linkClasses} onClick={onClick}> {icon} <span>{text}</span> </Link> );
 };
 
-// Am eliminat `backgroundClassName` din props, nu mai este necesar
 const Layout = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -30,22 +29,34 @@ const Layout = ({ children }) => {
   const { user, profile, alarms } = useAuth();
   const navigate = useNavigate();
 
-  // --- AICI ESTE LOGICA CENTRALIZATĂ ---
-  // 1. Definim o hartă între calea URL și clasa CSS din `Layout.module.css`
+  // --- MODIFICARE: Logica îmbunătățită pentru fundaluri ---
+  const { pathname } = location;
+
+  // Harta rămâne la fel, dar acum adăugăm și ruta pentru dispecer
   const backgroundMap = {
-    '/sofer-homepage': styles.homepageSoferBackground, // Imaginea nouă pentru homepage sofer
+    '/sofer-homepage': styles.homepageSoferBackground,
+    '/dispecer-homepage': styles.homepageSoferBackground, // ADAUGAT: Același fundal pentru ambele
+    '/camion': styles.camionBackground,
+    '/remorca': styles.remorcaBackground,
+    '/taller': styles.tallerBackground,
     '/choferes': styles.choferesBackground,
     '/mi-perfil': styles.miPerfilBackground,
-    '/taller': styles.tallerBackground,
-    '/remorca': styles.remorcaBackground, // Asigură-te că ruta este corectă
-    '/camion': styles.camionBackground,   // Asigură-te că ruta este corectă
-    // Puteți adăuga și cele vechi aici dacă sunt folosite în altă parte
     '/depot': styles.depotBackground,
     '/gps': styles.gpsBackground,
   };
-  // 2. Alegem clasa corectă în funcție de pagina curentă
-  const backgroundClassName = backgroundMap[location.pathname];
-  // --- SFÂRȘITUL LOGICII NOI ---
+
+  // NOU: Funcția găsește fundalul corect chiar și pentru sub-pagini (ex: /camion/123)
+  const getBackgroundClass = () => {
+    // Căutăm cea mai lungă potrivire pentru a evita conflictele (ex: /taller vs /taller-nou)
+    const matchingPath = Object.keys(backgroundMap)
+      .sort((a, b) => b.length - a.length) // Sortăm de la cea mai specifică la cea mai generală cale
+      .find(key => pathname.startsWith(key));
+    
+    return matchingPath ? backgroundMap[matchingPath] : null;
+  };
+
+  const backgroundClassName = getBackgroundClass();
+  // --- SFÂRȘITUL MODIFICĂRII ---
 
   // Meniurile (nemodificate)
   const soferMenu = [ { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' }, { id: '/gps', icon: <GpsIcon />, text: 'GPS' }, { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' }, ];
@@ -58,7 +69,6 @@ const Layout = ({ children }) => {
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/login'); };
 
-  // `backgroundClassName` este acum determinat automat
   const wrapperClass = [ styles.layoutWrapper, backgroundClassName ? styles.hasBackground : '', isMenuOpen ? styles.menuOpen : '', ].join(' ');
 
   return (
@@ -76,7 +86,7 @@ const Layout = ({ children }) => {
           <div> <h2 className={styles.navTitle}>Rayna</h2> {user && <p className={styles.userEmail}>{user.email}</p>} </div>
           <div className={styles.headerIcons}> {alarms.length > 0 && ( <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}> <BellIcon /> <span className={styles.notificationBadge}>{alarms.length}</span> </button> )} <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}> <CloseIcon /> </button> </div>
         </div>
-        <nav className={styles.navLinks}> {navLinksData.map(link => ( <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname === link.id} onClick={() => setIsMenuOpen(false)} /> ))} <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} /> <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} /> </nav>
+        <nav className={styles.navLinks}> {navLinksData.map(link => ( <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname.startsWith(link.id)} onClick={() => setIsMenuOpen(false)} /> ))} <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} /> <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} /> </nav>
       </aside>
 
       {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)}></div>}
