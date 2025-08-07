@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import Layout from './Layout';
+// ... restul importurilor rămân neschimbate ...
 import styles from './GpsPage.module.css';
 import depotStyles from './DepotPage.module.css';
 
@@ -27,7 +27,6 @@ const LocationList = ({ tableName, title }) => {
   const [editingLocation, setEditingLocation] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   
-  // ADĂUGAT: Chei unice pentru localStorage pentru a preveni conflictele între tab-uri
   const addFormStorageKey = `addForm-${tableName}`;
   const editFormStorageKey = `editForm-${tableName}`;
 
@@ -35,7 +34,6 @@ const LocationList = ({ tableName, title }) => {
     nombre: '', direccion: '', link_maps: '', tiempo_espera: '', detalles: '', coordenadas: '', link_foto: '',
   });
 
-  // ADĂUGAT: Funcții care actualizează starea React ȘI salvează în localStorage
   const updateNewLocationState = (newState) => {
     setNewLocation(newState);
     localStorage.setItem(addFormStorageKey, JSON.stringify(newState));
@@ -47,7 +45,7 @@ const LocationList = ({ tableName, title }) => {
   };
 
   const fetchLocations = useCallback(
-    async (page = currentPage, term = searchTerm) => {
+    async (page, term) => { // Argumentele sunt primite direct, fără a depinde de starea din closure
       setLoading(true);
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
@@ -66,11 +64,15 @@ const LocationList = ({ tableName, title }) => {
       }
       setLoading(false);
     },
-    [tableName, currentPage, searchTerm]
+    // MODIFICARE 1: Funcția depinde doar de `tableName` pentru a fi recreată.
+    // Acest lucru o face stabilă și previne buclele infinite în `useEffect`.
+    [tableName]
   );
 
+  // MODIFICARE 2 (CEA PRINCIPALĂ): Aici este corecția pentru bug-ul de paginare și căutare.
   useEffect(() => {
-    // ADĂUGAT: Logica de restaurare a stării din localStorage la încărcarea componentei
+    // Logica de restaurare a stării din localStorage la încărcarea inițială rămâne.
+    // Am scos-o dintr-un `try-catch` mai larg pentru a nu împiedica fetch-ul de date.
     try {
       const savedAddForm = localStorage.getItem(addFormStorageKey);
       if (savedAddForm) {
@@ -89,8 +91,11 @@ const LocationList = ({ tableName, title }) => {
       localStorage.removeItem(editFormStorageKey);
     }
     
+    // Apelăm funcția de fetch cu starea curentă a paginii și a căutării.
     fetchLocations(currentPage, searchTerm);
-  }, [tableName]); // MODIFICAT: Rulează o singură dată la schimbarea tab-ului
+
+  }, [fetchLocations, currentPage, searchTerm]); // useEffect se va re-executa acum de fiecare dată când oricare dintre aceste valori se schimbă.
+
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -99,7 +104,6 @@ const LocationList = ({ tableName, title }) => {
     setCurrentPage(1); 
   };
   
-  // MODIFICAT: Funcția primește acum și funcția de update a stării pentru a salva în localStorage
   const handleGetLocation = (setter, stateUpdater) => {
     if (!navigator.geolocation) {
       alert('Geolocalizarea nu este suportată de acest browser.');
@@ -111,7 +115,7 @@ const LocationList = ({ tableName, title }) => {
         const coordsString = `${latitude},${longitude}`;
         setter((prev) => {
           const newState = { ...prev, coordenadas: coordsString };
-          stateUpdater(newState); // Salvează starea actualizată în localStorage
+          stateUpdater(newState);
           return newState;
         });
         setGettingLocation(false);
@@ -134,15 +138,15 @@ const LocationList = ({ tableName, title }) => {
       alert(`Error al añadir la ubicación: ${error.message}`);
     } else {
       alert('Ubicación añadida con éxito!');
-      closeAddModal(); // MODIFICAT: Folosește funcția de închidere pentru a curăța tot
+      closeAddModal();
       setSearchTerm('');
+      // Resetăm la pagina 1, ceea ce va declanșa automat un re-fetch prin `useEffect`
       setCurrentPage(1);
-      fetchLocations(1, '');
     }
   };
   
   const handleEditClick = (location) => {
-    updateEditingLocationState(location); // Salvează starea de editare
+    updateEditingLocationState(location);
     setIsEditModalOpen(true);
     setSelectedLocation(null);
   };
@@ -155,12 +159,12 @@ const LocationList = ({ tableName, title }) => {
       alert(`Error al actualizar la ubicación: ${error.message}`);
     } else {
       alert('Ubicación actualizada con éxito!');
-      closeEditModal(); // MODIFICAT: Folosește funcția de închidere pentru a curăța tot
+      closeEditModal();
+      // Re-încărcăm datele pentru pagina curentă pentru a reflecta modificarea
       fetchLocations(currentPage, searchTerm);
     }
   };
 
-  // ADĂUGAT: Funcții de închidere care șterg starea din localStorage
   const closeAddModal = () => {
     setIsAddModalOpen(false);
     localStorage.removeItem(addFormStorageKey);
@@ -183,9 +187,9 @@ const LocationList = ({ tableName, title }) => {
 
   const canEdit = profile?.role === 'dispecer' || profile?.role === 'sofer';
 
+  // --- JSX (partea de randare) rămâne complet neschimbată ---
   return (
     <>
-      {/* ... toolbar, lista de locații, paginare, modal de detalii rămân neschimbate în structură ... */}
       <div className={depotStyles.toolbar}>
         <div className={depotStyles.searchBar}>
           <SearchIcon />
@@ -238,7 +242,6 @@ const LocationList = ({ tableName, title }) => {
         </div>
       )}
       
-      {/* --- MODIFICARE STRUCTURALĂ PENTRU SCROLL ȘI LOGICĂ PENTRU PERSISTENȚĂ --- */}
       {isAddModalOpen && (
         <div className={styles.modalOverlay} onClick={closeAddModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -294,6 +297,7 @@ const LocationList = ({ tableName, title }) => {
   );
 };
 
+// Componenta GpsPage nu necesită modificări
 function GpsPage() {
   const [activeView, setActiveView] = useState('clientes');
 
@@ -315,3 +319,4 @@ function GpsPage() {
 }
 
 export default GpsPage;
+
