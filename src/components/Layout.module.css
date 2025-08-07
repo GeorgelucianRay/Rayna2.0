@@ -41,10 +41,7 @@
 .miPerfilBackground { background-image: url('/miprofile.jpg'); }
 .remorcaBackground { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
 .camionBackground { background-image: url('/IMG_9678.jpeg'); }
-/* --- MODIFICARE: AICI AM ADĂUGAT NOUA RUTĂ PENTRU IMAGINE --- */
 .reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
-/* --- SFÂRȘITUL MODIFICĂRII --- */
-
 
 /* Meniul lateral */
 .navMenu {
@@ -321,7 +318,7 @@
 }
 .notificationsList {
   list-style-type: none;
-  padding: 0;
+  padding: 0; /* AICI AM ADĂUGAT ; CARE LIPSEA */
   margin: 0;
 }
 .notificationsList li {
