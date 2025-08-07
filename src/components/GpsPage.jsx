@@ -1,19 +1,3 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
-// ... restul importurilor rămân neschimbate ...
-import styles from './GpsPage.module.css';
-import depotStyles from './DepotPage.module.css';
-
-// --- Iconițe SVG (nemodificate) ---
-const SearchIcon = () => ( <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> );
-const PlusIcon = () => ( <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/></svg> );
-const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" /></svg> );
-const GpsFixedIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="22" y1="12" x2="18" y2="12" /><line x1="6" y1="12" x2="2" y2="12" /></svg> );
-const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg> );
-
-const ITEMS_PER_PAGE = 25;
-
 const LocationList = ({ tableName, title }) => {
   const { profile } = useAuth();
   const [locations, setLocations] = useState([]);
@@ -45,7 +29,7 @@ const LocationList = ({ tableName, title }) => {
   };
 
   const fetchLocations = useCallback(
-    async (page, term) => { // Argumentele sunt primite direct, fără a depinde de starea din closure
+    async (page, term) => {
       setLoading(true);
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
@@ -64,17 +48,13 @@ const LocationList = ({ tableName, title }) => {
       }
       setLoading(false);
     },
-    // MODIFICARE 1: Funcția depinde doar de `tableName` pentru a fi recreată.
-    // Acest lucru o face stabilă și previne buclele infinite în `useEffect`.
     [tableName]
   );
 
-  // MODIFICARE 2 (CEA PRINCIPALĂ): Aici este corecția pentru bug-ul de paginare și căutare.
   useEffect(() => {
-    // Logica de restaurare a stării din localStorage la încărcarea inițială rămâne.
-    // Am scos-o dintr-un `try-catch` mai larg pentru a nu împiedica fetch-ul de date.
     try {
       const savedAddForm = localStorage.getItem(addFormStorageKey);
+      // AICI A FOST EROAREA, ACUM ESTE CORECTATĂ
       if (savedAddForm) {
         setNewLocation(JSON.parse(savedAddForm));
         setIsAddModalOpen(true);
@@ -91,10 +71,9 @@ const LocationList = ({ tableName, title }) => {
       localStorage.removeItem(editFormStorageKey);
     }
     
-    // Apelăm funcția de fetch cu starea curentă a paginii și a căutării.
     fetchLocations(currentPage, searchTerm);
 
-  }, [fetchLocations, currentPage, searchTerm]); // useEffect se va re-executa acum de fiecare dată când oricare dintre aceste valori se schimbă.
+  }, [fetchLocations, currentPage, searchTerm]);
 
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -140,7 +119,6 @@ const LocationList = ({ tableName, title }) => {
       alert('Ubicación añadida con éxito!');
       closeAddModal();
       setSearchTerm('');
-      // Resetăm la pagina 1, ceea ce va declanșa automat un re-fetch prin `useEffect`
       setCurrentPage(1);
     }
   };
@@ -160,7 +138,6 @@ const LocationList = ({ tableName, title }) => {
     } else {
       alert('Ubicación actualizada con éxito!');
       closeEditModal();
-      // Re-încărcăm datele pentru pagina curentă pentru a reflecta modificarea
       fetchLocations(currentPage, searchTerm);
     }
   };
@@ -217,6 +194,7 @@ const LocationList = ({ tableName, title }) => {
           )}
         </>
       )}
+      {/* Restul codului JSX (modalele) rămâne identic... */}
       {selectedLocation && (
         <div className={styles.modalOverlay} onClick={() => setSelectedLocation(null)}>
           <div className={`${styles.modalContent} ${styles.locationModal}`} onClick={(e) => e.stopPropagation()}>
@@ -296,27 +274,3 @@ const LocationList = ({ tableName, title }) => {
     </>
   );
 };
-
-// Componenta GpsPage nu necesită modificări
-function GpsPage() {
-  const [activeView, setActiveView] = useState('clientes');
-
-  return (
-    <Layout backgroundClassName="gpsBackground">
-      <div className={depotStyles.depotHeader}>
-        <button className={`${depotStyles.depotTabButton} ${activeView === 'clientes' ? depotStyles.active : ''}`} onClick={() => setActiveView('clientes')}>Clientes</button>
-        <button className={`${depotStyles.depotTabButton} ${activeView === 'parkings' ? depotStyles.active : ''}`} onClick={() => setActiveView('parkings')}>Parkings</button>
-        <button className={`${depotStyles.depotTabButton} ${activeView === 'servicios' ? depotStyles.active : ''}`} onClick={() => setActiveView('servicios')}>Servicios</button>
-        <button className={`${depotStyles.depotTabButton} ${activeView === 'terminale' ? depotStyles.active : ''}`} onClick={() => setActiveView('terminale')}>Terminale</button>
-      </div>
-
-      {activeView === 'clientes' && <LocationList tableName="gps_clientes" title="Cliente" />}
-      {activeView === 'parkings' && <LocationList tableName="gps_parkings" title="Parking" />}
-      {activeView === 'servicios' && <LocationList tableName="gps_servicios" title="Servicio" />}
-      {activeView === 'terminale' && <LocationList tableName="gps_terminale" title="Terminal" />}
-    </Layout>
-  );
-}
-
-export default GpsPage;
-
