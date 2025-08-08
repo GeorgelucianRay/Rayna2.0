@@ -107,7 +107,8 @@ function MiPerfilPage() {
     const handleVehicleClick = (vehicleId, type) => {
         if (!vehicleId) return;
         if (type === 'camion') navigate(`/camion/${vehicleId}`);
-        else if (type === 'remorca') navigate(`/remorca/${vehicleId}`);
+        // Aici am schimbat 'remorca' in 'remolque' pentru consistenta, desi nu este vizibil
+        else if (type === 'remolque') navigate(`/remorca/${vehicleId}`);
     };
 
     if (loading || !authProfile) {
@@ -138,7 +139,7 @@ function MiPerfilPage() {
                 <div className={styles.profileCard}><h3>Caducidad Carnet</h3><p>{authProfile.carnet_caducidad || 'N/A'}</p></div>
                 <div className={styles.profileCard}><h3>Certificado ADR</h3><p>{authProfile.tiene_adr ? `Sí, caduca: ${authProfile.adr_caducidad || 'N/A'}` : 'No'}</p></div>
                 <div className={`${styles.profileCard} ${styles.vehicleLink}`} onClick={() => handleVehicleClick(authProfile.camion_id, 'camion')}><h3>Camión</h3><p>{authProfile.camioane?.matricula || 'No asignado'}</p></div>
-                <div className={`${styles.profileCard} ${styles.vehicleLink}`} onClick={() => handleVehicleClick(authProfile.remorca_id, 'remorca')}><h3>Remorca</h3><p>{authProfile.remorci?.matricula || 'No asignada'}</p></div>
+                <div className={`${styles.profileCard} ${styles.vehicleLink}`} onClick={() => handleVehicleClick(authProfile.remorca_id, 'remolque')}><h3>Remolque</h3><p>{authProfile.remorci?.matricula || 'No asignado'}</p></div>
             </div>
 
             {isEditModalOpen && editableProfile && (
@@ -152,16 +153,16 @@ function MiPerfilPage() {
                             <div className={styles.inputGroup}><label>Nombre Completo</label><input type="text" value={editableProfile.nombre_completo || ''} onChange={(e) => setEditableProfile({...editableProfile, nombre_completo: e.target.value})} /></div>
                             <div className={styles.inputGroup}><label>Caducidad CAP</label><input type="date" value={editableProfile.cap_expirare || ''} onChange={(e) => setEditableProfile({...editableProfile, cap_expirare: e.target.value})} /></div>
                             <div className={styles.inputGroup}><label>Caducidad Carnet</label><input type="date" value={editableProfile.carnet_caducidad || ''} onChange={(e) => setEditableProfile({...editableProfile, carnet_caducidad: e.target.value})} /></div>
-                            <div className={styles.inputGroup}><label>Tiene ADR?</label><select value={editableProfile.tiene_adr} onChange={(e) => setEditableProfile({...editableProfile, tiene_adr: e.target.value === 'true'})}><option value={false}>No</option><option value={true}>Sí</option></select></div>
+                            <div className={styles.inputGroup}><label>¿Tiene ADR?</label><select value={editableProfile.tiene_adr} onChange={(e) => setEditableProfile({...editableProfile, tiene_adr: e.target.value === 'true'})}><option value={false}>No</option><option value={true}>Sí</option></select></div>
                             {editableProfile.tiene_adr && (<div className={styles.inputGroup}><label>Caducidad ADR</label><input type="date" value={editableProfile.adr_caducidad || ''} onChange={(e) => setEditableProfile({...editableProfile, adr_caducidad: e.target.value})} /></div>)}
                             
                             {!authProfile.camion_id ? (
-                                <div className={styles.inputGroup}><label>Matricula Camión</label><input type="text" placeholder="Introduce la matrícula..." value={editableProfile.new_camion_matricula} onChange={(e) => setEditableProfile({...editableProfile, new_camion_matricula: e.target.value.toUpperCase()})} /></div>
+                                <div className={styles.inputGroup}><label>Matrícula Camión</label><input type="text" placeholder="Introduce la matrícula..." value={editableProfile.new_camion_matricula} onChange={(e) => setEditableProfile({...editableProfile, new_camion_matricula: e.target.value.toUpperCase()})} /></div>
                             ) : (<div className={styles.inputGroup}><label>Camión Asignado</label><input type="text" value={authProfile.camioane?.matricula} disabled /></div>)}
 
                             {!authProfile.remorca_id ? (
-                                <div className={styles.inputGroup}><label>Matricula Remorca</label><input type="text" placeholder="Introduce la matrícula..." value={editableProfile.new_remorca_matricula} onChange={(e) => setEditableProfile({...editableProfile, new_remorca_matricula: e.target.value.toUpperCase()})} /></div>
-                            ) : (<div className={styles.inputGroup}><label>Remorca Asignada</label><input type="text" value={authProfile.remorci?.matricula} disabled /></div>)}
+                                <div className={styles.inputGroup}><label>Matrícula Remolque</label><input type="text" placeholder="Introduce la matrícula..." value={editableProfile.new_remorca_matricula} onChange={(e) => setEditableProfile({...editableProfile, new_remorca_matricula: e.target.value.toUpperCase()})} /></div>
+                            ) : (<div className={styles.inputGroup}><label>Remolque Asignado</label><input type="text" value={authProfile.remorci?.matricula} disabled /></div>)}
 
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsEditModalOpen(false)}>Cancelar</button>
