@@ -53,13 +53,20 @@ function CalculadoraNomina() {
         const fetchDrivers = async () => {
             if (profile?.role === 'dispecer') {
                 setIsLoading(true);
-                const { data, error } = await supabase.from('profiles').select('id, nombre_completo, config_nomina').eq('role', 'sofer');
+                const { data, error } = await supabase
+                    .from('nomina_perfiles')
+                    .select('user_id, nombre_completo, config_nomina');
                 
                 if (error) {
-                    console.error("Error al obtener conductores:", error);
-                    alert("Error al obtener la lista de conductores. Verifique los permisos RLS en Supabase.");
+                    console.error("Error al obtener la lista de conductores desde nomina_perfiles:", error);
+                    alert("Error al obtener la lista de conductores.");
                 } else {
-                    setListaSoferi(data || []);
+                    const mappedData = data.map(d => ({
+                        id: d.user_id,
+                        nombre_completo: d.nombre_completo,
+                        config_nomina: d.config_nomina
+                    }));
+                    setListaSoferi(mappedData || []);
                 }
                 setIsLoading(false);
             }
@@ -71,10 +78,14 @@ function CalculadoraNomina() {
         const driverProfile = soferSelectat ? listaSoferi.find(s => s.id === soferSelectat) : null;
         if (profile?.role === 'dispecer') {
             setConfig(driverProfile?.config_nomina || defaultConfig);
-        } else if (profile) {
-            setConfig(profile.config_nomina || defaultConfig);
+        } else if (profile?.role === 'sofer') {
+            const fetchMyNominaConfig = async () => {
+                const { data } = await supabase.from('nomina_perfiles').select('config_nomina').eq('user_id', user.id).single();
+                setConfig(data?.config_nomina || defaultConfig);
+            }
+            fetchMyNominaConfig();
         }
-    }, [soferSelectat, profile, listaSoferi, defaultConfig]);
+    }, [soferSelectat, profile, listaSoferi, defaultConfig, user]);
     
     const handleSoferSelect = (e) => {
         const selectedId = e.target.value;
@@ -143,7 +154,7 @@ function CalculadoraNomina() {
     const handleSaveConfig = async () => {
         const targetId = getTargetUserId();
         if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
-        const { error } = await supabase.from('profiles').update({ config_nomina: config }).eq('id', targetId);
+        const { error } = await supabase.from('nomina_perfiles').update({ config_nomina: config }).eq('user_id', targetId);
         if (error) alert('Error al guardar la configuración: ' + error.message);
         else alert('¡Configuración guardada con éxito!');
     };
@@ -186,7 +197,7 @@ function CalculadoraNomina() {
     
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
     const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
-
+    
     return (
         <Layout backgroundClassName="calculadora-background">
             <div className={styles.header}>
