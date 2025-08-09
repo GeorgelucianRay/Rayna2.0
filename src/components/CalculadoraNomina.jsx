@@ -4,11 +4,10 @@ import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// --- Componente de Iconițe ---
+// ... (Iconițele și CalendarDay rămân la fel) ...
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
-// --- Componenta pentru o singură zi din calendar ---
 const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''}`;
     return (
@@ -25,8 +24,8 @@ const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     );
 };
 
-// --- Componenta Principală ---
 function CalculadoraNomina() {
+    // ... (Toate state-urile rămân neschimbate) ...
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
@@ -50,6 +49,8 @@ function CalculadoraNomina() {
     const [pontaj, setPontaj] = useState(defaultPontaj);
     const [rezultat, setRezultat] = useState(null);
 
+
+    // ... (useEffect-urile și majoritatea funcțiilor rămân neschimbate) ...
     useEffect(() => {
         const fetchDrivers = async () => {
             if (profile?.role === 'dispecer') {
@@ -117,35 +118,50 @@ function CalculadoraNomina() {
             setPontaj(prev => ({ ...prev, festivos: [...prev.festivos, { suma }] }));
         }
     };
-    
+
+    // === MODIFICARE CHEIE 1: Schimbăm ce salvăm în `rezultat` ===
     const handleCalculate = () => {
+        // Calculăm cantitățile
         const totalDesayuno = pontaj.zilePontaj.filter(z => z.desayuno).length;
         const totalCena = pontaj.zilePontaj.filter(z => z.cena).length;
         const totalProcena = pontaj.zilePontaj.filter(z => z.procena).length;
+        const totalZileMuncite = new Set(pontaj.zilePontaj.map((z, i) => (z.desayuno || z.cena || z.procena) ? i : null).filter(i => i !== null)).size;
         
+        const kmParcursi = (pontaj.km_final || 0) > (pontaj.km_start || 0) ? (pontaj.km_final || 0) - (pontaj.km_start || 0) : 0;
+        const totalContainere = (pontaj.contenedores || 0);
+        const totalFestivos = pontaj.festivos.length;
+        const sumaTotalaFestivos = pontaj.festivos.reduce((acc, f) => acc + f.suma, 0);
+
+        // Calculăm sumele financiare (rămân necesare pentru afișarea inițială)
         const sumaDesayuno = totalDesayuno * (config.precio_desayuno || 0);
         const sumaCena = totalCena * (config.precio_cena || 0);
         const sumaProcena = totalProcena * (config.precio_procena || 0);
-        
-        const kmParcursi = (pontaj.km_final || 0) > (pontaj.km_start || 0) ? (pontaj.km_final || 0) - (pontaj.km_start || 0) : 0;
         const sumaKm = kmParcursi * (config.precio_km || 0);
-        
-        const sumaContainere = (pontaj.contenedores || 0) * (config.precio_contenedor || 0);
-        const sumaFestivos = pontaj.festivos.reduce((acc, f) => acc + f.suma, 0);
-
-        const totalBruto = (config.salario_base || 0) + (config.antiguedad || 0) + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaFestivos;
+        const sumaContainere = totalContainere * (config.precio_contenedor || 0);
+        const totalBruto = (config.salario_base || 0) + (config.antiguedad || 0) + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaTotalaFestivos;
 
         setRezultat({
             totalBruto: totalBruto.toFixed(2),
-            detalii: {
-                'Salario Base': (config.salario_base || 0).toFixed(2),
-                'Antigüedad': (config.antiguedad || 0).toFixed(2),
+            // Obiectul `detalii` va fi afișat imediat după calcul
+            detalii_calcul: {
+                'Salario Base': (config.salario_base || 0).toFixed(2) + '€',
+                'Antigüedad': (config.antiguedad || 0).toFixed(2) + '€',
                 'Total Desayuno': `${totalDesayuno} días x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
                 'Total Cena': `${totalCena} días x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
                 'Total Procena': `${totalProcena} días x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
                 'Total Kilómetros': `${kmParcursi} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`,
-                'Total Contenedores': `${pontaj.contenedores || 0} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
-                'Total Festivos/Plus': sumaFestivos.toFixed(2) + '€',
+                'Total Contenedores': `${totalContainere} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
+                'Total Festivos/Plus': sumaTotalaFestivos.toFixed(2) + '€',
+            },
+            // Noul obiect `sumar_activitate` va fi salvat în arhivă
+            sumar_activitate: {
+                'Días Trabajados': totalZileMuncite,
+                'Total Desayunos': totalDesayuno,
+                'Total Cenas': totalCena,
+                'Total Procenas': totalProcena,
+                'Kilómetros Recorridos': kmParcursi,
+                'Contenedores Barridos': totalContainere,
+                'Festivos / Plus': totalFestivos,
             }
         });
     };
@@ -161,10 +177,14 @@ function CalculadoraNomina() {
     const handleSaveToArchive = async () => {
         const targetId = getTargetUserId();
         if (!targetId || !rezultat) return;
+        
+        // Salvăm `sumar_activitate` în coloana `detalii`
         const { error } = await supabase.from('nominas_calculadas').insert({
             user_id: targetId, mes: currentDate.getMonth() + 1, an: currentDate.getFullYear(),
-            total_bruto: parseFloat(rezultat.totalBruto), detalles: rezultat.detalii
+            total_bruto: parseFloat(rezultat.totalBruto), // Putem păstra totalul brut pentru referință
+            detalii: rezultat.sumar_activitate 
         });
+
         if (error) {
             alert('Error al guardar en el archivo: ' + error.message);
         } else {
@@ -276,8 +296,7 @@ function CalculadoraNomina() {
                                 <h3>Resultado del Cálculo</h3>
                                 <p className={styles.totalBruto}>Total Bruto: {rezultat.totalBruto} €</p>
                                 <ul className={styles.resultDetails}>
-                                    {/* === FIX: Verificăm dacă rezultat.detalii există înainte de a-l afișa === */}
-                                    {rezultat.detalii && Object.entries(rezultat.detalii).map(([key, value]) => (
+                                    {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (
                                         <li key={key}><span>{key}</span><span>{value}</span></li>
                                     ))}
                                 </ul>
@@ -288,11 +307,12 @@ function CalculadoraNomina() {
                 </div>
             ) : ( profile?.role === 'dispecer' && <div className={styles.card}><p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p></div> )}
 
+            {/* === MODIFICARE CHEIE 2: Schimbăm cum afișăm datele în arhivă === */}
             {isArchiveOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
-                            <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role === 'dispecer' && driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
+                            <h3 className={styles.modalTitle}>Archivo de Actividad {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
                             <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
                         <div className={styles.modalBody}>
@@ -304,18 +324,18 @@ function CalculadoraNomina() {
                                         <div key={item.id} className={styles.archiveItem}>
                                             <div className={styles.archiveHeader}>
                                                 <span>{monthNames[item.mes - 1]} {item.an}</span>
-                                                <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)} €</span>
+                                                {/* Am scos suma totală, conform cerinței */}
                                             </div>
                                             <ul className={styles.resultDetails}>
-                                              {/* === FIX: Verificăm dacă item.detalii există înainte de a-l afișa === */}
+                                              {/* Afișăm sumarul de activitate, nu detaliile financiare */}
                                               {item.detalii && Object.entries(item.detalii).map(([key, value]) => (
-                                                  <li key={key}><span>{key}</span><span>{value}</span></li>
+                                                  <li key={key}><span>{key}</span><span>{value.toString()}</span></li>
                                               ))}
                                             </ul>
                                         </div>
                                     ))
                                 ) : (
-                                    <p>No hay cálculos guardados en el archivo.</p>
+                                    <p>No hay actividad guardada en el archivo.</p>
                                 )
                             )}
                         </div>
