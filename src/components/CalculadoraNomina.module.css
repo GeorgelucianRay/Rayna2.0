@@ -1,3 +1,5 @@
+/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ CORECTATĂ) */
+
 .header {
     display: flex;
     justify-content: space-between;
@@ -61,6 +63,14 @@
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
     width: 100%;
+}
+
+/* === MODIFICARE NOUĂ: Setăm culoarea pentru textul paragrafelor din carduri === */
+.card p {
+    color: #d1d5db; /* Gri deschis, lizibil */
+    text-align: center;
+    font-size: 1rem;
+    margin: 0;
 }
 
 .card h3 {
@@ -243,11 +253,18 @@
     padding: 0.75rem; border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
-    color: white; font-size: 1rem;
+    color: white; /* Asigură că textul selectat este alb */
+    font-size: 1rem;
 }
 .dispatcherSelector select:focus {
     outline: none; border-color: #fb923c;
 }
+/* === MODIFICARE NOUĂ: Stil pentru opțiunile din dropdown === */
+.dispatcherSelector select option {
+    background: #1f2937; /* Fundal închis pentru opțiuni */
+    color: white; /* Text alb pentru opțiuni */
+}
+
 
 .resultCard { border-top: 3px solid #22c55e; }
 .totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
