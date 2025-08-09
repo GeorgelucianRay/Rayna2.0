@@ -1,4 +1,4 @@
-/* src/components/CalculadoraNomina.module.css */
+/* Stiluri pentru componenta CalculadoraNomina */
 
 .header {
     display: flex;
@@ -36,20 +36,25 @@
     cursor: not-allowed;
 }
 
-/* === MODIFICARE CSS: De la Grid la Flexbox pentru control mai bun === */
 .mainContainer {
-    display: flex;
-    flex-wrap: wrap; /* Permite trecerea pe rând nou pe ecrane mici */
+    display: grid;
+    grid-template-columns: 1fr; /* O singură coloană pe mobil implicit */
     gap: 2rem;
-    align-items: flex-start; /* Aliniază cardurile la partea de sus */
+    align-items: flex-start;
+}
+
+/* Trecere la 2 coloane doar pe ecrane mai mari (desktop) */
+@media (min-width: 1024px) {
+    .mainContainer {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .column {
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    flex: 1; /* Fiecare coloană încearcă să ocupe spațiu egal */
-    min-width: 400px; /* Lățime minimă înainte de a trece pe rândul următor */
+    width: 100%;
 }
 
 .card {
@@ -58,7 +63,7 @@
     padding: 1.75rem;
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    width: 100%; /* Asigură că umple spațiul din coloană */
+    width: 100%;
 }
 
 .card h3 {
@@ -71,10 +76,17 @@
     padding-bottom: 0.75rem;
 }
 
+/* Trecere la 1 coloană pentru input-uri pe mobil */
 .inputGrid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+    grid-template-columns: 1fr; /* O coloană pe mobil */
+    gap: 1rem;
+}
+@media (min-width: 640px) {
+    .inputGrid {
+        grid-template-columns: 1fr 1fr; /* Două coloane pe ecrane mai mari */
+        gap: 1.25rem;
+    }
 }
 
 .inputGroup {
@@ -90,12 +102,14 @@
 }
 
 .inputGroup input {
-    padding: 0.6rem;
+    padding: 0.75rem; /* Padding mai mare pentru mobil */
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
     font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .inputGroup input:focus {
@@ -139,7 +153,7 @@
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
 }
 
-/* === MODIFICARE CSS: Stiluri Calendar îmbunătățite === */
+/* Stiluri Calendar îmbunătățite și responsive */
 .calendarHeader {
     display: flex;
     justify-content: space-between;
@@ -151,58 +165,61 @@
     font-size: 1.5rem; cursor: pointer; padding: 0.5rem;
 }
 .calendarHeader h3 {
-    border-bottom: none; padding-bottom: 0;
+    border-bottom: none; padding-bottom: 0; margin-bottom: 0;
 }
-
 .calendarWeekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     text-align: center; color: #9ca3af;
     font-weight: 600; margin-bottom: 0.5rem;
+    font-size: 0.75rem;
 }
 .calendarGrid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.5rem; /* Spațiu mai mare între zile */
+    gap: 0.25rem;
 }
 .calendarDay {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
-    aspect-ratio: 1 / 1; /* Face zilele pătrate */
-    padding: 0.5rem;
+    aspect-ratio: 1 / 1.2; /* Raport optimizat pentru a încăpea bifele */
+    padding: 0.25rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 .dayNumber {
+    font-size: 0.75rem;
     font-weight: 600;
     color: #e5e7eb;
     text-align: right;
+    padding-right: 0.25rem;
 }
 .placeholderDay {
     background-color: transparent;
     border: none;
 }
 .checkboxGroup {
-    font-size: 0.75rem; /* Mărime text redusă */
+    font-size: 0.7rem;
     color: #d1d5db;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    padding-left: 0.1rem;
 }
 .checkboxGroup div {
     display: flex;
     align-items: center;
 }
 .checkboxGroup input {
-    margin-right: 0.35rem;
-    transform: scale(0.8); /* Bife mai mici */
+    margin-right: 0.25rem;
+    transform: scale(0.8);
 }
 .checkboxGroup label {
     cursor: pointer;
 }
 
-/* --- Stiluri Selector Dispecer --- */
+/* Stiluri Selector Dispecer */
 .dispatcherSelector {
     background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
@@ -211,16 +228,25 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 2rem;
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+@media (min-width: 640px) {
+    .dispatcherSelector {
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+    }
 }
 .dispatcherSelector label {
     font-size: 1.1rem;
     font-weight: 600;
     color: white;
+    flex-shrink: 0;
 }
 .dispatcherSelector select {
-    flex-grow: 1; padding: 0.6rem; border-radius: 0.5rem;
+    width: 100%;
+    padding: 0.75rem; border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
     color: white; font-size: 1rem;
@@ -229,7 +255,7 @@
     outline: none; border-color: #fb923c;
 }
 
-/* --- Stiluri Rezultat și Modal rămân neschimbate --- */
+/* Stiluri Rezultat și Modal */
 .resultCard { border-top: 3px solid #22c55e; }
 .totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
 .resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -247,5 +273,5 @@
 .archiveTotal { color: #22c55e; }
 
 .festivosSection { margin-top: 1rem; }
-.addFestivoButton { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
+.addFestivoButton { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
 .festivosSection p { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; text-align: center; }
