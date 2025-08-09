@@ -1,4 +1,4 @@
-/* Inspirat de MiPerfilPage.module.css, dar adaptat pentru calculator */
+/* src/components/CalculadoraNomina.module.css */
 
 .header {
     display: flex;
@@ -31,16 +31,25 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+.archiveButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* === MODIFICARE CSS: De la Grid la Flexbox pentru control mai bun === */
 .mainContainer {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    display: flex;
+    flex-wrap: wrap; /* Permite trecerea pe rând nou pe ecrane mici */
     gap: 2rem;
+    align-items: flex-start; /* Aliniază cardurile la partea de sus */
 }
 
 .column {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    flex: 1; /* Fiecare coloană încearcă să ocupe spațiu egal */
+    min-width: 400px; /* Lățime minimă înainte de a trece pe rândul următor */
 }
 
 .card {
@@ -49,6 +58,7 @@
     padding: 1.75rem;
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 100%; /* Asigură că umple spațiul din coloană */
 }
 
 .card h3 {
@@ -122,7 +132,6 @@
     font-size: 1.25rem;
     cursor: pointer;
     transition: all 0.2s;
-    margin-top: -1rem; /* Aliniere frumoasă */
 }
 
 .calculateButton:hover {
@@ -130,7 +139,7 @@
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
 }
 
-/* Stiluri Calendar */
+/* === MODIFICARE CSS: Stiluri Calendar îmbunătățite === */
 .calendarHeader {
     display: flex;
     justify-content: space-between;
@@ -138,132 +147,105 @@
     margin-bottom: 1rem;
 }
 .calendarHeader button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
+    background: none; border: none; color: white;
+    font-size: 1.5rem; cursor: pointer; padding: 0.5rem;
 }
+.calendarHeader h3 {
+    border-bottom: none; padding-bottom: 0;
+}
+
 .calendarWeekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    color: #9ca3af;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+    text-align: center; color: #9ca3af;
+    font-weight: 600; margin-bottom: 0.5rem;
 }
 .calendarGrid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
+    gap: 0.5rem; /* Spațiu mai mare între zile */
 }
 .calendarDay {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
-    height: 90px;
+    aspect-ratio: 1 / 1; /* Face zilele pătrate */
     padding: 0.5rem;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
 }
 .dayNumber {
     font-weight: 600;
     color: #e5e7eb;
+    text-align: right;
 }
 .placeholderDay {
     background-color: transparent;
+    border: none;
 }
 .checkboxGroup {
-    font-size: 0.8rem;
+    font-size: 0.75rem; /* Mărime text redusă */
     color: #d1d5db;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 .checkboxGroup div {
     display: flex;
     align-items: center;
 }
 .checkboxGroup input {
-    margin-right: 0.25rem;
+    margin-right: 0.35rem;
+    transform: scale(0.8); /* Bife mai mici */
+}
+.checkboxGroup label {
+    cursor: pointer;
 }
 
-/* Stiluri Sectiune Rezultat */
-.resultCard {
-    border-top: 3px solid #22c55e;
-}
-.totalBruto {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #22c55e;
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
-.resultDetails {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+/* --- Stiluri Selector Dispecer --- */
+.dispatcherSelector {
+    background-color: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 1.25rem 1.75rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 2rem;
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 1rem;
 }
-.resultDetails li {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    color: #d1d5db;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.dispatcherSelector label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
 }
-.resultDetails li span:first-child {
-    font-weight: 500;
+.dispatcherSelector select {
+    flex-grow: 1; padding: 0.6rem; border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white; font-size: 1rem;
+}
+.dispatcherSelector select:focus {
+    outline: none; border-color: #fb923c;
 }
 
-/* Stiluri Modal Arhivă - adaptate din MiPerfilPage */
-.modalOverlay {
-    position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px); z-index: 3000; display: flex;
-    justify-content: center; align-items: center; padding: 1rem;
-}
-.modalContent {
-    background-color: #1f2937; padding: 1.5rem; border-radius: 1rem;
-    width: 100%; max-width: 600px; color: white;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    max-height: 80vh;
-}
-.modalHeader {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 1rem;
-}
+/* --- Stiluri Rezultat și Modal rămân neschimbate --- */
+.resultCard { border-top: 3px solid #22c55e; }
+.totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
+.resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.resultDetails li { display: flex; justify-content: space-between; font-size: 0.9rem; color: #d1d5db; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.resultDetails li span:first-child { font-weight: 500; }
+
+.modalOverlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 1rem; }
+.modalContent { background-color: #1f2937; padding: 1.5rem; border-radius: 1rem; width: 100%; max-width: 600px; color: white; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); max-height: 80vh; }
+.modalHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 1rem; }
 .modalTitle { margin: 0; font-size: 1.5rem; font-weight: 700; }
 .closeButton { background: transparent; border: none; color: #9ca3af; cursor: pointer; padding: 0; }
 .modalBody { overflow-y: auto; max-height: calc(80vh - 100px); display: flex; flex-direction: column; gap: 1rem; }
-.archiveItem {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 1rem;
-    border-radius: 0.75rem;
-}
-.archiveHeader {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 0.75rem;
-}
-.archiveTotal {
-    color: #22c55e;
-}
-.festivosSection {
-    margin-top: 1rem;
-}
-.addFestivoButton {
-    width: 100%;
-    padding: 0.6rem;
-    border-radius: 0.5rem;
-    border: 1px dashed rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #e5e7eb;
-    cursor: pointer;
-}
-.festivosSection p {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin-top: 0.5rem;
-    text-align: center;
-}
+.archiveItem { background-color: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 0.75rem; }
+.archiveHeader { display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem; }
+.archiveTotal { color: #22c55e; }
+
+.festivosSection { margin-top: 1rem; }
+.addFestivoButton { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
+.festivosSection p { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; text-align: center; }
