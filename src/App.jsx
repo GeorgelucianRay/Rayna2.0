@@ -15,7 +15,11 @@ import RemorcaPage from './components/RemorcaPage.jsx';
 import ChoferesPage from './components/ChoferesPage.jsx';
 import ChoferProfilePage from './components/ChoferProfilePage.jsx';
 import TallerPage from './components/TallerPage.jsx';
-import ReparatiiPage from './components/ReparatiiPage.jsx'; // <-- AM IMPORTAT NOUA PAGINĂ
+import ReparatiiPage from './components/ReparatiiPage.jsx';
+
+// === MODIFICARE NOUĂ: Am importat componenta pentru calculator ===
+import CalculadoraNomina from './components/CalculadoraNomina.jsx';
+
 
 function App() {
   return (
@@ -33,7 +37,7 @@ function App() {
       <Route path="/choferes" element={<ChoferesPage />} />
       <Route path="/chofer/:id" element={<ChoferProfilePage />} />
       <Route path="/taller" element={<TallerPage />} />
-      <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} /> {/* <-- AM ADĂUGAT RUTA NOUĂ */}
+      <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} /> 
       
       <Route path="/gps" element={<GpsPage />} />
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
@@ -41,6 +45,9 @@ function App() {
       <Route path="/remorca/:id" element={<RemorcaPage />} />
       
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
+
+      {/* === MODIFICARE NOUĂ: Am adăugat ruta pentru calculator === */}
+      <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
       
       {/* --- Rută 404 (Pagina nu a fost găsită) --- */}
       <Route path="*" element={
