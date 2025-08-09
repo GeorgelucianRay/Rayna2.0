@@ -1,5 +1,3 @@
-/* src/components/Layout.module.css */
-
 /* Structura generală a wrapper-ului */
 .layoutWrapper {
   position: relative;
@@ -42,8 +40,10 @@
 .miPerfilBackground { background-image: url('/miprofile.jpg'); }
 .remorcaBackground { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
 .camionBackground { background-image: url('/IMG_9678.jpeg'); }
-/* --- MODIFICARE: Am adăugat imaginea pentru pagina de reparații --- */
 .reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
+
+/* === MODIFICARE NOUĂ: Imagine pentru Calculator Nómina === */
+.calculadoraBackground { background-image: url('/IMG_9705.jpeg'); }
 
 
 /* Meniul lateral */
