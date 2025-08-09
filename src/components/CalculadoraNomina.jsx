@@ -4,10 +4,11 @@ import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// ... (Iconițele și CalendarDay rămân la fel) ...
+// --- Componente de Iconițe ---
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
+// --- Componenta pentru o singură zi din calendar ---
 const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''}`;
     return (
@@ -24,16 +25,14 @@ const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     );
 };
 
+// --- Componenta Principală ---
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [archiveData, setArchiveData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    
-    // === FIX: Stare de încărcare separată pentru arhivă ===
     const [isLoadingArchive, setIsLoadingArchive] = useState(false);
-    
     const [listaSoferi, setListaSoferi] = useState([]);
     const [soferSelectat, setSoferSelectat] = useState(null);
 
@@ -96,7 +95,6 @@ function CalculadoraNomina() {
 
     const getTargetUserId = () => profile?.role === 'dispecer' ? soferSelectat : user.id;
 
-    // ... (handleConfigChange, handlePontajChange, handlePontajToggle, addFestivo, handleCalculate, handleSaveConfig rămân neschimbate) ...
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
         setConfig(prev => ({ ...prev, [name]: value === '' ? '' : parseFloat(value) || 0 }));
@@ -160,7 +158,6 @@ function CalculadoraNomina() {
         else alert('¡Configuración guardada con éxito!');
     };
 
-
     const handleSaveToArchive = async () => {
         const targetId = getTargetUserId();
         if (!targetId || !rezultat) return;
@@ -183,7 +180,7 @@ function CalculadoraNomina() {
             return;
         }
         setIsArchiveOpen(true);
-        setIsLoadingArchive(true); // Folosim noul state
+        setIsLoadingArchive(true);
         const { data, error } = await supabase.from('nominas_calculadas').select('*').eq('user_id', targetId).order('an', { ascending: false }).order('mes', { ascending: false });
         
         if (error) {
@@ -191,10 +188,9 @@ function CalculadoraNomina() {
         } else {
             setArchiveData(data || []);
         }
-        setIsLoadingArchive(false); // Folosim noul state
+        setIsLoadingArchive(false);
     };
-
-    // ... (renderCalendar și monthNames rămân neschimbate) ...
+    
     const renderCalendar = () => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
@@ -208,14 +204,12 @@ function CalculadoraNomina() {
         return days;
     };
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
     
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
     const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
     
     return (
         <Layout backgroundClassName="calculadora-background">
-            {/* ... (JSX-ul de la header, dispatcherSelector, și mainContainer rămâne neschimbat) ... */}
             <div className={styles.header}>
                 <h1>Calculadora de Nómina</h1>
                 <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}>
@@ -282,7 +276,10 @@ function CalculadoraNomina() {
                                 <h3>Resultado del Cálculo</h3>
                                 <p className={styles.totalBruto}>Total Bruto: {rezultat.totalBruto} €</p>
                                 <ul className={styles.resultDetails}>
-                                    {Object.entries(rezultat.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
+                                    {/* === FIX: Verificăm dacă rezultat.detalii există înainte de a-l afișa === */}
+                                    {rezultat.detalii && Object.entries(rezultat.detalii).map(([key, value]) => (
+                                        <li key={key}><span>{key}</span><span>{value}</span></li>
+                                    ))}
                                 </ul>
                                 <button onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
                             </div>
@@ -291,7 +288,6 @@ function CalculadoraNomina() {
                 </div>
             ) : ( profile?.role === 'dispecer' && <div className={styles.card}><p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p></div> )}
 
-            {/* === FIX: Am actualizat corpul modalului pentru a folosi noul state și a afișa mesaje clare === */}
             {isArchiveOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -311,7 +307,10 @@ function CalculadoraNomina() {
                                                 <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)} €</span>
                                             </div>
                                             <ul className={styles.resultDetails}>
-                                              {Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
+                                              {/* === FIX: Verificăm dacă item.detalii există înainte de a-l afișa === */}
+                                              {item.detalii && Object.entries(item.detalii).map(([key, value]) => (
+                                                  <li key={key}><span>{key}</span><span>{value}</span></li>
+                                              ))}
                                             </ul>
                                         </div>
                                     ))
