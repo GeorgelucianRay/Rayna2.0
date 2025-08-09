@@ -1,4 +1,4 @@
-/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ CORECTATĂ) */
+/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ ȘI FORȚATĂ) */
 
 .header {
     display: flex;
@@ -65,9 +65,9 @@
     width: 100%;
 }
 
-/* === MODIFICARE NOUĂ: Setăm culoarea pentru textul paragrafelor din carduri === */
+/* === FIX VIZUAL 1: Forțăm culoarea albă pentru mesajul placeholder === */
 .card p {
-    color: #d1d5db; /* Gri deschis, lizibil */
+    color: white !important; /* Culoare albă, forțată */
     text-align: center;
     font-size: 1rem;
     margin: 0;
@@ -248,21 +248,21 @@
     color: white;
     flex-shrink: 0;
 }
+/* === FIX VIZUAL 2: Forțăm culoarea gri pentru dropdown și opțiuni === */
 .dispatcherSelector select {
     width: 100%;
     padding: 0.75rem; border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
-    color: white; /* Asigură că textul selectat este alb */
+    color: #d1d5db !important; /* Gri deschis, forțat */
     font-size: 1rem;
 }
 .dispatcherSelector select:focus {
     outline: none; border-color: #fb923c;
 }
-/* === MODIFICARE NOUĂ: Stil pentru opțiunile din dropdown === */
 .dispatcherSelector select option {
-    background: #1f2937; /* Fundal închis pentru opțiuni */
-    color: white; /* Text alb pentru opțiuni */
+    background: #1f2937;
+    color: #d1d5db; /* Gri deschis pentru opțiuni */
 }
 
 
@@ -281,6 +281,10 @@
 .archiveItem { background-color: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 0.75rem; }
 .archiveHeader { display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem; }
 .archiveTotal { color: #22c55e; }
+
+.festivosSection { margin-top: 1rem; }
+.addFestivoButton { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
+.festivosSection p { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; text-align: center; }
 
 .festivosSection { margin-top: 1rem; }
 .addFestivoButton { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
