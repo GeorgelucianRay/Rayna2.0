@@ -1,5 +1,3 @@
-/* Stiluri pentru componenta CalculadoraNomina */
-
 .header {
     display: flex;
     justify-content: space-between;
@@ -38,12 +36,11 @@
 
 .mainContainer {
     display: grid;
-    grid-template-columns: 1fr; /* O singură coloană pe mobil implicit */
+    grid-template-columns: 1fr;
     gap: 2rem;
     align-items: flex-start;
 }
 
-/* Trecere la 2 coloane doar pe ecrane mai mari (desktop) */
 @media (min-width: 1024px) {
     .mainContainer {
         grid-template-columns: repeat(2, 1fr);
@@ -76,15 +73,14 @@
     padding-bottom: 0.75rem;
 }
 
-/* Trecere la 1 coloană pentru input-uri pe mobil */
 .inputGrid {
     display: grid;
-    grid-template-columns: 1fr; /* O coloană pe mobil */
+    grid-template-columns: 1fr;
     gap: 1rem;
 }
 @media (min-width: 640px) {
     .inputGrid {
-        grid-template-columns: 1fr 1fr; /* Două coloane pe ecrane mai mari */
+        grid-template-columns: 1fr 1fr;
         gap: 1.25rem;
     }
 }
@@ -102,7 +98,7 @@
 }
 
 .inputGroup input {
-    padding: 0.75rem; /* Padding mai mare pentru mobil */
+    padding: 0.75rem;
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
@@ -153,7 +149,6 @@
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
 }
 
-/* Stiluri Calendar îmbunătățite și responsive */
 .calendarHeader {
     display: flex;
     justify-content: space-between;
@@ -182,7 +177,7 @@
 .calendarDay {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
-    aspect-ratio: 1 / 1.2; /* Raport optimizat pentru a încăpea bifele */
+    aspect-ratio: 1 / 1.2;
     padding: 0.25rem;
     display: flex;
     flex-direction: column;
@@ -219,7 +214,6 @@
     cursor: pointer;
 }
 
-/* Stiluri Selector Dispecer */
 .dispatcherSelector {
     background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
@@ -255,7 +249,6 @@
     outline: none; border-color: #fb923c;
 }
 
-/* Stiluri Rezultat și Modal */
 .resultCard { border-top: 3px solid #22c55e; }
 .totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
 .resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
