@@ -4,11 +4,10 @@ import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// --- Componente de Iconițe ---
+// ... (Iconițele și CalendarDay rămân la fel) ...
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
-// --- Componenta pentru o singură zi din calendar ---
 const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''}`;
     return (
@@ -25,13 +24,16 @@ const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     );
 };
 
-// --- Componenta Principală ---
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [archiveData, setArchiveData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    
+    // === FIX: Stare de încărcare separată pentru arhivă ===
+    const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+    
     const [listaSoferi, setListaSoferi] = useState([]);
     const [soferSelectat, setSoferSelectat] = useState(null);
 
@@ -53,9 +55,7 @@ function CalculadoraNomina() {
         const fetchDrivers = async () => {
             if (profile?.role === 'dispecer') {
                 setIsLoading(true);
-                const { data, error } = await supabase
-                    .from('nomina_perfiles')
-                    .select('user_id, nombre_completo, config_nomina');
+                const { data, error } = await supabase.from('nomina_perfiles').select('user_id, nombre_completo, config_nomina');
                 
                 if (error) {
                     console.error("Error al obtener la lista de conductores desde nomina_perfiles:", error);
@@ -96,6 +96,7 @@ function CalculadoraNomina() {
 
     const getTargetUserId = () => profile?.role === 'dispecer' ? soferSelectat : user.id;
 
+    // ... (handleConfigChange, handlePontajChange, handlePontajToggle, addFestivo, handleCalculate, handleSaveConfig rămân neschimbate) ...
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
         setConfig(prev => ({ ...prev, [name]: value === '' ? '' : parseFloat(value) || 0 }));
@@ -159,6 +160,7 @@ function CalculadoraNomina() {
         else alert('¡Configuración guardada con éxito!');
     };
 
+
     const handleSaveToArchive = async () => {
         const targetId = getTargetUserId();
         if (!targetId || !rezultat) return;
@@ -166,21 +168,33 @@ function CalculadoraNomina() {
             user_id: targetId, mes: currentDate.getMonth() + 1, an: currentDate.getFullYear(),
             total_bruto: parseFloat(rezultat.totalBruto), detalles: rezultat.detalii
         });
-        if (error) alert('Error al guardar en el archivo: ' + error.message);
-        else { alert('Cálculo guardado en el archivo.'); setRezultat(null); }
+        if (error) {
+            alert('Error al guardar en el archivo: ' + error.message);
+        } else {
+            alert('Cálculo guardado en el archivo.');
+            setRezultat(null);
+        }
     };
     
     const handleViewArchive = async () => {
         const targetId = getTargetUserId();
-        if (!targetId) { alert("Por favor, seleccione un conductor para ver su archivo."); return; }
+        if (!targetId) {
+            alert("Por favor, seleccione un conductor para ver su archivo.");
+            return;
+        }
         setIsArchiveOpen(true);
-        setIsLoading(true);
+        setIsLoadingArchive(true); // Folosim noul state
         const { data, error } = await supabase.from('nominas_calculadas').select('*').eq('user_id', targetId).order('an', { ascending: false }).order('mes', { ascending: false });
-        if (error) alert("Error al cargar el archivo: " + error.message);
-        else setArchiveData(data || []);
-        setIsLoading(false);
+        
+        if (error) {
+            alert("Error al cargar el archivo: " + error.message);
+        } else {
+            setArchiveData(data || []);
+        }
+        setIsLoadingArchive(false); // Folosim noul state
     };
 
+    // ... (renderCalendar și monthNames rămân neschimbate) ...
     const renderCalendar = () => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
@@ -194,12 +208,14 @@ function CalculadoraNomina() {
         return days;
     };
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
     
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
     const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
     
     return (
         <Layout backgroundClassName="calculadora-background">
+            {/* ... (JSX-ul de la header, dispatcherSelector, și mainContainer rămâne neschimbat) ... */}
             <div className={styles.header}>
                 <h1>Calculadora de Nómina</h1>
                 <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}>
@@ -275,6 +291,7 @@ function CalculadoraNomina() {
                 </div>
             ) : ( profile?.role === 'dispecer' && <div className={styles.card}><p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p></div> )}
 
+            {/* === FIX: Am actualizat corpul modalului pentru a folosi noul state și a afișa mesaje clare === */}
             {isArchiveOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -283,18 +300,24 @@ function CalculadoraNomina() {
                             <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
                         <div className={styles.modalBody}>
-                            {isLoading ? <p>Cargando archivo...</p> : (
-                                archiveData.length > 0 ? archiveData.map(item => (
-                                    <div key={item.id} className={styles.archiveItem}>
-                                        <div className={styles.archiveHeader}>
-                                            <span>{monthNames[item.mes - 1]} {item.an}</span>
-                                            <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)} €</span>
+                            {isLoadingArchive ? (
+                                <p>Cargando archivo...</p>
+                            ) : (
+                                archiveData.length > 0 ? (
+                                    archiveData.map(item => (
+                                        <div key={item.id} className={styles.archiveItem}>
+                                            <div className={styles.archiveHeader}>
+                                                <span>{monthNames[item.mes - 1]} {item.an}</span>
+                                                <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)} €</span>
+                                            </div>
+                                            <ul className={styles.resultDetails}>
+                                              {Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
+                                            </ul>
                                         </div>
-                                        <ul className={styles.resultDetails}>
-                                          {Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
-                                        </ul>
-                                    </div>
-                                )) : <p>No hay cálculos guardados en el archivo.</p>
+                                    ))
+                                ) : (
+                                    <p>No hay cálculos guardados en el archivo.</p>
+                                )
                             )}
                         </div>
                     </div>
