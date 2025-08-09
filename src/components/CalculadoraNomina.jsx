@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
+// --- Componente de Iconițe ---
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
+// --- Componenta pentru o singură zi din calendar ---
 const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''}`;
     return (
@@ -23,50 +25,56 @@ const CalendarDay = ({ day, data, onToggle, isPlaceholder }) => {
     );
 };
 
+// --- Componenta Principală ---
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [archiveData, setArchiveData] = useState([]);
-    const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [listaSoferi, setListaSoferi] = useState([]);
     const [soferSelectat, setSoferSelectat] = useState(null);
 
-    // Valori default pentru configurare
-    const defaultConfig = {
+    const defaultConfig = useMemo(() => ({
         salario_base: 1050, antiguedad: 0, precio_desayuno: 0,
         precio_cena: 0, precio_procena: 0, precio_km: 0.05, precio_contenedor: 6,
-    };
+    }), []);
     
-    // Valori default pentru pontaj
-    const defaultPontaj = {
+    const defaultPontaj = useMemo(() => ({
         km_start: '', km_final: '', festivos: [], contenedores: 0,
         zilePontaj: Array(31).fill({ desayuno: false, cena: false, procena: false }),
-    };
+    }), []);
 
     const [config, setConfig] = useState(defaultConfig);
     const [pontaj, setPontaj] = useState(defaultPontaj);
     const [rezultat, setRezultat] = useState(null);
 
     useEffect(() => {
-        const fetchSoferi = async () => {
+        const fetchDrivers = async () => {
             if (profile?.role === 'dispecer') {
+                setIsLoading(true);
                 const { data, error } = await supabase.from('profiles').select('id, nombre_completo, config_nomina').eq('role', 'sofer');
-                if (error) console.error("Error al obtener conductores:", error);
-                else setListaSoferi(data || []);
+                
+                if (error) {
+                    console.error("Error al obtener conductores:", error);
+                    alert("Error al obtener la lista de conductores. Verifique los permisos RLS en Supabase.");
+                } else {
+                    setListaSoferi(data || []);
+                }
+                setIsLoading(false);
             }
         };
-        fetchSoferi();
+        fetchDrivers();
     }, [profile]);
 
     useEffect(() => {
+        const driverProfile = soferSelectat ? listaSoferi.find(s => s.id === soferSelectat) : null;
         if (profile?.role === 'dispecer') {
-            const driverProfile = soferSelectat ? listaSoferi.find(s => s.id === soferSelectat) : null;
             setConfig(driverProfile?.config_nomina || defaultConfig);
         } else if (profile) {
             setConfig(profile.config_nomina || defaultConfig);
         }
-    }, [soferSelectat, profile, listaSoferi]);
+    }, [soferSelectat, profile, listaSoferi, defaultConfig]);
     
     const handleSoferSelect = (e) => {
         const selectedId = e.target.value;
@@ -75,9 +83,7 @@ function CalculadoraNomina() {
         setRezultat(null);
     };
 
-    const getTargetUserId = () => {
-        return profile?.role === 'dispecer' ? soferSelectat : user.id;
-    }
+    const getTargetUserId = () => profile?.role === 'dispecer' ? soferSelectat : user.id;
 
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
@@ -90,9 +96,9 @@ function CalculadoraNomina() {
     };
 
     const handlePontajToggle = (dayIndex, field) => {
-        const noiZile = [...pontaj.zilePontaj];
-        noiZile[dayIndex] = { ...noiZile[dayIndex], [field]: !noiZile[dayIndex][field] };
-        setPontaj(prev => ({ ...prev, zilePontaj: noiZile }));
+        const newPontajDays = [...pontaj.zilePontaj];
+        newPontajDays[dayIndex] = { ...newPontajDays[dayIndex], [field]: !newPontajDays[dayIndex][field] };
+        setPontaj(prev => ({ ...prev, zilePontaj: newPontajDays }));
     };
     
     const addFestivo = () => {
@@ -103,34 +109,33 @@ function CalculadoraNomina() {
     };
     
     const handleCalculate = () => {
-        // ... (Logica de calcul rămâne identică)
         const totalDesayuno = pontaj.zilePontaj.filter(z => z.desayuno).length;
         const totalCena = pontaj.zilePontaj.filter(z => z.cena).length;
         const totalProcena = pontaj.zilePontaj.filter(z => z.procena).length;
         
-        const sumaDesayuno = totalDesayuno * config.precio_desayuno;
-        const sumaCena = totalCena * config.precio_cena;
-        const sumaProcena = totalProcena * config.precio_procena;
+        const sumaDesayuno = totalDesayuno * (config.precio_desayuno || 0);
+        const sumaCena = totalCena * (config.precio_cena || 0);
+        const sumaProcena = totalProcena * (config.precio_procena || 0);
         
-        const kmParcursi = pontaj.km_final > pontaj.km_start ? pontaj.km_final - pontaj.km_start : 0;
-        const sumaKm = kmParcursi * config.precio_km;
+        const kmParcursi = (pontaj.km_final || 0) > (pontaj.km_start || 0) ? (pontaj.km_final || 0) - (pontaj.km_start || 0) : 0;
+        const sumaKm = kmParcursi * (config.precio_km || 0);
         
-        const sumaContainere = pontaj.contenedores * config.precio_contenedor;
+        const sumaContainere = (pontaj.contenedores || 0) * (config.precio_contenedor || 0);
         const sumaFestivos = pontaj.festivos.reduce((acc, f) => acc + f.suma, 0);
 
-        const totalBruto = config.salario_base + config.antiguedad + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaFestivos;
+        const totalBruto = (config.salario_base || 0) + (config.antiguedad || 0) + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaFestivos;
 
         setRezultat({
             totalBruto: totalBruto.toFixed(2),
             detalii: {
-                'Salario Base': config.salario_base.toFixed(2),
-                'Antigüedad': config.antiguedad.toFixed(2),
-                'Total Desayuno': `${totalDesayuno} días x ${config.precio_desayuno}€ = ${sumaDesayuno.toFixed(2)}€`,
-                'Total Cena': `${totalCena} días x ${config.precio_cena}€ = ${sumaCena.toFixed(2)}€`,
-                'Total Procena': `${totalProcena} días x ${config.precio_procena}€ = ${sumaProcena.toFixed(2)}€`,
-                'Total Kilómetros': `${kmParcursi} km x ${config.precio_km}€ = ${sumaKm.toFixed(2)}€`,
-                'Total Contenedores': `${pontaj.contenedores} uds. x ${config.precio_contenedor}€ = ${sumaContainere.toFixed(2)}€`,
-                'Total Festivos/Plus': `${sumaFestivos.toFixed(2)}€`,
+                'Salario Base': (config.salario_base || 0).toFixed(2),
+                'Antigüedad': (config.antiguedad || 0).toFixed(2),
+                'Total Desayuno': `${totalDesayuno} días x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
+                'Total Cena': `${totalCena} días x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
+                'Total Procena': `${totalProcena} días x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
+                'Total Kilómetros': `${kmParcursi} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`,
+                'Total Contenedores': `${pontaj.contenedores || 0} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
+                'Total Festivos/Plus': sumaFestivos.toFixed(2) + '€',
             }
         });
     };
@@ -140,7 +145,7 @@ function CalculadoraNomina() {
         if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
         const { error } = await supabase.from('profiles').update({ config_nomina: config }).eq('id', targetId);
         if (error) alert('Error al guardar la configuración: ' + error.message);
-        else alert('Configuración guardada con éxito!');
+        else alert('¡Configuración guardada con éxito!');
     };
 
     const handleSaveToArchive = async () => {
@@ -158,15 +163,14 @@ function CalculadoraNomina() {
         const targetId = getTargetUserId();
         if (!targetId) { alert("Por favor, seleccione un conductor para ver su archivo."); return; }
         setIsArchiveOpen(true);
-        setIsLoadingArchive(true);
+        setIsLoading(true);
         const { data, error } = await supabase.from('nominas_calculadas').select('*').eq('user_id', targetId).order('an', { ascending: false }).order('mes', { ascending: false });
         if (error) alert("Error al cargar el archivo: " + error.message);
         else setArchiveData(data || []);
-        setIsLoadingArchive(false);
+        setIsLoading(false);
     };
 
     const renderCalendar = () => {
-        // ... (Logica de randare calendar rămâne identică)
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
         const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -227,7 +231,6 @@ function CalculadoraNomina() {
                             </div>
                             <div className={styles.festivosSection}>
                                 <button onClick={addFestivo} className={styles.addFestivoButton}>Añadir Festivo / Plus</button>
-                                {/* === MODIFICARE TEXT === */}
                                 <p>Festivos añadidos: {pontaj.festivos.map(f => `${f.suma}€`).join(', ')}</p>
                             </div>
                         </div>
@@ -259,18 +262,17 @@ function CalculadoraNomina() {
                         )}
                     </div>
                 </div>
-            ) : ( profile?.role === 'dispecer' && <div className={styles.card}><p>Por favor, seleccione un conductor para continuar.</p></div> )}
+            ) : ( profile?.role === 'dispecer' && <div className={styles.card}><p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p></div> )}
 
             {isArchiveOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
-                            {/* === MODIFICARE TEXT === */}
                             <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role === 'dispecer' && driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
                             <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
                         <div className={styles.modalBody}>
-                            {isLoadingArchive ? <p>Cargando archivo...</p> : (
+                            {isLoading ? <p>Cargando archivo...</p> : (
                                 archiveData.length > 0 ? archiveData.map(item => (
                                     <div key={item.id} className={styles.archiveItem}>
                                         <div className={styles.archiveHeader}>
