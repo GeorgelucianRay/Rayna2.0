@@ -50,7 +50,10 @@ const LocationList = ({ tableName, title }) => {
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      let query = supabase.from(tableName).select('*', { count: 'exact' });
+      // === FIX: Specificăm explicit toate coloanele pentru a evita erori ===
+      const selectColumns = 'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' + (tableName === 'gps_clientes' ? ', tiempo_espera' : '');
+
+      let query = supabase.from(tableName).select(selectColumns, { count: 'exact' });
       if (term) { query = query.ilike('nombre', `%${term}%`); }
 
       const { data, error, count } = await query
@@ -100,7 +103,8 @@ const LocationList = ({ tableName, title }) => {
   
   const handleGetLocation = (setter, stateUpdater) => {
     if (!navigator.geolocation) {
-      alert('Geolocalizarea nu este suportată de acest browser.');
+      // === TRADUCERE ===
+      alert('La geolocalización no es compatible con este navegador.');
       return;
     }
     setGettingLocation(true);
@@ -115,7 +119,8 @@ const LocationList = ({ tableName, title }) => {
         setGettingLocation(false);
       },
       (error) => {
-        alert(`Eroare la obținerea locației: ${error.message}`);
+        // === TRADUCERE ===
+        alert(`Error al obtener la ubicación: ${error.message}`);
         setGettingLocation(false);
       }
     );
@@ -131,7 +136,7 @@ const LocationList = ({ tableName, title }) => {
     if (error) {
       alert(`Error al añadir la ubicación: ${error.message}`);
     } else {
-      alert('Ubicación añadida con éxito!');
+      alert('¡Ubicación añadida con éxito!');
       closeAddModal();
       setSearchTerm('');
       setCurrentPage(1);
@@ -151,7 +156,7 @@ const LocationList = ({ tableName, title }) => {
     if (error) {
       alert(`Error al actualizar la ubicación: ${error.message}`);
     } else {
-      alert('Ubicación actualizada con éxito!');
+      alert('¡Ubicación actualizada con éxito!');
       closeEditModal();
       fetchLocations(currentPage, searchTerm);
     }
@@ -172,8 +177,8 @@ const LocationList = ({ tableName, title }) => {
   const getMapsLink = (location) => {
     if (location.link_maps) return location.link_maps;
     if (location.coordenadas) {
-      // Am corectat și aici un mic bug, lipsea "$" în fața acoladei
-      return `http://maps.google.com/?q=${location.coordenadas}`;
+      // === FIX: Am corectat link-ul de Google Maps ===
+      return `https://maps.google.com/?q=${location.coordenadas}`;
     }
     return null;
   };
@@ -182,7 +187,6 @@ const LocationList = ({ tableName, title }) => {
 
   return (
     <>
-      {/* ...JSX pentru LocationList... */}
       <div className={depotStyles.toolbar}>
         <div className={depotStyles.searchBar}>
           <SearchIcon />
@@ -195,7 +199,8 @@ const LocationList = ({ tableName, title }) => {
           <div className={styles.locationGrid}>
             {locations.map((location) => (
               <div key={location.id} className={styles.locationCard} onClick={() => setSelectedLocation(location)}>
-                <img src={location.link_foto || 'https://placehold.co/600x400/cccccc/ffffff?text=Fara+Foto'} alt={`Foto de ${location.nombre}`} className={styles.locationCardImage} onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Eroare+Imagine'; }}/>
+                {/* === TRADUCERE: Placeholder-e pentru imagini === */}
+                <img src={location.link_foto || 'https://placehold.co/600x400/cccccc/ffffff?text=Sin+Foto'} alt={`Foto de ${location.nombre}`} className={styles.locationCardImage} onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen'; }}/>
                 <div className={styles.locationCardOverlay}><h3 className={styles.locationCardTitle}>{location.nombre}</h3></div>
                 {canEdit && ( <button className={styles.locationCardEditBtn} onClick={(e) => { e.stopPropagation(); handleEditClick(location); }}> <EditIcon /></button>)}
               </div>
@@ -221,11 +226,12 @@ const LocationList = ({ tableName, title }) => {
               </div>
             </div>
             <div className={styles.modalBody}>
-              <img src={selectedLocation.link_foto || 'https://placehold.co/600x400/cccccc/ffffff?text=Fara+Foto'} alt={`Foto de ${selectedLocation.nombre}`} className={styles.locationModalImage} onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Eroare+Imagine'; }}/>
+              <img src={selectedLocation.link_foto || 'https://placehold.co/600x400/cccccc/ffffff?text=Sin+Foto'} alt={`Foto de ${selectedLocation.nombre}`} className={styles.locationModalImage} onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen'; }}/>
               <div className={styles.locationDetails}>
                 {selectedLocation.direccion && ( <p><strong>Dirección:</strong> {selectedLocation.direccion}</p> )}
                 {selectedLocation.tiempo_espera && tableName === 'gps_clientes' && ( <p><strong>Tiempo de Espera:</strong> {selectedLocation.tiempo_espera}</p> )}
-                {selectedLocation.detalii && ( <p><strong>Detalles:</strong> {selectedLocation.detalii}</p> )}
+                {/* === FIX: Folosim 'detalles' în loc de 'detalii' === */}
+                {selectedLocation.detalles && ( <p><strong>Detalles:</strong> {selectedLocation.detalles}</p> )}
               </div>
             </div>
             <div className={styles.modalFooter}>
@@ -270,6 +276,7 @@ const LocationList = ({ tableName, title }) => {
             </div>
             <form onSubmit={handleUpdateLocation} className={styles.formWrapper}>
               <div className={styles.modalBody}>
+                {/* === FIX: Folosim 'detalles' și aici, în loc de 'detalii' === */}
                 <div className={styles.inputGroup}><label htmlFor="edit-nombre">Nombre</label><input id="edit-nombre" type="text" value={editingLocation.nombre || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, nombre: e.target.value })} required /></div>
                 <div className={styles.inputGroup}><label htmlFor="edit-direccion">Dirección</label><input id="edit-direccion" type="text" value={editingLocation.direccion || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, direccion: e.target.value })} /></div>
                 <div className={styles.inputGroup}><label htmlFor="edit-link_maps">Link Google Maps (opcional)</label><input id="edit-link_maps" type="text" value={editingLocation.link_maps || ''} onChange={(e) => updateEditingLocationState({ ...editingLocation, link_maps: e.target.value })} /></div>
@@ -290,8 +297,6 @@ const LocationList = ({ tableName, title }) => {
   );
 };
 
-// --- ACEASTĂ PARTE ESTE ESENȚIALĂ ȘI LIPSEA PROBABIL ---
-// Aceasta definește componenta principală a paginii, care folosește LocationList.
 function GpsPage() {
   const [activeView, setActiveView] = useState('clientes');
 
@@ -301,7 +306,7 @@ function GpsPage() {
         <button className={`${depotStyles.depotTabButton} ${activeView === 'clientes' ? depotStyles.active : ''}`} onClick={() => setActiveView('clientes')}>Clientes</button>
         <button className={`${depotStyles.depotTabButton} ${activeView === 'parkings' ? depotStyles.active : ''}`} onClick={() => setActiveView('parkings')}>Parkings</button>
         <button className={`${depotStyles.depotTabButton} ${activeView === 'servicios' ? depotStyles.active : ''}`} onClick={() => setActiveView('servicios')}>Servicios</button>
-        <button className={`${depotStyles.depotTabButton} ${activeView === 'terminale' ? depotStyles.active : ''}`} onClick={() => setActiveView('terminale')}>Terminale</button>
+        <button className={`${depotStyles.depotTabButton} ${activeView === 'terminale' ? depotStyles.active : ''}`} onClick={() => setActiveView('terminale')}>Terminales</button>
       </div>
 
       {activeView === 'clientes' && <LocationList tableName="gps_clientes" title="Cliente" />}
@@ -312,5 +317,4 @@ function GpsPage() {
   );
 }
 
-// Aceasta este linia care exportă componenta pentru a putea fi importată în App.jsx
 export default GpsPage;

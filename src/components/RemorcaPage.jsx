@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import styles from './RemorcaPage.module.css'; // Asigură-te că acest fișier CSS este o copie a celui actualizat pentru CamionPage
+import styles from './RemorcaPage.module.css';
 
 // --- Iconițe SVG ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
@@ -76,7 +76,6 @@ function RemorcaPage() {
             remorca_id: id,
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
-            // Kilometri este omis intenționat pentru remorcă
         };
 
         const { error } = await supabase.from('reparatii').insert([repairData]);
@@ -84,7 +83,7 @@ function RemorcaPage() {
         if (error) {
             alert(`Error al añadir la reparación: ${error.message}`);
         } else {
-            alert('Reparación añadida con éxito!');
+            alert('¡Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '' });
             setSearchTerm('');
@@ -107,9 +106,11 @@ function RemorcaPage() {
         const { id: remorcaId, ...updateData } = editableRemorca;
         const { error } = await supabase.from('remorci').update(updateData).eq('id', remorcaId);
         if (error) {
-            alert(`Error al actualizar la remorca: ${error.message}`);
+            // === MODIFICARE TEXT ===
+            alert(`Error al actualizar el remolque: ${error.message}`);
         } else {
-            alert('Remorca actualizada con éxito!');
+            // === MODIFICARE TEXT ===
+            alert('¡Remolque actualizado con éxito!');
             setRemorca(editableRemorca);
             setIsEditRemorcaModalOpen(false);
         }
@@ -118,13 +119,16 @@ function RemorcaPage() {
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
     const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic' || profile?.role === 'sofer';
 
-    if (loading) return <div className={styles.loadingScreen}>Cargando datos de la remorca...</div>;
-    if (!remorca) return <Layout><p style={{color: 'white', textAlign: 'center'}}>No se encontró la remorca.</p></Layout>;
+    // === MODIFICARE TEXT ===
+    if (loading) return <div className={styles.loadingScreen}>Cargando datos del remolque...</div>;
+    // === MODIFICARE TEXT ===
+    if (!remorca) return <Layout><p style={{color: 'white', textAlign: 'center'}}>No se encontró el remolque.</p></Layout>;
 
     return (
         <Layout backgroundClassName="depot-background">
             <div className={styles.pageHeader}>
-                <h1>Detalles de la Remorca: {remorca.matricula}</h1>
+                {/* === MODIFICARE TEXT === */}
+                <h1>Detalles del Remolque: {remorca.matricula}</h1>
                 <div className={styles.headerActions}>
                     <button onClick={handleEditClick} className={styles.editButton}><EditIcon /> Editar Detalles</button>
                     <button onClick={() => navigate(-1)} className={styles.backButton}><BackIcon /> Volver</button>
@@ -172,7 +176,8 @@ function RemorcaPage() {
                     )}
                 </>
             ) : (
-                <p className={styles.noRepairs}>No hay reparaciones registradas para esta remorca.</p>
+                // === MODIFICARE TEXT ===
+                <p className={styles.noRepairs}>No hay reparaciones registradas para este remolque.</p>
             )}
 
             {isAddRepairModalOpen && (
@@ -184,7 +189,7 @@ function RemorcaPage() {
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
                             <div className={styles.formGroupFull}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de luces" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
-                            <div className={styles.formGroupFull}><label>Descripción / Detalles</label><textarea rows="5" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
+                            <div className={styles.formGroupFull}><label>Descripción o Detalles</label><textarea rows="5" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsAddRepairModalOpen(false)}>Cancelar</button>
                                 <button type="submit" className={styles.saveButton}>Guardar Reparación</button>
@@ -198,7 +203,8 @@ function RemorcaPage() {
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
-                            <h3 className={styles.modalTitle}>Editar Detalles de la Remorca</h3>
+                            {/* === MODIFICARE TEXT === */}
+                            <h3 className={styles.modalTitle}>Editar Detalles del Remolque</h3>
                             <button onClick={() => setIsEditRemorcaModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
                         </div>
                         <form onSubmit={handleUpdateRemorca} className={styles.modalForm}>
