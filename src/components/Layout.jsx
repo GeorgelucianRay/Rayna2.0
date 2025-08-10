@@ -16,8 +16,6 @@ const WrenchIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" he
 const LogoutIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg> );
 const MenuIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg> );
 const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg> );
-
-// === MODIFICARE NOUĂ: Am adăugat o iconiță pentru calculator ===
 const CalculatorIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="10" x2="16" y2="18"></line><line x1="8" y1="10" x2="8" y2="18"></line><line x1="12" y1="10" x2="12" y2="18"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg> );
 
 const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
@@ -45,8 +43,9 @@ const Layout = ({ children }) => {
     '/depot': styles.depotBackground,
     '/gps': styles.gpsBackground,
     '/reparatii': styles.reparatiiBackground,
-    // === MODIFICARE NOUĂ: Am adăugat ruta și fundalul pentru calculator ===
     '/calculadora-nomina': styles.calculadoraBackground,
+    // === MODIFICARE: Am adăugat această linie pentru a mapa ruta la fundalul corect ===
+    '/chofer': styles.miPerfilBackground, 
   };
 
   const getBackgroundClass = () => {
@@ -59,7 +58,6 @@ const Layout = ({ children }) => {
 
   const backgroundClassName = getBackgroundClass();
 
-  // === MODIFICARE NOUĂ: Am adăugat link-ul către calculator în meniurile relevante ===
   const soferMenu = [ 
     { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' }, 
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
@@ -76,7 +74,6 @@ const Layout = ({ children }) => {
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' }, 
   ];
   
-  // Meniul pentru mecanic rămâne neschimbat
   const mecanicMenu = [ 
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' }, 
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' }, 
@@ -91,7 +88,6 @@ const Layout = ({ children }) => {
 
   const wrapperClass = [ styles.layoutWrapper, backgroundClassName ? styles.hasBackground : '', isMenuOpen ? styles.menuOpen : '', ].join(' ');
 
-  // Restul codului JSX rămâne identic
   return (
     <div className={wrapperClass}>
       {backgroundClassName && (
