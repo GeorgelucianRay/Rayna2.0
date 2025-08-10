@@ -31,7 +31,7 @@ function ChoferProfilePage() {
             
             if (error) {
                 console.error("Error fetching driver profile:", error);
-                alert("No se pudo cargar el perfil del chofer.");
+                alert("No se pudo cargar el perfil del chófer.");
             } else {
                 setProfileData(data);
             }
@@ -67,7 +67,7 @@ function ChoferProfilePage() {
         if (error) {
             alert(`Error al actualizar el perfil: ${error.message}`);
         } else {
-            alert('Perfil del chofer actualizado con éxito!');
+            alert('¡Perfil del chófer actualizado con éxito!');
             setIsEditModalOpen(false);
             const { data } = await supabase.from('profiles').select(`*, camioane:camion_id(*), remorci:remorca_id(*)`).eq('id', id).single();
             setProfileData(data);
@@ -81,7 +81,7 @@ function ChoferProfilePage() {
     if (!profileData) {
         return (
              <Layout backgroundClassName="profile-background">
-                 <p style={{color: 'white', textAlign: 'center'}}>No se pudo cargar el perfil del chofer.</p>
+                 <p style={{color: 'white', textAlign: 'center'}}>No se pudo cargar el perfil del chófer.</p>
              </Layout>
         )
     }
@@ -89,7 +89,7 @@ function ChoferProfilePage() {
     return (
         <Layout backgroundClassName="profile-background">
             <div className={styles.profileHeader}>
-                <h1>Perfil del Chofer</h1>
+                <h1>Perfil del Chófer</h1>
                 <div>
                     <button className={styles.editProfileButton} onClick={handleEditClick}><EditIcon /> Editar Perfil</button>
                     <button onClick={() => navigate('/choferes')} className={styles.backButton} style={{marginLeft: '1rem'}}><BackIcon /> Volver</button>
@@ -100,8 +100,9 @@ function ChoferProfilePage() {
                 <div className={styles.profileCard}><h3>Caducidad CAP</h3><p>{profileData.cap_expirare || 'N/A'}</p></div>
                 <div className={styles.profileCard}><h3>Caducidad Carnet</h3><p>{profileData.carnet_caducidad || 'N/A'}</p></div>
                 <div className={styles.profileCard}><h3>Certificado ADR</h3><p>{profileData.tiene_adr ? `Sí, expira: ${profileData.adr_caducidad || 'N/A'}` : 'No'}</p></div>
-                <Link to={`/reparatii/camion/${profileData.camion_id}`} className={`${styles.profileCard} ${styles.vehicleLink}`}><h3>Camión</h3><p>{profileData.camioane?.matricula || 'No asignado'}</p></Link>
-                <Link to={`/reparatii/remorca/${profileData.remorca_id}`} className={`${styles.profileCard} ${styles.vehicleLink}`}><h3>Remorca</h3><p>{profileData.remorci?.matricula || 'No asignada'}</p></Link>
+                <Link to={`/camion/${profileData.camion_id}`} className={`${styles.profileCard} ${styles.vehicleLink}`}><h3>Camión</h3><p>{profileData.camioane?.matricula || 'No asignado'}</p></Link>
+                {/* === MODIFICARE TEXT: "Remorca" a devenit "Remolque" și textul de status a fost corectat === */}
+                <Link to={`/remorca/${profileData.remorca_id}`} className={`${styles.profileCard} ${styles.vehicleLink}`}><h3>Remolque</h3><p>{profileData.remorci?.matricula || 'No asignado'}</p></Link>
             </div>
 
             {isEditModalOpen && (
@@ -115,10 +116,11 @@ function ChoferProfilePage() {
                             <div className={styles.formGroup}><label>Nombre Completo</label><input type="text" value={editableProfile.nombre_completo || ''} onChange={(e) => setEditableProfile({...editableProfile, nombre_completo: e.target.value})} /></div>
                             <div className={styles.formGroup}><label>Caducidad CAP</label><input type="date" value={editableProfile.cap_expirare || ''} onChange={(e) => setEditableProfile({...editableProfile, cap_expirare: e.target.value})} /></div>
                             <div className={styles.formGroup}><label>Caducidad Carnet</label><input type="date" value={editableProfile.carnet_caducidad || ''} onChange={(e) => setEditableProfile({...editableProfile, carnet_caducidad: e.target.value})} /></div>
-                            <div className={styles.formGroup}><label>Tiene ADR?</label><select value={editableProfile.tiene_adr} onChange={(e) => setEditableProfile({...editableProfile, tiene_adr: e.target.value === 'true'})}><option value={false}>No</option><option value={true}>Sí</option></select></div>
+                            <div className={styles.formGroup}><label>¿Tiene ADR?</label><select value={editableProfile.tiene_adr} onChange={(e) => setEditableProfile({...editableProfile, tiene_adr: e.target.value === 'true'})}><option value={false}>No</option><option value={true}>Sí</option></select></div>
                             {editableProfile.tiene_adr && (<div className={styles.formGroup}><label>Caducidad ADR</label><input type="date" value={editableProfile.adr_caducidad || ''} onChange={(e) => setEditableProfile({...editableProfile, adr_caducidad: e.target.value})} /></div>)}
                             <div className={styles.formGroupFull}><label>Camión Asignado</label><select value={editableProfile.camion_id || ''} onChange={(e) => setEditableProfile({...editableProfile, camion_id: e.target.value})}><option value="">Ninguno</option>{camioane.map(c => <option key={c.id} value={c.id}>{c.matricula}</option>)}</select></div>
-                            <div className={styles.formGroupFull}><label>Remorca Asignada</label><select value={editableProfile.remorca_id || ''} onChange={(e) => setEditableProfile({...editableProfile, remorca_id: e.target.value})}><option value="">Ninguna</option>{remorci.map(r => <option key={r.id} value={r.id}>{r.matricula}</option>)}</select></div>
+                            {/* === MODIFICARE TEXT: Eticheta și opțiunea default au fost corectate === */}
+                            <div className={styles.formGroupFull}><label>Remolque Asignado</label><select value={editableProfile.remorca_id || ''} onChange={(e) => setEditableProfile({...editableProfile, remorca_id: e.target.value})}><option value="">Ninguno</option>{remorci.map(r => <option key={r.id} value={r.id}>{r.matricula}</option>)}</select></div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsEditModalOpen(false)}>Cancelar</button>
                                 <button type="submit" className={styles.saveButton}>Guardar Cambios</button>
