@@ -4,11 +4,11 @@ import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// --- Iconițe (Neschimbate) ---
+// --- Iconos (Sin cambios) ---
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
-// --- Componenta pentru o zi din calendar (Modificată) ---
+// --- Componente para un día del calendario ---
 const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
     const hasData = !isPlaceholder && (data.desayuno || data.cena || data.procena || data.km_final > 0 || data.contenedores > 0 || data.suma_festivo > 0);
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''} ${hasData ? styles.hasData : ''}`;
@@ -20,8 +20,7 @@ const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
     );
 };
 
-
-// --- NOU: Componenta pentru fereastra Pop-up "Parte Diario" ---
+// --- Componente para la ventana modal "Parte Diario" ---
 const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange, day, monthName, year }) => {
     if (!isOpen) return null;
 
@@ -40,7 +39,7 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
                 </div>
                 <div className={styles.modalBody}>
                     <div className={styles.parteDiarioSection}>
-                        <h4>Diurne</h4>
+                        <h4>Dietas</h4>
                         <div className={styles.checkboxGroupModal}>
                             <div><input type="checkbox" id={`modal-desayuno-${day}`} checked={!!data.desayuno} onChange={() => onToggleChange('desayuno')} /><label htmlFor={`modal-desayuno-${day}`}>Desayuno</label></div>
                             <div><input type="checkbox" id={`modal-cena-${day}`} checked={!!data.cena} onChange={() => onToggleChange('cena')} /><label htmlFor={`modal-cena-${day}`}>Cena</label></div>
@@ -48,14 +47,14 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
                         </div>
                     </div>
                      <div className={styles.parteDiarioSection}>
-                        <h4>Kilometri</h4>
+                        <h4>Kilómetros</h4>
                         <div className={styles.inputGrid}>
                             <div className={styles.inputGroup}><label>KM Iniciar</label><input type="number" name="km_iniciar" value={data.km_iniciar || ''} onChange={handleInputChange} /></div>
                             <div className={styles.inputGroup}><label>KM Final</label><input type="number" name="km_final" value={data.km_final || ''} onChange={handleInputChange} /></div>
                         </div>
                     </div>
                      <div className={styles.parteDiarioSection}>
-                        <h4>Activități Speciale</h4>
+                        <h4>Actividades Especiales</h4>
                          <div className={styles.inputGrid}>
                             <div className={styles.inputGroup}><label>Contenedores Barridos</label><input type="number" min="0" step="1" name="contenedores" value={data.contenedores || 0} onChange={handleInputChange} /></div>
                             <div className={styles.inputGroup}><label>Suma Festivo/Plus (€)</label><input type="number" min="0" step="1" name="suma_festivo" value={data.suma_festivo || 0} onChange={handleInputChange} /></div>
@@ -71,7 +70,7 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
 };
 
 
-// --- Componenta Principală (Cod complet și corectat) ---
+// --- Componente Principal (Traducción completa a Español) ---
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -109,7 +108,7 @@ function CalculadoraNomina() {
                 setIsLoading(true);
                 const { data, error } = await supabase.from('nomina_perfiles').select('user_id, nombre_completo, config_nomina');
                 if (error) {
-                    console.error("Error fetching drivers:", error);
+                    console.error("Error al obtener la lista de conductores:", error);
                     alert("Error al obtener la lista de conductores.");
                 } else {
                     const mappedData = data.map(d => ({ id: d.user_id, nombre_completo: d.nombre_completo, config_nomina: d.config_nomina }));
@@ -180,13 +179,10 @@ function CalculadoraNomina() {
             if(zi.desayuno) totalDesayunos++;
             if(zi.cena) totalCenas++;
             if(zi.procena) totalProcenas++;
-            
             const kmZi = (zi.km_final || 0) - (zi.km_iniciar || 0);
             if (kmZi > 0) totalKm += kmZi;
-
             totalContenedores += (zi.contenedores || 0);
             totalSumaFestivos += (zi.suma_festivo || 0);
-            
             if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || zi.contenedores > 0 || zi.suma_festivo > 0) {
                 zileMuncite.add(index);
             }
@@ -206,15 +202,15 @@ function CalculadoraNomina() {
         setRezultat({
             totalBruto: totalBruto.toFixed(2),
             detalii_calcul: {
-                'Salario Base': (config.salario_base || 0).toFixed(2) + '€',
-                'Antigüedad': (config.antiguedad || 0).toFixed(2) + '€',
+                'Salario Base': `${(config.salario_base || 0).toFixed(2)}€`,
+                'Antigüedad': `${(config.antiguedad || 0).toFixed(2)}€`,
                 'Total Días Trabajados': `${totalZileMuncite} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sumaZileMuncite.toFixed(2)}€`,
-                'Total Desayuno': `${totalDesayunos} uds. x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
-                'Total Cena': `${totalCenas} uds. x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
-                'Total Procena': `${totalProcenas} uds. x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
+                'Total Desayunos': `${totalDesayunos} uds. x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
+                'Total Cenas': `${totalCenas} uds. x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
+                'Total Procenas': `${totalProcenas} uds. x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
                 'Total Kilómetros': `${totalKm} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`,
                 'Total Contenedores': `${totalContenedores} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
-                'Total Festivos/Plus': totalSumaFestivos.toFixed(2) + '€',
+                'Total Festivos/Plus': `${totalSumaFestivos.toFixed(2)}€`,
             },
             sumar_activitate: {
                 'Días Trabajados': totalZileMuncite,
@@ -232,45 +228,29 @@ function CalculadoraNomina() {
         const targetId = getTargetUserId();
         if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
         const { error } = await supabase.from('nomina_perfiles').update({ config_nomina: config }).eq('user_id', targetId);
-        if (error) alert('Error al guardar la configuración: ' + error.message);
+        if (error) alert(`Error al guardar la configuración: ${error.message}`);
         else alert('¡Configuración guardada con éxito!');
     };
 
     const handleSaveToArchive = async () => {
         const targetId = getTargetUserId();
         if (!targetId || !rezultat) return;
-        
         const { error } = await supabase.from('nominas_calculadas').insert({
-            user_id: targetId,
-            mes: currentDate.getMonth() + 1,
-            an: currentDate.getFullYear(),
-            total_bruto: parseFloat(rezultat.totalBruto),
-            detalii: rezultat.sumar_activitate 
+            user_id: targetId, mes: currentDate.getMonth() + 1, an: currentDate.getFullYear(),
+            total_bruto: parseFloat(rezultat.totalBruto), detalles: rezultat.sumar_activitate 
         });
-
-        if (error) {
-            alert('Error al guardar en el archivo: ' + error.message);
-        } else {
-            alert('Cálculo guardado en el archivo.');
-            setRezultat(null);
-        }
+        if (error) { alert(`Error al guardar en el archivo: ${error.message}`); } 
+        else { alert('Cálculo guardado en el archivo.'); setRezultat(null); }
     };
     
     const handleViewArchive = async () => {
         const targetId = getTargetUserId();
-        if (!targetId) {
-            alert("Por favor, seleccione un conductor para ver su archivo.");
-            return;
-        }
+        if (!targetId) { alert("Por favor, seleccione un conductor para ver su archivo."); return; }
         setIsArchiveOpen(true);
         setIsLoadingArchive(true);
         const { data, error } = await supabase.from('nominas_calculadas').select('*').eq('user_id', targetId).order('an', { ascending: false }).order('mes', { ascending: false });
-        
-        if (error) {
-            alert("Error al cargar el archivo: " + error.message);
-        } else {
-            setArchiveData(data || []);
-        }
+        if (error) { alert(`Error al cargar el archivo: ${error.message}`); } 
+        else { setArchiveData(data || []); }
         setIsLoadingArchive(false);
     };
 
@@ -283,12 +263,7 @@ function CalculadoraNomina() {
         let days = [];
         for (let i = 0; i < startDay; i++) { days.push(<div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
         for (let i = 1; i <= daysInMonth; i++) {
-            days.push(<CalendarDay 
-                key={i} 
-                day={i} 
-                data={pontaj.zilePontaj[i - 1]} 
-                onClick={() => handleOpenParteDiario(i - 1)} 
-            />);
+            days.push(<CalendarDay key={i} day={i} data={pontaj.zilePontaj[i - 1]} onClick={() => handleOpenParteDiario(i - 1)} />);
         }
         while (days.length % 7 !== 0) { days.push(<div key={`ph-e-${days.length}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
         return days;
@@ -302,9 +277,7 @@ function CalculadoraNomina() {
         <Layout backgroundClassName="calculadora-background">
             <div className={styles.header}>
                 <h1>Calculadora de Nómina</h1>
-                <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}>
-                    <ArchiveIcon /> Ver Archivo
-                </button>
+                <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}><ArchiveIcon /> Ver Archivo</button>
             </div>
 
             {profile?.role === 'dispecer' && (
@@ -312,9 +285,7 @@ function CalculadoraNomina() {
                     <label htmlFor="sofer-select">Seleccione un Conductor:</label>
                     <select id="sofer-select" onChange={handleSoferSelect} value={soferSelectat || ''}>
                         <option value="" disabled>-- Elija un conductor --</option>
-                        {listaSoferi.map(sofer => (
-                            <option key={sofer.id} value={sofer.id}>{sofer.nombre_completo}</option>
-                        ))}
+                        {listaSoferi.map(sofer => (<option key={sofer.id} value={sofer.id}>{sofer.nombre_completo}</option>))}
                     </select>
                 </div>
             )}
@@ -336,10 +307,8 @@ function CalculadoraNomina() {
                             </div>
                             <button onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
                         </div>
-
                         <button onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
                     </div>
-                    
                     <div className={styles.column}>
                         <div className={styles.card}>
                             <div className={styles.calendarHeader}>
@@ -351,15 +320,12 @@ function CalculadoraNomina() {
                             <div className={styles.calendarWeekdays}><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
                             <div className={styles.calendarGrid}>{renderCalendar()}</div>
                         </div>
-
                         {rezultat && (
                             <div className={`${styles.card} ${styles.resultCard}`}>
                                 <h3>Resultado del Cálculo</h3>
-                                <p className={styles.totalBruto}>Total Bruto: {rezultat.totalBruto} €</p>
+                                <p className={styles.totalBruto}>{rezultat.totalBruto} €</p>
                                 <ul className={styles.resultDetails}>
-                                    {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (
-                                        <li key={key}><span>{key}</span><span>{value}</span></li>
-                                    ))}
+                                    {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
                                 </ul>
                                 <button onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
                             </div>
@@ -367,9 +333,7 @@ function CalculadoraNomina() {
                     </div>
                 </div>
             ) : (
-                <div className={styles.card}>
-                    <p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p>
-                </div>
+                <div className={styles.card}><p>{isLoading ? 'Cargando conductores...' : 'Por favor, seleccione un conductor para continuar.'}</p></div>
             )}
 
             <ParteDiarioModal
@@ -387,29 +351,24 @@ function CalculadoraNomina() {
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
-                            <h3 className={styles.modalTitle}>Archivo de Actividad {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
+                            <h3 className={styles.modalTitle}>Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
                             <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
-                        <div className={styles.modalBody}>
-                            {isLoadingArchive ? (
-                                <p>Cargando archivo...</p>
-                            ) : (
+                        <div className={styles.archiveModalBody}>
+                            {isLoadingArchive ? (<p>Cargando archivo...</p>) : (
                                 archiveData.length > 0 ? (
                                     archiveData.map(item => (
                                         <div key={item.id} className={styles.archiveItem}>
                                             <div className={styles.archiveHeader}>
                                                 <span>{monthNames[item.mes - 1]} {item.an}</span>
+                                                <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)}€</span>
                                             </div>
                                             <ul className={styles.resultDetails}>
-                                              {item.detalii && Object.entries(item.detalii).map(([key, value]) => (
-                                                  <li key={key}><span>{key}</span><span>{value.toString()}</span></li>
-                                              ))}
+                                              {item.detalii && Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value.toString()}</span></li>))}
                                             </ul>
                                         </div>
                                     ))
-                                ) : (
-                                    <p>No hay actividad guardada en el archivo.</p>
-                                )
+                                ) : (<p>No hay nóminas guardadas en el archivo.</p>)
                             )}
                         </div>
                     </div>
