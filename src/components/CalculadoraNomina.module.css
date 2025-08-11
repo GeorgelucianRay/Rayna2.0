@@ -1,5 +1,6 @@
-/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ ȘI FORȚATĂ) */
+/* src/components/CalculadoraNomina.module.css (VERSIUNE ACTUALIZATĂ) */
 
+/* === Stiluri Generale & Header === */
 .header {
     display: flex;
     justify-content: space-between;
@@ -36,6 +37,7 @@
     cursor: not-allowed;
 }
 
+/* === Layout Principal === */
 .mainContainer {
     display: grid;
     grid-template-columns: 1fr;
@@ -56,6 +58,7 @@
     width: 100%;
 }
 
+/* === Carduri & Formulare === */
 .card {
     background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
@@ -65,9 +68,8 @@
     width: 100%;
 }
 
-/* === FIX VIZUAL 1: Forțăm culoarea albă pentru mesajul placeholder === */
 .card p {
-    color: white !important; /* Culoare albă, forțată */
+    color: white;
     text-align: center;
     font-size: 1rem;
     margin: 0;
@@ -159,6 +161,7 @@
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
 }
 
+/* === Stiluri Calendar (Actualizate) === */
 .calendarHeader {
     display: flex;
     justify-content: space-between;
@@ -182,48 +185,59 @@
 .calendarGrid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
+    gap: 0.5rem;
 }
+
+/* NOU: Stil pentru textul de ghidare din calendar */
+.calendarHint {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+    font-style: italic;
+}
+
 .calendarDay {
     background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
     border-radius: 0.5rem;
-    aspect-ratio: 1 / 1.2;
-    padding: 0.25rem;
+    aspect-ratio: 1 / 1;
+    padding: 0.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    align-items: flex-end;
+    cursor: pointer;
+    transition: all 200ms;
 }
+
+.calendarDay:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
 .dayNumber {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #e5e7eb;
-    text-align: right;
-    padding-right: 0.25rem;
 }
+
+/* NOU: Indicator vizual pentru zilele care au date completate */
+.hasData {
+    border-color: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+
 .placeholderDay {
     background-color: transparent;
     border: none;
-}
-.checkboxGroup {
-    font-size: 0.7rem;
-    color: #d1d5db;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding-left: 0.1rem;
-}
-.checkboxGroup div {
-    display: flex;
-    align-items: center;
-}
-.checkboxGroup input {
-    margin-right: 0.25rem;
-    transform: scale(0.8);
-}
-.checkboxGroup label {
-    cursor: pointer;
+    cursor: default;
 }
 
+/* ELIMINAT: .checkboxGroup a fost eliminat de aici */
+
+/* === Selector Dispecer === */
 .dispatcherSelector {
     background-color: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(10px);
@@ -232,29 +246,22 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 2rem;
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    align-items: center;
+    gap: 1rem;
 }
-@media (min-width: 640px) {
-    .dispatcherSelector {
-        flex-direction: row;
-        align-items: center;
-        gap: 1rem;
-    }
-}
+
 .dispatcherSelector label {
     font-size: 1.1rem;
     font-weight: 600;
     color: white;
     flex-shrink: 0;
 }
-/* === FIX VIZUAL 2: Forțăm culoarea gri pentru dropdown și opțiuni === */
 .dispatcherSelector select {
     width: 100%;
     padding: 0.75rem; border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background-color: rgba(255, 255, 255, 0.1);
-    color: #d1d5db !important; /* Gri deschis, forțat */
+    color: white;
     font-size: 1rem;
 }
 .dispatcherSelector select:focus {
@@ -262,30 +269,94 @@
 }
 .dispatcherSelector select option {
     background: #1f2937;
-    color: #d1d5db; /* Gri deschis pentru opțiuni */
+    color: #d1d5db;
 }
 
+/* === Stiluri Modale (Generice + Specifice) === */
+.modalOverlay {
+    position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px); z-index: 3000;
+    display: flex; justify-content: center; align-items: center; padding: 1rem;
+}
+.modalContent {
+    background-color: #111827; /* Un fundal mai închis pentru contrast */
+    padding: 1.5rem; border-radius: 1rem;
+    width: 100%; max-width: 500px; color: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.modalHeader {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 1rem;
+}
+.modalTitle { margin: 0; font-size: 1.5rem; font-weight: 700; }
+.closeButton {
+    background: transparent; border: none; color: #9ca3af; cursor: pointer;
+    padding: 0; line-height: 1;
+}
+.closeButton:hover { color: white; }
 
+.modalBody {
+    display: flex; flex-direction: column; gap: 1.5rem;
+}
+
+.modalFooter {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* NOU: Stiluri specifice pentru pop-up-ul "Parte Diario" */
+.parteDiarioSection h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fb923c; /* Culoare accent */
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+.checkboxGroupModal {
+    display: flex;
+    justify-content: space-around;
+    gap: 1rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+.checkboxGroupModal div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.checkboxGroupModal input {
+    width: 1.15rem; height: 1.15rem;
+    accent-color: #3b82f6;
+}
+.checkboxGroupModal label {
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* === Stiluri Arhivă (Specifice) === */
+.archiveModalBody { /* Suprascriem .modalBody pentru arhivă */
+    overflow-y: auto; max-height: calc(80vh - 120px);
+    display: flex; flex-direction: column; gap: 1rem;
+}
+.archiveItem {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1rem; border-radius: 0.75rem;
+}
+.archiveHeader {
+    display: flex; justify-content: space-between;
+    font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem;
+}
+
+/* === Stiluri Rezultat === */
 .resultCard { border-top: 3px solid #22c55e; }
 .totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
 .resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .resultDetails li { display: flex; justify-content: space-between; font-size: 0.9rem; color: #d1d5db; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .resultDetails li span:first-child { font-weight: 500; }
 
-.modalOverlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 1rem; }
-.modalContent { background-color: #1f2937; padding: 1.5rem; border-radius: 1rem; width: 100%; max-width: 600px; color: white; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); max-height: 80vh; }
-.modalHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 1rem; }
-.modalTitle { margin: 0; font-size: 1.5rem; font-weight: 700; }
-.closeButton { background: transparent; border: none; color: #9ca3af; cursor: pointer; padding: 0; }
-.modalBody { overflow-y: auto; max-height: calc(80vh - 100px); display: flex; flex-direction: column; gap: 1rem; }
-.archiveItem { background-color: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 0.75rem; }
-.archiveHeader { display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem; }
-.archiveTotal { color: #22c55e; }
-
-.festivosSection { margin-top: 1rem; }
-.addFestivoButton { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
-.festivosSection p { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; text-align: center; }
-
-.festivosSection { margin-top: 1rem; }
-.addFestivoButton { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px dashed rgba(255, 255, 255, 0.3); background-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; cursor: pointer; }
-.festivosSection p { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; text-align: center; }
+/* ELIMINAT: .festivosSection și .addFestivoButton au fost eliminate */
