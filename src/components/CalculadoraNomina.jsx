@@ -8,7 +8,7 @@ import styles from './CalculadoraNomina.module.css';
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
-// --- Componente para un día del calendario ---
+// --- Componente para un día del calendario (Sin cambios) ---
 const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
     const hasData = !isPlaceholder && (data.desayuno || data.cena || data.procena || data.km_final > 0 || data.contenedores > 0 || data.suma_festivo > 0);
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''} ${hasData ? styles.hasData : ''}`;
@@ -20,14 +20,46 @@ const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
     );
 };
 
-// --- Componente para la ventana modal "Parte Diario" ---
+// --- NOU: Componenta reutilizabilă pentru input numeric cu butoane ---
+const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1 }) => {
+    const handleIncrement = () => {
+        const newValue = (value || 0) + step;
+        onDataChange(name, newValue);
+    };
+
+    const handleDecrement = () => {
+        const newValue = (value || 0) - step;
+        if (newValue >= min) {
+            onDataChange(name, newValue);
+        }
+    };
+
+    return (
+        <div className={styles.inputGroup}>
+            <label>{label}</label>
+            <div className={styles.customNumberInput}>
+                <button onClick={handleDecrement} className={styles.stepperButton}>-</button>
+                <input 
+                    type="number" 
+                    name={name}
+                    value={value} 
+                    readOnly
+                    className={styles.numericDisplay}
+                />
+                <button onClick={handleIncrement} className={styles.stepperButton}>+</button>
+            </div>
+        </div>
+    );
+};
+
+// --- MODIFICAT: Componenta ParteDiarioModal pentru a folosi CustomNumberInput ---
 const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange, day, monthName, year }) => {
     if (!isOpen) return null;
 
+    // Acest handler rămâne doar pentru inputurile de KM, care nu sunt personalizate
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        const numericValue = ['km_iniciar', 'km_final', 'contenedores', 'suma_festivo'].includes(name) ? parseFloat(value) || 0 : value;
-        onDataChange(name, numericValue);
+        onDataChange(name, parseFloat(value) || 0);
     };
 
     return (
@@ -56,8 +88,19 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
                      <div className={styles.parteDiarioSection}>
                         <h4>Actividades Especiales</h4>
                          <div className={styles.inputGrid}>
-                            <div className={styles.inputGroup}><label>Contenedores Barridos</label><input type="number" min="0" step="1" name="contenedores" value={data.contenedores || 0} onChange={handleInputChange} /></div>
-                            <div className={styles.inputGroup}><label>Suma Festivo/Plus (€)</label><input type="number" min="0" step="1" name="suma_festivo" value={data.suma_festivo || 0} onChange={handleInputChange} /></div>
+                            <CustomNumberInput 
+                                label="Contenedores Barridos"
+                                name="contenedores"
+                                value={data.contenedores || 0}
+                                onDataChange={onDataChange}
+                            />
+                            <CustomNumberInput 
+                                label="Suma Festivo/Plus (€)"
+                                name="suma_festivo"
+                                value={data.suma_festivo || 0}
+                                onDataChange={onDataChange}
+                                step={10}
+                            />
                         </div>
                     </div>
                 </div>
@@ -70,7 +113,7 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
 };
 
 
-// --- Componente Principal (Traducción completa a Español) ---
+// --- Componenta Principală (Logica internă neschimbată) ---
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -273,6 +316,7 @@ function CalculadoraNomina() {
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
     const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
     
+    // Blocul RETURN final și corectat
     return (
         <Layout backgroundClassName="calculadora-background">
             <div className={styles.header}>
