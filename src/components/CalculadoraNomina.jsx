@@ -34,7 +34,6 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
     if (!isOpen) return null;
     const handleKmChange = (e) => {
         const { name, value } = e.target;
-        // Permitem string gol pentru KM, la fel ca la configurare
         const newValue = value === '' ? '' : parseFloat(value);
         onDataChange(name, newValue);
     };
@@ -116,7 +115,6 @@ function CalculadoraNomina() {
         }
     }, [profile]);
     
-    // GREȘEALA 2 - CORECTATĂ: useEffect pentru auto-încărcare, cu dependențe corecte
     useEffect(() => {
         const targetId = getTargetUserId();
         if (!targetId) {
@@ -128,39 +126,32 @@ function CalculadoraNomina() {
         }
 
         const loadData = async () => {
-            console.log("--- DEBUG: Se inițiază încărcarea datelor ---");
             setIsLoading(true);
-            console.log("DEBUG: 1. Se încarcă date pentru ID-ul:", targetId);
-            
-            // 1. Încărcăm Configurația
             const { data: profileData, error: profileError } = await supabase.from('nomina_perfiles').select('config_nomina').eq('user_id', targetId).single();
-            console.log("DEBUG: 2. Răspunsul primit de la Supabase pentru profil:", { profileData, profileError });
-            if (profileError && profileError.code !== 'PGRST116') console.error("DEBUG: EROARE la încărcarea profilului:", profileError);
+            if (profileError && profileError.code !== 'PGRST116') console.error("Error loading profile config:", profileError);
             
             if (profileData && profileData.config_nomina) {
-                console.log("DEBUG: 3. Configurație existentă găsită. Se aplică:", profileData.config_nomina);
                 setConfig(profileData.config_nomina);
             } else {
-                console.log("DEBUG: 3. Nicio configurație salvată nu a fost găsită. Se aplică configurația implicită.");
                 setConfig(defaultConfig);
             }
 
-            // 2. Încărcăm Pontajul
             const anCurent = currentDate.getFullYear();
             const lunaCurenta = currentDate.getMonth() + 1;
             const { data: pontajSalvat } = await supabase.from('pontaje_curente').select('pontaj_complet').eq('user_id', targetId).eq('an', anCurent).eq('mes', lunaCurenta).single();
-            if (pontajSalvat && pontajSalvat.pontaj_complet) setPontaj(pontajSalvat.pontaj_complet);
-            else setPontaj(defaultPontaj);
+            if (pontajSalvat && pontajSalvat.pontaj_complet) {
+                setPontaj(pontajSalvat.pontaj_complet);
+            } else {
+                setPontaj(defaultPontaj);
+            }
             
             setRezultat(null);
             setIsLoading(false);
-            console.log("--- DEBUG: Procesul de încărcare a fost încheiat ---");
         };
 
         loadData();
-    }, [soferSelectat, user, currentDate]); // Dependențe corecte și simplificate
+    }, [soferSelectat, user, currentDate, defaultConfig, defaultPontaj]);
 
-    // GREȘEALA 3 - CORECTATĂ: useEffect pentru auto-salvare, cu logica simplificată
     useEffect(() => {
         const handler = setTimeout(() => {
             const targetId = getTargetUserId();
@@ -169,16 +160,15 @@ function CalculadoraNomina() {
                     const { error } = await supabase
                         .from('pontaje_curente')
                         .upsert({ user_id: targetId, an: currentDate.getFullYear(), mes: currentDate.getMonth() + 1, pontaj_complet: pontaj }, { onConflict: 'user_id, an, mes' });
+
                     if (error) console.error('Eroare la auto-salvare:', error.message);
-                    else console.log('Ciorna a fost salvată automat cu succes.');
                 };
                 saveDraft();
             }
         }, 1500);
         return () => clearTimeout(handler);
-    }, [pontaj]); // Ascultă DOAR schimbările din pontaj
-
-    // GREȘEALA 1 - CORECTATĂ: Permitem input-urilor să fie goale
+    }, [pontaj]);
+    
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
         const newValue = value === '' ? '' : parseFloat(value);
@@ -201,29 +191,89 @@ function CalculadoraNomina() {
     };
 
     const handleSaveConfig = async () => {
-        console.log("--- DEBUG: Se inițiază salvarea configurației ---");
         const targetId = getTargetUserId();
-        console.log("DEBUG: 1. ID-ul țintă pentru salvare este:", targetId);
-        if (!targetId) { alert("ID-ul țintă lipsește. Nu se poate salva."); console.error("DEBUG: Salvare anulată - nu a fost găsit un ID țintă."); return; }
-        console.log("DEBUG: 2. Obiectul 'config' care se trimite la Supabase:", config);
-        for (const key in config) { if (config[key] === '') { console.warn(`DEBUG: Atenție! Câmpul '${key}' este gol și va fi salvat ca atare.`); } }
-
+        if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
         const { data, error } = await supabase.from('nomina_perfiles').update({ config_nomina: config }).eq('user_id', targetId).select();
-        console.log("DEBUG: 3. Răspunsul primit de la Supabase după UPDATE:", { data, error });
-
-        if (error) { alert(`Eroare la salvarea configurației: ${error.message}`); console.error("DEBUG: EROARE DE LA SUPABASE:", error); } 
-        else if (data && data.length > 0) { alert('¡Configuración guardada con éxito!'); console.log("DEBUG: SUCCES! Configurația a fost salvată. Rândul actualizat:", data[0]); } 
-        else { alert('Salvarea a avut loc fără erori, dar Supabase nu a returnat datele modificate. Verificați permisiunile RLS pentru SELECT.'); console.warn("DEBUG: Salvarea pare să fi reușit, dar nu s-au returnat date. Posibilă problemă RLS pe SELECT."); }
-        console.log("--- DEBUG: Procesul de salvare a fost încheiat ---");
+        if (error) { alert(`Eroare la salvarea configurației: ${error.message}`); } 
+        else if (data) { alert('¡Configuración guardada con éxito!'); }
     };
 
-    const handleCalculate = () => { /* logica de calcul */ };
-    const handleSaveToArchive = async () => { /* logica de arhivare */ };
-    const handleViewArchive = async () => { /* logica de vizualizare arhivă */ };
-    const renderCalendar = () => { /* logica de randare calendar */ };
+    const handleCalculate = () => {
+        let totalDesayunos = 0, totalCenas = 0, totalProcenas = 0;
+        let totalKm = 0, totalContenedores = 0, totalSumaFestivos = 0;
+        let zileMuncite = new Set();
+        pontaj.zilePontaj.forEach((zi, index) => {
+            if(zi.desayuno) totalDesayunos++;
+            if(zi.cena) totalCenas++;
+            if(zi.procena) totalProcenas++;
+            const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+            if (kmZi > 0) totalKm += kmZi;
+            totalContenedores += (zi.contenedores || 0);
+            totalSumaFestivos += (zi.suma_festivo || 0);
+            if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || zi.contenedores > 0 || zi.suma_festivo > 0) {
+                zileMuncite.add(index);
+            }
+        });
+        const totalZileMuncite = zileMuncite.size;
+        const sumaDesayuno = totalDesayunos * (config.precio_desayuno || 0);
+        const sumaCena = totalCenas * (config.precio_cena || 0);
+        const sumaProcena = totalProcenas * (config.precio_procena || 0);
+        const sumaKm = totalKm * (config.precio_km || 0);
+        const sumaContainere = totalContenedores * (config.precio_contenedor || 0);
+        const sumaZileMuncite = totalZileMuncite * (config.precio_dia_trabajado || 0);
+        const totalBruto = (config.salario_base || 0) + (config.antiguedad || 0) + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaZileMuncite + totalSumaFestivos;
+        setRezultat({
+            totalBruto: totalBruto.toFixed(2),
+            detalii_calcul: {
+                'Salario Base': `${(config.salario_base || 0).toFixed(2)}€`,
+                'Antigüedad': `${(config.antiguedad || 0).toFixed(2)}€`,
+                'Total Días Trabajados': `${totalZileMuncite} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sumaZileMuncite.toFixed(2)}€`,
+                'Total Desayunos': `${totalDesayunos} uds. x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
+                'Total Cenas': `${totalCenas} uds. x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
+                'Total Procenas': `${totalProcenas} uds. x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
+                'Total Kilómetros': `${totalKm} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`,
+                'Total Contenedores': `${totalContenedores} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
+                'Total Festivos/Plus': `${totalSumaFestivos.toFixed(2)}€`,
+            },
+            sumar_activitate: {'Días Trabajados': totalZileMuncite, 'Total Desayunos': totalDesayunos, 'Total Cenas': totalCenas, 'Total Procenas': totalProcenas, 'Kilómetros Recorridos': totalKm, 'Contenedores Barridos': totalContenedores, 'Suma Festivos/Plus (€)': totalSumaFestivos, }
+        });
+    };
+    
+    const handleSaveToArchive = async () => {
+        const targetId = getTargetUserId();
+        if (!targetId || !rezultat) return;
+        const { error } = await supabase.from('nominas_calculadas').insert({ user_id: targetId, mes: currentDate.getMonth() + 1, an: currentDate.getFullYear(), total_bruto: parseFloat(rezultat.totalBruto), detalles: rezultat.sumar_activitate });
+        if (error) { alert(`Error al guardar en el archivo: ${error.message}`); } else { alert('Cálculo guardado en el archivo.'); setRezultat(null); }
+    };
+    
+    const handleViewArchive = async () => {
+        const targetId = getTargetUserId();
+        if (!targetId) { alert("Por favor, seleccione un conductor para ver su archivo."); return; }
+        setIsArchiveOpen(true);
+        setIsLoadingArchive(true);
+        const { data, error } = await supabase.from('nominas_calculadas').select('*').eq('user_id', targetId).order('an', { ascending: false }).order('mes', { ascending: false });
+        if (error) { alert(`Error al cargar el archivo: ${error.message}`); } else { setArchiveData(data || []); }
+        setIsLoadingArchive(false);
+    };
+
+    const renderCalendar = () => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+        let days = [];
+        for (let i = 0; i < startDay; i++) { days.push(<div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
+        for (let i = 1; i <= daysInMonth; i++) {
+            days.push(<CalendarDay key={i} day={i} data={pontaj.zilePontaj[i - 1]} onClick={() => handleOpenParteDiario(i - 1)} />);
+        }
+        while (days.length % 7 !== 0) { days.push(<div key={`ph-e-${days.length}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
+        return days;
+    };
     
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
+    const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
 
     if (isLoading) {
         return <Layout><div className={styles.card}><p>Cargando datos...</p></div></Layout>;
@@ -231,13 +281,16 @@ function CalculadoraNomina() {
 
     return (
         <Layout backgroundClassName="calculadora-background">
-            <div className={styles.header}><h1>Calculadora de Nómina</h1><button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}><ArchiveIcon /> Ver Archivo</button></div>
+            <div className={styles.header}>
+                <h1>Calculadora de Nómina</h1>
+                <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}><ArchiveIcon /> Ver Archivo</button>
+            </div>
             {profile?.role === 'dispecer' && (
                 <div className={styles.dispatcherSelector}>
                     <label htmlFor="sofer-select">Seleccione un Conductor:</label>
                     <select id="sofer-select" onChange={handleSoferSelect} value={soferSelectat || ''}>
                         <option value="" disabled>-- Elija un conductor --</option>
-                        {listaSoferi.map(sofer => (<option key={sofer.id} value={sofer.nombre_completo}>{sofer.nombre_completo}</option>))}
+                        {listaSoferi.map(sofer => (<option key={sofer.id} value={sofer.id}>{sofer.nombre_completo}</option>))}
                     </select>
                 </div>
             )}
@@ -262,7 +315,11 @@ function CalculadoraNomina() {
                     </div>
                     <div className={styles.column}>
                         <div className={styles.card}>
-                            <div className={styles.calendarHeader}><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button><h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button></div>
+                            <div className={styles.calendarHeader}>
+                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
+                                <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
+                            </div>
                             <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
                             <div className={styles.calendarWeekdays}><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
                             <div className={styles.calendarGrid}>{renderCalendar()}</div>
@@ -271,7 +328,9 @@ function CalculadoraNomina() {
                             <div className={`${styles.card} ${styles.resultCard}`}>
                                 <h3>Resultado del Cálculo</h3>
                                 <p className={styles.totalBruto}>{rezultat.totalBruto} €</p>
-                                <ul className={styles.resultDetails}>{rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}</ul>
+                                <ul className={styles.resultDetails}>
+                                    {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
+                                </ul>
                                 <button onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
                             </div>
                         )}
@@ -288,10 +347,35 @@ function CalculadoraNomina() {
                 monthName={monthNames[currentDate.getMonth()]}
                 year={currentDate.getFullYear()}
             />
-            {isArchiveOpen && (<div className={styles.modalOverlay}>{/* ... conținutul modal arhivă ... */}</div>)}
+            {isArchiveOpen && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
+                            <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
+                        </div>
+                        <div className={styles.archiveModalBody}>
+                            {isLoadingArchive ? (<p>Cargando archivo...</p>) : (
+                                archiveData.length > 0 ? (
+                                    archiveData.map(item => (
+                                        <div key={item.id} className={styles.archiveItem}>
+                                            <div className={styles.archiveHeader}>
+                                                <span>{monthNames[item.mes - 1]} {item.an}</span>
+                                                <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)}€</span>
+                                            </div>
+                                            <ul className={styles.resultDetails}>
+                                              {item.detalii && Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value.toString()}</span></li>))}
+                                            </ul>
+                                        </div>
+                                    ))
+                                ) : (<p>No hay nóminas guardadas en el archivo.</p>)
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 }
 
 export default CalculadoraNomina;
-
