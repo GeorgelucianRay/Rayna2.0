@@ -1,4 +1,4 @@
-/* src/components/CalculadoraNomina.module.css (VERSIUNE ACTUALIZATĂ) */
+/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ) */
 
 /* === Stiluri Generale & Header === */
 .header {
@@ -161,7 +161,7 @@
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
 }
 
-/* === Stiluri Calendar (Actualizate) === */
+/* === Stiluri Calendar === */
 .calendarHeader {
     display: flex;
     justify-content: space-between;
@@ -188,7 +188,6 @@
     gap: 0.5rem;
 }
 
-/* NOU: Stil pentru textul de ghidare din calendar */
 .calendarHint {
     text-align: center;
     color: #9ca3af;
@@ -205,7 +204,6 @@
     aspect-ratio: 1 / 1;
     padding: 0.5rem;
     display: flex;
-    flex-direction: column;
     justify-content: flex-start;
     align-items: flex-end;
     cursor: pointer;
@@ -223,7 +221,6 @@
     color: #e5e7eb;
 }
 
-/* NOU: Indicator vizual pentru zilele care au date completate */
 .hasData {
     border-color: #22c55e;
     box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
@@ -234,8 +231,6 @@
     border: none;
     cursor: default;
 }
-
-/* ELIMINAT: .checkboxGroup a fost eliminat de aici */
 
 /* === Selector Dispecer === */
 .dispatcherSelector {
@@ -279,7 +274,7 @@
     display: flex; justify-content: center; align-items: center; padding: 1rem;
 }
 .modalContent {
-    background-color: #111827; /* Un fundal mai închis pentru contrast */
+    background-color: #111827;
     padding: 1.5rem; border-radius: 1rem;
     width: 100%; max-width: 500px; color: white;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -307,11 +302,10 @@
     border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* NOU: Stiluri specifice pentru pop-up-ul "Parte Diario" */
 .parteDiarioSection h4 {
     font-size: 1rem;
     font-weight: 600;
-    color: #fb923c; /* Culoare accent */
+    color: #fb923c;
     margin-top: 0;
     margin-bottom: 0.75rem;
 }
@@ -338,8 +332,63 @@
     cursor: pointer;
 }
 
+/* NOU: Stiluri pentru input-ul numeric personalizat cu butoane */
+.customNumberInput {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 2px;
+}
+
+.numericDisplay {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: transparent;
+    border: none;
+    padding: 0.65rem 0;
+    -moz-appearance: textfield;
+}
+
+.numericDisplay::-webkit-inner-spin-button,
+.numericDisplay::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stepperButton {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.375rem;
+    transition: background-color 200ms;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+}
+
+.stepperButton:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.stepperButton:active {
+    background-color: rgba(255, 255, 255, 0.35);
+}
+
+
 /* === Stiluri Arhivă (Specifice) === */
-.archiveModalBody { /* Suprascriem .modalBody pentru arhivă */
+.archiveModalBody {
     overflow-y: auto; max-height: calc(80vh - 120px);
     display: flex; flex-direction: column; gap: 1rem;
 }
@@ -351,6 +400,9 @@
     display: flex; justify-content: space-between;
     font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem;
 }
+.archiveTotal {
+    color: #22c55e;
+}
 
 /* === Stiluri Rezultat === */
 .resultCard { border-top: 3px solid #22c55e; }
@@ -358,5 +410,3 @@
 .resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .resultDetails li { display: flex; justify-content: space-between; font-size: 0.9rem; color: #d1d5db; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .resultDetails li span:first-child { font-weight: 500; }
-
-/* ELIMINAT: .festivosSection și .addFestivoButton au fost eliminate */
