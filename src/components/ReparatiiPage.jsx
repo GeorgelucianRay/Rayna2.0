@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../AuthContext'; // MODIFICARE: Ne asigurăm că AuthContext este importat
 import Layout from './Layout';
 import styles from './ReparatiiPage.module.css';
 
-// --- Iconițe SVG ---
+// --- Iconițe SVG (neschimbate) ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"></path></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
@@ -15,7 +15,8 @@ const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heig
 function ReparatiiPage() {
     const { type, id } = useParams();
     const navigate = useNavigate();
-    const { profile } = useAuth();
+    // MODIFICARE: Extragem funcția 'addMantenimientoAlert' din context. Momentan nu există, dar o vom crea la pasul următor.
+    const { profile, addMantenimientoAlert } = useAuth(); 
     const ITEMS_PER_PAGE = 10;
 
     const [vehicle, setVehicle] = useState(null);
@@ -33,12 +34,12 @@ function ReparatiiPage() {
     });
 
     useEffect(() => {
+        // Această funcție rămâne neschimbată
         const fetchData = async () => {
             setLoading(true);
             const tableName = type === 'camion' ? 'camioane' : 'remorci';
             const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
 
-            // Fetch vehicle details (nu se schimbă)
             const { data: vehicleData, error: vehicleError } = await supabase
                 .from(tableName)
                 .select('matricula')
@@ -48,7 +49,6 @@ function ReparatiiPage() {
             if (vehicleError) console.error(`Error fetching vehicle:`, vehicleError);
             else setVehicle(vehicleData);
 
-            // Fetch repairs with search and pagination
             const from = (currentPage - 1) * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
 
@@ -77,14 +77,16 @@ function ReparatiiPage() {
         fetchData();
     }, [id, type, currentPage, searchTerm]);
 
+    // MODIFICARE: Am actualizat funcția handleAddRepair
     const handleAddRepair = async (e) => {
         e.preventDefault();
         const foreignKey = type === 'camion' ? 'camion_id' : 'remorca_id';
+        const kilometriNumar = parseInt(newRepair.kilometri, 10) || null;
         
         const repairData = {
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
-            kilometri: type === 'camion' ? parseInt(newRepair.kilometri, 10) || null : null,
+            kilometri: type === 'camion' ? kilometriNumar : null,
             [foreignKey]: id,
         };
 
@@ -94,17 +96,29 @@ function ReparatiiPage() {
             alert(`Error al añadir la reparación: ${error.message}`);
         } else {
             alert('Reparación añadida con éxito!');
+            
+            // --- LOGICA NOUĂ PENTRU A CREA ALERTA ---
+            const operacion = newRepair.nombre_operacion.toLowerCase();
+            const esteSchimbUlei = operacion.includes('cambio de aceite') || operacion.includes('mantenimiento');
+
+            if (type === 'camion' && esteSchimbUlei && kilometriNumar && vehicle) {
+                console.log('Se declanșează crearea alertei de mentenanță...');
+                // Apelăm funcția din context pentru a crea/actualiza alerta în baza de date
+                addMantenimientoAlert(id, vehicle.matricula, kilometriNumar);
+            }
+            // --- SFÂRȘIT LOGICĂ NOUĂ ---
+
             setIsAddModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
-            // Reîmprospătăm lista pentru a afișa noua reparație
-            setSearchTerm(''); // Resetăm căutarea pentru a vedea noua intrare
-            setCurrentPage(1); // Mergem la prima pagină
+            setSearchTerm(''); 
+            setCurrentPage(1); 
         }
     };
     
+    // Restul componentei rămâne neschimbat
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
-        setCurrentPage(1); // Resetăm paginația la fiecare căutare nouă
+        setCurrentPage(1);
     };
 
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
@@ -184,7 +198,7 @@ function ReparatiiPage() {
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
                             
                             {type === 'camion' && (
-                                <div className={styles.formGroup}><label>Kilómetros</label><input type="number" placeholder="Ej: 125000" value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
+                                <div className={styles.formGroup}><label>Kilómetros</label><input type="number" placeholder="Ej: 125000" value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} required /></div>
                             )}
                             
                             <div className={styles.formGroupFull}><label>Detalles de la Reparación</label><textarea value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required rows="6"></textarea></div>
