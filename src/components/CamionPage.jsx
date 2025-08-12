@@ -5,49 +5,19 @@ import { useAuth } from '../AuthContext';
 import Layout from './Layout';
 import styles from './CamionPage.module.css';
 
-// --- Iconos SVG ---
+// --- Iconițe SVG ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
 const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
-const WarningIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
-
-
-// --- Componenta pentru a afișa alerta de mentenanță ---
-const MaintenanceAlert = ({ status, kmDesdeCambio }) => {
-    const LIMITE_CAMBIO = 80000;
-    if (!status || status === 'loading') {
-        return <div className={`${styles.maintenanceCard} ${styles.loading}`}>Calculando estado de mantenimiento...</div>;
-    }
-    const progress = Math.min((kmDesdeCambio / LIMITE_CAMBIO) * 100, 100);
-    const statusConfig = {
-        ok: { className: 'ok', text: 'Mantenimiento al día' },
-        pronto: { className: 'pronto', text: 'Mantenimiento requerido pronto' },
-        necesario: { className: 'necesario', text: 'Mantenimiento requerido URGENTE' },
-    };
-    const { className, text } = statusConfig[status] || { className: 'ok', text: 'Mantenimiento al día' };
-    return (
-        <div className={`${styles.maintenanceCard} ${styles[className]}`}>
-            <WarningIcon />
-            <div className={styles.maintenanceInfo}>
-                <h4>{text}</h4>
-                <p>{`Han pasado ${kmDesdeCambio.toLocaleString('es-ES')} km desde el último cambio de aceite.`}</p>
-                <div className={styles.progressBarContainer}><div className={styles.progressBar} style={{ width: `${progress}%` }}></div></div>
-                <span className={styles.progressLabel}>{`${progress.toFixed(0)}% / 100% (Límite: ${LIMITE_CAMBIO.toLocaleString('es-ES')} km)`}</span>
-            </div>
-        </div>
-    );
-};
-
 
 function CamionPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { profile } = useAuth();
     const ITEMS_PER_PAGE = 10;
-    
-    const [maintenanceStatus, setMaintenanceStatus] = useState({ status: 'loading', kmDesdeCambio: 0 });
+
     const [camion, setCamion] = useState(null);
     const [isEditCamionModalOpen, setIsEditCamionModalOpen] = useState(false);
     const [editableCamion, setEditableCamion] = useState(null);
@@ -57,44 +27,51 @@ function CamionPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const [newRepair, setNewRepair] = useState({ nombre_operacion: '', detalii: '', kilometri: '' });
+    const [kmDesdeCambio, setKmDesdeCambio] = useState(null); // NOU: Stare pentru a stoca km de la ultimul schimb
+
+    const [newRepair, setNewRepair] = useState({
+        nombre_operacion: '',
+        detalii: '',
+        kilometri: ''
+    });
 
     useEffect(() => {
         const fetchCamionData = async () => {
             setLoading(true);
-            setMaintenanceStatus({ status: 'loading', kmDesdeCambio: 0 });
-
+            
+            // 1. Preluăm datele camionului
             const { data: camionData, error: camionError } = await supabase.from('camioane').select('*').eq('id', id).single();
             if (camionError) {
                 console.error("Error fetching camion:", camionError);
-                setCamion(null); // Asigurăm că `camion` este null la eroare
+                setCamion(null);
             } else {
                 setCamion(camionData);
             }
-            
+
+            // 2. Calculăm kilometrii de la ultimul schimb de ulei
             if (camionData) {
-                const { data: lastOilChange } = await supabase.from('reparatii').select('kilometri').eq('camion_id', id).ilike('nombre_operacion', '%cambio de aceite%').order('kilometri', { ascending: false }).limit(1).single();
+                const { data: lastOilChange } = await supabase.from('reparatii')
+                    .select('kilometri').eq('camion_id', id).ilike('nombre_operacion', '%cambio de aceite%')
+                    .order('kilometri', { ascending: false }).limit(1).single();
+                
                 const kmUltimoCambio = lastOilChange?.kilometri || 0;
                 const kmActuales = camionData.kilometros || 0;
-                const kmDesdeCambio = kmActuales > kmUltimoCambio ? kmActuales - kmUltimoCambio : 0;
-                const UMBRAL_ALERTA = 75000;
-                const LIMITE_CAMBIO = 80000;
-                let status = 'ok';
-                if (kmDesdeCambio >= LIMITE_CAMBIO) status = 'necesario';
-                else if (kmDesdeCambio >= UMBRAL_ALERTA) status = 'pronto';
-                setMaintenanceStatus({ status, kmDesdeCambio });
+                setKmDesdeCambio(kmActuales > kmUltimoCambio ? kmActuales - kmUltimoCambio : 0);
             }
 
+            // 3. Preluăm lista de reparații (paginată)
             const from = (currentPage - 1) * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
             let repairsQuery = supabase.from('reparatii').select('*', { count: 'exact' }).eq('camion_id', id);
             if (searchTerm) repairsQuery = repairsQuery.ilike('nombre_operacion', `%${searchTerm}%`);
             const { data: repairsData, error: repairsError, count } = await repairsQuery.order('created_at', { ascending: false }).range(from, to);
+
             if (repairsError) console.error("Error fetching repairs:", repairsError);
             else {
                 setRepairs(repairsData || []);
                 setTotalCount(count || 0);
             }
+
             setLoading(false);
         };
         fetchCamionData();
@@ -106,18 +83,19 @@ function CamionPage() {
             camion_id: id,
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
+            // Dacă nu se specifică kilometrii, se preiau automat cei actuali ai camionului
             kilometri: newRepair.kilometri ? parseInt(newRepair.kilometri, 10) : camion.kilometros,
         };
-        const { data, error } = await supabase.from('reparatii').insert([repairData]).select();
+        const { error } = await supabase.from('reparatii').insert([repairData]);
         if (error) {
             alert(`Error al añadir la reparación: ${error.message}`);
         } else {
             alert('Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
-            // Forțăm o reîncărcare a datelor prin resetarea paginării și a căutării
-            setCurrentPage(1);
+            // Forțăm o reîncărcare prin resetarea paginării și căutării
             setSearchTerm('');
+            setCurrentPage(1);
         }
     };
 
@@ -164,15 +142,18 @@ function CamionPage() {
                 <div className={styles.detailCard}><h3>Matrícula</h3><p>{camion.matricula || 'N/A'}</p></div>
                 <div className={styles.detailCard}><h3>Marca</h3><p>{camion.marca || 'N/A'}</p></div>
                 <div className={styles.detailCard}><h3>Modelo</h3><p>{camion.modelo || 'N/A'}</p></div>
+                {/* NOU: Card pentru Kilometraj Total */}
                 <div className={`${styles.detailCard} ${styles.kilometrosCard}`}>
                     <h3>Kilometraje Total</h3>
                     <p>{camion.kilometros ? camion.kilometros.toLocaleString('es-ES') : '0'} km</p>
                 </div>
-                <div className={styles.detailCard}><h3>Eje</h3><p>{camion.eje || 'N/A'}</p></div>
+                {/* NOU: Card pentru Kilometrii de la ultimul schimb */}
+                <div className={`${styles.detailCard} ${styles.maintenanceInfoCard}`}>
+                    <h3>KM desde último cambio aceite</h3>
+                    <p>{kmDesdeCambio !== null ? kmDesdeCambio.toLocaleString('es-ES') : 'Calculando...'} km</p>
+                </div>
                 <div className={styles.detailCard}><h3>Fecha ITV</h3><p>{camion.fecha_itv ? new Date(camion.fecha_itv).toLocaleDateString('es-ES') : 'N/A'}</p></div>
             </div>
-            
-            <MaintenanceAlert status={maintenanceStatus.status} kmDesdeCambio={maintenanceStatus.kmDesdeCambio} />
 
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Historial de Reparaciones</h2>
@@ -225,7 +206,7 @@ function CamionPage() {
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite y filtros" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
-                            {/* FIX PENTRU ECRAN ALB: Am adăugat verificarea `camion.kilometros ? ... : ...` */}
+                            {/* CORECTAT: Verificare pentru a preveni eroarea de ecran alb */}
                             <div className={styles.formGroup}><label>Kilómetros (opcional)</label><input type="number" placeholder={`Actual: ${camion.kilometros ? camion.kilometros.toLocaleString('es-ES') : 'N/A'}`} value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
                             <div className={styles.formGroupFull}><label>Descripción / Detalles</label><textarea rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
                             <div className={styles.modalActions}>
