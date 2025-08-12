@@ -22,9 +22,9 @@ const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1
         <div className={styles.inputGroup}>
             <label>{label}</label>
             <div className={styles.customNumberInput}>
-                <button onClick={handleDecrement} className={styles.stepperButton}>-</button>
+                <button type="button" onClick={handleDecrement} className={styles.stepperButton}>-</button>
                 <input type="number" name={name} value={value || 0} readOnly className={styles.numericDisplay} />
-                <button onClick={handleIncrement} className={styles.stepperButton}>+</button>
+                <button type="button" onClick={handleIncrement} className={styles.stepperButton}>+</button>
             </div>
         </div>
     );
@@ -32,11 +32,15 @@ const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1
 
 const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange, day, monthName, year }) => {
     if (!isOpen) return null;
-    const handleKmChange = (e) => { const { name, value } = e.target; const newValue = value === '' ? '' : parseFloat(value); onDataChange(name, newValue); };
+    const handleKmChange = (e) => {
+        const { name, value } = e.target;
+        const newValue = value === '' ? '' : parseFloat(value);
+        onDataChange(name, newValue);
+    };
     return (
         <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
-                <div className={styles.modalHeader}><h3 className={styles.modalTitle}>Parte Diario - {day} {monthName} {year}</h3><button onClick={onClose} className={styles.closeButton}><CloseIcon /></button></div>
+                <div className={styles.modalHeader}><h3 className={styles.modalTitle}>Parte Diario - {day} {monthName} {year}</h3><button type="button" onClick={onClose} className={styles.closeButton}><CloseIcon /></button></div>
                 <div className={styles.modalBody}>
                     <div className={styles.parteDiarioSection}>
                         <h4>Dietas</h4>
@@ -61,11 +65,12 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
                         </div>
                     </div>
                 </div>
-                <div className={styles.modalFooter}><button onClick={onClose} className={styles.saveButton}>Guardar y Cerrar</button></div>
+                <div className={styles.modalFooter}><button type="button" onClick={onClose} className={styles.saveButton}>Guardar y Cerrar</button></div>
             </div>
         </div>
     );
 };
+
 
 function CalculadoraNomina() {
     const { user, profile } = useAuth();
@@ -139,6 +144,10 @@ function CalculadoraNomina() {
         };
         loadData();
     }, [getTargetUserId, currentDate, defaultConfig, defaultPontaj]);
+
+    const handleConfigChange = (e) => { const { name, value } = e.target; const newValue = value === '' ? '' : parseFloat(value); setConfig(prev => ({ ...prev, [name]: newValue })); };
+    const handleSoferSelect = (e) => setSoferSelectat(e.target.value);
+    const handleOpenParteDiario = (dayIndex) => { setSelectedDayIndex(dayIndex); setIsParteDiarioOpen(true); };
     
     const handleCloseParteDiario = async () => {
         const targetId = getTargetUserId();
@@ -147,6 +156,7 @@ function CalculadoraNomina() {
             setIsParteDiarioOpen(false);
             return;
         }
+
         const payload = { 
             user_id: targetId, 
             an: currentDate.getFullYear(), 
@@ -154,6 +164,7 @@ function CalculadoraNomina() {
             pontaj_complet: pontaj 
         };
         const { error: draftError } = await supabase.from('pontaje_curente').upsert(payload, { onConflict: 'user_id, an, mes' });
+
         if (draftError) {
             alert(`Eroare la salvarea ciornei: ${draftError.message}`);
         } else {
@@ -169,6 +180,7 @@ function CalculadoraNomina() {
                         const { data: soferData } = await supabase.from('profiles').select('camioane:camion_id(*)').eq('id', targetId).single();
                         camionId = soferData?.camioane?.id;
                     }
+
                     if (camionId) {
                         const { error: kmError } = await supabase.from('camioane').update({ kilometros: kmFinal }).eq('id', camionId);
                         if (kmError) alert(`Eroare la actualizarea kilometrajului: ${kmError.message}`);
@@ -177,13 +189,11 @@ function CalculadoraNomina() {
                 }
             }
         }
+        
         setSelectedDayIndex(null);
         setIsParteDiarioOpen(false);
     };
 
-    const handleConfigChange = (e) => { const { name, value } = e.target; const newValue = value === '' ? '' : parseFloat(value); setConfig(prev => ({ ...prev, [name]: newValue })); };
-    const handleSoferSelect = (e) => setSoferSelectat(e.target.value);
-    const handleOpenParteDiario = (dayIndex) => { setSelectedDayIndex(dayIndex); setIsParteDiarioOpen(true); };
     const handleParteDiarioDataChange = (name, value) => { const newZilePontaj = [...pontaj.zilePontaj]; newZilePontaj[selectedDayIndex] = { ...newZilePontaj[selectedDayIndex], [name]: value }; setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj })); };
     const handleParteDiarioToggleChange = (field) => { const newZilePontaj = [...pontaj.zilePontaj]; const currentDay = newZilePontaj[selectedDayIndex]; newZilePontaj[selectedDayIndex] = { ...currentDay, [field]: !currentDay[field] }; setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj })); };
     const handleCalculate = () => { let totalDesayunos = 0, totalCenas = 0, totalProcenas = 0; let totalKm = 0, totalContenedores = 0, totalSumaFestivos = 0; let zileMuncite = new Set(); pontaj.zilePontaj.forEach((zi, index) => { if(zi.desayuno) totalDesayunos++; if(zi.cena) totalCenas++; if(zi.procena) totalProcenas++; const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0); if (kmZi > 0) totalKm += kmZi; totalContenedores += (zi.contenedores || 0); totalSumaFestivos += (zi.suma_festivo || 0); if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || zi.contenedores > 0 || zi.suma_festivo > 0) zileMuncite.add(index); }); const totalZileMuncite = zileMuncite.size; const sumaDesayuno = totalDesayunos * (config.precio_desayuno || 0); const sumaCena = totalCenas * (config.precio_cena || 0); const sumaProcena = totalProcenas * (config.precio_procena || 0); const sumaKm = totalKm * (config.precio_km || 0); const sumaContainere = totalContenedores * (config.precio_contenedor || 0); const sumaZileMuncite = totalZileMuncite * (config.precio_dia_trabajado || 0); const totalBruto = (config.salario_base || 0) + (config.antiguedad || 0) + sumaDesayuno + sumaCena + sumaProcena + sumaKm + sumaContainere + sumaZileMuncite + totalSumaFestivos; setRezultat({ totalBruto: totalBruto.toFixed(2), detalii_calcul: { 'Salario Base': `${(config.salario_base || 0).toFixed(2)}€`, 'Antigüedad': `${(config.antiguedad || 0).toFixed(2)}€`, 'Total Días Trabajados': `${totalZileMuncite} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sumaZileMuncite.toFixed(2)}€`, 'Total Desayunos': `${totalDesayunos} uds. x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`, 'Total Cenas': `${totalCenas} uds. x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`, 'Total Procenas': `${totalProcenas} uds. x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`, 'Total Kilómetros': `${totalKm} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`, 'Total Contenedores': `${totalContenedores} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`, 'Total Festivos/Plus': `${totalSumaFestivos.toFixed(2)}€`, }, sumar_activitate: {'Días Trabajados': totalZileMuncite, 'Total Desayunos': totalDesayunos, 'Total Cenas': totalCenas, 'Total Procenas': totalProcenas, 'Kilómetros Recorridos': totalKm, 'Contenedores Barridos': totalContenedores, 'Suma Festivos/Plus (€)': totalSumaFestivos, } }); };
@@ -227,16 +237,16 @@ function CalculadoraNomina() {
                                 <div className={styles.inputGroup}><label>Precio/km (€)</label><input type="number" name="precio_km" value={config.precio_km} onChange={handleConfigChange} /></div>
                                 <div className={styles.inputGroup}><label>Precio Contenedor (€)</label><input type="number" name="precio_contenedor" value={config.precio_contenedor} onChange={handleConfigChange} /></div>
                             </div>
-                            <button onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
+                            <button type="button" onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
                         </div>
-                        <button onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
+                        <button type="button" onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
                     </div>
                     <div className={styles.column}>
                         <div className={styles.card}>
                             <div className={styles.calendarHeader}>
-                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
                                 <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
                             </div>
                             <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
                             <div className={styles.calendarWeekdays}><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
@@ -249,7 +259,7 @@ function CalculadoraNomina() {
                                 <ul className={styles.resultDetails}>
                                     {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
                                 </ul>
-                                <button onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
+                                <button type="button" onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
                             </div>
                         )}
                     </div>
@@ -270,7 +280,7 @@ function CalculadoraNomina() {
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <h3 className={styles.modalTitle}>Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
-                            <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
+                            <button type="button" onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
                         <div className={styles.archiveModalBody}>
                             {isLoadingArchive ? (<p>Cargando archivo...</p>) : (
