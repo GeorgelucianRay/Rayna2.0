@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 import Layout from './Layout';
 import styles from './CamionPage.module.css';
 
-// --- Iconițe SVG ---
+// --- Iconițe SVG (neschimbate) ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
@@ -27,7 +27,8 @@ function CamionPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const [kmDesdeCambio, setKmDesdeCambio] = useState(null); // NOU: Stare pentru a stoca km de la ultimul schimb
+    // NOU: Stare pentru a stoca km de la ultimul schimb
+    const [kmDesdeCambio, setKmDesdeCambio] = useState(null); 
 
     const [newRepair, setNewRepair] = useState({
         nombre_operacion: '',
@@ -39,8 +40,9 @@ function CamionPage() {
         const fetchCamionData = async () => {
             setLoading(true);
             
-            // 1. Preluăm datele camionului
+            // 1. Preluăm datele camionului (include acum și 'kilometros')
             const { data: camionData, error: camionError } = await supabase.from('camioane').select('*').eq('id', id).single();
+            
             if (camionError) {
                 console.error("Error fetching camion:", camionError);
                 setCamion(null);
@@ -48,26 +50,32 @@ function CamionPage() {
                 setCamion(camionData);
             }
 
-            // 2. Calculăm kilometrii de la ultimul schimb de ulei
+            // 2. NOU: Calculăm kilometrii de la ultimul schimb de ulei (doar dacă avem datele camionului)
             if (camionData) {
                 const { data: lastOilChange } = await supabase.from('reparatii')
                     .select('kilometri').eq('camion_id', id).ilike('nombre_operacion', '%cambio de aceite%')
                     .order('kilometri', { ascending: false }).limit(1).single();
                 
+                // Folosim '|| 0' pentru a evita erori dacă valorile sunt null
                 const kmUltimoCambio = lastOilChange?.kilometri || 0;
                 const kmActuales = camionData.kilometros || 0;
-                setKmDesdeCambio(kmActuales > kmUltimoCambio ? kmActuales - kmUltimoCambio : 0);
+                
+                // Calculăm diferența și ne asigurăm că nu e negativă
+                setKmDesdeCambio(kmActuales >= kmUltimoCambio ? kmActuales - kmUltimoCambio : 0);
             }
 
             // 3. Preluăm lista de reparații (paginată)
             const from = (currentPage - 1) * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
             let repairsQuery = supabase.from('reparatii').select('*', { count: 'exact' }).eq('camion_id', id);
-            if (searchTerm) repairsQuery = repairsQuery.ilike('nombre_operacion', `%${searchTerm}%`);
+            if (searchTerm) {
+                repairsQuery = repairsQuery.ilike('nombre_operacion', `%${searchTerm}%`);
+            }
             const { data: repairsData, error: repairsError, count } = await repairsQuery.order('created_at', { ascending: false }).range(from, to);
 
-            if (repairsError) console.error("Error fetching repairs:", repairsError);
-            else {
+            if (repairsError) {
+                console.error("Error fetching repairs:", repairsError);
+            } else {
                 setRepairs(repairsData || []);
                 setTotalCount(count || 0);
             }
@@ -83,8 +91,8 @@ function CamionPage() {
             camion_id: id,
             nombre_operacion: newRepair.nombre_operacion,
             detalii: newRepair.detalii,
-            // Dacă nu se specifică kilometrii, se preiau automat cei actuali ai camionului
-            kilometri: newRepair.kilometri ? parseInt(newRepair.kilometri, 10) : camion.kilometros,
+            // NOU: Dacă nu se specifică kilometrii, se preiau automat cei actuali ai camionului
+            kilometri: newRepair.kilometri ? parseInt(newRepair.kilometri, 10) : (camion?.kilometros || 0),
         };
         const { error } = await supabase.from('reparatii').insert([repairData]);
         if (error) {
@@ -93,9 +101,8 @@ function CamionPage() {
             alert('Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
-            // Forțăm o reîncărcare prin resetarea paginării și căutării
             setSearchTerm('');
-            setCurrentPage(1);
+            setCurrentPage(1); // Forțează reîncărcarea datelor
         }
     };
 
@@ -111,6 +118,7 @@ function CamionPage() {
 
     const handleUpdateCamion = async (e) => {
         e.preventDefault();
+        // Excludem 'created_at' pentru a nu încerca să-l suprascriem
         const { id: camionId, created_at, ...updateData } = editableCamion;
         const { error } = await supabase.from('camioane').update(updateData).eq('id', camionId);
         if (error) {
@@ -123,7 +131,8 @@ function CamionPage() {
     };
 
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
-    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic';
+    // NOU: Am adăugat rolul 'sofer'
+    const canEdit = profile?.role === 'dispecer' || profile?.role === 'mecanic' || profile?.role === 'sofer';
 
     if (loading) return <div className={styles.loadingScreen}>Cargando datos del camión...</div>;
     if (!camion) return <Layout><p style={{color: 'white', textAlign: 'center'}}>No se encontró el camión.</p></Layout>;
@@ -138,18 +147,19 @@ function CamionPage() {
                 </div>
             </div>
 
+            {/* NOU: Grid-ul de detalii a fost actualizat cu noile carduri */}
             <div className={styles.detailsGrid}>
                 <div className={styles.detailCard}><h3>Matrícula</h3><p>{camion.matricula || 'N/A'}</p></div>
                 <div className={styles.detailCard}><h3>Marca</h3><p>{camion.marca || 'N/A'}</p></div>
                 <div className={styles.detailCard}><h3>Modelo</h3><p>{camion.modelo || 'N/A'}</p></div>
-                {/* NOU: Card pentru Kilometraj Total */}
                 <div className={`${styles.detailCard} ${styles.kilometrosCard}`}>
                     <h3>Kilometraje Total</h3>
-                    <p>{camion.kilometros ? camion.kilometros.toLocaleString('es-ES') : '0'} km</p>
+                    {/* Verificare pentru a afișa corect km, chiar dacă sunt 0 sau null */}
+                    <p>{camion.kilometros != null ? camion.kilometros.toLocaleString('es-ES') : '0'} km</p>
                 </div>
-                {/* NOU: Card pentru Kilometrii de la ultimul schimb */}
                 <div className={`${styles.detailCard} ${styles.maintenanceInfoCard}`}>
                     <h3>KM desde último cambio aceite</h3>
+                    {/* Verificare pentru a afișa 'Calculando...' până când valoarea e gata */}
                     <p>{kmDesdeCambio !== null ? kmDesdeCambio.toLocaleString('es-ES') : 'Calculando...'} km</p>
                 </div>
                 <div className={styles.detailCard}><h3>Fecha ITV</h3><p>{camion.fecha_itv ? new Date(camion.fecha_itv).toLocaleDateString('es-ES') : 'N/A'}</p></div>
@@ -180,7 +190,8 @@ function CamionPage() {
                                 </div>
                                 <p className={styles.repairDetails}>{repair.detalii}</p>
                                 <div className={styles.repairFooter}>
-                                    {repair.kilometri && <span><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
+                                    {/* Folosim != null pentru a afișa corect și valoarea 0 */}
+                                    {repair.kilometri != null && <span><strong>KM:</strong> {repair.kilometri.toLocaleString('es-ES')}</span>}
                                 </div>
                             </div>
                         ))}
@@ -197,6 +208,7 @@ function CamionPage() {
                 <p className={styles.noRepairs}>No hay reparaciones registradas para este camión.</p>
             )}
 
+            {/* NOU: Modalul de adăugare reparație este mai inteligent */}
             {isAddRepairModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -206,7 +218,6 @@ function CamionPage() {
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite y filtros" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
-                            {/* CORECTAT: Verificare pentru a preveni eroarea de ecran alb */}
                             <div className={styles.formGroup}><label>Kilómetros (opcional)</label><input type="number" placeholder={`Actual: ${camion.kilometros ? camion.kilometros.toLocaleString('es-ES') : 'N/A'}`} value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
                             <div className={styles.formGroupFull}><label>Descripción / Detalles</label><textarea rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
                             <div className={styles.modalActions}>
@@ -218,6 +229,7 @@ function CamionPage() {
                 </div>
             )}
 
+            {/* NOU: Modalul de editare camion conține acum și câmpul pentru kilometri */}
             {isEditCamionModalOpen && editableCamion && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -226,10 +238,10 @@ function CamionPage() {
                             <button onClick={() => setIsEditCamionModalOpen(false)} className={styles.modalCloseButton}><CloseIcon /></button>
                         </div>
                         <form onSubmit={handleUpdateCamion} className={styles.modalForm}>
-                            <div className={styles.formGroup}><label>Matrícula</label><input type="text" value={editableCamion.matricula} onChange={(e) => setEditableCamion({...editableCamion, matricula: e.target.value})} required /></div>
+                            <div className={styles.formGroup}><label>Matrícula</label><input type="text" value={editableCamion.matricula || ''} onChange={(e) => setEditableCamion({...editableCamion, matricula: e.target.value})} required /></div>
                             <div className={styles.formGroup}><label>Marca</label><input type="text" value={editableCamion.marca || ''} onChange={(e) => setEditableCamion({...editableCamion, marca: e.target.value})} /></div>
                             <div className={styles.formGroup}><label>Modelo</label><input type="text" value={editableCamion.modelo || ''} onChange={(e) => setEditableCamion({...editableCamion, modelo: e.target.value})} /></div>
-                            <div className={styles.formGroup}><label>Eje</label><input type="text" value={editableCamion.eje || ''} onChange={(e) => setEditableCamion({...editableCamion, eje: e.target.value})} /></div>
+                            <div className={styles.formGroup}><label>Kilometraje</label><input type="number" value={editableCamion.kilometros || 0} onChange={(e) => setEditableCamion({...editableCamion, kilometros: parseInt(e.target.value, 10) || 0})} /></div>
                             <div className={styles.formGroupFull}><label>Fecha ITV</label><input type="date" value={editableCamion.fecha_itv || ''} onChange={(e) => setEditableCamion({...editableCamion, fecha_itv: e.target.value})} /></div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsEditCamionModalOpen(false)}>Cancelar</button>
