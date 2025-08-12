@@ -17,30 +17,23 @@ const WarningIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" hei
 // --- Componenta pentru a afișa alerta de mentenanță ---
 const MaintenanceAlert = ({ status, kmDesdeCambio }) => {
     const LIMITE_CAMBIO = 80000;
-    
     if (!status || status === 'loading') {
         return <div className={`${styles.maintenanceCard} ${styles.loading}`}>Calculando estado de mantenimiento...</div>;
     }
-
     const progress = Math.min((kmDesdeCambio / LIMITE_CAMBIO) * 100, 100);
-
     const statusConfig = {
         ok: { className: 'ok', text: 'Mantenimiento al día' },
         pronto: { className: 'pronto', text: 'Mantenimiento requerido pronto' },
         necesario: { className: 'necesario', text: 'Mantenimiento requerido URGENTE' },
     };
-
     const { className, text } = statusConfig[status] || { className: 'ok', text: 'Mantenimiento al día' };
-
     return (
         <div className={`${styles.maintenanceCard} ${styles[className]}`}>
             <WarningIcon />
             <div className={styles.maintenanceInfo}>
                 <h4>{text}</h4>
                 <p>{`Han pasado ${kmDesdeCambio.toLocaleString('es-ES')} km desde el último cambio de aceite.`}</p>
-                <div className={styles.progressBarContainer}>
-                    <div className={styles.progressBar} style={{ width: `${progress}%` }}></div>
-                </div>
+                <div className={styles.progressBarContainer}><div className={styles.progressBar} style={{ width: `${progress}%` }}></div></div>
                 <span className={styles.progressLabel}>{`${progress.toFixed(0)}% / 100% (Límite: ${LIMITE_CAMBIO.toLocaleString('es-ES')} km)`}</span>
             </div>
         </div>
@@ -71,44 +64,37 @@ function CamionPage() {
             setLoading(true);
             setMaintenanceStatus({ status: 'loading', kmDesdeCambio: 0 });
 
-            // 1. Preluăm datele camionului
             const { data: camionData, error: camionError } = await supabase.from('camioane').select('*').eq('id', id).single();
-            if (camionError) console.error("Error fetching camion:", camionError);
-            else setCamion(camionData);
+            if (camionError) {
+                console.error("Error fetching camion:", camionError);
+                setCamion(null); // Asigurăm că `camion` este null la eroare
+            } else {
+                setCamion(camionData);
+            }
             
             if (camionData) {
-                const { data: lastOilChange, error: oilChangeError } = await supabase
-                    .from('reparatii').select('kilometri').eq('camion_id', id)
-                    .ilike('nombre_operacion', '%cambio de aceite%')
-                    .order('kilometri', { ascending: false }).limit(1).single();
-                if (oilChangeError && oilChangeError.code !== 'PGRST116') console.error("Error fetching last oil change:", oilChangeError);
-                
+                const { data: lastOilChange } = await supabase.from('reparatii').select('kilometri').eq('camion_id', id).ilike('nombre_operacion', '%cambio de aceite%').order('kilometri', { ascending: false }).limit(1).single();
                 const kmUltimoCambio = lastOilChange?.kilometri || 0;
                 const kmActuales = camionData.kilometros || 0;
                 const kmDesdeCambio = kmActuales > kmUltimoCambio ? kmActuales - kmUltimoCambio : 0;
-                
                 const UMBRAL_ALERTA = 75000;
                 const LIMITE_CAMBIO = 80000;
                 let status = 'ok';
                 if (kmDesdeCambio >= LIMITE_CAMBIO) status = 'necesario';
                 else if (kmDesdeCambio >= UMBRAL_ALERTA) status = 'pronto';
-                
                 setMaintenanceStatus({ status, kmDesdeCambio });
             }
 
-            // 2. Preluăm lista de reparații
             const from = (currentPage - 1) * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
             let repairsQuery = supabase.from('reparatii').select('*', { count: 'exact' }).eq('camion_id', id);
             if (searchTerm) repairsQuery = repairsQuery.ilike('nombre_operacion', `%${searchTerm}%`);
             const { data: repairsData, error: repairsError, count } = await repairsQuery.order('created_at', { ascending: false }).range(from, to);
-
             if (repairsError) console.error("Error fetching repairs:", repairsError);
             else {
                 setRepairs(repairsData || []);
                 setTotalCount(count || 0);
             }
-
             setLoading(false);
         };
         fetchCamionData();
@@ -129,8 +115,7 @@ function CamionPage() {
             alert('Reparación añadida con éxito!');
             setIsAddRepairModalOpen(false);
             setNewRepair({ nombre_operacion: '', detalii: '', kilometri: '' });
-            setRepairs(prev => [data[0], ...prev]);
-            setTotalCount(prev => prev + 1);
+            // Forțăm o reîncărcare a datelor prin resetarea paginării și a căutării
             setCurrentPage(1);
             setSearchTerm('');
         }
@@ -240,7 +225,8 @@ function CamionPage() {
                         </div>
                         <form onSubmit={handleAddRepair} className={styles.modalForm}>
                             <div className={styles.formGroup}><label>Nombre de Operación</label><input type="text" placeholder="Ej: Cambio de aceite y filtros" value={newRepair.nombre_operacion} onChange={(e) => setNewRepair({...newRepair, nombre_operacion: e.target.value})} required /></div>
-                            <div className={styles.formGroup}><label>Kilómetros (opcional)</label><input type="number" placeholder={`Actual: ${camion.kilometros.toLocaleString('es-ES')}`} value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
+                            {/* FIX PENTRU ECRAN ALB: Am adăugat verificarea `camion.kilometros ? ... : ...` */}
+                            <div className={styles.formGroup}><label>Kilómetros (opcional)</label><input type="number" placeholder={`Actual: ${camion.kilometros ? camion.kilometros.toLocaleString('es-ES') : 'N/A'}`} value={newRepair.kilometri} onChange={(e) => setNewRepair({...newRepair, kilometri: e.target.value})} /></div>
                             <div className={styles.formGroupFull}><label>Descripción / Detalles</label><textarea rows="4" value={newRepair.detalii} onChange={(e) => setNewRepair({...newRepair, detalii: e.target.value})} required /></div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelButton} onClick={() => setIsAddRepairModalOpen(false)}>Cancelar</button>
@@ -251,7 +237,7 @@ function CamionPage() {
                 </div>
             )}
 
-            {isEditCamionModalOpen && (
+            {isEditCamionModalOpen && editableCamion && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
