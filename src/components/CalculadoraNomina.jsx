@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Am adăugat useCallback pentru optimizare
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// --- Iconos ---
+// --- Iconos (neschimbate) ---
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>;
 const ArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>;
 
-// --- Componente Helper ---
+// --- Componente Helper (neschimbate) ---
 const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
     const hasData = !isPlaceholder && (data.desayuno || data.cena || data.procena || (data.km_final > 0 && data.km_final > data.km_iniciar) || data.contenedores > 0 || data.suma_festivo > 0);
     const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''} ${hasData ? styles.hasData : ''}`;
@@ -92,22 +92,28 @@ function CalculadoraNomina() {
         precio_contenedor: 6, precio_dia_trabajado: 20
     }), []);
 
+    // #################### AICI ESTE CORECTURA PRINCIPALĂ ####################
     const defaultPontaj = useMemo(() => ({
-        zilePontaj: Array(31).fill({ 
-            desayuno: false, cena: false, procena: false, 
-            km_iniciar: '', km_final: '', contenedores: 0, suma_festivo: 0
-        }),
+        zilePontaj: Array.from({ length: 31 }, () => ({ 
+            desayuno: false, 
+            cena: false, 
+            procena: false, 
+            km_iniciar: '', 
+            km_final: '', 
+            contenedores: 0, 
+            suma_festivo: 0
+        })),
     }), []);
     
     const [config, setConfig] = useState(defaultConfig);
     const [pontaj, setPontaj] = useState(defaultPontaj);
 
-    const getTargetUserId = () => profile?.role === 'dispecer' ? soferSelectat : user?.id;
+    const getTargetUserId = useCallback(() => profile?.role === 'dispecer' ? soferSelectat : user?.id, [profile, soferSelectat, user]);
 
     useEffect(() => {
         if (profile?.role === 'dispecer') {
             const fetchDrivers = async () => {
-                const { data, error } = await supabase.from('nomina_perfiles').select('user_id, nombre_completo');
+                const { data, error } = await supabase.from('profiles').select('id, nombre_completo'); // Am modificat sa ia si ID-ul
                 if (error) alert("Error al obtener la lista de conductores.");
                 else setListaSoferi(data || []);
             };
@@ -130,17 +136,21 @@ function CalculadoraNomina() {
             const { data: profileData, error: profileError } = await supabase.from('nomina_perfiles').select('config_nomina').eq('user_id', targetId).single();
             if (profileError && profileError.code !== 'PGRST116') console.error("Error loading profile config:", profileError);
             
-            if (profileData && profileData.config_nomina) {
-                setConfig(profileData.config_nomina);
-            } else {
-                setConfig(defaultConfig);
-            }
+            setConfig(profileData?.config_nomina || defaultConfig);
 
             const anCurent = currentDate.getFullYear();
             const lunaCurenta = currentDate.getMonth() + 1;
             const { data: pontajSalvat } = await supabase.from('pontaje_curente').select('pontaj_complet').eq('user_id', targetId).eq('an', anCurent).eq('mes', lunaCurenta).single();
-            if (pontajSalvat && pontajSalvat.pontaj_complet) {
-                setPontaj(pontajSalvat.pontaj_complet);
+            
+            if (pontajSalvat && pontajSalvat.pontaj_complet && Array.isArray(pontajSalvat.pontaj_complet.zilePontaj)) {
+                // Ne asigurăm că datele încărcate au structura corectă
+                const zileComplete = [...defaultPontaj.zilePontaj];
+                pontajSalvat.pontaj_complet.zilePontaj.forEach((zi, index) => {
+                    if (index < 31) {
+                        zileComplete[index] = { ...zileComplete[index], ...zi };
+                    }
+                });
+                setPontaj({ ...pontajSalvat.pontaj_complet, zilePontaj: zileComplete });
             } else {
                 setPontaj(defaultPontaj);
             }
@@ -150,25 +160,36 @@ function CalculadoraNomina() {
         };
 
         loadData();
-    }, [soferSelectat, user, currentDate, defaultConfig, defaultPontaj]);
+    }, [getTargetUserId, currentDate, defaultConfig, defaultPontaj]); // Am ajustat dependințele
 
+    // Efect de auto-salvare
     useEffect(() => {
-        const handler = setTimeout(() => {
-            const targetId = getTargetUserId();
-            if (targetId) {
-                const saveDraft = async () => {
-                    const { error } = await supabase
-                        .from('pontaje_curente')
-                        .upsert({ user_id: targetId, an: currentDate.getFullYear(), mes: currentDate.getMonth() + 1, pontaj_complet: pontaj }, { onConflict: 'user_id, an, mes' });
+        const targetId = getTargetUserId();
+        // Nu salvăm starea inițială goală
+        if (!targetId || pontaj === defaultPontaj) {
+            return;
+        }
 
-                    if (error) console.error('Eroare la auto-salvare:', error.message);
-                };
-                saveDraft();
-            }
+        const handler = setTimeout(() => {
+            const saveDraft = async () => {
+                const { error } = await supabase
+                    .from('pontaje_curente')
+                    .upsert({ 
+                        user_id: targetId, 
+                        an: currentDate.getFullYear(), 
+                        mes: currentDate.getMonth() + 1, 
+                        pontaj_complet: pontaj 
+                    }, { onConflict: 'user_id, an, mes' });
+
+                if (error) console.error('Eroare la auto-salvare:', error.message);
+                else console.log('Pontaj salvat automat.');
+            };
+            saveDraft();
         }, 1500);
         return () => clearTimeout(handler);
-    }, [pontaj]);
+    }, [pontaj, getTargetUserId, currentDate, defaultPontaj]); // Am adăugat dependințe pentru robustețe
     
+    // Handler-ele rămân în mare parte neschimbate, dar acum vor funcționa corect
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
         const newValue = value === '' ? '' : parseFloat(value);
@@ -190,6 +211,7 @@ function CalculadoraNomina() {
         setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj }));
     };
 
+    // Funcțiile de calcul și arhivare rămân neschimbate
     const handleSaveConfig = async () => {
         const targetId = getTargetUserId();
         if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
@@ -265,7 +287,8 @@ function CalculadoraNomina() {
         let days = [];
         for (let i = 0; i < startDay; i++) { days.push(<div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
         for (let i = 1; i <= daysInMonth; i++) {
-            days.push(<CalendarDay key={i} day={i} data={pontaj.zilePontaj[i - 1]} onClick={() => handleOpenParteDiario(i - 1)} />);
+            const dayData = pontaj.zilePontaj[i - 1] || defaultPontaj.zilePontaj[i-1];
+            days.push(<CalendarDay key={i} day={i} data={dayData} onClick={() => handleOpenParteDiario(i - 1)} />);
         }
         while (days.length % 7 !== 0) { days.push(<div key={`ph-e-${days.length}`} className={`${styles.calendarDay} ${styles.placeholderDay}`}></div>); }
         return days;
@@ -278,7 +301,8 @@ function CalculadoraNomina() {
     if (isLoading) {
         return <Layout><div className={styles.card}><p>Cargando datos...</p></div></Layout>;
     }
-
+    
+    // JSX-ul rămâne neschimbat
     return (
         <Layout backgroundClassName="calculadora-background">
             <div className={styles.header}>
@@ -296,6 +320,7 @@ function CalculadoraNomina() {
             )}
             {isReady ? (
                 <div className={styles.mainContainer}>
+                    {/* ... restul codului JSX ... */}
                     <div className={styles.column}>
                         <div className={styles.card}>
                             <h3>1. Configuración de Contrato</h3>
@@ -340,7 +365,7 @@ function CalculadoraNomina() {
             <ParteDiarioModal
                 isOpen={isParteDiarioOpen}
                 onClose={handleCloseParteDiario}
-                data={selectedDayIndex !== null ? pontaj.zilePontaj[selectedDayIndex] : {}}
+                data={selectedDayIndex !== null && pontaj.zilePontaj[selectedDayIndex] ? pontaj.zilePontaj[selectedDayIndex] : {}}
                 onDataChange={handleParteDiarioDataChange}
                 onToggleChange={handleParteDiarioToggleChange}
                 day={selectedDayIndex !== null ? selectedDayIndex + 1 : ''}
@@ -348,7 +373,7 @@ function CalculadoraNomina() {
                 year={currentDate.getFullYear()}
             />
             {isArchiveOpen && (
-                <div className={styles.modalOverlay}>
+                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <h3 className={styles.modalTitle}>Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
