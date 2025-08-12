@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
@@ -22,9 +22,9 @@ const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1
         <div className={styles.inputGroup}>
             <label>{label}</label>
             <div className={styles.customNumberInput}>
-                <button type="button" onClick={handleDecrement} className={styles.stepperButton}>-</button>
+                <button onClick={handleDecrement} className={styles.stepperButton}>-</button>
                 <input type="number" name={name} value={value} readOnly className={styles.numericDisplay} />
-                <button type="button" onClick={handleIncrement} className={styles.stepperButton}>+</button>
+                <button onClick={handleIncrement} className={styles.stepperButton}>+</button>
             </div>
         </div>
     );
@@ -40,7 +40,7 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
     return (
         <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
-                <div className={styles.modalHeader}><h3 className={styles.modalTitle}>Parte Diario - {day} {monthName} {year}</h3><button type="button" onClick={onClose} className={styles.closeButton}><CloseIcon /></button></div>
+                <div className={styles.modalHeader}><h3 className={styles.modalTitle}>Parte Diario - {day} {monthName} {year}</h3><button onClick={onClose} className={styles.closeButton}><CloseIcon /></button></div>
                 <div className={styles.modalBody}>
                     <div className={styles.parteDiarioSection}>
                         <h4>Dietas</h4>
@@ -65,7 +65,7 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
                         </div>
                     </div>
                 </div>
-                <div className={styles.modalFooter}><button type="button" onClick={onClose} className={styles.saveButton}>Guardar y Cerrar</button></div>
+                <div className={styles.modalFooter}><button onClick={onClose} className={styles.saveButton}>Guardar y Cerrar</button></div>
             </div>
         </div>
     );
@@ -92,32 +92,24 @@ function CalculadoraNomina() {
         precio_contenedor: 6, precio_dia_trabajado: 20
     }), []);
 
-    // Corecție minoră aici pentru a preveni bug-uri, dar păstrând structura
     const defaultPontaj = useMemo(() => ({
-        zilePontaj: Array.from({ length: 31 }, () => ({ 
+        zilePontaj: Array(31).fill({ 
             desayuno: false, cena: false, procena: false, 
             km_iniciar: '', km_final: '', contenedores: 0, suma_festivo: 0
-        })),
+        }),
     }), []);
     
     const [config, setConfig] = useState(defaultConfig);
     const [pontaj, setPontaj] = useState(defaultPontaj);
 
-    const getTargetUserId = useCallback(() => profile?.role === 'dispecer' ? soferSelectat : user?.id, [profile, soferSelectat, user]);
+    const getTargetUserId = () => profile?.role === 'dispecer' ? soferSelectat : user?.id;
 
     useEffect(() => {
         if (profile?.role === 'dispecer') {
             const fetchDrivers = async () => {
-                const { data, error } = await supabase.from('nomina_perfiles').select('id, user_id, nombre_completo');
+                const { data, error } = await supabase.from('nomina_perfiles').select('user_id, nombre_completo');
                 if (error) alert("Error al obtener la lista de conductores.");
-                else {
-                     const mappedData = data.map(d => ({
-                        key_id: d.id,
-                        user_id: d.user_id,
-                        nombre_completo: d.nombre_completo
-                    }));
-                    setListaSoferi(mappedData || []);
-                }
+                else setListaSoferi(data || []);
             };
             fetchDrivers();
         }
@@ -147,12 +139,8 @@ function CalculadoraNomina() {
             const anCurent = currentDate.getFullYear();
             const lunaCurenta = currentDate.getMonth() + 1;
             const { data: pontajSalvat } = await supabase.from('pontaje_curente').select('pontaj_complet').eq('user_id', targetId).eq('an', anCurent).eq('mes', lunaCurenta).single();
-            if (pontajSalvat?.pontaj_complet?.zilePontaj) {
-                const zileComplete = [...defaultPontaj.zilePontaj];
-                pontajSalvat.pontaj_complet.zilePontaj.forEach((zi, index) => {
-                    if (index < 31) zileComplete[index] = { ...zileComplete[index], ...zi };
-                });
-                setPontaj({ ...pontajSalvat.pontaj_complet, zilePontaj: zileComplete });
+            if (pontajSalvat && pontajSalvat.pontaj_complet) {
+                setPontaj(pontajSalvat.pontaj_complet);
             } else {
                 setPontaj(defaultPontaj);
             }
@@ -162,7 +150,7 @@ function CalculadoraNomina() {
         };
 
         loadData();
-    }, [soferSelectat, user, currentDate, defaultConfig, defaultPontaj, getTargetUserId]);
+    }, [soferSelectat, user, currentDate, defaultConfig, defaultPontaj]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -179,7 +167,7 @@ function CalculadoraNomina() {
             }
         }, 1500);
         return () => clearTimeout(handler);
-    }, [pontaj, getTargetUserId, currentDate]);
+    }, [pontaj]);
     
     const handleConfigChange = (e) => {
         const { name, value } = e.target;
@@ -189,57 +177,12 @@ function CalculadoraNomina() {
 
     const handleSoferSelect = (e) => setSoferSelectat(e.target.value);
     const handleOpenParteDiario = (dayIndex) => { setSelectedDayIndex(dayIndex); setIsParteDiarioOpen(true); };
-
-    // --- AICI ESTE SINGURA MODIFICARE ---
-    const handleCloseParteDiario = async () => {
-        const targetId = getTargetUserId();
-        if (targetId && selectedDayIndex !== null) {
-            const ziModificata = pontaj.zilePontaj[selectedDayIndex];
-            const kmFinal = parseFloat(ziModificata.km_final) || 0;
-
-            if (kmFinal > 0) {
-                try {
-                    // Pas 1: Găsim profilul șoferului pentru a afla ce `camion_id` (numeric) are.
-                    const { data: profileData, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('camion_id')
-                        .eq('id', targetId) // Căutăm după UUID-ul șoferului.
-                        .single();
-
-                    if (profileError) throw profileError;
-                    
-                    const camionId = profileData?.camion_id; // Acesta ar trebui să fie un număr (ex: 1, 2).
-                    
-                    // Pas 2: Dacă am găsit un ID de camion, actualizăm kilometrii.
-                    if (camionId) {
-                        const { error: updateError } = await supabase
-                            .from('camioane')
-                            .update({ kilometros: kmFinal })
-                            .eq('id', camionId); // Folosim ID-ul numeric al camionului.
-
-                        if (updateError) throw updateError;
-                        
-                        console.log(`Kilometrajul pentru camionul ${camionId} a fost actualizat cu succes.`);
-                    } else {
-                        console.warn(`Nu s-a găsit un camion alocat pentru șoferul cu ID: ${targetId}`);
-                    }
-                } catch (error) {
-                    alert(`A apărut o eroare la actualizarea kilometrajului: ${error.message}`);
-                }
-            }
-        }
-        
-        // Logica originală de închidere a ferestrei
-        setSelectedDayIndex(null);
-        setIsParteDiarioOpen(false);
-    };
-    
+    const handleCloseParteDiario = () => { setSelectedDayIndex(null); setIsParteDiarioOpen(false); };
     const handleParteDiarioDataChange = (name, value) => {
         const newZilePontaj = [...pontaj.zilePontaj];
         newZilePontaj[selectedDayIndex] = { ...newZilePontaj[selectedDayIndex], [name]: value };
         setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj }));
     };
-    
     const handleParteDiarioToggleChange = (field) => {
         const newZilePontaj = [...pontaj.zilePontaj];
         const currentDay = newZilePontaj[selectedDayIndex];
@@ -330,7 +273,7 @@ function CalculadoraNomina() {
     
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
-    const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.user_id === soferSelectat) : profile;
+    const driverData = profile?.role === 'dispecer' ? listaSoferi.find(s => s.id === soferSelectat) : profile;
 
     if (isLoading) {
         return <Layout><div className={styles.card}><p>Cargando datos...</p></div></Layout>;
@@ -340,14 +283,14 @@ function CalculadoraNomina() {
         <Layout backgroundClassName="calculadora-background">
             <div className={styles.header}>
                 <h1>Calculadora de Nómina</h1>
-                <button type="button" className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}><ArchiveIcon /> Ver Archivo</button>
+                <button className={styles.archiveButton} onClick={handleViewArchive} disabled={!isReady}><ArchiveIcon /> Ver Archivo</button>
             </div>
             {profile?.role === 'dispecer' && (
                 <div className={styles.dispatcherSelector}>
                     <label htmlFor="sofer-select">Seleccione un Conductor:</label>
                     <select id="sofer-select" onChange={handleSoferSelect} value={soferSelectat || ''}>
                         <option value="" disabled>-- Elija un conductor --</option>
-                        {listaSoferi.map(sofer => (<option key={sofer.key_id} value={sofer.user_id}>{sofer.nombre_completo}</option>))}
+                        {listaSoferi.map(sofer => (<option key={sofer.id} value={sofer.id}>{sofer.nombre_completo}</option>))}
                     </select>
                 </div>
             )}
@@ -366,16 +309,16 @@ function CalculadoraNomina() {
                                 <div className={styles.inputGroup}><label>Precio/km (€)</label><input type="number" name="precio_km" value={config.precio_km} onChange={handleConfigChange} /></div>
                                 <div className={styles.inputGroup}><label>Precio Contenedor (€)</label><input type="number" name="precio_contenedor" value={config.precio_contenedor} onChange={handleConfigChange} /></div>
                             </div>
-                            <button type="button" onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
+                            <button onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
                         </div>
-                        <button type="button" onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
+                        <button onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
                     </div>
                     <div className={styles.column}>
                         <div className={styles.card}>
                             <div className={styles.calendarHeader}>
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
+                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
                                 <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
+                                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
                             </div>
                             <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
                             <div className={styles.calendarWeekdays}><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
@@ -388,7 +331,7 @@ function CalculadoraNomina() {
                                 <ul className={styles.resultDetails}>
                                     {rezultat.detalii_calcul && Object.entries(rezultat.detalii_calcul).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value}</span></li>))}
                                 </ul>
-                                <button type="button" onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
+                                <button onClick={handleSaveToArchive} className={styles.saveButton}>Guardar en Archivo</button>
                             </div>
                         )}
                     </div>
@@ -397,7 +340,7 @@ function CalculadoraNomina() {
             <ParteDiarioModal
                 isOpen={isParteDiarioOpen}
                 onClose={handleCloseParteDiario}
-                data={selectedDayIndex !== null && pontaj.zilePontaj[selectedDayIndex] ? pontaj.zilePontaj[selectedDayIndex] : {}}
+                data={selectedDayIndex !== null ? pontaj.zilePontaj[selectedDayIndex] : {}}
                 onDataChange={handleParteDiarioDataChange}
                 onToggleChange={handleParteDiarioToggleChange}
                 day={selectedDayIndex !== null ? selectedDayIndex + 1 : ''}
@@ -409,7 +352,7 @@ function CalculadoraNomina() {
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <h3 className={styles.modalTitle}>Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}</h3>
-                            <button type="button" onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
+                            <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}><CloseIcon /></button>
                         </div>
                         <div className={styles.archiveModalBody}>
                             {isLoadingArchive ? (<p>Cargando archivo...</p>) : (
@@ -420,11 +363,9 @@ function CalculadoraNomina() {
                                                 <span>{monthNames[item.mes - 1]} {item.an}</span>
                                                 <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)}€</span>
                                             </div>
-                                            {item.detalii &&
-                                                <ul className={styles.resultDetails}>
-                                                    {Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value.toString()}</span></li>))}
-                                                </ul>
-                                            }
+                                            <ul className={styles.resultDetails}>
+                                              {item.detalii && Object.entries(item.detalii).map(([key, value]) => (<li key={key}><span>{key}</span><span>{value.toString()}</span></li>))}
+                                            </ul>
                                         </div>
                                     ))
                                 ) : (<p>No hay nóminas guardadas en el archivo.</p>)
