@@ -5,7 +5,7 @@ import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
 import styles from "./SchedulerStandalone.module.css";
 
-/* SVG-uri mici inline (fără dependențe) */
+/* SVG-uri inline (fără librării) */
 const ArrowLeft = (props) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
     <polyline points="15 18 9 12 15 6"></polyline>
@@ -20,28 +20,15 @@ const SearchIcon = (props) => (
 
 export default function SchedulerPage() {
   const navigate = useNavigate();
-  const { profile } = useAuth();                // profile.role: "dispecer" | "mecanic" | ...
+  const { profile } = useAuth();                 // profile.role: "dispecer" | "mecanic" | ...
   const role = profile?.role;
 
-  /* ---- State listă & filtre ---- */
+  /* ================= LISTA PROGRAMADOS ================= */
   const [programados, setProgramados] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");               // căutare text
-  const [dateFilter, setDateFilter] = useState(""); // filtrare după dată (YYYY-MM-DD)
+  const [q, setQ] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
-  /* ---- State modal „Nuevo” ---- */
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchMat, setSearchMat] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedCont, setSelectedCont] = useState(null); // obiect din `contenedores`
-  const [form, setForm] = useState({
-    empresa_descarga: "",
-    fecha: "",
-    hora: "",
-    matricula_camion: "",
-  });
-
-  /* ==== Load: lista programărilor active (doar din contenedores_programados) ==== */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -54,88 +41,64 @@ export default function SchedulerPage() {
       if (error) {
         console.error("Error cargando programaciones:", error);
         setProgramados([]);
-      } else {
-        setProgramados(data || []);
-      }
+      } else setProgramados(data || []);
       setLoading(false);
     };
     load();
   }, []);
 
-  /* ==== Filtrare client-side (text + dată) ==== */
   const lista = useMemo(() => {
     return programados.filter((r) => {
-      const hayTexto = (r.matricula_contenedor || "")
-        .concat(" ", r.empresa_descarga || "", " ", r.matricula_camion || "")
-        .toLowerCase()
-        .includes(q.toLowerCase());
-      const hayFecha = dateFilter ? r.fecha === dateFilter : true;
-      return hayTexto && hayFecha;
+      const text = `${r.matricula_contenedor ?? ""} ${r.empresa_descarga ?? ""} ${r.matricula_camion ?? ""}`.toLowerCase();
+      const okQ = text.includes(q.toLowerCase());
+      const okDate = dateFilter ? r.fecha === dateFilter : true;
+      return okQ && okDate;
     });
   }, [programados, q, dateFilter]);
 
-  /* ==== Handlere UI ==== */
-  const goBack = () => navigate("/depot");
+  /* =================== MODAL NUEVO ===================== */
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchMat, setSearchMat] = useState("");
+  const [resultados, setResultados] = useState([]);
+  const [contenedorSel, setContenedorSel] = useState(null);
+  const [form, setForm] = useState({ empresa_descarga: "", fecha: "", hora: "", matricula_camion: "" });
 
   const openNuevo = () => {
     setIsModalOpen(true);
     setSearchMat("");
-    setSearchResults([]);
-    setSelectedCont(null);
+    setResultados([]);
+    setContenedorSel(null);
     setForm({ empresa_descarga: "", fecha: "", hora: "", matricula_camion: "" });
   };
 
-  /* ==== Căutare în `contenedores` după matricula_contenedor ==== */
   const buscarContenedores = async () => {
-    if (!searchMat.trim()) {
-      setSearchResults([]);
-      return;
-    }
+    if (!searchMat.trim()) { setResultados([]); return; }
     const { data, error } = await supabase
       .from("contenedores")
       .select("*")
       .ilike("matricula_contenedor", `%${searchMat}%`)
       .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error buscando contenedores:", error);
-      setSearchResults([]);
-    } else {
-      setSearchResults(data || []);
-    }
+    if (error) { console.error("Error buscando contenedores:", error); setResultados([]); }
+    else setResultados(data || []);
   };
 
-  const seleccionarResultado = (c) => {
-    setSelectedCont(c);
-    // nu completăm automat datele de programare; doar datele containerului sunt afișate read-only
-  };
-
-  /* ==== Guardar: inseră în `contenedores_programados` ==== */
   const guardarProgramacion = async (e) => {
     e.preventDefault();
-    if (!selectedCont?.matricula_contenedor) {
-      alert("Selecciona primero un contenedor por matrícula.");
-      return;
-    }
+    if (!contenedorSel?.matricula_contenedor) { alert("Selecciona un contenedor por matrícula."); return; }
     const payload = {
-      matricula_contenedor: selectedCont.matricula_contenedor,
+      matricula_contenedor: contenedorSel.matricula_contenedor,
       empresa_descarga: form.empresa_descarga || null,
       fecha: form.fecha || null,
       hora: form.hora || null,
       matricula_camion: form.matricula_camion || null,
-      // opțional: poți salva și info utilă pentru listare/istoric
-      posicion: selectedCont.posicion || null,
-      tipo: selectedCont.tipo || null,
-      naviera: selectedCont.naviera || null,
+      // info utilă la listare
+      naviera: contenedorSel.naviera || null,
+      tipo: contenedorSel.tipo || null,
+      posicion: contenedorSel.posicion || null,
     };
-
     const { error } = await supabase.from("contenedores_programados").insert([payload]);
-    if (error) {
-      console.error("Error guardando programación:", error);
-      alert("No se pudo guardar la programación.");
-      return;
-    }
-    // reîncarcă listă
+    if (error) { console.error("Error guardando programación:", error); alert("No se pudo guardar."); return; }
+
     const { data } = await supabase
       .from("contenedores_programados")
       .select("*")
@@ -145,21 +108,20 @@ export default function SchedulerPage() {
     setIsModalOpen(false);
   };
 
-  /* ==== Eliminar din `contenedores_programados` (doar dispecer) ==== */
   const eliminarProgramacion = async (id) => {
     if (!confirm("¿Eliminar esta programación?")) return;
     const { error } = await supabase.from("contenedores_programados").delete().eq("id", id);
-    if (error) {
-      console.error("Error eliminando programación:", error);
-      alert("No se pudo eliminar.");
-      return;
-    }
-    setProgramados((prev) => prev.filter((r) => r.id !== id));
+    if (error) { console.error("Error eliminando:", error); alert("No se pudo eliminar."); return; }
+    setProgramados((prev) => prev.filter((x) => x.id !== id));
   };
 
-  /* ==== Hecho: mută în `contenedores_salidos` și șterge din programados ==== */
+  const editarProgramacion = async (id, updates) => {
+    const { error } = await supabase.from("contenedores_programados").update(updates).eq("id", id);
+    if (error) { console.error("Error editando:", error); alert("No se pudo editar."); return; }
+    setProgramados((prev) => prev.map((x) => (x.id === id ? { ...x, ...updates } : x)));
+  };
+
   const marcarHecho = async (row) => {
-    // pregătim înregistrarea pentru salidos
     const salida = {
       matricula_contenedor: row.matricula_contenedor,
       naviera: row.naviera || null,
@@ -167,62 +129,63 @@ export default function SchedulerPage() {
       posicion: row.posicion || null,
       matricula_camion: row.matricula_camion || null,
       detalles: row.detalles || null,
-      // poți salva și data/ora programării ca referință
       fecha_programada: row.fecha || null,
       hora_programada: row.hora || null,
     };
-
     const { error: insErr } = await supabase.from("contenedores_salidos").insert([salida]);
-    if (insErr) {
-      console.error("Error moviendo a salidos:", insErr);
-      alert("No se pudo completar la salida.");
-      return;
-    }
-
+    if (insErr) { console.error("Error moviendo a salidos:", insErr); alert("No se pudo completar la salida."); return; }
     const { error: delErr } = await supabase.from("contenedores_programados").delete().eq("id", row.id);
-    if (delErr) {
-      console.error("Error borrando de programados:", delErr);
-      alert("Salida creada, pero no se pudo quitar de programados.");
-      return;
-    }
-
-    setProgramados((prev) => prev.filter((r) => r.id !== row.id));
+    if (delErr) { console.error("Error borrando programado:", delErr); alert("Salida creada, pero no se pudo quitar de programados."); return; }
+    setProgramados((prev) => prev.filter((x) => x.id !== row.id));
   };
 
-  /* ==== Editare simplă (doar dispecer) – exemplu: schimbă data/ora/camion ==== */
-  const editarProgramacion = async (id, updates) => {
-    const { error } = await supabase.from("contenedores_programados").update(updates).eq("id", id);
-    if (error) {
-      console.error("Error editando programación:", error);
-      alert("No se pudo editar.");
-      return;
-    }
-    setProgramados((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
-  };
+  /* ================== CALENDARIO DINÁMICO =================== */
+  const hoy = new Date();
+  const [calMonth, setCalMonth] = useState(hoy.getMonth());     // 0..11
+  const [calYear, setCalYear] = useState(hoy.getFullYear());    // p. ex. 2025
+  const monthLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" })
+    .format(new Date(calYear, calMonth, 1));
+  const weekLabels = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
 
+  function getMonthCells(year, month) {
+    const first = new Date(year, month, 1);
+    const jsWeekDay = first.getDay();        // 0=Dom..6=Sab
+    const firstCol = (jsWeekDay + 6) % 7;    // 0=Lun..6=Dom
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = Array(firstCol).fill(null).concat(
+      Array.from({ length: daysInMonth }, (_, i) => i + 1)
+    );
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }
+  const calCells = getMonthCells(calYear, calMonth);
+  const isToday = (d) =>
+    d &&
+    calYear === hoy.getFullYear() &&
+    calMonth === hoy.getMonth() &&
+    d === hoy.getDate();
+
+  /* ====================== RENDER ====================== */
   return (
     <div className={styles.pageWrap}>
       {/* fundal difuz */}
       <div className={styles.bg} />
       <div className={styles.vignette} />
 
-      {/* Bara de sus (fără Layout) */}
+      {/* Bara top (fără Layout) */}
       <div className={styles.topBar}>
-        <button className={styles.backBtn} onClick={goBack}>
+        <button className={styles.backBtn} onClick={() => navigate("/depot")}>
           <ArrowLeft /> Depot
         </button>
         <h2 className={styles.title}>Programar Contenedor</h2>
-
         {role === "dispecer" && (
-          <button className={styles.newBtn} onClick={openNuevo}>
-            Nuevo
-          </button>
+          <button className={styles.newBtn} onClick={openNuevo}>Nuevo</button>
         )}
       </div>
 
       {/* Card central */}
       <section className={styles.card}>
-        {/* Toolbar: doar „Todos” + căutare + dată */}
+        {/* Toolbar */}
         <div className={styles.toolbar}>
           <div className={styles.chips}>
             <span className={`${styles.chip} ${styles.chipStatic}`}>Todos</span>
@@ -246,7 +209,7 @@ export default function SchedulerPage() {
           </div>
         </div>
 
-        {/* Listă + calendar (calendar informativ) */}
+        {/* Grid listă + calendar */}
         <div className={styles.grid}>
           {/* Listă programări */}
           <ul className={styles.list}>
@@ -274,7 +237,6 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className={styles.actions}>
-                    {/* Dispecer: poate edita + elimina */}
                     {role === "dispecer" && (
                       <>
                         <button
@@ -294,8 +256,6 @@ export default function SchedulerPage() {
                         </button>
                       </>
                     )}
-
-                    {/* Ambele roluri: pot marca Hecho */}
                     <button className={styles.actionOk} onClick={() => marcarHecho(r)}>
                       Hecho
                     </button>
@@ -305,20 +265,51 @@ export default function SchedulerPage() {
             )}
           </ul>
 
-          {/* Calendar lateral minimalist */}
+          {/* Calendar dinamic */}
           <aside className={styles.sideCard}>
-            <div className={styles.sideHeader}><h3>Contenedor 2024</h3></div>
-            <div className={styles.week}>{["L","M","X","J","V","S","D"].map((d) => <span key={d}>{d}</span>)}</div>
+            <div className={styles.sideHeader} style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+              <h3 style={{ textTransform: "capitalize" }}>{monthLabel}</h3>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  className={styles.actionMini}
+                  onClick={() => {
+                    const m = calMonth - 1;
+                    setCalMonth((m + 12) % 12);
+                    setCalYear(m < 0 ? calYear - 1 : calYear);
+                  }}
+                >◀</button>
+                <button
+                  type="button"
+                  className={styles.actionMini}
+                  onClick={() => {
+                    const m = calMonth + 1;
+                    setCalMonth(m % 12);
+                    setCalYear(m > 11 ? calYear + 1 : calYear);
+                  }}
+                >▶</button>
+              </div>
+            </div>
+
+            <div className={styles.week}>
+              {["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map((d) => <span key={d}>{d}</span>)}
+            </div>
+
             <div className={styles.calendar}>
-              {Array.from({ length: 31 }, (_, i) => (
-                <div key={i} className={`${styles.day} ${i === 19 ? styles.dayActive : ""}`}>{i + 1}</div>
+              {calCells.map((d, i) => (
+                <div
+                  key={i}
+                  className={`${styles.day} ${d ? "" : styles.placeholderDay} ${isToday(d) ? styles.dayActive : ""}`}
+                >
+                  {d ?? ""}
+                </div>
               ))}
             </div>
           </aside>
         </div>
       </section>
 
-      {/* Modal „Nuevo” – DOAR dispecer */}
+      {/* Modal Nuevo (doar dispecer) */}
       {isModalOpen && role === "dispecer" && (
         <div className={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -328,7 +319,7 @@ export default function SchedulerPage() {
             </div>
 
             <form className={styles.modalBody} onSubmit={guardarProgramacion}>
-              {/* Căutare în `contenedores` */}
+              {/* Căutare în contenedores */}
               <div className={styles.inputGroup}>
                 <label>Buscar por matrícula</label>
                 <div className={styles.inputGrid}>
@@ -343,16 +334,15 @@ export default function SchedulerPage() {
                 </div>
               </div>
 
-              {/* Rezultate căutare */}
-              {searchResults.length > 0 && (
+              {resultados.length > 0 && (
                 <div className={styles.inputGroup}>
                   <label>Resultados</label>
                   <div style={{ maxHeight: 160, overflow: "auto", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12, padding: 8 }}>
-                    {searchResults.map((c) => (
+                    {resultados.map((c) => (
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => seleccionarResultado(c)}
+                        onClick={() => setContenedorSel(c)}
                         className={styles.actionMini}
                         style={{ width: "100%", textAlign: "left", marginBottom: 6 }}
                       >
@@ -363,29 +353,27 @@ export default function SchedulerPage() {
                 </div>
               )}
 
-              {/* Info container selectat (read-only) */}
-              {selectedCont && (
+              {contenedorSel && (
                 <div className={styles.inputGrid}>
                   <div className={styles.inputGroup}>
                     <label>Matrícula contenedor</label>
-                    <input value={selectedCont.matricula_contenedor} readOnly />
+                    <input value={contenedorSel.matricula_contenedor} readOnly />
                   </div>
                   <div className={styles.inputGroup}>
                     <label>Naviera</label>
-                    <input value={selectedCont.naviera || ""} readOnly />
+                    <input value={contenedorSel.naviera || ""} readOnly />
                   </div>
                   <div className={styles.inputGroup}>
                     <label>Tipo</label>
-                    <input value={selectedCont.tipo || ""} readOnly />
+                    <input value={contenedorSel.tipo || ""} readOnly />
                   </div>
                   <div className={styles.inputGroup}>
                     <label>Posición</label>
-                    <input value={selectedCont.posicion || ""} readOnly />
+                    <input value={contenedorSel.posicion || ""} readOnly />
                   </div>
                 </div>
               )}
 
-              {/* Datele programării */}
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>Empresa de descarga</label>
