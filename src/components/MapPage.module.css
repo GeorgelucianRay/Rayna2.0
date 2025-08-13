@@ -1,0 +1,42 @@
+.mapContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Ocupă toată înălțimea vizibilă */
+  text-align: center;
+  color: white;
+}
+
+.messageBox {
+  background-color: rgba(31, 41, 55, 0.8);
+  padding: 2rem;
+  border-radius: 1rem;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 500px;
+}
+
+.messageBox h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #fb923c;
+}
+
+.messageBox p {
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  background-color: #1f2937;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.backButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
