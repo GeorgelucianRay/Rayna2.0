@@ -1,0 +1,115 @@
+/* Containerul principal al paginii de programare */
+.schedulerContainer {
+  padding: 2rem;
+}
+
+/* Stil pentru antetul paginii (titlu și buton "Nuevo") */
+.schedulerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.schedulerHeader h1 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Butonul "Nuevo" */
+.nuevoButton {
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+  color: white;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+}
+
+.nuevoButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+}
+
+/* Stilul pentru mesajul de încărcare/eroare (provizoriu) */
+.loadingText,
+.noDataText {
+  color: white;
+  text-align: center;
+  margin-top: 2rem;
+  font-weight: 600;
+}
+
+/* Stil pentru containerul modalului (similar cu cel din DepotPage) */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.modalContent {
+  background-color: #1f2937;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 500px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modalContent h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Stiluri pentru butoanele din modal (Cancel/Save) */
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.cancelButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.saveButton {
+  padding: 0.55rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.saveButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+}
