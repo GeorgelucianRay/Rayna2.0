@@ -1,45 +1,311 @@
-import React from 'react';
-import styles from './DepotPage.module.css';
-
-function SalidaContainerModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  salidaMatriculaCamion,
-  setSalidaMatriculaCamion,
-  selectedContainer,
-}) {
-  if (!isOpen || !selectedContainer) {
-    return null;
-  }
-
-  return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <h3>Registrar Salida</h3>
-        <form onSubmit={onSubmit}>
-          <div className={styles.formGroup}>
-            <label htmlFor="salidaMatriculaCamion">Matrícula Camión</label>
-            <input
-              id="salidaMatriculaCamion"
-              type="text"
-              value={salidaMatriculaCamion}
-              onChange={(e) => setSalidaMatriculaCamion(e.target.value)}
-              required
-            />
-          </div>
-          <div className={styles.modalActions}>
-            <button type="button" className={styles.cancelButton} onClick={onClose}>
-              Cancelar
-            </button>
-            <button type="submit" className={styles.saveButton}>
-              Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+/* ============ LAYOUT DE PAGINĂ ============ */
+.pageWrap {
+  position: relative;
+  padding: 24px;
+  color: #fff;
+  min-height: 100dvh;
+  box-sizing: border-box;
 }
 
-export default SalidaContainerModal;
+.bg {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
+              radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+              linear-gradient(180deg, #0b1220, #0e172a);
+  z-index: -2;
+}
+.vignette {
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 150px rgba(0,0,0,.45);
+  z-index: -1;
+}
+
+/* ============ TOP BAR ============ */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.backBtn, .newBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s;
+}
+.backBtn { background: rgba(255,255,255,.08); color: #e5e7eb; }
+.backBtn:hover { opacity: .95; }
+.title { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; }
+.newBtn { background: linear-gradient(90deg, #2563eb, #3b82f6); color: #fff; }
+.newBtn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
+
+/* ============ CARD PRINCIPAL ============ */
+.card {
+  background: rgba(17,24,39,.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ============ TOOLBAR (chips + căutare + dată) ============ */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.06);
+  color: #e5e7eb;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.chip:hover { background: rgba(255,255,255,.12); }
+.chipActive {
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  border-color: transparent;
+  color: #111827;
+}
+
+.inputs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  padding: 8px 12px;
+  border-radius: 10px;
+  min-width: 220px;
+}
+.searchIcon { opacity: .8; }
+.search input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  outline: none;
+  width: 100%;
+}
+.search input::placeholder { color: #9ca3af; }
+.date {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+/* ============ GRID LISTĂ + CALENDAR ============ */
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr .9fr;
+  gap: 16px;
+}
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ============ LISTA STÂNGA ============ */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.itemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
+}
+.cid { font-weight: 800; letter-spacing: .2px; }
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: .9rem;
+  color: #cbd5e1;
+}
+.fecha { }
+.time { }
+.plate { font-weight: 700; color: #e2e8f0; }
+.cliente { font-weight: 700; color: #f8fafc; }
+
+/* Badge generic + variații (Programado/Pendiente) */
+.badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.badgeInfo { background: #60a5fa; color: #0b1220; }
+.badgeWarn { background: #f59e0b; color: #111827; }
+
+/* Acțiuni item */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.actionMini, .actionGhost, .actionOk {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
+}
+.actionMini { background: rgba(59,130,246,.9); color: #fff; }
+.actionMini:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(59,130,246,.35); }
+
+.actionGhost { background: rgba(255,255,255,.08); color: #e5e7eb; border: 1px solid rgba(255,255,255,.18); }
+.actionGhost:hover { opacity: .95; }
+
+.actionOk { background: linear-gradient(90deg, #16a34a, #22c55e); color: #fff; }
+.actionOk:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(34,197,94,.35); }
+
+/* ============ CARD DREAPTA (CALENDAR) ============ */
+.sideCard {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 12px;
+}
+.sideHeader h3 { margin: 0; font-size: 1.05rem; }
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 10px 0 6px;
+  color: #9ca3af;
+  font-weight: 800;
+  font-size: .8rem;
+  text-align: center;
+}
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.day, .placeholderDay {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  user-select: none;
+  font-weight: 700;
+}
+.day {
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.1);
+  cursor: pointer;
+  transition: transform .1s ease, background .1s ease, border-color .1s ease;
+}
+.day:hover { transform: translateY(-1px); background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); }
+.placeholderDay { background: transparent; border: 1px dashed rgba(255,255,255,.06); color: rgba(255,255,255,.2); }
+.dayActive { outline: 2px solid #38bdf8; }
+
+/* ============ MODAL NOU ============ */
+.modalOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(6px);
+  display: grid; place-items: center;
+  z-index: 3000;
+  padding: 16px;
+}
+.modal {
+  background: #111827;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  padding: 16px;
+  color: #fff;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+}
+.modalHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,.15);
+  padding-bottom: 10px; margin-bottom: 12px;
+}
+.closeIcon {
+  appearance: none; border: none; background: transparent; color: #cbd5e1;
+  cursor: pointer; font-size: 18px; line-height: 1;
+}
+.closeIcon:hover { color: #fff; }
+
+.modalBody { display: grid; gap: 12px; }
+
+.inputGroup { display: flex; flex-direction: column; gap: 6px; }
+.inputGroup label { font-weight: 800; color: #e5e7eb; font-size: .95rem; }
+
+.inputGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 640px) { .inputGrid { grid-template-columns: 1fr; } }
+
+.modalBody input,
+.modalBody select,
+.modalBody button.actionMini[type="button"] {
+  width: 100%;
+}
+.modalBody input,
+.modalBody select {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.modalBody input::placeholder { color: #9ca3af; }
+.modalBody select option { color: #111827; background: #fff; }
+
+.modalFooter {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;
+}
