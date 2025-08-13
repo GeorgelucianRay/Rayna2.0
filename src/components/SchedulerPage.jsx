@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext'; // ai deja acest context
-import styles from './SchedulerStandalone.module.css'; // CSS-ul tău actual
+import { useAuth } from '../AuthContext';
+import styles from './SchedulerStandalone.module.css';
 
-// Iconițe mici inline (evităm dependențe externe)
 const BackIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="15 18 9 12 15 6"></polyline>
@@ -19,14 +18,17 @@ const SearchIcon = () => (
 
 export default function SchedulerPage() {
   const navigate = useNavigate();
-  const { role } = useAuth();            // 'dispecer' | 'mecanic' | ...
+
+  // --- rol robust (din AuthContext) ---
+  const { role: ctxRole, profile } = useAuth() || {};
+  const role = String((profile && profile.role) || ctxRole || '').toLowerCase(); // 'dispecer' | 'mecanic' | ...
+
   const [tab, setTab] = useState('todos'); // 'todos' | 'programado' | 'pendiente' | 'completado'
   const [query, setQuery] = useState('');
-  const [date, setDate] = useState(() => new Date()); // pentru „Completado”
-  const [items, setItems] = useState([]);             // listă combinată
+  const [date, setDate] = useState(() => new Date());
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // modal „Nuevo” (nu schimb logica ta existentă aici)
   const [isOpenNuevo, setIsOpenNuevo] = useState(false);
 
   // ====== FETCH ======
@@ -34,52 +36,32 @@ export default function SchedulerPage() {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-
       try {
-        // 1) Programados
         const { data: prog, error: e1 } = await supabase
           .from('contenedores_programados')
           .select('*')
           .order('created_at', { ascending: false });
-
         if (e1) throw e1;
+        const mappedProg = (prog || []).map(r => ({ ...r, programado_id: r.id, source: 'programados' }));
 
-        const mappedProg = (prog || []).map(r => ({
-          ...r,
-          programado_id: r.id,
-          source: 'programados',         // <- important
-        }));
-
-        // 2) En depósito (contenedores) — vor apărea cu badge „No programado”
         const { data: depo, error: e2 } = await supabase
           .from('contenedores')
           .select('*')
           .order('created_at', { ascending: false });
-
         if (e2) throw e2;
+        const mappedDepot = (depo || []).map(r => ({ ...r, programado_id: null, source: 'contenedores' }));
 
-        const mappedDepot = (depo || []).map(r => ({
-          ...r,
-          programado_id: null,
-          source: 'contenedores',
-        }));
-
-        // 3) combinat (doar pentru tab-urile care NU sunt „completado”)
-        if (!cancelled) {
-          setItems([...mappedProg, ...mappedDepot]);
-        }
+        if (!cancelled) setItems([...mappedProg, ...mappedDepot]);
       } catch (err) {
         console.error('Carga fallida:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-
     if (tab !== 'completado') load();
     return () => { cancelled = true; };
   }, [tab]);
 
-  // Completado: listăm din „contenedores_salidos” în funcție de ziua selectată
   const [doneItems, setDoneItems] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -87,10 +69,8 @@ export default function SchedulerPage() {
       if (tab !== 'completado') return;
       setLoading(true);
       try {
-        const start = new Date(date);
-        start.setHours(0,0,0,0);
-        const end = new Date(start);
-        end.setDate(end.getDate() + 1);
+        const start = new Date(date); start.setHours(0,0,0,0);
+        const end = new Date(start); end.setDate(end.getDate() + 1);
 
         const { data, error } = await supabase
           .from('contenedores_salidos')
@@ -98,7 +78,6 @@ export default function SchedulerPage() {
           .gte('fecha_salida', start.toISOString())
           .lt('fecha_salida', end.toISOString())
           .order('fecha_salida', { ascending: false });
-
         if (error) throw error;
         if (!cancelled) setDoneItems(data || []);
       } catch (err) {
@@ -111,17 +90,15 @@ export default function SchedulerPage() {
     return () => { cancelled = true; };
   }, [tab, date]);
 
-  // ====== FILTER SEARCH ======
+  // ====== FILTER ======
   const filtered = useMemo(() => {
     if (tab === 'completado') return doneItems;
-
     let list = items;
     if (tab === 'programado') list = list.filter(x => x.source === 'programados');
     if (tab === 'pendiente')  list = list.filter(x =>
       x.source === 'programados' &&
       (x.estado === 'pendiente' || x.status === 'pendiente' || x.etapa === 'pendiente')
     );
-
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(x =>
@@ -133,9 +110,8 @@ export default function SchedulerPage() {
     return list;
   }, [tab, items, doneItems, query]);
 
-  // ====== HECHO (RPC universal) ======
+  // ====== HECHO (universal) ======
   const handleHecho = async (row) => {
-    // Mecánico și dispecer au voie. Alt rol: nu.
     if (role !== 'mecanic' && role !== 'dispecer') {
       alert('No autorizado.');
       return;
@@ -145,36 +121,25 @@ export default function SchedulerPage() {
       p_programado_id: row.programado_id || null,
       p_matricula_camion: row.matricula_camion || null,
     };
-
     const { data, error } = await supabase.rpc('finalizar_contenedor', payload);
     if (error || !data?.ok) {
       console.error(error || data);
       alert(data?.error || 'No se pudo completar la salida.');
       return;
     }
-
-    // scoatem din listă locală
-    if (tab === 'completado') {
-      // dacă ești pe completado, refetch
-      setDoneItems(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
-    } else {
-      setItems(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
-    }
+    setItems(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
   };
 
-  // ====== UI ======
+  const monthTitle = useMemo(
+    () => date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()),
+    [date]
+  );
 
-  // titlul lunii în spaniolă pentru calendar
-  const monthTitle = useMemo(() => {
-    return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
-  }, [date]);
-
-  // grid simplu de calendar (doar pentru alegerea zilei la „Completado”)
   const renderCalendar = () => {
     const y = date.getFullYear();
     const m = date.getMonth();
     const first = new Date(y, m, 1);
-    const startDay = (first.getDay() + 6) % 7; // L=0 .. D=6
+    const startDay = (first.getDay() + 6) % 7; // L=0..D=6
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const cells = [];
     for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
@@ -217,9 +182,13 @@ export default function SchedulerPage() {
           <BackIcon /> Depot
         </button>
         <h1 className={styles.title}>Programar Contenedor</h1>
+
+        {/* Nuevo vizibil DOAR dacă e dispecer (profil sau ctx) */}
         {role === 'dispecer' ? (
           <button className={styles.newBtn} onClick={() => setIsOpenNuevo(true)}>Nuevo</button>
-        ) : <span style={{ width: 96 }} /> }
+        ) : (
+          <span style={{ width: 96 }} />
+        )}
       </div>
 
       {/* toolbar */}
@@ -283,7 +252,6 @@ export default function SchedulerPage() {
                       {row.matricula_camion && <span className={styles.plate}>{row.matricula_camion}</span>}
                     </div>
                   </div>
-                  {/* Completado: fără acțiuni */}
                 </li>
               ))}
             </ul>
@@ -306,13 +274,13 @@ export default function SchedulerPage() {
                       {row.fecha && <span className={styles.fecha}>{row.fecha}</span>}
                       {row.hora && <span className={styles.time}>{row.hora}</span>}
                       {row.matricula_camion && <span className={styles.plate}>{row.matricula_camion}</span>}
-                      {/* detalii utile */}
                       {row.tipo && <span>• {row.tipo}</span>}
                       {row.posicion && <span>• {row.posicion}</span>}
                     </div>
                   </div>
 
                   <div className={styles.actions}>
+                    {/* Editar + Cancelar doar pt dispecer și doar pe programados */}
                     {role === 'dispecer' && row.source === 'programados' && (
                       <>
                         <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>
@@ -323,6 +291,7 @@ export default function SchedulerPage() {
                         </button>
                       </>
                     )}
+                    {/* Hecho pentru mecanic + dispecer, pe orice sursă */}
                     {(role === 'mecanic' || role === 'dispecer') && (
                       <button className={styles.actionOk} onClick={()=>handleHecho(row)}>
                         Hecho
@@ -335,12 +304,10 @@ export default function SchedulerPage() {
           ))}
         </div>
 
-        {/* calendar lateral (util la Completado; pe mobil coboară jos) */}
         {renderCalendar()}
       </div>
 
-      {/* MODAL „Nuevo” — placeholder, păstrez controlul doar vizual ca să nu stric logica ta existentă */}
-      {isOpenNuevo && (
+      {isOpenNuevo && role === 'dispecer' && (
         <div className={styles.modalOverlay} onClick={()=>setIsOpenNuevo(false)}>
           <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -348,8 +315,7 @@ export default function SchedulerPage() {
               <button className={styles.closeIcon} onClick={()=>setIsOpenNuevo(false)}>✕</button>
             </div>
             <div className={styles.modalBody}>
-              <p>Formularul tău rămâne neschimbat aici (selectezi din „contenedores” și salvezi în „contenedores_programados”).</p>
-              <p>Important: când salvezi, **șterge din contenedores** ca să respecți noua logică.</p>
+              <p>Formularul tău rămâne neschimbat aici (selectezi din “contenedores” și salvezi în “contenedores_programados”, apoi ștergi din “contenedores”).</p>
             </div>
           </div>
         </div>
