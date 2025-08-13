@@ -53,7 +53,7 @@ function DepotPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // <-- Import nou
 
   // Stări pentru modalul de adăugare
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -211,8 +211,8 @@ function DepotPage() {
 
     const { error: insertError } = await supabase.from('contenedores_salidos').insert([newRecord]);
     if (insertError) {
-      console.error('Error moving container to salidos:', insertError);
-      alert('A apărut o eroare la înregistrarea ieșirii containerului. Vă rugăm să încercați din nou.');
+        console.error('Error moving container to salidos:', insertError);
+        alert('A apărut o eroare la înregistrarea ieșirii containerului. Vă rugăm să încercați din nou.');
     } else {
       const { error: deleteError } = await supabase.from(activeTab).delete().eq('id', id);
       if (deleteError) {
@@ -228,6 +228,16 @@ function DepotPage() {
 
   return (
     <Layout backgroundClassName="depotBackground">
+      <div className={styles.depotHeader}>
+        {/* Butoanele noi adăugate aici */}
+        <button className={styles.depotTabButton} onClick={() => navigate('/programacion')}>
+          Programación
+        </button>
+        <button className={styles.depotTabButton} onClick={() => navigate('/mapa')}>
+          Mapa 3D
+        </button>
+      </div>
+
       <div className={styles.depotHeader}>
         <button
           className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`}
