@@ -53,7 +53,7 @@ function DepotPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const navigate = useNavigate(); // <-- Import nou
+  const navigate = useNavigate();
 
   // Stări pentru modalul de adăugare
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -228,8 +228,8 @@ function DepotPage() {
 
   return (
     <Layout backgroundClassName="depotBackground">
-      <div className={styles.depotHeader}>
-        {/* Butoanele noi adăugate aici */}
+      {/* Containerul pentru butoanele noi */}
+      <div className={styles.depotHeaderPrimary}>
         <button className={styles.depotTabButton} onClick={() => navigate('/programacion')}>
           Programación
         </button>
