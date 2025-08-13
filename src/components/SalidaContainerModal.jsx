@@ -1,4 +1,4 @@
-/* ============ LAYOUT DE PAGINĂ ============ */
+/* ============ LAYOUT ============ */
 .pageWrap {
   position: relative;
   padding: 24px;
@@ -10,9 +10,10 @@
 .bg {
   position: fixed;
   inset: 0;
-  background: radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
-              radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
-              linear-gradient(180deg, #0b1220, #0e172a);
+  background:
+    radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
+    radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+    linear-gradient(180deg, #0b1220, #0e172a);
   z-index: -2;
 }
 .vignette {
@@ -30,7 +31,8 @@
   gap: 12px;
   margin-bottom: 18px;
 }
-.backBtn, .newBtn {
+.backBtn,
+.newBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -47,7 +49,7 @@
 .newBtn { background: linear-gradient(90deg, #2563eb, #3b82f6); color: #fff; }
 .newBtn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
 
-/* ============ CARD PRINCIPAL ============ */
+/* ============ CARD ============ */
 .card {
   background: rgba(17,24,39,.55);
   backdrop-filter: blur(10px);
@@ -56,7 +58,7 @@
   padding: 16px;
 }
 
-/* ============ TOOLBAR (chips + căutare + dată) ============ */
+/* ============ TOOLBAR ============ */
 .toolbar {
   display: flex;
   gap: 12px;
@@ -94,7 +96,6 @@
   align-items: center;
 }
 .search {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -131,7 +132,7 @@
   .grid { grid-template-columns: 1fr; }
 }
 
-/* ============ LISTA STÂNGA ============ */
+/* ============ LISTA (STÂNGA) ============ */
 .list {
   list-style: none;
   padding: 0;
@@ -156,7 +157,8 @@
   margin-bottom: 6px;
 }
 .dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #22c55e;
 }
 .cid { font-weight: 800; letter-spacing: .2px; }
 
@@ -167,12 +169,12 @@
   font-size: .9rem;
   color: #cbd5e1;
 }
-.fecha { }
-.time { }
+.fecha {}
+.time {}
 .plate { font-weight: 700; color: #e2e8f0; }
 .cliente { font-weight: 700; color: #f8fafc; }
 
-/* Badge generic + variații (Programado/Pendiente) */
+/* Badge generic + variații */
 .badge {
   margin-left: 6px;
   padding: 2px 8px;
@@ -184,13 +186,15 @@
 .badgeInfo { background: #60a5fa; color: #0b1220; }
 .badgeWarn { background: #f59e0b; color: #111827; }
 
-/* Acțiuni item */
+/* Acțiuni */
 .actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.actionMini, .actionGhost, .actionOk {
+.actionMini,
+.actionGhost,
+.actionOk {
   padding: 6px 10px;
   border-radius: 8px;
   font-weight: 800;
@@ -200,14 +204,12 @@
 }
 .actionMini { background: rgba(59,130,246,.9); color: #fff; }
 .actionMini:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(59,130,246,.35); }
-
 .actionGhost { background: rgba(255,255,255,.08); color: #e5e7eb; border: 1px solid rgba(255,255,255,.18); }
 .actionGhost:hover { opacity: .95; }
-
 .actionOk { background: linear-gradient(90deg, #16a34a, #22c55e); color: #fff; }
 .actionOk:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(34,197,94,.35); }
 
-/* ============ CARD DREAPTA (CALENDAR) ============ */
+/* ============ CALENDAR (DREAPTA) ============ */
 .sideCard {
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.12);
@@ -231,10 +233,12 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
-.day, .placeholderDay {
+.day,
+.placeholderDay {
   aspect-ratio: 1 / 1;
   border-radius: 10px;
-  display: grid; place-items: center;
+  display: grid;
+  place-items: center;
   user-select: none;
   font-weight: 700;
 }
@@ -244,11 +248,19 @@
   cursor: pointer;
   transition: transform .1s ease, background .1s ease, border-color .1s ease;
 }
-.day:hover { transform: translateY(-1px); background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); }
-.placeholderDay { background: transparent; border: 1px dashed rgba(255,255,255,.06); color: rgba(255,255,255,.2); }
+.day:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+}
+.placeholderDay {
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,.06);
+  color: rgba(255,255,255,.2);
+}
 .dayActive { outline: 2px solid #38bdf8; }
 
-/* ============ MODAL NOU ============ */
+/* ============ MODAL ============ */
 .modalOverlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,.6);
@@ -279,7 +291,6 @@
 .closeIcon:hover { color: #fff; }
 
 .modalBody { display: grid; gap: 12px; }
-
 .inputGroup { display: flex; flex-direction: column; gap: 6px; }
 .inputGroup label { font-weight: 800; color: #e5e7eb; font-size: .95rem; }
 
