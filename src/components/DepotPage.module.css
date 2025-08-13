@@ -1,10 +1,10 @@
-/* Container pentru butoanele noi (Programación, Mapa) */
+/* Container pentru butoanele noi (Programación, Mapa) - (NEUTIL acum, păstrat pt. compat) */
 .depotHeaderPrimary {
   display: flex;
   gap: 1rem;
   margin-bottom: 1.5rem;
   align-items: center;
-  justify-content: flex-end; /* Aliniază butoanele în dreapta */
+  justify-content: flex-end;
 }
 
 /* Header cu taburi (En Depósito, Defectos, Salidos) */
@@ -13,7 +13,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem; /* ușor micșorat, ca să stea mai aproape de butoanele mari */
 }
 
 /* Butoanele de tab */
@@ -35,6 +35,47 @@
   border-bottom-color: #fb923c;
 }
 
+/* === BUTOANE MARI: Programación & Ver Mapa (sub taburi) === */
+.extraButtons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 12px 0 20px;
+}
+
+.actionButton {
+  padding: 10px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .2s;
+  color: #fff;
+  letter-spacing: .2px;
+}
+.actionButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,.25);
+}
+.actionButton:active {
+  transform: translateY(0);
+}
+
+.programButton {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+}
+.programButton:hover {
+  opacity: .95;
+}
+
+.mapButton {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+.mapButton:hover {
+  opacity: .95;
+}
+
 /* Bara cu căutare și buton de adăugare */
 .toolbar {
   display: flex;
@@ -44,6 +85,7 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
+
 .searchBar {
   display: flex;
   align-items: center;
@@ -152,11 +194,11 @@
   font-size: 0.875rem;
 }
 .cardButton {
-  background-color: rgba(59, 130, 246, 0.8); /* albastru */
+  background-color: rgba(59, 130, 246, 0.8);
   color: white;
 }
 .cardButtonSalida {
-  background-color: rgba(239, 68, 68, 0.8); /* roșu */
+  background-color: rgba(239, 68, 68, 0.8);
   color: white;
 }
 .cardButton:hover,
@@ -175,6 +217,18 @@
 .cardBody strong {
   color: white;
   margin-right: 0.25rem;
+}
+
+/* === BADGE Programado pt. iteme din programados în En Depósito === */
+.badgeOrange {
+  display: inline-block;
+  padding: .25rem .5rem;
+  border-radius: .5rem;
+  background: #f59e0b;
+  color: #111827;
+  font-weight: 800;
+  font-size: .75rem;
+  letter-spacing: .2px;
 }
 
 /* Paginare */
@@ -251,14 +305,14 @@
   border-radius: 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background-color: rgba(255, 255, 255, 0.15);
-  color: #e5e7eb; /* MODIFICARE: Culoare gri-deschis pentru vizibilitate */
+  color: #e5e7eb; /* gri-deschis pentru vizibilitate */
   transition: border-color 0.2s;
 }
 
-/* ADAUGARE: Asigură vizibilitatea opțiunilor în dropdown */
+/* opțiuni select vizibile pe dark */
 .formGroup select option {
-  color: #111827; /* Culoare text închisă pentru opțiuni */
-  background-color: #ffffff; /* Fundal alb pentru opțiuni */
+  color: #111827;
+  background-color: #ffffff;
 }
 
 .formGroup input:focus,
@@ -311,4 +365,16 @@
 .saveButton:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+}
+
+/* mici responsive */
+@media (max-width: 480px) {
+  .extraButtons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .actionButton {
+    width: 100%;
+    text-align: center;
+  }
 }
