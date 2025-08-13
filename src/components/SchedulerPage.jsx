@@ -121,21 +121,47 @@ export default function SchedulerPage() {
     setProgramados((prev) => prev.map((x) => (x.id === id ? { ...x, ...updates } : x)));
   };
 
+  /* ================== HECHO (RPC + fallback) =================== */
   const marcarHecho = async (row) => {
+    // 1) Încearcă RPC (dacă l-ai creat în DB)
+    try {
+      const { data, error: rpcError } = await supabase.rpc("move_programado_to_salidos", {
+        p_programado_id: row.id,
+      });
+      if (!rpcError) {
+        setProgramados((prev) => prev.filter((x) => x.id !== row.id));
+        return;
+      }
+      console.warn("RPC indisponibil/eroare, folosesc fallback:", rpcError?.message);
+    } catch (e) {
+      console.warn("RPC nu există, folosesc fallback:", e?.message);
+    }
+
+    // 2) Fallback: insert doar cu coloanele standard (cele care sigur există)
     const salida = {
-      matricula_contenedor: row.matricula_contenedor,
-      naviera: row.naviera || null,
-      tipo: row.tipo || null,
-      posicion: row.posicion || null,
-      matricula_camion: row.matricula_camion || null,
-      detalles: row.detalles || null,
-      fecha_programada: row.fecha || null,
-      hora_programada: row.hora || null,
+      matricula_contenedor: row.matricula_contenedor ?? null,
+      naviera: row.naviera ?? null,
+      tipo: row.tipo ?? null,
+      posicion: row.posicion ?? null,
+      matricula_camion: row.matricula_camion ?? null,
+      detalles: row.detalles ?? null,
+      // dacă ai adăugat și în tabel: fecha_programada: row.fecha ?? null, hora_programada: row.hora ?? null,
     };
+
     const { error: insErr } = await supabase.from("contenedores_salidos").insert([salida]);
-    if (insErr) { console.error("Error moviendo a salidos:", insErr); alert("No se pudo completar la salida."); return; }
+    if (insErr) {
+      console.error("Insert salidos error:", insErr);
+      alert(`No se pudo completar la salida.\n\nDetalle: ${insErr.message ?? "desconocido"}`);
+      return;
+    }
+
     const { error: delErr } = await supabase.from("contenedores_programados").delete().eq("id", row.id);
-    if (delErr) { console.error("Error borrando programado:", delErr); alert("Salida creada, pero no se pudo quitar de programados."); return; }
+    if (delErr) {
+      console.error("Delete programados error:", delErr);
+      alert(`Salida creada, pero no se pudo quitar de programados.\n\nDetalle: ${delErr.message ?? "desconocido"}`);
+      return;
+    }
+
     setProgramados((prev) => prev.filter((x) => x.id !== row.id));
   };
 
@@ -292,7 +318,7 @@ export default function SchedulerPage() {
             </div>
 
             <div className={styles.week}>
-              {["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map((d) => <span key={d}>{d}</span>)}
+              {weekLabels.map((d) => <span key={d}>{d}</span>)}
             </div>
 
             <div className={styles.calendar}>
