@@ -1,60 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../AuthContext';
 import Layout from './Layout';
 import styles from './CalculadoraNomina.module.css';
 
-// --- Iconos ---
+/* ------------ Icons ------------ */
 const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" x2="6" y1="6" y2="18"></line>
-    <line x1="6" x2="18" y1="6" y2="18"></line>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
 );
 const ArchiveIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 8v13H3V8"></path>
-    <path d="M1 3h22v5H1z"></path>
-    <path d="M10 12h4"></path>
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
 );
 
-// --- Componente Helper ---
+/* ------------ Helpers ------------ */
 const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
-  const hasData =
-    !isPlaceholder &&
-    (data.desayuno ||
-      data.cena ||
-      data.procena ||
-      (data.km_final > 0 && data.km_final > data.km_iniciar) ||
-      data.contenedores > 0 ||
-      data.suma_festivo > 0);
-
-  const dayClasses = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''} ${hasData ? styles.hasData : ''}`;
+  const hasData = !isPlaceholder && (
+    data.desayuno || data.cena || data.procena ||
+    ((+data.km_final || 0) > (+data.km_iniciar || 0)) ||
+    (data.contenedores || 0) > 0 ||
+    (data.suma_festivo || 0) > 0
+  );
+  const cls = `${styles.calendarDay} ${isPlaceholder ? styles.placeholderDay : ''} ${hasData ? styles.hasData : ''}`;
   return (
-    <div className={dayClasses} onClick={!isPlaceholder ? onClick : undefined}>
+    <div className={cls} onClick={!isPlaceholder ? onClick : undefined}>
       <span className={styles.dayNumber}>{day}</span>
     </div>
   );
 };
 
 const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1 }) => {
-  const handleIncrement = () => onDataChange(name, (value || 0) + step);
-  const handleDecrement = () => {
-    const newValue = (value || 0) - step;
-    if (newValue >= min) onDataChange(name, newValue);
+  const inc = () => onDataChange(name, (value || 0) + step);
+  const dec = () => {
+    const nv = (value || 0) - step;
+    if (nv >= min) onDataChange(name, nv);
   };
   return (
     <div className={styles.inputGroup}>
       <label>{label}</label>
       <div className={styles.customNumberInput}>
-        <button onClick={handleDecrement} className={styles.stepperButton}>-</button>
-        <input type="number" name={name} value={value} readOnly className={styles.numericDisplay} />
-        <button onClick={handleIncrement} className={styles.stepperButton}>+</button>
+        <button type="button" onClick={dec} className={styles.stepperButton}>-</button>
+        <input type="number" readOnly value={value || 0} className={styles.numericDisplay} />
+        <button type="button" onClick={inc} className={styles.stepperButton}>+</button>
       </div>
     </div>
   );
@@ -62,37 +48,25 @@ const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1
 
 const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange, day, monthName, year }) => {
   if (!isOpen) return null;
-
-  const handleKmChange = (e) => {
+  const onNum = (e) => {
     const { name, value } = e.target;
-    const newValue = value === '' ? '' : parseFloat(value);
-    onDataChange(name, newValue);
+    onDataChange(name, value === '' ? '' : Number(value));
   };
-
   return (
     <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
+      <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Parte Diario - {day} {monthName} {year}</h3>
-          <button onClick={onClose} className={styles.closeButton}><CloseIcon /></button>
+          <h3 className={styles.modalTitle}>Parte Diario — {day} {monthName} {year}</h3>
+          <button className={styles.closeIcon} onClick={onClose}><CloseIcon /></button>
         </div>
 
         <div className={styles.modalBody}>
           <div className={styles.parteDiarioSection}>
             <h4>Dietas</h4>
             <div className={styles.checkboxGroupModal}>
-              <div>
-                <input type="checkbox" id={`modal-desayuno-${day}`} checked={!!data.desayuno} onChange={() => onToggleChange('desayuno')} />
-                <label htmlFor={`modal-desayuno-${day}`}>Desayuno</label>
-              </div>
-              <div>
-                <input type="checkbox" id={`modal-cena-${day}`} checked={!!data.cena} onChange={() => onToggleChange('cena')} />
-                <label htmlFor={`modal-cena-${day}`}>Cena</label>
-              </div>
-              <div>
-                <input type="checkbox" id={`modal-procena-${day}`} checked={!!data.procena} onChange={() => onToggleChange('procena')} />
-                <label htmlFor={`modal-procena-${day}`}>Procena</label>
-              </div>
+              <label><input type="checkbox" checked={!!data.desayuno} onChange={() => onToggleChange('desayuno')} /> Desayuno</label>
+              <label><input type="checkbox" checked={!!data.cena} onChange={() => onToggleChange('cena')} /> Cena</label>
+              <label><input type="checkbox" checked={!!data.procena} onChange={() => onToggleChange('procena')} /> Procena</label>
             </div>
           </div>
 
@@ -101,505 +75,350 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
             <div className={styles.inputGrid}>
               <div className={styles.inputGroup}>
                 <label>KM Iniciar</label>
-                <input type="number" name="km_iniciar" value={data.km_iniciar} onChange={handleKmChange} />
+                <input type="number" name="km_iniciar" value={data.km_iniciar ?? ''} onChange={onNum}/>
               </div>
               <div className={styles.inputGroup}>
                 <label>KM Final</label>
-                <input type="number" name="km_final" value={data.km_final} onChange={handleKmChange} />
+                <input type="number" name="km_final" value={data.km_final ?? ''} onChange={onNum}/>
               </div>
             </div>
           </div>
 
           <div className={styles.parteDiarioSection}>
-            <h4>Actividades Especiales</h4>
+            <h4>Actividades especiales</h4>
             <div className={styles.inputGrid}>
-              <CustomNumberInput
-                label="Contenedores Barridos"
-                name="contenedores"
-                value={data.contenedores || 0}
-                onDataChange={onDataChange}
-              />
-              <CustomNumberInput
-                label="Suma Festivo/Plus (€)"
-                name="suma_festivo"
-                value={data.suma_festivo || 0}
-                onDataChange={onDataChange}
-                step={10}
-              />
+              <CustomNumberInput label="Contenedores barridos" name="contenedores" value={data.contenedores || 0} onDataChange={onDataChange} />
+              <CustomNumberInput label="Suma festivo/plus (€)" name="suma_festivo" value={data.suma_festivo || 0} onDataChange={onDataChange} step={10} />
             </div>
           </div>
         </div>
 
         <div className={styles.modalFooter}>
-          <button onClick={onClose} className={styles.saveButton}>Guardar y Cerrar</button>
+          <button className={styles.actionMini} type="button" onClick={onClose}>Guardar y cerrar</button>
         </div>
       </div>
     </div>
   );
 };
 
-// --- Componenta Principală ---
-function CalculadoraNomina() {
+/* ------------ Main component ------------ */
+export default function CalculadoraNomina() {
   const { user, profile } = useAuth();
+
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [listaSoferi, setListaSoferi] = useState([]);
-  const [soferSelectat, setSoferSelectat] = useState(null);
-  const [rezultat, setRezultat] = useState(null);
+  const [drivers, setDrivers] = useState([]);        // {user_id, nombre_completo}
+  const [selectedDriver, setSelectedDriver] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
-  const [archiveData, setArchiveData] = useState([]);
-  const [isParteDiarioOpen, setIsParteDiarioOpen] = useState(false);
-  const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
   const defaultConfig = useMemo(() => ({
-    salario_base: 1050,
-    antiguedad: 0,
-    precio_desayuno: 10,
-    precio_cena: 15,
-    precio_procena: 5,
-    precio_km: 0.05,
-    precio_contenedor: 6,
-    precio_dia_trabajado: 20
+    salario_base: 1050, antiguedad: 0, precio_desayuno: 10,
+    precio_cena: 15, precio_procena: 5, precio_km: 0.05,
+    precio_contenedor: 6, precio_dia_trabajado: 20
   }), []);
 
   const defaultPontaj = useMemo(() => ({
     zilePontaj: Array.from({ length: 31 }, () => ({
-      desayuno: false,
-      cena: false,
-      procena: false,
-      km_iniciar: '',
-      km_final: '',
-      contenedores: 0,
-      suma_festivo: 0
+      desayuno: false, cena: false, procena: false,
+      km_iniciar: '', km_final: '', contenedores: 0, suma_festivo: 0
     })),
   }), []);
 
   const [config, setConfig] = useState(defaultConfig);
   const [pontaj, setPontaj] = useState(defaultPontaj);
+  const [result, setResult] = useState(null);
 
-  const getTargetUserId = () => (profile?.role === 'dispecer' ? soferSelectat : user?.id);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveData, setArchiveData] = useState([]);
 
-  // RPC pentru km (apelat la închiderea modalului când km_final > km_iniciar)
-  const updateTruckKmIfNeeded = async () => {
-    const targetId = getTargetUserId();
-    if (!targetId || selectedDayIndex == null) return;
+  const [isParteOpen, setIsParteOpen] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
-    const zi = pontaj.zilePontaj[selectedDayIndex];
-    const kmIni = parseFloat(zi?.km_iniciar || 0);
-    const kmFin = parseFloat(zi?.km_final || 0);
+  const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const targetUserId = profile?.role === 'dispecer' ? selectedDriver : user?.id;
+  const ready = (profile?.role === 'dispecer' && selectedDriver) || profile?.role === 'sofer';
 
-    if (Number.isFinite(kmIni) && Number.isFinite(kmFin) && kmFin > kmIni) {
-      const { data, error } = await supabase.rpc('actualizar_km_camion', {
-        p_user_id: targetId,
-        p_km_final: kmFin
-      });
-      if (error || data?.ok === false) {
-        console.error('actualizar_km_camion error:', error || data);
-      }
-    }
-  };
-
+  /* load drivers for dispatcher */
   useEffect(() => {
-    if (profile?.role === 'dispecer') {
-      const fetchDrivers = async () => {
-        const { data, error } = await supabase
-          .from('nomina_perfiles')
-          .select('user_id, nombre_completo');
-        if (error) alert("Error al obtener la lista de conductores.");
-        else setListaSoferi(data || []);
-      };
-      fetchDrivers();
-    }
+    if (profile?.role !== 'dispecer') return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('nomina_perfiles')
+        .select('user_id, nombre_completo')
+        .order('nombre_completo', { ascending: true });
+      if (!error) setDrivers(data || []);
+    })();
   }, [profile]);
 
+  /* load config + draft for target user & month */
   useEffect(() => {
-    const targetId = getTargetUserId();
-    if (!targetId) {
+    if (!targetUserId) {
       setIsLoading(false);
       setConfig(defaultConfig);
       setPontaj(defaultPontaj);
-      setRezultat(null);
+      setResult(null);
       return;
     }
-
-    const loadData = async () => {
+    (async () => {
       setIsLoading(true);
-
-      const { data: profileData, error: profileError } = await supabase
+      const { data: prof, error: e1 } = await supabase
         .from('nomina_perfiles')
         .select('config_nomina')
-        .eq('user_id', targetId)
+        .eq('user_id', targetUserId)
         .single();
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error("Error loading profile config:", profileError);
-      }
+      setConfig(prof?.config_nomina ?? defaultConfig);
 
-      if (profileData?.config_nomina) setConfig(profileData.config_nomina);
-      else setConfig(defaultConfig);
-
-      const anCurent = currentDate.getFullYear();
-      const lunaCurenta = currentDate.getMonth() + 1;
-
-      const { data: pontajSalvat } = await supabase
+      const y = currentDate.getFullYear();
+      const m = currentDate.getMonth() + 1;
+      const { data: dr } = await supabase
         .from('pontaje_curente')
         .select('pontaj_complet')
-        .eq('user_id', targetId)
-        .eq('an', anCurent)
-        .eq('mes', lunaCurenta)
-        .single();
+        .eq('user_id', targetUserId)
+        .eq('an', y)
+        .eq('mes', m)
+        .maybeSingle();
 
-      if (pontajSalvat?.pontaj_complet) setPontaj(pontajSalvat.pontaj_complet);
-      else setPontaj(defaultPontaj);
-
-      setRezultat(null);
+      setPontaj(dr?.pontaj_complet ?? defaultPontaj);
+      setResult(null);
       setIsLoading(false);
-    };
+    })();
+  }, [targetUserId, currentDate, defaultConfig, defaultPontaj]);
 
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [soferSelectat, user, currentDate, defaultConfig, defaultPontaj]);
-
-  // Auto-save ciornă cu RETURNING pentru a vedea erorile
+  /* debounced auto-save draft -> triggers DB to update km via trigger */
   useEffect(() => {
-    const handler = setTimeout(() => {
-      const targetId = getTargetUserId();
-      if (targetId) {
-        const saveDraft = async () => {
-          const { data, error } = await supabase
-            .from('pontaje_curente')
-            .upsert(
-              {
-                user_id: targetId,
-                an: currentDate.getFullYear(),
-                mes: currentDate.getMonth() + 1,
-                pontaj_complet: pontaj
-              },
-              { onConflict: 'user_id, an, mes' }
-            )
-            .select('*'); // <- important pentru a obține erorile reale
-          if (error) console.error('Eroare la auto-salvare:', error.message);
-        };
-        saveDraft();
-      }
-    }, 1500);
-    return () => clearTimeout(handler);
+    if (!targetUserId) return;
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth() + 1;
+    const t = setTimeout(async () => {
+      await supabase.from('pontaje_curente').upsert(
+        { user_id: targetUserId, an: y, mes: m, pontaj_complet: pontaj },
+        { onConflict: 'user_id,an,mes' }
+      );
+      // trigger-ul din DB va actualiza camioane.kilometros dacă km_final a crescut
+    }, 800);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pontaj]);
+  }, [pontaj, targetUserId, currentDate]);
 
-  const handleConfigChange = (e) => {
+  /* handlers */
+  const onDriverChange = (e) => setSelectedDriver(e.target.value || null);
+  const onConfigChange = (e) => {
     const { name, value } = e.target;
-    const newValue = value === '' ? '' : parseFloat(value);
-    setConfig(prev => ({ ...prev, [name]: newValue }));
+    setConfig((prev) => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
   };
 
-  const handleSoferSelect = (e) => setSoferSelectat(e.target.value);
+  const openParte = (idx) => { setSelectedDayIndex(idx); setIsParteOpen(true); };
+  const closeParte = () => { setSelectedDayIndex(null); setIsParteOpen(false); };
 
-  const handleOpenParteDiario = (dayIndex) => {
-    setSelectedDayIndex(dayIndex);
-    setIsParteDiarioOpen(true);
+  const onParteValue = (name, value) => {
+    setPontaj((prev) => {
+      const arr = [...prev.zilePontaj];
+      arr[selectedDayIndex] = { ...arr[selectedDayIndex], [name]: value };
+      return { ...prev, zilePontaj: arr };
+    });
+  };
+  const onParteToggle = (field) => {
+    setPontaj((prev) => {
+      const arr = [...prev.zilePontaj];
+      arr[selectedDayIndex] = { ...arr[selectedDayIndex], [field]: !arr[selectedDayIndex][field] };
+      return { ...prev, zilePontaj: arr };
+    });
   };
 
-  const handleCloseParteDiario = () => {
-    setSelectedDayIndex(null);
-    setIsParteDiarioOpen(false);
-    // actualizează KM camion dacă e cazul (RPC, nu trigger)
-    updateTruckKmIfNeeded();
-  };
-
-  const handleParteDiarioDataChange = (name, value) => {
-    const newZilePontaj = [...pontaj.zilePontaj];
-    newZilePontaj[selectedDayIndex] = {
-      ...newZilePontaj[selectedDayIndex],
-      [name]: value
-    };
-    setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj }));
-  };
-
-  const handleParteDiarioToggleChange = (field) => {
-    const newZilePontaj = [...pontaj.zilePontaj];
-    const currentDay = newZilePontaj[selectedDayIndex];
-    newZilePontaj[selectedDayIndex] = { ...currentDay, [field]: !currentDay[field] };
-    setPontaj(prev => ({ ...prev, zilePontaj: newZilePontaj }));
-  };
-
-  const handleSaveConfig = async () => {
-    const targetId = getTargetUserId();
-    if (!targetId) { alert("Por favor, seleccione un conductor."); return; }
-    const { data, error } = await supabase
+  const saveConfig = async () => {
+    if (!targetUserId) return;
+    const { error } = await supabase
       .from('nomina_perfiles')
       .update({ config_nomina: config })
-      .eq('user_id', targetId)
-      .select();
-    if (error) alert(`Eroare la salvarea configurației: ${error.message}`);
-    else if (data) alert('¡Configuración guardada con éxito!');
+      .eq('user_id', targetUserId);
+    if (!error) alert('¡Configuración guardada!');
   };
 
-  const handleCalculate = () => {
-    let totalDesayunos = 0, totalCenas = 0, totalProcenas = 0;
-    let totalKm = 0, totalContenedores = 0, totalSumaFestivos = 0;
-    let zileMuncite = new Set();
-
-    pontaj.zilePontaj.forEach((zi, index) => {
-      if (zi.desayuno) totalDesayunos++;
-      if (zi.cena) totalCenas++;
-      if (zi.procena) totalProcenas++;
-
-      const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
-      if (kmZi > 0) totalKm += kmZi;
-
-      totalContenedores += (zi.contenedores || 0);
-      totalSumaFestivos += (zi.suma_festivo || 0);
-
-      if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || zi.contenedores > 0 || zi.suma_festivo > 0) {
-        zileMuncite.add(index);
-      }
+  const calc = () => {
+    let d=0,c=0,p=0, km=0, cont=0, plus=0;
+    const worked = new Set();
+    pontaj.zilePontaj.forEach((z, i) => {
+      if (z.desayuno) d++;
+      if (z.cena) c++;
+      if (z.procena) p++;
+      const k = (+z.km_final || 0) - (+z.km_iniciar || 0);
+      if (k>0) km += k;
+      cont += (z.contenedores || 0);
+      plus += (z.suma_festivo || 0);
+      if (z.desayuno || z.cena || z.procena || k>0 || (z.contenedores||0)>0 || (z.suma_festivo||0)>0) worked.add(i);
     });
+    const dz = worked.size;
+    const sDes = d * (config.precio_desayuno || 0);
+    const sCen = c * (config.precio_cena || 0);
+    const sPro = p * (config.precio_procena || 0);
+    const sKm  = km * (config.precio_km || 0);
+    const sCon = cont * (config.precio_contenedor || 0);
+    const sDia = dz * (config.precio_dia_trabajado || 0);
+    const total = (config.salario_base || 0) + (config.antiguedad || 0) + sDes + sCen + sPro + sKm + sCon + sDia + plus;
 
-    const totalZileMuncite = zileMuncite.size;
-
-    const sumaDesayuno = totalDesayunos * (config.precio_desayuno || 0);
-    const sumaCena = totalCenas * (config.precio_cena || 0);
-    const sumaProcena = totalProcenas * (config.precio_procena || 0);
-    const sumaKm = totalKm * (config.precio_km || 0);
-    const sumaContainere = totalContenedores * (config.precio_contenedor || 0);
-    const sumaZileMuncite = totalZileMuncite * (config.precio_dia_trabajado || 0);
-
-    const totalBruto = (config.salario_base || 0)
-      + (config.antiguedad || 0)
-      + sumaDesayuno + sumaCena + sumaProcena
-      + sumaKm + sumaContainere + sumaZileMuncite
-      + totalSumaFestivos;
-
-    setRezultat({
-      totalBruto: totalBruto.toFixed(2),
+    setResult({
+      totalBruto: total.toFixed(2),
       detalii_calcul: {
         'Salario Base': `${(config.salario_base || 0).toFixed(2)}€`,
         'Antigüedad': `${(config.antiguedad || 0).toFixed(2)}€`,
-        'Total Días Trabajados': `${totalZileMuncite} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sumaZileMuncite.toFixed(2)}€`,
-        'Total Desayunos': `${totalDesayunos} uds. x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sumaDesayuno.toFixed(2)}€`,
-        'Total Cenas': `${totalCenas} uds. x ${(config.precio_cena || 0).toFixed(2)}€ = ${sumaCena.toFixed(2)}€`,
-        'Total Procenas': `${totalProcenas} uds. x ${(config.precio_procena || 0).toFixed(2)}€ = ${sumaProcena.toFixed(2)}€`,
-        'Total Kilómetros': `${totalKm} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sumaKm.toFixed(2)}€`,
-        'Total Contenedores': `${totalContenedores} uds. x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sumaContainere.toFixed(2)}€`,
-        'Total Festivos/Plus': `${totalSumaFestivos.toFixed(2)}€`,
+        'Total Días Trabajados': `${dz} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sDia.toFixed(2)}€`,
+        'Total Desayunos': `${d} x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sDes.toFixed(2)}€`,
+        'Total Cenas': `${c} x ${(config.precio_cena || 0).toFixed(2)}€ = ${sCen.toFixed(2)}€`,
+        'Total Procenas': `${p} x ${(config.precio_procena || 0).toFixed(2)}€ = ${sPro.toFixed(2)}€`,
+        'Total Kilómetros': `${km} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sKm.toFixed(2)}€`,
+        'Total Contenedores': `${cont} x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sCon.toFixed(2)}€`,
+        'Total Festivos/Plus': `${plus.toFixed(2)}€`,
       },
       sumar_activitate: {
-        'Días Trabajados': totalZileMuncite,
-        'Total Desayunos': totalDesayunos,
-        'Total Cenas': totalCenas,
-        'Total Procenas': totalProcenas,
-        'Kilómetros Recorridos': totalKm,
-        'Contenedores Barridos': totalContenedores,
-        'Suma Festivos/Plus (€)': totalSumaFestivos,
+        'Días Trabajados': dz,
+        'Total Desayunos': d,
+        'Total Cenas': c,
+        'Total Procenas': p,
+        'Kilómetros Recorridos': km,
+        'Contenedores Barridos': cont,
+        'Suma Festivos/Plus (€)': plus,
       }
     });
   };
 
-  const handleSaveToArchive = async () => {
-    const targetId = getTargetUserId();
-    if (!targetId || !rezultat) return;
-
-    const { error } = await supabase
-      .from('nominas_calculadas')
-      .insert({
-        user_id: targetId,
-        mes: currentDate.getMonth() + 1,
-        an: currentDate.getFullYear(),
-        total_bruto: parseFloat(rezultat.totalBruto),
-        detalles: rezultat.sumar_activitate
-      });
-
-    if (error) alert(`Error al guardar en el archivo: ${error.message}`);
-    else {
-      alert('Cálculo guardado en el archivo.');
-      setRezultat(null);
-    }
+  const saveToArchive = async () => {
+    if (!targetUserId || !result) return;
+    const { error } = await supabase.from('nominas_calculadas').insert({
+      user_id: targetUserId,
+      mes: currentDate.getMonth() + 1,
+      an: currentDate.getFullYear(),
+      total_bruto: Number(result.totalBruto),
+      detalles: result.sumar_activitate
+    });
+    if (!error) { alert('Cálculo guardado en el archivo.'); setResult(null); }
   };
 
-  const handleViewArchive = async () => {
-    const targetId = getTargetUserId();
-    if (!targetId) { alert("Por favor, seleccione un conductor para ver su archivo."); return; }
-
+  const openArchive = async () => {
+    if (!targetUserId) { alert('Seleccione un conductor.'); return; }
     setIsArchiveOpen(true);
-    setIsLoadingArchive(true);
-
-    const { data, error } = await supabase
+    setArchiveBusy(true);
+    const { data } = await supabase
       .from('nominas_calculadas')
       .select('*')
-      .eq('user_id', targetId)
+      .eq('user_id', targetUserId)
       .order('an', { ascending: false })
       .order('mes', { ascending: false });
-
-    if (error) alert(`Error al cargar el archivo: ${error.message}`);
-    else setArchiveData(data || []);
-
-    setIsLoadingArchive(false);
+    setArchiveData(data || []);
+    setArchiveBusy(false);
   };
 
+  /* calendar */
   const renderCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = D
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // L = 0
-    let days = [];
-
-    for (let i = 0; i < startDay; i++) {
-      days.push(
-        <div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`} />
-      );
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth();
+    const first = new Date(y, m, 1).getDay();      // 0=Do
+    const daysIn = new Date(y, m + 1, 0).getDate();
+    const start = first === 0 ? 6 : first - 1;     // Por interfaz L->D
+    const cells = [];
+    for (let i=0; i<start; i++) cells.push(<div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`} />);
+    for (let d=1; d<=daysIn; d++) {
+      cells.push(
         <CalendarDay
-          key={i}
-          day={i}
-          data={pontaj.zilePontaj[i - 1]}
-          onClick={() => handleOpenParteDiario(i - 1)}
+          key={d}
+          day={d}
+          data={pontaj.zilePontaj[d-1]}
+          onClick={() => openParte(d-1)}
         />
       );
     }
-    while (days.length % 7 !== 0) {
-      days.push(
-        <div key={`ph-e-${days.length}`} className={`${styles.calendarDay} ${styles.placeholderDay}`} />
-      );
-    }
-    return days;
+    while (cells.length % 7 !== 0) cells.push(<div key={`ph-e-${cells.length}`} className={`${styles.calendarDay} ${styles.placeholderDay}`} />);
+    return cells;
   };
 
-  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  const isReady = (profile?.role === 'dispecer' && soferSelectat) || profile?.role === 'sofer';
-  const driverData = profile?.role === 'dispecer'
-    ? listaSoferi.find(s => s.user_id === soferSelectat)
-    : profile;
-
   if (isLoading) {
-    return (
-      <Layout>
-        <div className={styles.card}><p>Cargando datos...</p></div>
-      </Layout>
-    );
+    return <Layout><div className={styles.card}><p>Cargando datos...</p></div></Layout>;
   }
+
+  const driverLabel = (uid) => drivers.find(d => d.user_id === uid)?.nombre_completo || '';
 
   return (
     <Layout backgroundClassName="calculadora-background">
       <div className={styles.header}>
         <h1>Calculadora de Nómina</h1>
-        <button
-          className={styles.archiveButton}
-          onClick={handleViewArchive}
-          disabled={!isReady}
-        >
-          <ArchiveIcon /> Ver Archivo
+        <button className={styles.archiveButton} onClick={openArchive} disabled={!ready}>
+          <ArchiveIcon/> Ver Archivo
         </button>
       </div>
 
       {profile?.role === 'dispecer' && (
         <div className={styles.dispatcherSelector}>
-          <label htmlFor="sofer-select">Seleccione un Conductor:</label>
-          <select id="sofer-select" onChange={handleSoferSelect} value={soferSelectat || ''}>
+          <label htmlFor="driver">Seleccione un Conductor:</label>
+          <select id="driver" onChange={(e)=>onDriverChange(e)} value={selectedDriver || ''}>
             <option value="" disabled>-- Elija un conductor --</option>
-            {listaSoferi.map(sofer => (
-              <option key={sofer.user_id} value={sofer.user_id}>
-                {sofer.nombre_completo}
-              </option>
+            {drivers.map(d => (
+              <option key={d.user_id} value={d.user_id}>{d.nombre_completo}</option>
             ))}
           </select>
         </div>
       )}
 
-      {isReady ? (
+      {ready ? (
         <div className={styles.mainContainer}>
           <div className={styles.column}>
             <div className={styles.card}>
-              <h3>1. Configuración de Contrato</h3>
+              <h3>1. Configuración de Contrato {profile?.role==='dispecer' && driverLabel(selectedDriver) ? `— ${driverLabel(selectedDriver)}`:''}</h3>
               <div className={styles.inputGrid}>
-                <div className={styles.inputGroup}>
-                  <label>Salario Base (€)</label>
-                  <input type="number" name="salario_base" value={config.salario_base} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Antigüedad (€)</label>
-                  <input type="number" name="antiguedad" value={config.antiguedad} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio Día Trabajado (€)</label>
-                  <input type="number" name="precio_dia_trabajado" value={config.precio_dia_trabajado} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio Desayuno (€)</label>
-                  <input type="number" name="precio_desayuno" value={config.precio_desayuno} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio Cena (€)</label>
-                  <input type="number" name="precio_cena" value={config.precio_cena} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio Procena (€)</label>
-                  <input type="number" name="precio_procena" value={config.precio_procena} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio/km (€)</label>
-                  <input type="number" name="precio_km" value={config.precio_km} onChange={handleConfigChange} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Precio Contenedor (€)</label>
-                  <input type="number" name="precio_contenedor" value={config.precio_contenedor} onChange={handleConfigChange} />
-                </div>
+                <div className={styles.inputGroup}><label>Salario Base (€)</label><input type="number" name="salario_base" value={config.salario_base} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Antigüedad (€)</label><input type="number" name="antiguedad" value={config.antiguedad} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Día Trabajado (€)</label><input type="number" name="precio_dia_trabajado" value={config.precio_dia_trabajado} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Desayuno (€)</label><input type="number" name="precio_desayuno" value={config.precio_desayuno} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Cena (€)</label><input type="number" name="precio_cena" value={config.precio_cena} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Procena (€)</label><input type="number" name="precio_procena" value={config.precio_procena} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio/km (€)</label><input type="number" name="precio_km" value={config.precio_km} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Contenedor (€)</label><input type="number" name="precio_contenedor" value={config.precio_contenedor} onChange={onConfigChange} /></div>
               </div>
-              <button onClick={handleSaveConfig} className={styles.saveButton}>Guardar Configuración</button>
+              <button className={styles.saveButton} onClick={saveConfig}>Guardar Configuración</button>
             </div>
 
-            <button onClick={handleCalculate} className={styles.calculateButton}>Calcular Nómina</button>
+            <button className={styles.calculateButton} onClick={calc}>Calcular Nómina</button>
           </div>
 
           <div className={styles.column}>
             <div className={styles.card}>
               <div className={styles.calendarHeader}>
-                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>&lt;</button>
+                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))}>&lt;</button>
                 <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>&gt;</button>
+                <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))}>&gt;</button>
               </div>
-
               <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
               <div className={styles.calendarWeekdays}>
-                <div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
+                <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div><div>Do</div>
               </div>
               <div className={styles.calendarGrid}>{renderCalendar()}</div>
             </div>
 
-            {rezultat && (
+            {result && (
               <div className={`${styles.card} ${styles.resultCard}`}>
                 <h3>Resultado del Cálculo</h3>
-                <p className={styles.totalBruto}>{rezultat.totalBruto} €</p>
+                <p className={styles.totalBruto}>{result.totalBruto} €</p>
                 <ul className={styles.resultDetails}>
-                  {rezultat.detalii_calcul &&
-                    Object.entries(rezultat.detalii_calcul).map(([key, value]) => (
-                      <li key={key}><span>{key}</span><span>{value}</span></li>
-                    ))}
+                  {Object.entries(result.detalii_calcul).map(([k,v]) => (
+                    <li key={k}><span>{k}</span><span>{v}</span></li>
+                  ))}
                 </ul>
-                <button onClick={handleSaveToArchive} className={styles.saveButton}>
-                  Guardar en Archivo
-                </button>
+                <button className={styles.saveButton} onClick={saveToArchive}>Guardar en Archivo</button>
               </div>
             )}
           </div>
         </div>
       ) : (
         <div className={styles.card}>
-          <p>{isLoading ? 'Cargando...' : 'Por favor, seleccione un conductor para continuar.'}</p>
+          <p>Por favor, seleccione un conductor para continuar.</p>
         </div>
       )}
 
       <ParteDiarioModal
-        isOpen={isParteDiarioOpen}
-        onClose={handleCloseParteDiario}
+        isOpen={isParteOpen}
+        onClose={closeParte}
         data={selectedDayIndex !== null ? pontaj.zilePontaj[selectedDayIndex] : {}}
-        onDataChange={handleParteDiarioDataChange}
-        onToggleChange={handleParteDiarioToggleChange}
+        onDataChange={onParteValue}
+        onToggleChange={onParteToggle}
         day={selectedDayIndex !== null ? selectedDayIndex + 1 : ''}
         monthName={monthNames[currentDate.getMonth()]}
         year={currentDate.getFullYear()}
@@ -607,35 +426,26 @@ function CalculadoraNomina() {
 
       {isArchiveOpen && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>
-                Archivo de Nóminas {driverData ? `para ${driverData.nombre_completo}` : ''}
-              </h3>
-              <button onClick={() => setIsArchiveOpen(false)} className={styles.closeButton}>
-                <CloseIcon />
-              </button>
+              <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role==='dispecer' && driverLabel(selectedDriver) ? `— ${driverLabel(selectedDriver)}` : ''}</h3>
+              <button className={styles.closeIcon} onClick={()=>setIsArchiveOpen(false)}><CloseIcon/></button>
             </div>
-
             <div className={styles.archiveModalBody}>
-              {isLoadingArchive ? (
-                <p>Cargando archivo...</p>
-              ) : archiveData.length > 0 ? (
-                archiveData.map(item => (
+              {archiveBusy ? <p>Cargando archivo...</p> : (
+                archiveData.length ? archiveData.map(item => (
                   <div key={item.id} className={styles.archiveItem}>
                     <div className={styles.archiveHeader}>
                       <span>{monthNames[item.mes - 1]} {item.an}</span>
-                      <span className={styles.archiveTotal}>{item.total_bruto.toFixed(2)}€</span>
+                      <span className={styles.archiveTotal}>{Number(item.total_bruto).toFixed(2)}€</span>
                     </div>
                     <ul className={styles.resultDetails}>
-                      {item.detalii && Object.entries(item.detalii).map(([key, value]) => (
-                        <li key={key}><span>{key}</span><span>{value.toString()}</span></li>
+                      {item.detalles && Object.entries(item.detalles).map(([k,v]) => (
+                        <li key={k}><span>{k}</span><span>{String(v)}</span></li>
                       ))}
                     </ul>
                   </div>
-                ))
-              ) : (
-                <p>No hay nóminas guardadas en el archivo.</p>
+                )) : <p>No hay nóminas guardadas en el archivo.</p>
               )}
             </div>
           </div>
@@ -644,5 +454,3 @@ function CalculadoraNomina() {
     </Layout>
   );
 }
-
-export default CalculadoraNomina;
