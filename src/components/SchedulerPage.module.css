@@ -1,115 +1,115 @@
-/* Containerul principal al paginii de programare */
-.schedulerContainer {
-  padding: 2rem;
-}
-
-/* Stil pentru antetul paginii (titlu și buton "Nuevo") */
 .schedulerHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.25rem; color: white;
 }
-
-.schedulerHeader h1 {
-  color: white;
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-/* Butonul "Nuevo" */
 .nuevoButton {
-  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-  color: white;
-  font-weight: 600;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+  background-image: linear-gradient(to right, #2563eb, #3b82f6);
+  color: white; font-weight: 700; padding: .7rem 1.1rem; border: none; border-radius: .75rem;
+  cursor: pointer; transition: transform .2s, box-shadow .2s;
+}
+.nuevoButton:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,.35); }
+
+.toolbar { display:flex; flex-direction: column; gap: .8rem; margin-bottom: 1rem; }
+@media (min-width: 768px){ .toolbar{ flex-direction: row; justify-content: space-between; align-items: center; } }
+
+.chips { display:flex; gap:.5rem; flex-wrap: wrap; }
+.chip {
+  background-color: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.18);
+  color:#e5e7eb; padding:.45rem .85rem; border-radius:999px; font-weight:700; backdrop-filter: blur(10px);
+}
+.chipActive { background-image: linear-gradient(to right, #2563eb, #3b82f6); color: white; border-color: transparent; }
+
+.inputs { display:flex; gap:.75rem; align-items:center; }
+.search {
+  display:flex; align-items:center; gap:.5rem;
+  background-color: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+  padding:.55rem .8rem; border-radius:.6rem; color:white; min-width:220px;
+}
+.search input { background:transparent; border:none; outline:none; color:white; width:180px; }
+.date {
+  background-color: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+  color:white; padding:.55rem .8rem; border-radius:.6rem;
 }
 
-.nuevoButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+.schedulerGrid { display:block; }
+.list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:1rem; }
+.item {
+  background-color: rgba(17,24,39,.6);
+  border:1px solid rgba(255,255,255,.2);
+  backdrop-filter: blur(10px);
+  padding:1rem; border-radius:1rem; display:flex; justify-content:space-between; gap:1rem;
+}
+.itemLeft { display:flex; flex-direction:column; gap:.5rem; }
+.itemTop { display:flex; align-items:center; gap:.6rem; }
+.dot { width:.55rem; height:.55rem; border-radius:999px; background:#60a5fa; }
+.cid { color:white; font-weight:800; letter-spacing:.5px; }
+
+.meta { display:flex; gap:1rem; flex-wrap:wrap; color:#d1d5db; }
+.cliente { font-weight:600; }
+.time, .fecha, .plate { opacity:.9; }
+
+.badge {
+  padding:.25rem .6rem; border-radius:.5rem; font-size:.8rem; font-weight:800;
+  border:1px solid rgba(255,255,255,.2); background-color: rgba(255,255,255,.06); color:#e5e7eb;
+}
+.bPendiente   { background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.45); color:#ffedc7; }
+.bProgramado  { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color:#cfe1ff; }
+.bEnprogreso  { background: rgba(37,99,235,.18); border-color: rgba(37,99,235,.4);  color:#d6e4ff; }
+.bCompletado  { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.45); color:#d0ffdf; }
+
+.actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+.actionMini {
+  background-color: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.18);
+  color:#e5e7eb; padding:.35rem .6rem; border-radius:.5rem; font-size:.8rem; cursor:pointer;
+}
+.actionMini:hover { background-color: rgba(255,255,255,.14); }
+.actionOk {
+  background-image: linear-gradient(to right, #16a34a, #22c55e);
+  color:white; border:none; padding:.45rem .7rem; border-radius:.5rem; font-weight:800; cursor:pointer;
+}
+.actionGhost {
+  background: transparent; border:1px dashed rgba(255,255,255,.28);
+  color:#ffb4b4; padding:.35rem .6rem; border-radius:.5rem; cursor:pointer;
 }
 
-/* Stilul pentru mesajul de încărcare/eroare (provizoriu) */
-.loadingText,
-.noDataText {
-  color: white;
-  text-align: center;
-  margin-top: 2rem;
-  font-weight: 600;
-}
+.empty { color:#d1d5db; text-align:center; }
 
-/* Stil pentru containerul modalului (similar cu cel din DepotPage) */
+/* Modal */
 .modalOverlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
-  z-index: 3000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
+  position: fixed; inset:0; background-color: rgba(0,0,0,.7);
+  backdrop-filter: blur(5px); z-index:3000; display:flex; align-items:center; justify-content:center; padding:1rem;
 }
-
 .modalContent {
-  background-color: #1f2937;
-  padding: 2rem;
-  border-radius: 1rem;
-  width: 100%;
-  max-width: 500px;
-  color: white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  background-color:#111827; border:1px solid rgba(255,255,255,.2);
+  padding:1.2rem; border-radius:1rem; width:100%; max-width:560px; color:white;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
+.modalHeader { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.2); padding-bottom:.8rem; margin-bottom:1rem; }
+.modalTitle { margin:0; font-size:1.35rem; font-weight:800; }
+.closeButton { background:transparent; border:none; color:#9ca3af; cursor:pointer; }
+.closeButton:hover { color:white; }
 
-.modalContent h3 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
+.modalBody { display:flex; flex-direction:column; gap:1rem; }
+.modalFooter { margin-top:1rem; display:flex; justify-content:flex-end; gap:.6rem; }
 
-/* Stiluri pentru butoanele din modal (Cancel/Save) */
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
+.inputGrid { display:grid; grid-template-columns:1fr; gap:.75rem; }
+@media (min-width: 640px) { .inputGrid { grid-template-columns:1fr 1fr; } }
+
+.inputGroup { display:flex; flex-direction:column; gap:.25rem; }
+.inputGroup label { font-weight:600; font-size:.9rem; color:#d1d5db; }
+.inputGroup input, .select {
+  padding:.7rem; border-radius:.5rem; border:1px solid rgba(255,255,255,.25);
+  background-color: rgba(255,255,255,.1); color:white; font-size:1rem; width:100%;
 }
+.inputGroup input:focus, .select:focus { outline:none; border-color:#fb923c; }
+
 .cancelButton {
-  padding: 0.55rem 1.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-.cancelButton:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.4);
+  background:transparent; border:1px dashed rgba(255,255,255,.3); color:#e5e7eb;
+  padding:.6rem 1rem; border-radius:.5rem; cursor:pointer;
 }
 .saveButton {
-  padding: 0.55rem 1.5rem;
-  border-radius: 0.5rem;
-  border: none;
-  background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.saveButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+  background-image: linear-gradient(to right, #2563eb, #3b82f6);
+  color:white; border:none; padding:.6rem 1rem; border-radius:.6rem; font-weight:800; cursor:pointer;
 }
