@@ -1,188 +1,260 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import React, { useState } from "react";
 import styles from "./SchedulerStandalone.module.css";
+import { ArrowLeftIcon, SearchIcon } from "@heroicons/react/outline";
 
-const STATUS = ["Todos", "Programado", "En progreso", "Pendiente", "Completado"];
+const SchedulerPage = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filter, setFilter] = useState("Todos");
+  const [search, setSearch] = useState("");
+  const [form, setForm] = useState({
+    contenedor_id: "",
+    cliente: "",
+    fecha: "",
+    hora: "",
+    placa: "",
+  });
 
-// icon mini (SVG inline)
-const ArrowLeft = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="15 18 9 12 15 6"></polyline>
-  </svg>
-);
+  const programari = [
+    {
+      id: "c1",
+      contenedor_id: "CONT-001",
+      cliente: "TransLog S.A.",
+      fecha: "2025-08-20",
+      hora: "10:00",
+      placa: "B-123-XYZ",
+      status: "Programado",
+    },
+    {
+      id: "c2",
+      contenedor_id: "CONT-002",
+      cliente: "CargoMar",
+      fecha: "2025-08-21",
+      hora: "14:30",
+      placa: "B-555-TRK",
+      status: "Pendiente",
+    },
+  ];
 
-export default function SchedulerPage() {
-  const navigate = useNavigate();
+  const statusColors = {
+    Programado: styles.bProgramado,
+    "En progreso": styles.bEnprogreso,
+    Pendiente: styles.bPendiente,
+    Completado: styles.bCompletado,
+  };
 
-  const [scheduled, setScheduled] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // UI state
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("Todos");
-  const [date, setDate] = useState("");
-
-  // load din Supabase (ajustează numele coloanelor după schema ta)
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("contenedores_programados")
-        .select("*")
-        .order("fecha", { ascending: true })
-        .order("hora", { ascending: true });
-      if (!error && data) setScheduled(data);
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    return scheduled.filter((r) => {
-      const okS = status === "Todos" ? true : r.status === status;
-      const okQ =
-        `${r.contenedor_id || ""} ${r.cliente || ""} ${r.camion_matricula || ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase());
-      const okD = date ? r.fecha === date : true;
-      return okS && okQ && okD;
-    });
-  }, [scheduled, status, query, date]);
-
-  const goBack = () => navigate("/depot");
+  const handleSave = (e) => {
+    e.preventDefault();
+    console.log("Salvat:", form);
+    // TODO: inserare în contenedores_programados
+    // TODO: ștergere din contenedores
+    setIsModalOpen(false);
+  };
 
   return (
     <div className={styles.pageWrap}>
-      {/* Fundal difuz „AI tech” fără imagine clară */}
-      <div className={styles.bg} />
-      <div className={styles.vignette} />
+      {/* Fundal */}
+      <div className={styles.bg}></div>
+      <div className={styles.vignette}></div>
 
-      {/* BARĂ SUS (fără navbar global) */}
-      <header className={styles.topBar}>
-        <button className={styles.backBtn} onClick={goBack}><ArrowLeft/> <span>Depot</span></button>
-        <h1 className={styles.title}>Programar Contenedor</h1>
-        <button className={styles.newBtn}>Nuevo</button>
-      </header>
+      {/* Bara de sus */}
+      <div className={styles.topBar}>
+        <button className={styles.backBtn}>
+          <ArrowLeftIcon width={18} /> Înapoi
+        </button>
+        <h2 className={styles.title}>Scheduler</h2>
+        <button className={styles.newBtn} onClick={() => setIsModalOpen(true)}>
+          Nuevo
+        </button>
+      </div>
 
-      {/* CARD CENTRAL */}
+      {/* Card central */}
       <section className={styles.card}>
-        {/* FILTRE */}
+        {/* Toolbar */}
         <div className={styles.toolbar}>
           <div className={styles.chips}>
-            {STATUS.map((s) => (
+            {["Todos", "Programado", "En progreso", "Pendiente", "Completado"].map((c) => (
               <button
-                key={s}
-                className={`${styles.chip} ${status === s ? styles.chipActive : ""}`}
-                onClick={() => setStatus(s)}
+                key={c}
+                className={`${styles.chip} ${
+                  filter === c ? styles.chipActive : ""
+                }`}
+                onClick={() => setFilter(c)}
               >
-                {s}
+                {c}
               </button>
             ))}
           </div>
-
           <div className={styles.inputs}>
             <div className={styles.search}>
-              <span className={styles.searchIcon}>🔎</span>
+              <SearchIcon width={18} className={styles.searchIcon} />
               <input
-                placeholder="Buscar..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                type="text"
+                placeholder="Caută..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <input
-              type="date"
-              className={styles.date}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <input type="date" className={styles.date} />
           </div>
         </div>
 
-        {/* LISTĂ + CALENDAR MINI */}
+        {/* Grid listă + calendar */}
         <div className={styles.grid}>
-          <div className={styles.listCol}>
-            {loading ? (
-              <p className={styles.muted}>Cargando…</p>
-            ) : filtered.length === 0 ? (
-              <p className={styles.muted}>No hay contenedores programados.</p>
-            ) : (
-              <ul className={styles.list}>
-                {filtered.map((row) => (
-                  <li key={row.id} className={styles.item}>
-                    <div className={styles.itemLeft}>
-                      <div className={styles.itemTop}>
-                        <span className={styles.dot} />
-                        <span className={styles.cid}>{String(row.contenedor_id).slice(0, 8)}</span>
-                        <span className={`${styles.badge} ${styles[`b${row.status.replace(" ", "")}`]}`}>
-                          {row.status}
-                        </span>
-                      </div>
-                      <div className={styles.meta}>
-                        <span className={styles.cliente}>{row.cliente || "—"}</span>
-                        <span className={styles.time}>⏱ {row.hora || "—"}</span>
-                        <span className={styles.fecha}>📅 {row.fecha || "—"}</span>
-                        <span className={styles.plate}>🚚 {row.camion_matricula || "—"}</span>
-                      </div>
+          {/* Lista de programări */}
+          <ul className={styles.list}>
+            {programari
+              .filter(
+                (p) =>
+                  (filter === "Todos" || p.status === filter) &&
+                  (p.contenedor_id.toLowerCase().includes(search.toLowerCase()) ||
+                    p.cliente.toLowerCase().includes(search.toLowerCase()))
+              )
+              .map((p) => (
+                <li key={p.id} className={styles.item}>
+                  <div>
+                    <div className={styles.itemTop}>
+                      <span className={styles.dot}></span>
+                      <span className={styles.cid}>{p.contenedor_id}</span>
                     </div>
-                    <div className={styles.actions}>
-                      <button className={styles.actionMini}>Editar</button>
-                      <button className={styles.actionMini}>Eliminar</button>
-                      <button className={styles.actionOk}>Salida</button>
+                    <div className={styles.meta}>
+                      <span className={styles.cliente}>{p.cliente}</span>
+                      <span className={styles.fecha}>{p.fecha}</span>
+                      <span className={styles.time}>{p.hora}</span>
+                      <span className={styles.plate}>{p.placa}</span>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                  </div>
+                  <div className={styles.actions}>
+                    <span
+                      className={`${styles.badge} ${
+                        statusColors[p.status] || ""
+                      }`}
+                    >
+                      {p.status}
+                    </span>
+                    <button className={styles.actionMini}>Edit</button>
+                    <button className={styles.actionOk}>Done</button>
+                    <button className={styles.actionGhost}>Del</button>
+                  </div>
+                </li>
+              ))}
+          </ul>
 
-          <aside className={styles.sideCol}>
-            <div className={styles.sideCard}>
-              <div className={styles.sideHeader}>
-                <h3>Contenedor 2024</h3>
-              </div>
-              <MiniCalendar selected={date} onPick={setDate} />
+          {/* Calendar simplu */}
+          <div className={styles.sideCard}>
+            <div className={styles.sideHeader}>
+              <h3>Calendar</h3>
             </div>
-          </aside>
+            <div className={styles.week}>
+              <span>L</span>
+              <span>Ma</span>
+              <span>Mi</span>
+              <span>J</span>
+              <span>V</span>
+              <span>S</span>
+              <span>D</span>
+            </div>
+            <div className={styles.calendar}>
+              {Array.from({ length: 30 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`${styles.day} ${i === 19 ? styles.dayActive : ""}`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* Modal Nuevo */}
+      {isModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className={styles.modal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <h3>Programar Contenedor</h3>
+              <button
+                className={styles.closeIcon}
+                onClick={() => setIsModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <form className={styles.modalBody} onSubmit={handleSave}>
+              <div className={styles.inputGroup}>
+                <label>Container ID</label>
+                <input
+                  value={form.contenedor_id}
+                  onChange={(e) =>
+                    setForm({ ...form, contenedor_id: e.target.value })
+                  }
+                  placeholder="UUID / ID"
+                />
+              </div>
+              <div className={styles.inputGrid}>
+                <div className={styles.inputGroup}>
+                  <label>Cliente</label>
+                  <input
+                    value={form.cliente}
+                    onChange={(e) =>
+                      setForm({ ...form, cliente: e.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Matrícula</label>
+                  <input
+                    value={form.placa}
+                    onChange={(e) =>
+                      setForm({ ...form, placa: e.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Fecha</label>
+                  <input
+                    type="date"
+                    value={form.fecha}
+                    onChange={(e) =>
+                      setForm({ ...form, fecha: e.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Hora</label>
+                  <input
+                    type="time"
+                    value={form.hora}
+                    onChange={(e) =>
+                      setForm({ ...form, hora: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.actionGhost}
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.actionOk}>
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
-function MiniCalendar({ selected, onPick }) {
-  const t = new Date();
-  const y = t.getFullYear();
-  const m = t.getMonth();
-  const first = new Date(y, m, 1);
-  const start = (first.getDay() + 6) % 7; // luni=0
-  const days = new Date(y, m + 1, 0).getDate();
-  const cells = Array.from({ length: start + days }, (_, i) => i - start + 1);
-  const toISO = (d) =>
-    `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-
-  return (
-    <>
-      <div className={styles.week}>
-        {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-          <div key={d}>{d}</div>
-        ))}
-      </div>
-      <div className={styles.calendar}>
-        {cells.map((d, i) =>
-          d < 1 ? (
-            <div key={i} className={styles.placeholder} />
-          ) : (
-            <button
-              key={i}
-              className={`${styles.day} ${selected === toISO(d) ? styles.dayActive : ""}`}
-              onClick={() => onPick(toISO(d))}
-            >
-              <span>{d}</span>
-            </button>
-          )
-        )}
-      </div>
-    </>
-  );
-}
+export default SchedulerPage;
