@@ -1,412 +1,273 @@
-/* src/components/CalculadoraNomina.module.css (VERSIUNEA FINALĂ) */
-
-/* === Stiluri Generale & Header === */
+/* ================== HEADER ================== */
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  color: #fff;
 }
-
 .header h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
+  font-size: 2.25rem;
+  font-weight: 700;
 }
 
 .archiveButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 200ms;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  padding: .6rem 1.25rem;
+  border-radius: .5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .2s;
 }
+.archiveButton:hover { background: rgba(255,255,255,.2); }
+.archiveButton:disabled { opacity: .5; cursor: not-allowed; }
 
-.archiveButton:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-.archiveButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* === Layout Principal === */
+/* ================== LAYOUT ================== */
 .mainContainer {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: start;
 }
-
 @media (min-width: 1024px) {
-    .mainContainer {
-        grid-template-columns: repeat(2, 1fr);
-    }
+  .mainContainer { grid-template-columns: repeat(2, 1fr); }
 }
-
 .column {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
 }
 
-/* === Carduri & Formulare === */
+/* ================== CARDS & FORMS ================== */
 .card {
-    background-color: rgba(17, 24, 39, 0.6);
-    backdrop-filter: blur(10px);
-    padding: 1.75rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    width: 100%;
+  background: rgba(17,24,39,.6);
+  backdrop-filter: blur(10px);
+  padding: 1.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,.2);
+  width: 100%;
 }
-
-.card p {
-    color: white;
-    text-align: center;
-    font-size: 1rem;
-    margin: 0;
-}
-
+.card p { color: #fff; text-align: center; margin: 0; }
 .card h3 {
-    font-size: 1.25rem;
-    color: white;
-    font-weight: 600;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding-bottom: 0.75rem;
+  font-size: 1.25rem; color: #fff; font-weight: 600;
+  margin: 0 0 1.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.2);
+  padding-bottom: .75rem;
 }
 
 .inputGrid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
 }
 @media (min-width: 640px) {
-    .inputGrid {
-        grid-template-columns: 1fr 1fr;
-        gap: 1.25rem;
-    }
+  .inputGrid { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 }
 
-.inputGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.inputGroup label {
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: #d1d5db;
-}
-
+.inputGroup { display: flex; flex-direction: column; gap: .25rem; }
+.inputGroup label { font-weight: 500; font-size: .875rem; color: #d1d5db; }
 .inputGroup input {
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1rem;
-    width: 100%;
-    box-sizing: border-box;
+  padding: .75rem; border-radius: .5rem;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.1);
+  color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;
 }
-
-.inputGroup input:focus {
-    outline: none;
-    border-color: #fb923c;
-}
+.inputGroup input:focus { outline: none; border-color: #fb923c; }
 
 .saveButton {
-    width: 100%;
-    margin-top: 1.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    border: none;
-    background-image: linear-gradient(to right, #2563eb, #3b82f6);
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
+  width: 100%; margin-top: 1.5rem; padding: .75rem 1.5rem;
+  border-radius: .5rem; border: none;
+  background-image: linear-gradient(to right, #2563eb, #3b82f6);
+  color: #fff; font-weight: 700; cursor: pointer; transition: transform .2s, box-shadow .2s;
 }
-
-.saveButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-}
+.saveButton:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(59,130,246,.4); }
 
 .calculateButton {
-    width: 100%;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    border: none;
-    background-image: linear-gradient(to right, #16a34a, #22c55e);
-    color: white;
-    font-weight: 700;
-    font-size: 1.25rem;
-    cursor: pointer;
-    transition: all 0.2s;
+  width: 100%; padding: 1rem; border-radius: .75rem; border: none;
+  background-image: linear-gradient(to right, #16a34a, #22c55e);
+  color: #fff; font-weight: 700; font-size: 1.25rem; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
 }
+.calculateButton:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(34,197,94,.4); }
 
-.calculateButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
-}
-
-/* === Stiluri Calendar === */
+/* ================== CALENDAR ================== */
 .calendarHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
 }
 .calendarHeader button {
-    background: none; border: none; color: white;
-    font-size: 1.5rem; cursor: pointer; padding: 0.5rem;
+  background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; padding: .5rem;
 }
-.calendarHeader h3 {
-    border-bottom: none; padding-bottom: 0; margin-bottom: 0;
-}
-.calendarWeekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center; color: #9ca3af;
-    font-weight: 600; margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-}
-.calendarGrid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.5rem;
-}
+.calendarHeader h3 { margin: 0; border-bottom: none; padding-bottom: 0; }
 
 .calendarHint {
-    text-align: center;
-    color: #9ca3af;
-    font-size: 0.875rem;
-    margin-top: -0.5rem;
-    margin-bottom: 1rem;
-    font-style: italic;
+  text-align: center; color: #9ca3af; font-size: .875rem;
+  margin-top: -.5rem; margin-bottom: 1rem; font-style: italic;
 }
-
+.calendarWeekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; color: #9ca3af; font-weight: 600;
+  margin-bottom: .5rem; font-size: .75rem;
+}
+.calendarGrid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: .5rem;
+}
 .calendarDay {
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid transparent;
-    border-radius: 0.5rem;
-    aspect-ratio: 1 / 1;
-    padding: 0.5rem;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-end;
-    cursor: pointer;
-    transition: all 200ms;
+  background: rgba(255,255,255,.05);
+  border: 1px solid transparent; border-radius: .5rem;
+  aspect-ratio: 1 / 1; padding: .5rem;
+  display: flex; justify-content: flex-start; align-items: flex-end;
+  cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s;
 }
+.calendarDay:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+.dayNumber { font-size: .875rem; font-weight: 600; color: #e5e7eb; }
+.hasData { border-color: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,.3); }
+.placeholderDay { background: transparent; border: none; cursor: default; }
 
-.calendarDay:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.dayNumber {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #e5e7eb;
-}
-
-.hasData {
-    border-color: #22c55e;
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-}
-
-.placeholderDay {
-    background-color: transparent;
-    border: none;
-    cursor: default;
-}
-
-/* === Selector Dispecer === */
+/* ================== DISPECER SELECT ================== */
 .dispatcherSelector {
-    background-color: rgba(17, 24, 39, 0.6);
-    backdrop-filter: blur(10px);
-    padding: 1.25rem 1.75rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+  background: rgba(17,24,39,.6);
+  backdrop-filter: blur(10px);
+  padding: 1.25rem 1.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,.2);
+  margin-bottom: 2rem;
+  display: flex; align-items: center; gap: 1rem;
 }
-
 .dispatcherSelector label {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: white;
-    flex-shrink: 0;
+  font-size: 1.1rem; font-weight: 600; color: #fff; flex-shrink: 0;
 }
 .dispatcherSelector select {
-    width: 100%;
-    padding: 0.75rem; border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1rem;
+  width: 100%; padding: .75rem; border-radius: .5rem;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.1); color: #fff; font-size: 1rem;
 }
-.dispatcherSelector select:focus {
-    outline: none; border-color: #fb923c;
-}
-.dispatcherSelector select option {
-    background: #1f2937;
-    color: #d1d5db;
-}
+.dispatcherSelector select:focus { outline: none; border-color: #fb923c; }
+.dispatcherSelector select option { background: #1f2937; color: #d1d5db; }
 
-/* === Stiluri Modale (Generice + Specifice) === */
+/* ================== MODAL ================== */
 .modalOverlay {
-    position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px); z-index: 3000;
-    display: flex; justify-content: center; align-items: center; padding: 1rem;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex; justify-content: center; align-items: center;
+  padding: 1rem;
 }
-.modalContent {
-    background-color: #111827;
-    padding: 1.5rem; border-radius: 1rem;
-    width: 100%; max-width: 500px; color: white;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-.modalHeader {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding-bottom: 1rem;
-}
-.modalTitle { margin: 0; font-size: 1.5rem; font-weight: 700; }
-.closeButton {
-    background: transparent; border: none; color: #9ca3af; cursor: pointer;
-    padding: 0; line-height: 1;
-}
-.closeButton:hover { color: white; }
 
-.modalBody {
-    display: flex; flex-direction: column; gap: 1.5rem;
+/* Nota: JSX folosește .modal; aliasăm și .modalContent pentru compat. */
+.modal, .modalContent {
+  background: #111827;
+  color: #fff;
+  width: 100%;
+  max-width: 500px;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,.2);
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
 }
+
+.modalHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,.2);
+  padding-bottom: 1rem;
+}
+.modalTitle { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; }
+
+/* JSX folosește .closeIcon; aliasăm și .closeButton pentru compat. */
+.closeIcon, .closeButton {
+  appearance: none; border: none; background: transparent; color: #9ca3af;
+  cursor: pointer; padding: 0; line-height: 1;
+}
+.closeIcon:hover, .closeButton:hover { color: #fff; }
+
+.modalBody { display: flex; flex-direction: column; gap: 1.5rem; }
 
 .modalFooter {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,.2);
 }
+
+/* Butonul principal din footer (folosit ca „Guardar y cerrar”) */
+.actionMini {
+  padding: .65rem 1rem;
+  border-radius: .5rem;
+  border: none;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: #fff; font-weight: 800; cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+  width: 100%;
+}
+.actionMini:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37,99,235,.35); }
 
 .parteDiarioSection h4 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fb923c;
-    margin-top: 0;
-    margin-bottom: 0.75rem;
+  font-size: 1rem; font-weight: 700; color: #fb923c;
+  margin: 0 0 .75rem 0;
 }
-
 .checkboxGroupModal {
-    display: flex;
-    justify-content: space-around;
-    gap: 1rem;
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 0.75rem;
-    border-radius: 0.5rem;
+  display: flex; justify-content: space-around; gap: 1rem;
+  background: rgba(255,255,255,.05); padding: .75rem; border-radius: .5rem;
 }
-.checkboxGroupModal div {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.checkboxGroupModal input {
-    width: 1.15rem; height: 1.15rem;
-    accent-color: #3b82f6;
-}
-.checkboxGroupModal label {
-    font-weight: 500;
-    cursor: pointer;
-}
+.checkboxGroupModal label { display: flex; align-items: center; gap: .5rem; font-weight: 500; cursor: pointer; }
+.checkboxGroupModal input { width: 1.15rem; height: 1.15rem; accent-color: #3b82f6; }
 
-/* NOU: Stiluri pentru input-ul numeric personalizat cu butoane */
+/* ================== NUMERIC CUSTOM ================== */
 .customNumberInput {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 2px;
+  display: flex; align-items: center; width: 100%;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: .5rem;
+  background: rgba(255,255,255,.1);
+  padding: 2px;
 }
-
 .numericDisplay {
-    width: 100%;
-    text-align: center;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: white;
-    background: transparent;
-    border: none;
-    padding: 0.65rem 0;
-    -moz-appearance: textfield;
+  width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600;
+  color: #fff; background: transparent; border: none; padding: .65rem 0;
+  -moz-appearance: textfield;
 }
-
 .numericDisplay::-webkit-inner-spin-button,
-.numericDisplay::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+.numericDisplay::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 .stepperButton {
-    background-color: rgba(255, 255, 255, 0.15);
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    width: 40px;
-    height: 40px;
-    border-radius: 0.375rem;
-    transition: background-color 200ms;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    line-height: 1;
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  font-size: 1.2rem; font-weight: 800; cursor: pointer;
+  width: 40px; height: 40px; border-radius: .375rem;
+  display: grid; place-items: center; transition: background .2s;
 }
+.stepperButton:hover { background: rgba(255,255,255,.25); }
+.stepperButton:active { background: rgba(255,255,255,.35); }
 
-.stepperButton:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-}
-
-.stepperButton:active {
-    background-color: rgba(255, 255, 255, 0.35);
-}
-
-
-/* === Stiluri Arhivă (Specifice) === */
+/* ================== ARCHIVE ================== */
 .archiveModalBody {
-    overflow-y: auto; max-height: calc(80vh - 120px);
-    display: flex; flex-direction: column; gap: 1rem;
+  overflow-y: auto; max-height: calc(80vh - 120px);
+  display: flex; flex-direction: column; gap: 1rem;
 }
 .archiveItem {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 1rem; border-radius: 0.75rem;
+  background: rgba(255,255,255,.05);
+  padding: 1rem; border-radius: .75rem;
 }
 .archiveHeader {
-    display: flex; justify-content: space-between;
-    font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem;
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 600; font-size: 1.05rem; margin-bottom: .75rem;
 }
-.archiveTotal {
-    color: #22c55e;
-}
+.archiveTotal { color: #22c55e; }
 
-/* === Stiluri Rezultat === */
+/* ================== RESULT ================== */
 .resultCard { border-top: 3px solid #22c55e; }
 .totalBruto { font-size: 2rem; font-weight: 800; color: #22c55e; text-align: center; margin-bottom: 1.5rem; }
-.resultDetails { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.resultDetails li { display: flex; justify-content: space-between; font-size: 0.9rem; color: #d1d5db; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.resultDetails {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.resultDetails li {
+  display: flex; justify-content: space-between;
+  font-size: .9rem; color: #d1d5db;
+  padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.1);
+}
 .resultDetails li span:first-child { font-weight: 500; }
