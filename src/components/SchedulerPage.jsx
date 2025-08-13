@@ -1,348 +1,188 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from './Layout';
-import { supabase } from '../supabaseClient';
-import styles from './SchedulerPage.module.css';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+import styles from "./SchedulerStandalone.module.css";
 
-const STATUS = ['Pendiente','Programado','En progreso','Completado'];
+const STATUS = ["Todos", "Programado", "En progreso", "Pendiente", "Completado"];
 
-function SchedulerPage() {
+// icon mini (SVG inline)
+const ArrowLeft = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="15 18 9 12 15 6"></polyline>
+  </svg>
+);
+
+export default function SchedulerPage() {
   const navigate = useNavigate();
-  const [scheduledContainers, setScheduledContainers] = useState([]);
-  const [containersForScheduling, setContainersForScheduling] = useState([]);
+
+  const [scheduled, setScheduled] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  // Formular programare
-  const [selectedContainerId, setSelectedContainerId] = useState('');
-  const [client, setClient] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [camionMatricula, setCamionMatricula] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Todos');
-  const [search, setSearch] = useState('');
-  const [calendarDate, setCalendarDate] = useState('');
+  // UI state
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("Todos");
+  const [date, setDate] = useState("");
 
-  // === Load data
+  // load din Supabase (ajustează numele coloanelor după schema ta)
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-
-      // programări curente
-      const { data: programados, error: prErr } = await supabase
-        .from('contenedores_programados')
-        .select('*')
-        .order('fecha', { ascending: true })
-        .order('hora', { ascending: true });
-
-      if (prErr) console.error(prErr);
-
-      // containere active disponibile pt. programare (din `contenedores`)
-      const { data: activos, error: avErr } = await supabase
-        .from('contenedores')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (avErr) console.error(avErr);
-
-      setScheduledContainers(programados || []);
-      setContainersForScheduling(activos || []);
+      const { data, error } = await supabase
+        .from("contenedores_programados")
+        .select("*")
+        .order("fecha", { ascending: true })
+        .order("hora", { ascending: true });
+      if (!error && data) setScheduled(data);
       setLoading(false);
     };
     load();
   }, []);
 
-  // === Helpers UI
-  const filteredScheduled = useMemo(() => {
-    return (scheduledContainers || []).filter(it => {
-      const okStatus = statusFilter === 'Todos' ? true : it.status === statusFilter;
-      const okSearch = `${it.cliente || ''} ${it.camion_matricula || ''}`.toLowerCase().includes(search.toLowerCase());
-      const okDate = calendarDate ? it.fecha === calendarDate : true;
-      return okStatus && okSearch && okDate;
+  const filtered = useMemo(() => {
+    return scheduled.filter((r) => {
+      const okS = status === "Todos" ? true : r.status === status;
+      const okQ =
+        `${r.contenedor_id || ""} ${r.cliente || ""} ${r.camion_matricula || ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase());
+      const okD = date ? r.fecha === date : true;
+      return okS && okQ && okD;
     });
-  }, [scheduledContainers, statusFilter, search, calendarDate]);
+  }, [scheduled, status, query, date]);
 
-  // === Open modal
-  const openScheduleModal = (prefillId) => {
-    setSelectedContainerId(prefillId || '');
-    setClient('');
-    setDate('');
-    setTime('');
-    setCamionMatricula('');
-    setIsScheduleModalOpen(true);
-  };
-
-  // === Create programare
-  const handleScheduleSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedContainerId) {
-      alert('Alege un container.');
-      return;
-    }
-
-    const payload = {
-      contenedor_id: selectedContainerId,
-      cliente: client || null,
-      fecha: date || null,
-      hora: time || null,
-      camion_matricula: camionMatricula || null,
-      status: 'Pendiente'
-    };
-
-    // 1) insert în programados
-    const { data: inserted, error: insErr } = await supabase
-      .from('contenedores_programados')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (insErr) {
-      console.error(insErr);
-      alert('Eroare la programare.');
-      return;
-    }
-
-    // 2) scoate din `contenedores` (nu mai apare ca „activ” liber)
-    const { error: delErr } = await supabase
-      .from('contenedores')
-      .delete()
-      .eq('id', selectedContainerId);
-
-    if (delErr) {
-      console.error(delErr);
-      alert('A fost creată programarea, dar nu s-a putut elimina containerul din lista activă.');
-    }
-
-    // State optimistic
-    setScheduledContainers(prev => [inserted, ...prev]);
-    setContainersForScheduling(prev => prev.filter(c => c.id !== selectedContainerId));
-    setIsScheduleModalOpen(false);
-  };
-
-  // === Update status
-  const updateStatus = async (rowId, newStatus) => {
-    const prev = scheduledContainers;
-    setScheduledContainers(list => list.map(x => x.id === rowId ? { ...x, status: newStatus } : x));
-
-    const { error } = await supabase
-      .from('contenedores_programados')
-      .update({ status: newStatus })
-      .eq('id', rowId);
-
-    if (error) {
-      console.error(error);
-      setScheduledContainers(prev);
-      alert('Nu s-a putut actualiza statusul.');
-    }
-  };
-
-  // === Salida (mută în `contenedores_salidos` și șterge din programados)
-  const handleDone = async (row) => {
-    // 1) insert în `contenedores_salidos` (conform regulii 4)
-    const salidaPayload = {
-      // Copiem tot ce avem; câmpurile non-obligatorii pot fi nule (regula 1)
-      contenedor_id: row.contenedor_id,
-      cliente: row.cliente,
-      detalles: null,
-      estado: null,            // nu știm „lleno/vacio” aici -> rămâne null (permis)
-      fecha: row.fecha,
-      hora: row.hora,
-      camion_matricula: row.camion_matricula,
-      created_at: new Date().toISOString()
-    };
-
-    const { error: insErr } = await supabase
-      .from('contenedores_salidos')
-      .insert(salidaPayload);
-
-    if (insErr) {
-      console.error(insErr);
-      alert('Nu s-a putut marca ca „Salida”.');
-      return;
-    }
-
-    // 2) șterge din `contenedores_programados`
-    const { error: delErr } = await supabase
-      .from('contenedores_programados')
-      .delete()
-      .eq('id', row.id);
-
-    if (delErr) {
-      console.error(delErr);
-      alert('S-a inserat în „salidos”, dar nu s-a șters din programări.');
-      return;
-    }
-
-    // 3) UI
-    setScheduledContainers(prev => prev.filter(x => x.id !== row.id));
-    alert(`Containerul a fost mutat în 'contenedores_salidos'.`);
-  };
-
-  // === Delete programare (revine containerul în „contenedores” ca activ)
-  const handleDelete = async (row) => {
-    if (!confirm('Ștergi programarea? Containerul va reveni în lista activă.')) return;
-
-    // 1) Șterge programarea
-    const { error: delErr } = await supabase
-      .from('contenedores_programados')
-      .delete()
-      .eq('id', row.id);
-
-    if (delErr) {
-      console.error(delErr);
-      alert('Nu s-a putut șterge programarea.');
-      return;
-    }
-
-    // 2) Reintrodu în `contenedores` (valoarea minimă: doar id-ul original; restul pot fi nule)
-    const { error: insErr } = await supabase
-      .from('contenedores')
-      .insert({ id: row.contenedor_id });
-
-    if (insErr) {
-      console.error(insErr);
-      // nu blocăm UI, doar avertizăm
-      alert('Programarea a fost ștearsă, dar containerul nu a revenit în lista activă.');
-    }
-
-    // 3) UI
-    setScheduledContainers(prev => prev.filter(x => x.id !== row.id));
-    setContainersForScheduling(prev => [{ id: row.contenedor_id }, ...prev]);
-  };
+  const goBack = () => navigate("/depot");
 
   return (
-    <Layout>
-      <div className={styles.schedulerHeader}>
-        <h1>Programar Contenedor</h1>
-        <button className={styles.nuevoButton} onClick={() => openScheduleModal('')}>
-          Nuevo
-        </button>
-      </div>
+    <div className={styles.pageWrap}>
+      {/* Fundal difuz „AI tech” fără imagine clară */}
+      <div className={styles.bg} />
+      <div className={styles.vignette} />
 
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.chips}>
-          {['Todos', ...STATUS].map(s => (
-            <button
-              key={s}
-              className={`${styles.chip} ${statusFilter === s ? styles.chipActive : ''}`}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+      {/* BARĂ SUS (fără navbar global) */}
+      <header className={styles.topBar}>
+        <button className={styles.backBtn} onClick={goBack}><ArrowLeft/> <span>Depot</span></button>
+        <h1 className={styles.title}>Programar Contenedor</h1>
+        <button className={styles.newBtn}>Nuevo</button>
+      </header>
 
-        <div className={styles.inputs}>
-          <div className={styles.search}>
-            <span>🔎</span>
+      {/* CARD CENTRAL */}
+      <section className={styles.card}>
+        {/* FILTRE */}
+        <div className={styles.toolbar}>
+          <div className={styles.chips}>
+            {STATUS.map((s) => (
+              <button
+                key={s}
+                className={`${styles.chip} ${status === s ? styles.chipActive : ""}`}
+                onClick={() => setStatus(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.inputs}>
+            <div className={styles.search}>
+              <span className={styles.searchIcon}>🔎</span>
+              <input
+                placeholder="Buscar..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
             <input
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e)=>setSearch(e.target.value)}
+              type="date"
+              className={styles.date}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
-          <input
-            type="date"
-            className={styles.date}
-            value={calendarDate}
-            onChange={(e)=>setCalendarDate(e.target.value)}
-          />
         </div>
-      </div>
 
-      {loading ? (
-        <p>Cargando...</p>
-      ) : (
-        <div className={styles.schedulerGrid}>
-          {filteredScheduled.length === 0 ? (
-            <p className={styles.empty}>No hay contenedores programados.</p>
-          ) : (
-            <ul className={styles.list}>
-              {filteredScheduled.map(row => (
-                <li key={row.id} className={`${styles.item} card`}>
-                  <div className={styles.itemLeft}>
-                    <div className={styles.itemTop}>
-                      <span className={styles.dot} />
-                      <span className={styles.cid}>#{String(row.contenedor_id).slice(0,8)}</span>
-                      <span className={`${styles.badge} ${styles[`b${row.status.replace(' ','')}`]}`}>
-                        {row.status}
-                      </span>
+        {/* LISTĂ + CALENDAR MINI */}
+        <div className={styles.grid}>
+          <div className={styles.listCol}>
+            {loading ? (
+              <p className={styles.muted}>Cargando…</p>
+            ) : filtered.length === 0 ? (
+              <p className={styles.muted}>No hay contenedores programados.</p>
+            ) : (
+              <ul className={styles.list}>
+                {filtered.map((row) => (
+                  <li key={row.id} className={styles.item}>
+                    <div className={styles.itemLeft}>
+                      <div className={styles.itemTop}>
+                        <span className={styles.dot} />
+                        <span className={styles.cid}>{String(row.contenedor_id).slice(0, 8)}</span>
+                        <span className={`${styles.badge} ${styles[`b${row.status.replace(" ", "")}`]}`}>
+                          {row.status}
+                        </span>
+                      </div>
+                      <div className={styles.meta}>
+                        <span className={styles.cliente}>{row.cliente || "—"}</span>
+                        <span className={styles.time}>⏱ {row.hora || "—"}</span>
+                        <span className={styles.fecha}>📅 {row.fecha || "—"}</span>
+                        <span className={styles.plate}>🚚 {row.camion_matricula || "—"}</span>
+                      </div>
                     </div>
-                    <div className={styles.meta}>
-                      <span className={styles.cliente}>{row.cliente || '—'}</span>
-                      <span className={styles.time}>⏱ {row.hora || '—'}</span>
-                      <span className={styles.fecha}>📅 {row.fecha || '—'}</span>
-                      <span className={styles.plate}>🚚 {row.camion_matricula || '—'}</span>
+                    <div className={styles.actions}>
+                      <button className={styles.actionMini}>Editar</button>
+                      <button className={styles.actionMini}>Eliminar</button>
+                      <button className={styles.actionOk}>Salida</button>
                     </div>
-                  </div>
-                  <div className={styles.actions}>
-                    {STATUS.map(s => (
-                      <button key={s} className={styles.actionMini} onClick={()=>updateStatus(row.id, s)}>{s}</button>
-                    ))}
-                    <button className={styles.actionOk} onClick={()=>handleDone(row)}>Salida</button>
-                    <button className={styles.actionGhost} onClick={()=>handleDelete(row)}>Eliminar</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Modal programare */}
-      {isScheduleModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Programar Contenedor</h3>
-              <button className={styles.closeButton} onClick={()=>setIsScheduleModalOpen(false)}>✕</button>
-            </div>
-
-            <form onSubmit={handleScheduleSubmit} className={styles.modalBody}>
-              <div className={styles.inputGroup}>
-                <label>Container</label>
-                <select
-                  className={styles.select}
-                  value={selectedContainerId}
-                  onChange={(e)=>setSelectedContainerId(e.target.value)}
-                >
-                  <option value="">— alege —</option>
-                  {containersForScheduling.map(c => (
-                    <option key={c.id} value={c.id}>{c.id}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.inputGrid}>
-                <div className={styles.inputGroup}>
-                  <label>Cliente</label>
-                  <input value={client} onChange={e=>setClient(e.target.value)} placeholder="Empresa / Cliente" />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Matrícula camión</label>
-                  <input value={camionMatricula} onChange={e=>setCamionMatricula(e.target.value)} placeholder="1234 ABC" />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Fecha</label>
-                  <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label>Hora</label>
-                  <input type="time" value={time} onChange={e=>setTime(e.target.value)} />
-                </div>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button type="button" className={styles.cancelButton} onClick={()=>setIsScheduleModalOpen(false)}>Cancelar</button>
-                <button type="submit" className={styles.saveButton}>Programar</button>
-              </div>
-            </form>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
+          <aside className={styles.sideCol}>
+            <div className={styles.sideCard}>
+              <div className={styles.sideHeader}>
+                <h3>Contenedor 2024</h3>
+              </div>
+              <MiniCalendar selected={date} onPick={setDate} />
+            </div>
+          </aside>
         </div>
-      )}
-    </Layout>
+      </section>
+    </div>
   );
 }
 
-export default SchedulerPage;
+function MiniCalendar({ selected, onPick }) {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = t.getMonth();
+  const first = new Date(y, m, 1);
+  const start = (first.getDay() + 6) % 7; // luni=0
+  const days = new Date(y, m + 1, 0).getDate();
+  const cells = Array.from({ length: start + days }, (_, i) => i - start + 1);
+  const toISO = (d) =>
+    `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  return (
+    <>
+      <div className={styles.week}>
+        {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
+          <div key={d}>{d}</div>
+        ))}
+      </div>
+      <div className={styles.calendar}>
+        {cells.map((d, i) =>
+          d < 1 ? (
+            <div key={i} className={styles.placeholder} />
+          ) : (
+            <button
+              key={i}
+              className={`${styles.day} ${selected === toISO(d) ? styles.dayActive : ""}`}
+              onClick={() => onPick(toISO(d))}
+            >
+              <span>{d}</span>
+            </button>
+          )
+        )}
+      </div>
+    </>
+  );
+}
