@@ -1,7 +1,7 @@
 // src/components/SchedulerPage.jsx
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../AuthContext";
 
 export default function SchedulerPage() {
   const { user, profile } = useAuth(); // profile.rol = "dispecer" sau "mecanic"
