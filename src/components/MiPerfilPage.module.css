@@ -12,17 +12,33 @@
 
 /* Page */
 .page {
+  position: relative;             /* <— pentru overlay */
   color: var(--text);
-  padding: 24px;
+  padding: 88px 24px 24px;        /* <— spațiu sub navbar */
   min-height: 100dvh;
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(37,99,235,.15), transparent 60%),
     radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,.14), transparent 60%),
     linear-gradient(180deg, #0b1220, #0e172a);
+  overflow-x: hidden;
+}
+
+/* ușor vignette pt contrast pe text/carduri */
+.page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 160px rgba(0,0,0,.45);
+  z-index: 0;
+}
+
+@media (min-width: 768px){
+  .page { padding: 96px 32px 32px; }
 }
 
 /* Header */
-.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; position: relative; z-index: 1; }
 .header h1 { margin:0; font-size:2rem; font-weight:800; letter-spacing:.2px; }
 .editBtn {
   display:inline-flex; align-items:center; gap:8px;
@@ -37,6 +53,7 @@
 .cardsGrid {
   display:grid; gap:14px;
   grid-template-columns: 1fr;
+  position: relative; z-index: 1;
 }
 @media (min-width: 900px) {
   .cardsGrid { grid-template-columns: repeat(3, 1fr); }
@@ -57,7 +74,7 @@
 .ghostBtn:hover { background: rgba(255,255,255,.12); }
 
 /* Widgets grid */
-.widgetsGrid { display:grid; gap:14px; margin-top:16px; grid-template-columns: 1fr; }
+.widgetsGrid { display:grid; gap:14px; margin-top:16px; grid-template-columns: 1fr; position: relative; z-index: 1; }
 @media (min-width: 1000px) {
   .widgetsGrid { grid-template-columns: 1fr 1fr; }
 }
@@ -100,11 +117,15 @@
 .miniHasData { outline: 2px solid #38bdf8; box-shadow: inset 0 0 0 1px rgba(56,189,248,.2); }
 
 /* Donut */
-.donutWrap { display:flex; flex-direction:column; gap:8px; }
+.donutWrap { display:flex; flex-direction:column; gap:8px; align-items:center; }
 .donutRing {
   width: 180px; height: 180px; border-radius:50%;
   display:grid; place-items:center; border:1px solid var(--border);
   background: conic-gradient(var(--accent) 0deg, rgba(255,255,255,.08) 0deg);
+}
+@media (max-width: 420px){
+  .donutRing { width: 160px; height: 160px; }
+  .donutHole { width: 116px; height: 116px; }
 }
 .donutHole {
   width: 130px; height: 130px; border-radius:50%;
@@ -113,7 +134,7 @@
 }
 .donutBig { font-size:2rem; font-weight:800; }
 .donutSub { font-size:.8rem; color:var(--muted); text-align:center; line-height:1.1; }
-.donutLegend { display:grid; gap:4px; font-size:.9rem; color:#cbd5e1; }
+.donutLegend { display:grid; gap:4px; font-size:.9rem; color:#cbd5e1; text-align:center; }
 .dotLeft, .dotUsed, .dotPend, .dotTotal { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
 .dotLeft { background:#22c55e; }
 .dotUsed { background:#f97316; }
