@@ -1,238 +1,105 @@
-/* src/components/MiPerfilPage.module.css */
+/* ——— page header ——— */
+.header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; color:#fff; }
+.h1{ margin:0; font-size:2.2rem; font-weight:900; letter-spacing:.3px; }
+.editBtn{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.7rem 1.2rem; border-radius:.75rem; cursor:pointer;
+  color:#fff; border:1px solid rgba(59,130,246,.5);
+  background:linear-gradient(90deg, rgba(59,130,246,.25), rgba(37,99,235,.25));
+  box-shadow:0 0 0 1px rgba(59,130,246,.2), 0 10px 30px rgba(37,99,235,.15) inset;
+  font-weight:800;
+}
+.editBtn:hover{ background:linear-gradient(90deg, rgba(59,130,246,.35), rgba(37,99,235,.35)); }
 
-.profileHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    color: white;
+/* ——— layout grid ——— */
+.grid{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:16px; }
+@media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+.leftCol, .rightCol{ display:flex; flex-direction:column; gap:16px; }
+
+/* ——— cards ——— */
+.card{
+  background: rgba(17,24,39,.55);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px; padding:16px;
+  color:#fff; backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 12px 40px rgba(0,0,0,.25);
 }
 
-.profileHeader h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
+/* ——— alerts ——— */
+.cardAlert{
+  border-color: rgba(239,68,68,.5);
+  background: linear-gradient(180deg, rgba(239,68,68,.08), rgba(17,24,39,.55));
+  box-shadow: 0 0 0 1px rgba(239,68,68,.35) inset;
+}
+.alertHead{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.alertIcon{ color:#ff876d; }
+.alertList{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+.alertList li{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); padding:10px 12px; border-radius:12px; }
+.alertExpired{ color:#ffb3a5; font-weight:700; }
+
+/* ——— tiles ——— */
+.tileGrid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+.tile{
+  background: rgba(10,20,35,.6);
+  border:1px solid rgba(59,130,246,.3);
+  border-radius:14px; padding:14px;
+  box-shadow: 0 0 20px rgba(37,99,235,.12) inset, 0 0 0 1px rgba(37,99,235,.15);
+  text-align:left; color:#e5e7eb;
+}
+.tileLabel{ display:block; color:#7dd3fc; font-weight:800; font-size:.8rem; letter-spacing:.3px; margin-bottom:4px; }
+.tile strong{ font-size:1.15rem; font-weight:800; color:#fff; }
+.tileLink{ cursor:pointer; transition: transform .12s ease, box-shadow .12s ease; }
+.tileLink:hover{ transform: translateY(-2px); box-shadow: 0 10px 20px rgba(59,130,246,.25); }
+
+/* ——— Vacaciones widget ——— */
+.vacHeader{ display:flex; align-items:center; justify-content:space-between; }
+.vacHint{ margin:.5rem 0 0 0; color:#cbd5e1; opacity:.9; }
+.ghostBtn{
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08);
+  color:#fff; padding:.5rem .9rem; border-radius:.6rem; font-weight:800; cursor:pointer;
+}
+.ghostBtn:hover{ background:rgba(255,255,255,.15); }
+
+/* ——— edit panel ——— */
+.editPanel{
+  border-color: rgba(56,189,248,.45);
+  box-shadow: 0 0 0 1px rgba(56,189,248,.35) inset, 0 10px 30px rgba(56,189,248,.12);
+}
+.editHead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.iconClose{ background:transparent; border:none; color:#9ca3af; cursor:pointer; }
+.iconClose:hover{ color:#fff; }
+.formGrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:780px){ .formGrid{ grid-template-columns:1fr; } }
+.formGrid label{ display:flex; flex-direction:column; gap:6px; font-weight:800; color:#d1d5db; }
+.formGrid input, .formGrid select{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#fff; padding:10px 12px; border-radius:10px;
+}
+.formActions{ grid-column:1/-1; display:flex; justify-content:flex-end; gap:10px; margin-top:4px; }
+.btnGhost{
+  border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.08);
+  color:#e5e7eb; padding:.7rem 1.2rem; border-radius:.7rem; font-weight:900; cursor:pointer;
+}
+.btnPrimary{
+  border:none; color:#fff; padding:.8rem 1.4rem; border-radius:.8rem; font-weight:900; cursor:pointer;
+  background: linear-gradient(90deg,#fb923c,#f97316);
+  box-shadow: 0 12px 28px rgba(249,115,22,.25);
 }
 
-.editProfileButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 200ms;
+/* ——— fullscreen modal pentru Vacaciones ——— */
+.modalOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.6); display:grid; place-items:center; z-index:3000; padding:16px;
 }
-
-.editProfileButton:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+.modalSheet{
+  width:100%; max-width:1100px; background:#0f172a; color:#fff; border-radius:16px; border:1px solid rgba(255,255,255,.15);
+  max-height:90vh; overflow:auto; box-shadow:0 18px 50px rgba(0,0,0,.35);
 }
+.modalTop{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.12); }
+.modalBody{ padding:8px 12px 16px; }
 
-.profileGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-}
-
-.profileCard {
-    background-color: rgba(17, 24, 39, 0.5);
-    backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.profileCard h3 {
-    font-size: 0.875rem;
-    color: #9ca3af;
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-}
-
-.profileCard p {
-    font-size: 1.125rem;
-    color: white;
-    font-weight: 500;
-    margin: 0;
-}
-
-.vehicleLink {
-    cursor: pointer;
-    transition: background-color 200ms;
-}
-
-.vehicleLink:hover {
-    background-color: rgba(17, 24, 39, 0.7);
-}
-
-.alarmSection {
-    background-color: rgba(252, 165, 165, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    color: #fca5a5;
-}
-
-.alarmHeader {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-}
-
-.alarmSection ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.alarmSection ul li.expired {
-    color: #dc2626;
-    font-weight: 600;
-}
-
-.loadingScreen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    width: 100vw;
-    background-color: #111827;
-    color: white;
-    font-size: 1.5rem;
-}
-
-/* --- Stiluri pentru MODAL --- */
-
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(5px);
-  z-index: 3000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-}
-
-.modalContent {
-  background-color: #1f2937;
-  padding: 1.5rem;
-  border-radius: 1rem;
-  width: 100%;
-  max-width: 500px;
-  color: white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.modalTitle {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-.closeButton {
-    background: transparent;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
-    padding: 0;
-}
-
-.closeButton:hover {
-    color: white;
-}
-
-.modalBody {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.inputGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.inputGroup label {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #d1d5db;
-}
-
-.inputGroup input,
-.inputGroup select {
-  padding: 0.6rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 1rem;
-}
-
-.inputGroup input:focus,
-.inputGroup select:focus {
-  outline: none;
-  border-color: #fb923c;
-}
-
-.inputGroup input:disabled {
-    background-color: rgba(255, 255, 255, 0.1);
-    opacity: 0.7;
-}
-
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-.cancelButton {
-  padding: 0.55rem 1.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancelButton:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-.saveButton {
-  padding: 0.55rem 1.5rem;
-  border-radius: 0.5rem;
-  border: none;
-  background-image: linear-gradient(to right, #fb923c, #f97316);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.saveButton:hover {
-  transform: translateY(-2px);
+/* ——— loading ——— */
+.loadingScreen{
+  display:flex; align-items:center; justify-content:center; height:100vh; width:100vw; background:#111827; color:#fff; font-size:1.4rem;
 }
