@@ -19,61 +19,54 @@ const SearchIcon = () => (
 export default function SchedulerPage() {
   const navigate = useNavigate();
 
+  // roluri din context
   const { role: ctxRole, profile } = useAuth() || {};
   const role = String((profile?.role || ctxRole || '')).toLowerCase();
   const isManager = role === 'dispecer' || role === 'admin';
   const canHecho = isManager || role === 'mecanic';
 
-  const [tab, setTab] = useState('todos');
+  // stare UI
+  const [tab, setTab] = useState('todos'); // todos | programado | pendiente | completado
   const [query, setQuery] = useState('');
   const [date, setDate] = useState(() => new Date());
 
-  const [items, setItems] = useState([]);
-  const [doneItems, setDoneItems] = useState([]);
+  // liste
   const [loading, setLoading] = useState(true);
+  const [list, setList] = useState([]);        // programados + contenedores (cu kind)
+  const [doneList, setDoneList] = useState([]);// contenedores_salidos (pe zi)
 
-  // --- Modal Programar ---
-  const [isOpenProgramar, setIsOpenProgramar] = useState(false);
-  const [progSearch, setProgSearch] = useState('');
-  const [match, setMatch] = useState(null);
-  const [empresaDesc, setEmpresaDesc] = useState('');
-  const [fecha, setFecha] = useState('');
-  const [hora, setHora] = useState('');
-  const [matCamion, setMatCamion] = useState('');
-
-  // ====== FETCH LISTE ======
+  // ====== FETCH (programados + contenedores) ======
   useEffect(() => {
-    let cancelled = false;
+    let dead = false;
     const load = async () => {
+      if (tab === 'completado') return;
       setLoading(true);
       try {
-        const { data: prog, error: e1 } = await supabase
-          .from('contenedores_programados')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const [{ data: prog, error: e1 }, { data: depo, error: e2 }] = await Promise.all([
+          supabase.from('contenedores_programados').select('*').order('created_at', { ascending: false }),
+          supabase.from('contenedores').select('*').order('created_at', { ascending: false })
+        ]);
         if (e1) throw e1;
-        const mappedProg = (prog || []).map(r => ({ ...r, programado_id: r.id, source: 'programados' }));
-
-        const { data: depo, error: e2 } = await supabase
-          .from('contenedores')
-          .select('*')
-          .order('created_at', { ascending: false });
         if (e2) throw e2;
-        const mappedDepot = (depo || []).map(r => ({ ...r, programado_id: null, source: 'contenedores' }));
 
-        if (!cancelled) setItems([...mappedProg, ...mappedDepot]);
+        const mapped = [
+          ...(prog || []).map(r => ({ ...r, programado_id: r.id, kind: 'programado' })),
+          ...(depo || []).map(r => ({ ...r, programado_id: null, kind: 'depot' })),
+        ];
+        if (!dead) setList(mapped);
       } catch (err) {
-        console.error('Carga fallida:', err);
+        console.error('Error loading lists:', err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!dead) setLoading(false);
       }
     };
-    if (tab !== 'completado') load();
-    return () => { cancelled = true; };
+    load();
+    return () => { dead = true; };
   }, [tab]);
 
+  // ====== FETCH (completado pe zi) ======
   useEffect(() => {
-    let cancelled = false;
+    let dead = false;
     const loadDone = async () => {
       if (tab !== 'completado') return;
       setLoading(true);
@@ -87,41 +80,44 @@ export default function SchedulerPage() {
           .lt('fecha_salida', end.toISOString())
           .order('fecha_salida', { ascending: false });
         if (error) throw error;
-        if (!cancelled) setDoneItems(data || []);
+        if (!dead) setDoneList(data || []);
       } catch (err) {
-        console.error('Carga completados fallida:', err);
+        console.error('Error loading completed:', err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!dead) setLoading(false);
       }
     };
     loadDone();
-    return () => { cancelled = true; };
+    return () => { dead = true; };
   }, [tab, date]);
 
-  // ====== FILTRARE ======
+  // ====== FILTRARE LISTE ======
   const filtered = useMemo(() => {
-    if (tab === 'completado') return doneItems;
-    let list = items;
-    if (tab === 'programado') list = list.filter(x => x.source === 'programados');
-    if (tab === 'pendiente')
-      list = list.filter(x =>
-        x.source === 'programados' &&
-        (x.estado === 'pendiente' || x.status === 'pendiente' || x.etapa === 'pendiente')
-      );
+    if (tab === 'completado') return doneList;
+    let data = list;
+    if (tab === 'programado') data = data.filter(r => r.kind === 'programado');
+    if (tab === 'pendiente')  data = data.filter(r =>
+      r.kind === 'programado' &&
+      (r.estado === 'pendiente' || r.status === 'pendiente' || r.etapa === 'pendiente')
+    );
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      list = list.filter(x =>
-        (x.matricula_contenedor || '').toLowerCase().includes(q) ||
-        (x.naviera || '').toLowerCase().includes(q) ||
-        (x.empresa_descarga || '').toLowerCase().includes(q)
+      data = data.filter(r =>
+        (r.matricula_contenedor || '').toLowerCase().includes(q) ||
+        (r.naviera || '').toLowerCase().includes(q) ||
+        (r.empresa_descarga || '').toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [tab, items, doneItems, query]);
+    return data;
+  }, [tab, list, doneList, query]);
 
-  // ====== HECHO (doar pt programados) ======
+  // ====== HECHO – NUMAI pentru programado ======
   const handleHecho = async (row) => {
-    if (!canHecho || row.source !== 'programados') return;
+    if (!canHecho) return;
+    if (row.kind !== 'programado') {
+      alert('„Hecho” este disponibil doar pentru contenedores programados.');
+      return;
+    }
     const payload = {
       p_matricula: row.matricula_contenedor,
       p_programado_id: row.programado_id || row.id || null,
@@ -133,68 +129,68 @@ export default function SchedulerPage() {
       alert(data?.error || 'No se pudo completar la salida.');
       return;
     }
-    setItems(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
+    // scoatem din listă elementul finalizat
+    setList(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
   };
 
-  // ====== PROGRAMAR – căutare corectă după matrícula ======
-  // Caută întâi exact (.eq), dacă nu există, caută parțial (.ilike %...%)
+  // ====== MODAL PROGRAMAR ======
+  const [openProg, setOpenProg] = useState(false);
+  const [search, setSearch] = useState('');
+  const [options, setOptions] = useState([]);        // sugestii din contenedores
+  const [selected, setSelected] = useState(null);    // container ales (obligatoriu)
+  const [empresaDesc, setEmpresaDesc] = useState('');
+  const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
+  const [matCamion, setMatCamion] = useState('');
+
+  const resetProgramar = () => {
+    setSearch('');
+    setOptions([]);
+    setSelected(null);
+    setEmpresaDesc('');
+    setFecha('');
+    setHora('');
+    setMatCamion('');
+  };
+
+  // căutare live în „contenedores” (min 2 caractere, max 10 rezultate)
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const m = progSearch.trim().toUpperCase();
-      if (!m) { setMatch(null); return; }
-
-      // 1) exact
-      const exact = await supabase
+    let dead = false;
+    const run = async () => {
+      const s = search.trim().toUpperCase();
+      if (s.length < 2) { if (!dead) setOptions([]); return; }
+      const { data, error } = await supabase
         .from('contenedores')
-        .select('id, matricula_contenedor, naviera, tipo, posicion, created_at, estado')
-        .eq('matricula_contenedor', m)
-        .maybeSingle();
-
-      if (!cancelled && exact.data) {
-        setMatch(exact.data);
-        return;
-      }
-      if (!cancelled && exact.error && exact.error.details?.includes('Results contain 0 rows')) {
-        // ignor — trecem la fallback
-      }
-
-      // 2) fallback: parțial (top 1)
-      const fallback = await supabase
-        .from('contenedores')
-        .select('id, matricula_contenedor, naviera, tipo, posicion, created_at, estado')
-        .ilike('matricula_contenedor', `%${m}%`)
+        .select('id, matricula_contenedor, naviera, tipo, posicion, estado, created_at')
+        .ilike('matricula_contenedor', `%${s}%`)
         .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!cancelled) {
-        setMatch((fallback.data && fallback.data[0]) || null);
+        .limit(10);
+      if (!dead) {
+        if (error) { console.error(error); setOptions([]); }
+        else setOptions(data || []);
       }
-    })();
-    return () => { cancelled = true; };
-  }, [progSearch]);
-
-  const resetProgramarForm = () => {
-    setProgSearch(''); setMatch(null); setEmpresaDesc(''); setFecha(''); setHora(''); setMatCamion('');
-  };
+    };
+    run();
+    return () => { dead = true; };
+  }, [search]);
 
   const guardarProgramacion = async (e) => {
     e.preventDefault();
-    if (!match?.matricula_contenedor) {
-      alert('Selecciona un contenedor existente por matrícula (en depósito).');
+    if (!selected) {
+      alert('Selectează un container din listă (depozit).');
       return;
     }
     // 1) insert în programados
     const insertObj = {
-      matricula_contenedor: match.matricula_contenedor,
+      matricula_contenedor: selected.matricula_contenedor,
       empresa_descarga: empresaDesc || null,
       fecha: fecha || null,
       hora: hora || null,
       matricula_camion: matCamion || null,
-      naviera: match.naviera || null,
-      tipo: match.tipo || null,
-      posicion: match.posicion || null,
-      estado: match.estado || null,
+      naviera: selected.naviera || null,
+      tipo: selected.tipo || null,
+      posicion: selected.posicion || null,
+      estado: selected.estado || null,
     };
     const { data: ins, error: insErr } = await supabase
       .from('contenedores_programados')
@@ -207,33 +203,30 @@ export default function SchedulerPage() {
       return;
     }
     // 2) șterge din contenedores
-    const { error: delErr } = await supabase
-      .from('contenedores')
-      .delete()
-      .eq('id', match.id);
+    const { error: delErr } = await supabase.from('contenedores').delete().eq('id', selected.id);
     if (delErr) {
       console.error(delErr);
       alert('Se programó, pero no se pudo quitar de "contenedores".');
     }
-    // 3) actualizează UI
-    setItems(prev => ([
-      { ...ins, programado_id: ins?.id, source: 'programados' },
-      ...prev.filter(x => x.matricula_contenedor !== match.matricula_contenedor)
+    // 3) actualizează lista locală
+    setList(prev => ([
+      { ...ins, programado_id: ins?.id, kind: 'programado' },
+      ...prev.filter(x => x.matricula_contenedor !== selected.matricula_contenedor)
     ]));
-    resetProgramarForm();
-    setIsOpenProgramar(false);
+    setOpenProg(false);
+    resetProgramar();
   };
 
+  // ====== CALENDAR LATERAL ======
   const monthTitle = useMemo(
     () => date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()),
     [date]
   );
-
   const renderCalendar = () => {
     const y = date.getFullYear();
     const m = date.getMonth();
     const first = new Date(y, m, 1);
-    const startDay = (first.getDay() + 6) % 7;
+    const startDay = (first.getDay() + 6) % 7; // L=0..D=6
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const cells = [];
     for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
@@ -267,16 +260,18 @@ export default function SchedulerPage() {
       <div className={styles.bg} />
       <div className={styles.vignette} />
 
+      {/* Top bar */}
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => navigate('/depot')}>
           <BackIcon /> Depot
         </button>
         <h1 className={styles.title}>Programar Contenedor</h1>
         {isManager ? (
-          <button className={styles.newBtn} onClick={() => setIsOpenProgramar(true)}>Programar</button>
-        ) : <span style={{ width: 110 }} />}
+          <button className={styles.newBtn} onClick={() => setOpenProg(true)}>Programar</button>
+        ) : <span style={{ width: 120 }} />}
       </div>
 
+      {/* Toolbar */}
       <div className={`${styles.card} ${styles.toolbar}`}>
         <div className={styles.chips}>
           {['todos','programado','pendiente','completado'].map(k => (
@@ -298,13 +293,14 @@ export default function SchedulerPage() {
             <input
               className={styles.date}
               type="date"
-              value={new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+              value={new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,10)}
               onChange={(e)=> setDate(new Date(e.target.value))}
             />
           )}
         </div>
       </div>
 
+      {/* Listă + Calendar */}
       <div className={styles.grid}>
         <div className={styles.card}>
           {loading ? (
@@ -333,14 +329,14 @@ export default function SchedulerPage() {
             </ul>
           ) : (
             <ul className={styles.list}>
-              {filtered.length === 0 && <p>No hay contenedores programados.</p>}
+              {filtered.length === 0 && <p>No hay contenedores.</p>}
               {filtered.map(row => (
-                <li key={(row.source==='programados'? row.programado_id : row.id) || row.matricula_contenedor} className={styles.item}>
+                <li key={(row.kind==='programado'? row.programado_id : row.id) || row.matricula_contenedor} className={styles.item}>
                   <div>
                     <div className={styles.itemTop}>
                       <span className={styles.dot} />
                       <span className={styles.cid}>{row.matricula_contenedor}</span>
-                      {row.source === 'programados'
+                      {row.kind === 'programado'
                         ? <span className={`${styles.badge} ${styles.badgeInfo}`}>Programado</span>
                         : <span className={`${styles.badge} ${styles.badgeWarn}`}>No programado</span>
                       }
@@ -356,13 +352,15 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className={styles.actions}>
-                    {isManager && row.source === 'programados' && (
+                    {/* Edit/Cancel doar pentru programado + manager */}
+                    {isManager && row.kind === 'programado' && (
                       <>
                         <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>Editar</button>
                         <button className={styles.actionGhost} onClick={()=>alert('Cancelar próximamente')}>Cancelar</button>
                       </>
                     )}
-                    {canHecho && row.source === 'programados' && (
+                    {/* Hecho doar pentru programado */}
+                    {canHecho && row.kind === 'programado' && (
                       <button className={styles.actionOk} onClick={()=>handleHecho(row)}>Hecho</button>
                     )}
                   </div>
@@ -375,58 +373,76 @@ export default function SchedulerPage() {
         {renderCalendar()}
       </div>
 
-      {/* MODAL PROGRAMAR */}
-      {isOpenProgramar && isManager && (
-        <div className={styles.modalOverlay} onClick={()=>setIsOpenProgramar(false)}>
+      {/* MODAL PROGRAMAR (manager only) */}
+      {openProg && isManager && (
+        <div className={styles.modalOverlay} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>
           <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h3>Programar contenedor</h3>
-              <button className={styles.closeIcon} onClick={()=>{ setIsOpenProgramar(false); resetProgramarForm(); }}>✕</button>
+              <button className={styles.closeIcon} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>✕</button>
             </div>
 
             <form className={styles.modalBody} onSubmit={guardarProgramacion}>
+              {/* Căutare + rezultate */}
               <div className={styles.inputGroup}>
-                <label>Matrícula contenedor (en depósito)</label>
+                <label>Matrícula (selectează din depozit)</label>
                 <input
                   type="text"
-                  value={progSearch}
-                  onChange={(e)=>setProgSearch(e.target.value.toUpperCase())}
                   placeholder="Ej: TEST1234567"
-                  required
+                  value={search}
+                  onChange={(e)=>{ setSearch(e.target.value.toUpperCase()); setSelected(null); }}
                 />
-                {match ? (
-                  <small style={{opacity:.8}}>
-                    Encontrado: {match.matricula_contenedor} · {match.naviera || '—'} · {match.tipo || '—'}
+                {options.length > 0 && (
+                  <div style={{marginTop:8, border:'1px solid rgba(255,255,255,.15)', borderRadius:10, overflow:'hidden'}}>
+                    {options.map(opt => (
+                      <button
+                        type="button"
+                        key={opt.id}
+                        onClick={()=> setSelected(opt)}
+                        style={{
+                          width:'100%', textAlign:'left', padding:'10px 12px',
+                          background: selected?.id===opt.id ? 'rgba(59,130,246,.25)' : 'rgba(255,255,255,.05)',
+                          color:'#fff', border:'none', cursor:'pointer'
+                        }}
+                      >
+                        <strong>{opt.matricula_contenedor}</strong> &nbsp;·&nbsp;
+                        <span style={{opacity:.85}}>{opt.naviera || '—'}</span> &nbsp;·&nbsp;
+                        <span style={{opacity:.65}}>{opt.tipo || '—'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selected && (
+                  <small style={{display:'block', marginTop:6, opacity:.9}}>
+                    Selectat: <strong>{selected.matricula_contenedor}</strong> ({selected.naviera || '—'}, {selected.tipo || '—'})
                   </small>
-                ) : progSearch ? (
-                  <small style={{opacity:.8, color:'#fca5a5'}}>No existe en “contenedores”.</small>
-                ) : null}
+                )}
               </div>
 
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>Empresa de descarga</label>
-                  <input value={empresaDesc} onChange={e=>setEmpresaDesc(e.target.value)} placeholder="Empresa X" />
+                  <input value={empresaDesc} onChange={(e)=>setEmpresaDesc(e.target.value)} placeholder="Empresa X" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Fecha</label>
-                  <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
+                  <input type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Hora</label>
-                  <input type="time" value={hora} onChange={e=>setHora(e.target.value)} />
+                  <input type="time" value={hora} onChange={(e)=>setHora(e.target.value)} />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Matrícula camión</label>
-                  <input value={matCamion} onChange={e=>setMatCamion(e.target.value.toUpperCase())} placeholder="B-123-ABC" />
+                  <input value={matCamion} onChange={(e)=>setMatCamion(e.target.value.toUpperCase())} placeholder="B-123-ABC" />
                 </div>
               </div>
 
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.actionGhost} onClick={()=>{ setIsOpenProgramar(false); resetProgramarForm(); }}>
+                <button type="button" className={styles.actionGhost} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>
                   Cancelar
                 </button>
-                <button type="submit" className={styles.actionMini}>
+                <button type="submit" className={styles.actionMini} disabled={!selected}>
                   Guardar programación
                 </button>
               </div>
