@@ -21,14 +21,13 @@ export default function SchedulerPage() {
 
   // --- rol robust (din AuthContext) ---
   const { role: ctxRole, profile } = useAuth() || {};
-  const role = String((profile && profile.role) || ctxRole || '').toLowerCase(); // 'dispecer' | 'mecanic' | ...
+  const role = String((profile?.role || ctxRole || '')).trim().toLowerCase(); // normalizează rolul
 
-  const [tab, setTab] = useState('todos'); // 'todos' | 'programado' | 'pendiente' | 'completado'
+  const [tab, setTab] = useState('todos');
   const [query, setQuery] = useState('');
   const [date, setDate] = useState(() => new Date());
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [isOpenNuevo, setIsOpenNuevo] = useState(false);
 
   // ====== FETCH ======
@@ -110,9 +109,9 @@ export default function SchedulerPage() {
     return list;
   }, [tab, items, doneItems, query]);
 
-  // ====== HECHO (universal) ======
+  // ====== HECHO ======
   const handleHecho = async (row) => {
-    if (role !== 'mecanic' && role !== 'dispecer') {
+    if (!['mecanic', 'dispecer', 'admin'].includes(role)) {
       alert('No autorizado.');
       return;
     }
@@ -139,7 +138,7 @@ export default function SchedulerPage() {
     const y = date.getFullYear();
     const m = date.getMonth();
     const first = new Date(y, m, 1);
-    const startDay = (first.getDay() + 6) % 7; // L=0..D=6
+    const startDay = (first.getDay() + 6) % 7;
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const cells = [];
     for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
@@ -183,9 +182,14 @@ export default function SchedulerPage() {
         </button>
         <h1 className={styles.title}>Programar Contenedor</h1>
 
-        {/* Nuevo vizibil DOAR dacă e dispecer (profil sau ctx) */}
-        {role === 'dispecer' ? (
-          <button className={styles.newBtn} onClick={() => setIsOpenNuevo(true)}>Nuevo</button>
+        {/* Buton vizibil pentru dispecer și admin */}
+        {['dispecer', 'admin'].includes(role) ? (
+          <button
+            className={styles.newBtn}
+            onClick={() => setIsOpenNuevo(true)}
+          >
+            {role === 'dispecer' ? 'Programar' : 'Nuevo'}
+          </button>
         ) : (
           <span style={{ width: 96 }} />
         )}
@@ -280,8 +284,8 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className={styles.actions}>
-                    {/* Editar + Cancelar doar pt dispecer și doar pe programados */}
-                    {role === 'dispecer' && row.source === 'programados' && (
+                    {/* Editar + Cancelar doar pt dispecer și admin pe programados */}
+                    {['dispecer','admin'].includes(role) && row.source === 'programados' && (
                       <>
                         <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>
                           Editar
@@ -291,8 +295,8 @@ export default function SchedulerPage() {
                         </button>
                       </>
                     )}
-                    {/* Hecho pentru mecanic + dispecer, pe orice sursă */}
-                    {(role === 'mecanic' || role === 'dispecer') && (
+                    {/* Hecho pentru mecanic, dispecer și admin */}
+                    {['mecanic','dispecer','admin'].includes(role) && (
                       <button className={styles.actionOk} onClick={()=>handleHecho(row)}>
                         Hecho
                       </button>
@@ -307,11 +311,11 @@ export default function SchedulerPage() {
         {renderCalendar()}
       </div>
 
-      {isOpenNuevo && role === 'dispecer' && (
+      {isOpenNuevo && ['dispecer','admin'].includes(role) && (
         <div className={styles.modalOverlay} onClick={()=>setIsOpenNuevo(false)}>
           <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>Nuevo — Programar contenedor</h3>
+              <h3>{role === 'dispecer' ? 'Programar contenedor' : 'Nuevo — Programar contenedor'}</h3>
               <button className={styles.closeIcon} onClick={()=>setIsOpenNuevo(false)}>✕</button>
             </div>
             <div className={styles.modalBody}>
