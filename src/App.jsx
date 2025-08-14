@@ -1,5 +1,4 @@
 // src/App.jsx
-
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // Páginas existentes
@@ -14,7 +13,9 @@ import GpsPage from './components/GpsPage.jsx';
 import MiPerfilPage from './components/MiPerfilPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
-import ChoferesPage from './components/ChoferesPage.jsx';
+// ⬇️ IMPORTANT: potrivește extensia EXACT cu fișierul din repo.
+// Dacă ai ChoferesPage.jsx, schimbi linia asta în .jsx.
+import ChoferesPage from './components/ChoferesPage.js';
 import ChoferProfilePage from './components/ChoferProfilePage.jsx';
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
@@ -24,7 +25,8 @@ import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
-import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
+// Dacă NU ai încă fișierul, comentează importul și ruta de mai jos
+// import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
 function App() {
   return (
@@ -51,7 +53,8 @@ function App() {
 
       <Route path="/choferes" element={<ChoferesPage />} />
       <Route path="/chofer/:id" element={<ChoferProfilePage />} />
-      <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
+      {/* Activează ruta doar dacă fișierul există */}
+      {/* <Route path="/choferes-finder" element={<ChoferFinderProfile />} /> */}
 
       <Route path="/taller" element={<TallerPage />} />
       <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} />
