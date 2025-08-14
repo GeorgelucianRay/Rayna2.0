@@ -1,105 +1,264 @@
-/* ——— page header ——— */
-.header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; color:#fff; }
-.h1{ margin:0; font-size:2.2rem; font-weight:900; letter-spacing:.3px; }
-.editBtn{
-  display:flex; align-items:center; gap:.5rem;
-  padding:.7rem 1.2rem; border-radius:.75rem; cursor:pointer;
-  color:#fff; border:1px solid rgba(59,130,246,.5);
-  background:linear-gradient(90deg, rgba(59,130,246,.25), rgba(37,99,235,.25));
-  box-shadow:0 0 0 1px rgba(59,130,246,.2), 0 10px 30px rgba(37,99,235,.15) inset;
-  font-weight:800;
-}
-.editBtn:hover{ background:linear-gradient(90deg, rgba(59,130,246,.35), rgba(37,99,235,.35)); }
-
-/* ——— layout grid ——— */
-.grid{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:16px; }
-@media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
-.leftCol, .rightCol{ display:flex; flex-direction:column; gap:16px; }
-
-/* ——— cards ——— */
-.card{
-  background: rgba(17,24,39,.55);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:16px; padding:16px;
-  color:#fff; backdrop-filter: blur(10px);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 12px 40px rgba(0,0,0,.25);
+/* ===== Layout de bază ===== */
+.loadingScreen {
+  padding: 2rem;
+  text-align: center;
+  color: #fff;
 }
 
-/* ——— alerts ——— */
-.cardAlert{
-  border-color: rgba(239,68,68,.5);
-  background: linear-gradient(180deg, rgba(239,68,68,.08), rgba(17,24,39,.55));
-  box-shadow: 0 0 0 1px rgba(239,68,68,.35) inset;
-}
-.alertHead{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.alertIcon{ color:#ff876d; }
-.alertList{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
-.alertList li{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); padding:10px 12px; border-radius:12px; }
-.alertExpired{ color:#ffb3a5; font-weight:700; }
-
-/* ——— tiles ——— */
-.tileGrid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
-.tile{
-  background: rgba(10,20,35,.6);
-  border:1px solid rgba(59,130,246,.3);
-  border-radius:14px; padding:14px;
-  box-shadow: 0 0 20px rgba(37,99,235,.12) inset, 0 0 0 1px rgba(37,99,235,.15);
-  text-align:left; color:#e5e7eb;
-}
-.tileLabel{ display:block; color:#7dd3fc; font-weight:800; font-size:.8rem; letter-spacing:.3px; margin-bottom:4px; }
-.tile strong{ font-size:1.15rem; font-weight:800; color:#fff; }
-.tileLink{ cursor:pointer; transition: transform .12s ease, box-shadow .12s ease; }
-.tileLink:hover{ transform: translateY(-2px); box-shadow: 0 10px 20px rgba(59,130,246,.25); }
-
-/* ——— Vacaciones widget ——— */
-.vacHeader{ display:flex; align-items:center; justify-content:space-between; }
-.vacHint{ margin:.5rem 0 0 0; color:#cbd5e1; opacity:.9; }
-.ghostBtn{
-  border:1px solid rgba(255,255,255,.25);
-  background:rgba(255,255,255,.08);
-  color:#fff; padding:.5rem .9rem; border-radius:.6rem; font-weight:800; cursor:pointer;
-}
-.ghostBtn:hover{ background:rgba(255,255,255,.15); }
-
-/* ——— edit panel ——— */
-.editPanel{
-  border-color: rgba(56,189,248,.45);
-  box-shadow: 0 0 0 1px rgba(56,189,248,.35) inset, 0 10px 30px rgba(56,189,248,.12);
-}
-.editHead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.iconClose{ background:transparent; border:none; color:#9ca3af; cursor:pointer; }
-.iconClose:hover{ color:#fff; }
-.formGrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-@media (max-width:780px){ .formGrid{ grid-template-columns:1fr; } }
-.formGrid label{ display:flex; flex-direction:column; gap:6px; font-weight:800; color:#d1d5db; }
-.formGrid input, .formGrid select{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.2);
-  color:#fff; padding:10px 12px; border-radius:10px;
-}
-.formActions{ grid-column:1/-1; display:flex; justify-content:flex-end; gap:10px; margin-top:4px; }
-.btnGhost{
-  border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.08);
-  color:#e5e7eb; padding:.7rem 1.2rem; border-radius:.7rem; font-weight:900; cursor:pointer;
-}
-.btnPrimary{
-  border:none; color:#fff; padding:.8rem 1.4rem; border-radius:.8rem; font-weight:900; cursor:pointer;
-  background: linear-gradient(90deg,#fb923c,#f97316);
-  box-shadow: 0 12px 28px rgba(249,115,22,.25);
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-/* ——— fullscreen modal pentru Vacaciones ——— */
-.modalOverlay{
-  position:fixed; inset:0; background:rgba(0,0,0,.6); display:grid; place-items:center; z-index:3000; padding:16px;
+.h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #fff;
 }
-.modalSheet{
-  width:100%; max-width:1100px; background:#0f172a; color:#fff; border-radius:16px; border:1px solid rgba(255,255,255,.15);
-  max-height:90vh; overflow:auto; box-shadow:0 18px 50px rgba(0,0,0,.35);
-}
-.modalTop{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.12); }
-.modalBody{ padding:8px 12px 16px; }
 
-/* ——— loading ——— */
-.loadingScreen{
-  display:flex; align-items:center; justify-content:center; height:100vh; width:100vw; background:#111827; color:#fff; font-size:1.4rem;
+.editBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f97316;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.editBtn:hover {
+  background: #ea580c;
+}
+
+/* ===== Coloană unică ===== */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ===== Carduri și alerte ===== */
+.card {
+  background: rgba(15, 23, 42, 0.8);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.cardAlert {
+  background: rgba(255, 59, 48, 0.15);
+  border-color: rgba(255, 59, 48, 0.4);
+}
+
+.alertHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.alertIcon svg {
+  color: #f87171;
+}
+
+.alertList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.alertExpired {
+  color: #f87171;
+}
+
+/* ===== Tile-uri ===== */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 12px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tileLabel {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.tileLink {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.tileLink:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* ===== Vacaciones ===== */
+.vacHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vacHint {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.ghostBtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.ghostBtn:hover {
+  border-color: rgba(255,255,255,0.4);
+}
+
+/* ===== Modal general ===== */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  z-index: 9999;
+}
+
+.modalSheet {
+  width: 100%;
+  max-width: 1000px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.15);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+}
+
+.modalSheetSmall {
+  width: 100%;
+  max-width: 720px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.15);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+}
+
+/* ===== Modal intern ===== */
+.modalTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.modalTop h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.iconClose {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.modalBody {
+  padding: 16px;
+}
+
+/* ===== Formular ===== */
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.formGrid input,
+.formGrid select {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.formGrid input:disabled {
+  opacity: 0.5;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btnPrimary {
+  background: #f97316;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btnPrimary:hover {
+  background: #ea580c;
+}
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btnGhost:hover {
+  border-color: rgba(255,255,255,0.5);
+}
+
+/* ===== Responsivitate ===== */
+@media (max-width: 640px) {
+  .tileGrid {
+    grid-template-columns: 1fr;
+  }
 }
