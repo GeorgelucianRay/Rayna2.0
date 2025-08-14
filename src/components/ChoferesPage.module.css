@@ -1,108 +1,141 @@
-/* Stil pentru titlul paginii */
-.profileHeader {
-  margin-bottom: 1.5rem;
-  color: white;
-}
-.profileHeader h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
+:root{
+  --glass: rgba(17,24,39,.55);
+  --border: rgba(255,255,255,.16);
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --cta1:#2563eb; --cta2:#3b82f6;
+  --warn: #fca5a5;
 }
 
-/* Stil pentru mesajul de încărcare */
-.loadingScreen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 600;
+/* Header */
+.profileHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin: 88px 24px 16px;
+  color: var(--text);
+}
+@media (min-width: 768px){
+  .profileHeader{ margin: 96px 32px 18px; }
+}
+.profileHeader h1{
+  margin:0;
+  font-size:2rem;
+  font-weight:800;
+  letter-spacing:.2px;
+  color:#fff;
+  text-shadow: 0 0 22px rgba(103,232,249,.22), 0 0 2px rgba(103,232,249,.45);
 }
 
-/* Secțiunea de alerte */
-.alarmSection {
-  background-color: rgba(153, 27, 27, 0.2); /* Roșu închis, semitransparent */
-  border: 1px solid rgba(248, 113, 113, 0.4);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  color: #e5e7eb;
+/* Alarme */
+.alarmSection{
+  margin: 0 24px 16px;
+  background: linear-gradient(180deg, rgba(239,68,68,.10), rgba(239,68,68,.06));
+  border: 1px solid rgba(239,68,68,.35);
+  color: var(--warn);
+  border-radius: 14px;
+  padding: 14px 16px;
+  backdrop-filter: blur(8px);
+}
+@media (min-width: 768px){
+  .alarmSection{ margin: 0 32px 18px; }
+}
+.alarmHeader{
+  display:flex; align-items:center; gap:10px;
+  color:#fff; font-weight:700; margin-bottom:8px;
+}
+.alarmSection ul{
+  margin:0; padding-left:18px; color:#ffd7d7;
 }
 
-.alarmHeader {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #fca5a5; /* Roșu deschis pentru vizibilitate */
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(248, 113, 113, 0.3);
+/* === Autocomplete / Typeahead === */
+.searchWrap{
+  position: relative;
+  width: 100%;
+  max-width: 560px; /* păstrează un look compact */
 }
-
-.alarmHeader svg {
-  flex-shrink: 0; /* Asigură că iconița nu se deformează */
-}
-
-.alarmHeader h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.alarmSection ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  list-style-type: disc;
-}
-
-.alarmSection li {
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-}
-.alarmSection li:last-child {
-  margin-bottom: 0;
-}
-
-/* Grid-ul pentru cardurile șoferilor */
-.choferesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem; /* Spațiu sub bara de căutare */
-}
-
-/* Cardul individual pentru fiecare șofer */
-.choferCard {
-  background-color: rgba(17, 24, 39, 0.6);
+.suggestList{
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  z-index: 50;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  color: #d1d5db;
-  transition: all 0.2s ease-out;
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  overflow: hidden;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.suggestItem{
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   cursor: pointer;
+  color: var(--text);
+  transition: background .12s ease, color .12s ease;
+}
+.suggestItem:hover{ background: rgba(255,255,255,.08); }
+.active{ background: rgba(59,130,246,.18); }
+.sName{
+  font-weight: 800; color:#fff;
+  line-height: 1.2;
+}
+.sMeta{
+  font-size: .85rem; color:#cbd5e1;
 }
 
-.choferCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(251, 146, 60, 0.5); /* Accent portocaliu la hover */
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+/* Grid carduri șoferi */
+.choferesGrid{
+  display:grid;
+  gap:14px;
+  grid-template-columns: 1fr;
+  padding: 0 24px 24px;
+}
+@media (min-width: 600px){
+  .choferesGrid{ grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1000px){
+  .choferesGrid{ grid-template-columns: repeat(3, 1fr); padding: 0 32px 32px; }
 }
 
-.choferCard h4 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.75rem;
-  line-height: 1.3;
+/* Card “cyber glass” */
+.choferCard{
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  color: var(--text);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.choferCard:hover{
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,.28);
+  box-shadow: 0 16px 44px rgba(37,99,235,.28);
+}
+.choferCard h4{
+  margin:0 0 6px;
+  font-size: 1.05rem;
+  font-weight:800;
+  color:#fff;
+}
+.choferCard p{
+  margin: 2px 0;
+  color: #cbd5e1;
+  font-size: .95rem;
 }
 
-.choferCard p {
-  margin: 0.25rem 0;
-  color: #9ca3af;
-  font-size: 0.9rem;
+/* Loading */
+.loadingScreen{
+  display:grid;
+  place-items:center;
+  min-height: 60vh;
+  color:#fff;
+  font-size:1.25rem;
 }
