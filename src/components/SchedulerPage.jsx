@@ -1,3 +1,4 @@
+// src/components/SchedulerPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -19,23 +20,36 @@ const SearchIcon = () => (
 export default function SchedulerPage() {
   const navigate = useNavigate();
 
-  // --- rol robust (din AuthContext) ---
+  // rol din AuthContext
   const { role: ctxRole, profile } = useAuth() || {};
-  const role = String((profile?.role || ctxRole || '')).trim().toLowerCase(); // normalizează rolul
+  const role = String((profile?.role || ctxRole || '')).toLowerCase();
+  const isManager = role === 'dispecer' || role === 'admin'; // poate programa/edita/anula
+  const canHecho = role === 'mecanic' || isManager;          // poate marca „Hecho” dar doar pt programados
 
-  const [tab, setTab] = useState('todos');
+  const [tab, setTab] = useState('todos'); // todos | programado | pendiente | completado
   const [query, setQuery] = useState('');
   const [date, setDate] = useState(() => new Date());
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isOpenNuevo, setIsOpenNuevo] = useState(false);
 
-  // ====== FETCH ======
+  const [items, setItems] = useState([]);
+  const [doneItems, setDoneItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- Modal Programar ---
+  const [isOpenProgramar, setIsOpenProgramar] = useState(false);
+  const [progSearch, setProgSearch] = useState('');
+  const [match, setMatch] = useState(null);
+  const [empresaDesc, setEmpresaDesc] = useState('');
+  const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
+  const [matCamion, setMatCamion] = useState('');
+
+  // ====== FETCH LISTE ======
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
+        // programados
         const { data: prog, error: e1 } = await supabase
           .from('contenedores_programados')
           .select('*')
@@ -43,6 +57,7 @@ export default function SchedulerPage() {
         if (e1) throw e1;
         const mappedProg = (prog || []).map(r => ({ ...r, programado_id: r.id, source: 'programados' }));
 
+        // en depósito
         const { data: depo, error: e2 } = await supabase
           .from('contenedores')
           .select('*')
@@ -61,7 +76,6 @@ export default function SchedulerPage() {
     return () => { cancelled = true; };
   }, [tab]);
 
-  const [doneItems, setDoneItems] = useState([]);
   useEffect(() => {
     let cancelled = false;
     const loadDone = async () => {
@@ -89,15 +103,16 @@ export default function SchedulerPage() {
     return () => { cancelled = true; };
   }, [tab, date]);
 
-  // ====== FILTER ======
+  // ====== FILTRARE ======
   const filtered = useMemo(() => {
     if (tab === 'completado') return doneItems;
     let list = items;
     if (tab === 'programado') list = list.filter(x => x.source === 'programados');
-    if (tab === 'pendiente')  list = list.filter(x =>
-      x.source === 'programados' &&
-      (x.estado === 'pendiente' || x.status === 'pendiente' || x.etapa === 'pendiente')
-    );
+    if (tab === 'pendiente')
+      list = list.filter(x =>
+        x.source === 'programados' &&
+        (x.estado === 'pendiente' || x.status === 'pendiente' || x.etapa === 'pendiente')
+      );
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(x =>
@@ -109,15 +124,13 @@ export default function SchedulerPage() {
     return list;
   }, [tab, items, doneItems, query]);
 
-  // ====== HECHO ======
+  // ====== HECHO (numai pt programados) ======
   const handleHecho = async (row) => {
-    if (!['mecanic', 'dispecer', 'admin'].includes(role)) {
-      alert('No autorizado.');
-      return;
-    }
+    if (!canHecho) return;
+    if (row.source !== 'programados') return; // NU permitem Hecho pentru neprogramate
     const payload = {
       p_matricula: row.matricula_contenedor,
-      p_programado_id: row.programado_id || null,
+      p_programado_id: row.programado_id || row.id || null,
       p_matricula_camion: row.matricula_camion || null,
     };
     const { data, error } = await supabase.rpc('finalizar_contenedor', payload);
@@ -126,7 +139,85 @@ export default function SchedulerPage() {
       alert(data?.error || 'No se pudo completar la salida.');
       return;
     }
+    // scoate din listă
     setItems(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
+  };
+
+  // ====== MODAL PROGRAMAR – logica ======
+  // Caută în 'contenedores' după matrícula introdusă
+  useEffect(() => {
+    let cancelled = false;
+    const go = async () => {
+      const m = progSearch.trim().toUpperCase();
+      if (!m) { setMatch(null); return; }
+      const { data, error } = await supabase
+        .from('contenedores')
+        .select('*')
+        .ilike('matricula_contenedor', m)
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) {
+        if (error) { console.error(error); setMatch(null); }
+        else { setMatch(data || null); }
+      }
+    };
+    go();
+    return () => { cancelled = true; };
+  }, [progSearch]);
+
+  const resetProgramarForm = () => {
+    setProgSearch('');
+    setMatch(null);
+    setEmpresaDesc('');
+    setFecha('');
+    setHora('');
+    setMatCamion('');
+  };
+
+  const guardarProgramacion = async (e) => {
+    e.preventDefault();
+    if (!match?.matricula_contenedor) {
+      alert('Selecciona un contenedor por matrícula.');
+      return;
+    }
+    // 1) inserăm în contenedores_programados (BEFORE INSERT trigger îți poate completa alte câmpuri)
+    const insertObj = {
+      matricula_contenedor: match.matricula_contenedor,
+      empresa_descarga: empresaDesc || null,
+      fecha: fecha || null,
+      hora: hora || null,
+      matricula_camion: matCamion || null,
+      // poți adăuga și alte câmpuri custom aici
+    };
+    const { data: ins, error: insErr } = await supabase
+      .from('contenedores_programados')
+      .insert(insertObj)
+      .select()
+      .maybeSingle();
+    if (insErr) {
+      console.error(insErr);
+      alert('No se pudo programar el contenedor.');
+      return;
+    }
+    // 2) ștergem rândul din contenedores ca să nu mai apară în „En Depósito”
+    const { error: delErr } = await supabase
+      .from('contenedores')
+      .delete()
+      .eq('matricula_contenedor', match.matricula_contenedor);
+    if (delErr) {
+      console.error(delErr);
+      alert('Se programó, pero no se pudo quitar de "contenedores".');
+    }
+    // 3) actualizăm lista în UI
+    setItems(prev => ([
+      // adaug programado nou în listă
+      { ...ins, programado_id: ins?.id, source: 'programados' },
+      // filtrez orice instanță veche din „contenedores”
+      ...prev.filter(x => x.matricula_contenedor !== match.matricula_contenedor)
+    ]));
+    // închidem modalul
+    resetProgramarForm();
+    setIsOpenProgramar(false);
   };
 
   const monthTitle = useMemo(
@@ -138,7 +229,7 @@ export default function SchedulerPage() {
     const y = date.getFullYear();
     const m = date.getMonth();
     const first = new Date(y, m, 1);
-    const startDay = (first.getDay() + 6) % 7;
+    const startDay = (first.getDay() + 6) % 7; // L=0..D=6
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const cells = [];
     for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
@@ -175,23 +266,18 @@ export default function SchedulerPage() {
       <div className={styles.bg} />
       <div className={styles.vignette} />
 
-      {/* top bar */}
+      {/* bara de sus */}
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => navigate('/depot')}>
           <BackIcon /> Depot
         </button>
         <h1 className={styles.title}>Programar Contenedor</h1>
 
-        {/* Buton vizibil pentru dispecer și admin */}
-        {['dispecer', 'admin'].includes(role) ? (
-          <button
-            className={styles.newBtn}
-            onClick={() => setIsOpenNuevo(true)}
-          >
-            {role === 'dispecer' ? 'Programar' : 'Nuevo'}
-          </button>
+        {/* „Programar” – vizibil pentru dispecer & admin */}
+        {isManager ? (
+          <button className={styles.newBtn} onClick={() => setIsOpenProgramar(true)}>Programar</button>
         ) : (
-          <span style={{ width: 96 }} />
+          <span style={{ width: 110 }} />
         )}
       </div>
 
@@ -284,22 +370,17 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className={styles.actions}>
-                    {/* Editar + Cancelar doar pt dispecer și admin pe programados */}
-                    {['dispecer','admin'].includes(role) && row.source === 'programados' && (
+                    {/* Edit / Cancel – doar manageri și doar pt programados */}
+                    {isManager && row.source === 'programados' && (
                       <>
-                        <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>
-                          Editar
-                        </button>
-                        <button className={styles.actionGhost} onClick={()=>alert('Cancelar próximamente')}>
-                          Cancelar
-                        </button>
+                        <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>Editar</button>
+                        <button className={styles.actionGhost} onClick={()=>alert('Cancelar próximamente')}>Cancelar</button>
                       </>
                     )}
-                    {/* Hecho pentru mecanic, dispecer și admin */}
-                    {['mecanic','dispecer','admin'].includes(role) && (
-                      <button className={styles.actionOk} onClick={()=>handleHecho(row)}>
-                        Hecho
-                      </button>
+
+                    {/* Hecho – doar dacă rândul e programado */}
+                    {canHecho && row.source === 'programados' && (
+                      <button className={styles.actionOk} onClick={()=>handleHecho(row)}>Hecho</button>
                     )}
                   </div>
                 </li>
@@ -311,16 +392,64 @@ export default function SchedulerPage() {
         {renderCalendar()}
       </div>
 
-      {isOpenNuevo && ['dispecer','admin'].includes(role) && (
-        <div className={styles.modalOverlay} onClick={()=>setIsOpenNuevo(false)}>
+      {/* MODAL PROGRAMAR */}
+      {isOpenProgramar && isManager && (
+        <div className={styles.modalOverlay} onClick={()=>setIsOpenProgramar(false)}>
           <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>{role === 'dispecer' ? 'Programar contenedor' : 'Nuevo — Programar contenedor'}</h3>
-              <button className={styles.closeIcon} onClick={()=>setIsOpenNuevo(false)}>✕</button>
+              <h3>Programar contenedor</h3>
+              <button className={styles.closeIcon} onClick={()=>{ setIsOpenProgramar(false); resetProgramarForm(); }}>✕</button>
             </div>
-            <div className={styles.modalBody}>
-              <p>Formularul tău rămâne neschimbat aici (selectezi din “contenedores” și salvezi în “contenedores_programados”, apoi ștergi din “contenedores”).</p>
-            </div>
+
+            <form className={styles.modalBody} onSubmit={guardarProgramacion}>
+              {/* Búsqueda por matrícula (desde contenedores) */}
+              <div className={styles.inputGroup}>
+                <label>Matrícula contenedor (en depósito)</label>
+                <input
+                  type="text"
+                  value={progSearch}
+                  onChange={(e)=>setProgSearch(e.target.value.toUpperCase())}
+                  placeholder="Ej: TEST1234567"
+                  required
+                />
+                {match ? (
+                  <small style={{opacity:.8}}>
+                    Encontrado: {match.matricula_contenedor} · {match.naviera || '—'} · {match.tipo || '—'}
+                  </small>
+                ) : progSearch ? (
+                  <small style={{opacity:.8}}>No se encontró en “contenedores”.</small>
+                ) : null}
+              </div>
+
+              <div className={styles.inputGrid}>
+                <div className={styles.inputGroup}>
+                  <label>Empresa de descarga</label>
+                  <input value={empresaDesc} onChange={e=>setEmpresaDesc(e.target.value)} placeholder="Empresa X" />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Fecha</label>
+                  <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Hora</label>
+                  <input type="time" value={hora} onChange={e=>setHora(e.target.value)} />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Matrícula camión</label>
+                  <input value={matCamion} onChange={e=>setMatCamion(e.target.value.toUpperCase())} placeholder="B-123-ABC" />
+                </div>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.actionGhost} onClick={()=>{ setIsOpenProgramar(false); resetProgramarForm(); }}>
+                  Cancelar
+                </button>
+                <button type="submit" className={styles.actionMini}>
+                  Guardar programación
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
       )}
