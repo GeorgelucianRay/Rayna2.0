@@ -1,6 +1,8 @@
 // src/App.jsx
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
+
+// Páginas existentes
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
 import RestaurarContrasena from './components/RestaurarContrasena.jsx';
@@ -18,47 +20,49 @@ import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 
-// ===================================
-// Importă noile componente
-// ===================================
+// Nuevas
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
+import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
 function App() {
   return (
     <Routes>
-      {/* --- Rute Publice --- */}
+      {/* Públicas */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registrar />} />
       <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
       <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-      {/* --- Rute Protejate --- */}
+      {/* Protegidas */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
+      <Route path="/sofer-homepage" element={<HomepageSofer />} />
+
       <Route path="/depot" element={<DepotPage />} />
-      <Route path="/choferes" element={<ChoferesPage />} />
-      <Route path="/chofer/:id" element={<ChoferProfilePage />} />
-      <Route path="/taller" element={<TallerPage />} />
-      <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} /> 
-      
       <Route path="/gps" element={<GpsPage />} />
+
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
+      <Route path="/vacaciones" element={<VacacionesStandalone />} />
+
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
-      
-      <Route path="/sofer-homepage" element={<HomepageSofer />} />
+
+      <Route path="/choferes" element={<ChoferesPage />} />
+      <Route path="/chofer/:id" element={<ChoferProfilePage />} />
+      <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
+
+      <Route path="/taller" element={<TallerPage />} />
+      <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} />
+
       <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
-      
-      {/* ===================================
-      Rutele noi pentru hartă, programare și vacanțe
-      =================================== */}
+
+      {/* Extras nuevas */}
       <Route path="/mapa" element={<MapPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
-      <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
-      
-      {/* --- Rută 404 (Pagina nu a fost găsită) --- */}
+
+      {/* 404 */}
       <Route
         path="*"
         element={
@@ -70,9 +74,7 @@ function App() {
               <p style={{ color: '#4b5563', margin: '16px 0' }}>
                 La página que buscas no existe.
               </p>
-              <Link to="/login" className="link-style">
-                Volver a Iniciar Sesión
-              </Link>
+              <Link to="/login" className="link-style">Volver a Iniciar Sesión</Link>
             </div>
           </div>
         }
