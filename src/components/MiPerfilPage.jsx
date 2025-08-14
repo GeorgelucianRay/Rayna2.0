@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import Layout from './Layout';
 import styles from './MiPerfilPage.module.css';
 
 const EditIcon = () => (
@@ -21,40 +22,34 @@ const AlertIcon = () => (
   </svg>
 );
 
-function MiPerfilPage() {
+export default function MiPerfilPage() {
   const navigate = useNavigate();
   const { user, profile: authProfile, loading, setProfile: setAuthProfile } = useAuth();
+
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editable, setEditable] = useState(null);
   const [alerts, setAlerts] = useState([]);
 
-  // ——— helpers
-  const makeAlerts = (p) => {
+  // --- alert logic
+  const buildAlerts = (p) => {
     if (!p) return [];
-    const out = [];
+    const res = [];
     const today = new Date(); today.setHours(0,0,0,0);
-    const within = (d) => {
-      const t = new Date(d); t.setHours(0,0,0,0);
-      const diff = Math.ceil((t - today) / 86400000);
-      return { diff, expired: diff < 0 };
+    const collect = (date, label) => {
+      if (!date) return;
+      const d = new Date(date); d.setHours(0,0,0,0);
+      const diff = Math.ceil((d - today) / 86400000);
+      if (diff <= 30) res.push({ label, diff, expired: diff < 0 });
     };
-    const pushIf = (d, label) => {
-      if (!d) return;
-      const { diff, expired } = within(d);
-      if (expired || diff <= 30) out.push({ label, diff, expired });
-    };
-
-    pushIf(p.cap_expirare, 'CAP');
-    pushIf(p.carnet_caducidad, 'Permiso de conducir');
-    if (p.tiene_adr) pushIf(p.adr_caducidad, 'ADR');
-    if (p.camioane?.fecha_itv) pushIf(p.camioane.fecha_itv, `ITV Camión ${p.camioane?.matricula || ''}`);
-    if (p.remorci?.fecha_itv) pushIf(p.remorci.fecha_itv, `ITV Remolque ${p.remorci?.matricula || ''}`);
-    return out.sort((a,b)=>a.diff-b.diff);
+    collect(p.cap_expirare, 'CAP');
+    collect(p.carnet_caducidad, 'Permiso de conducir');
+    if (p.tiene_adr) collect(p.adr_caducidad, 'ADR');
+    if (p.camioane?.fecha_itv) collect(p.camioane.fecha_itv, `ITV Camión ${p.camioane?.matricula || ''}`);
+    if (p.remorci?.fecha_itv) collect(p.remorci.fecha_itv, `ITV Remolque ${p.remorci?.matricula || ''}`);
+    return res.sort((a,b)=>a.diff-b.diff);
   };
 
-  useEffect(() => {
-    if (authProfile) setAlerts(makeAlerts(authProfile));
-  }, [authProfile]);
+  useEffect(() => { if (authProfile) setAlerts(buildAlerts(authProfile)); }, [authProfile]);
 
   const openEdit = () => {
     if (!authProfile) return;
@@ -66,27 +61,27 @@ function MiPerfilPage() {
     setIsEditOpen(true);
   };
 
-  const onSubmitEdit = async (e) => {
+  const submitEdit = async (e) => {
     e.preventDefault();
     try {
       let camionId = authProfile.camion_id;
       let remorcaId = authProfile.remorca_id;
 
       if (!camionId && editable.new_camion_matricula) {
-        const { data: cNew, error } = await supabase
+        const { data, error } = await supabase
           .from('camioane')
           .insert({ matricula: editable.new_camion_matricula.toUpperCase() })
           .select().single();
         if (error) throw error;
-        camionId = cNew.id;
+        camionId = data.id;
       }
       if (!remorcaId && editable.new_remorca_matricula) {
-        const { data: rNew, error } = await supabase
+        const { data, error } = await supabase
           .from('remorci')
           .insert({ matricula: editable.new_remorca_matricula.toUpperCase() })
           .select().single();
         if (error) throw error;
-        remorcaId = rNew.id;
+        remorcaId = data.id;
       }
 
       const payload = {
@@ -125,244 +120,202 @@ function MiPerfilPage() {
   const remolqueMat = authProfile.remorci?.matricula || 'No asignado';
 
   return (
-    <div className={styles.page}>
-      {/* cabecera */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>Mi Perfil</h1>
-        <button className={styles.btnPrimary} onClick={openEdit}>
-          <EditIcon /> Editar perfil
-        </button>
-      </div>
-
-      {/* alerts compacte */}
-      {alerts.length > 0 && (
-        <div className={`${styles.card} ${styles.cardAlert}`}>
-          <div className={styles.alertHeader}>
-            <span className={styles.alertIcon}><AlertIcon/></span>
-            <h3>Alertas próximas / vencidas</h3>
-          </div>
-          <div className={styles.alertChips}>
-            {alerts.map((a, i) => (
-              <span key={i} className={`${styles.chip} ${a.expired ? styles.chipDanger : styles.chipWarn}`}>
-                {a.label} · {a.expired ? `vencido hace ${Math.abs(a.diff)} días` : `vence en ${a.diff} días`}
-              </span>
-            ))}
-          </div>
+    <Layout backgroundClassName="profile-background">
+      <div className={styles.page}>
+        {/* header */}
+        <div className={styles.header}>
+          <h1 className={styles.title}>Mi Perfil</h1>
+          <button className={styles.btnPrimary} onClick={openEdit}>
+            <EditIcon /> Editar perfil
+          </button>
         </div>
-      )}
 
-      {/* GRID principal */}
-      <div className={styles.grid}>
-        {/* Conductor */}
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>Conductor</h3>
-          <div className={styles.infoGrid}>
-            <div>
-              <div className={styles.kvLabel}>Nombre completo</div>
-              <div className={styles.kvValue}>{nombre}</div>
+        {/* alert widget */}
+        {alerts.length > 0 && (
+          <div className={`${styles.card} ${styles.cardAlert}`}>
+            <div className={styles.alertHeader}>
+              <span className={styles.alertIcon}><AlertIcon/></span>
+              <h3>Alertas próximas / vencidas</h3>
             </div>
-            <div>
-              <div className={styles.kvLabel}>CAP</div>
-              <div className={styles.kvValue}>{authProfile.cap_expirare || '—'}</div>
+            <div className={styles.alertChips}>
+              {alerts.map((a,i)=>(
+                <span key={i} className={`${styles.chip} ${a.expired?styles.chipDanger:styles.chipWarn}`}>
+                  {a.label} · {a.expired?`vencido hace ${Math.abs(a.diff)} días`:`vence en ${a.diff} días`}
+                </span>
+              ))}
             </div>
-            <div>
-              <div className={styles.kvLabel}>Carnet conducir</div>
-              <div className={styles.kvValue}>{authProfile.carnet_caducidad || '—'}</div>
-            </div>
-            <div>
-              <div className={styles.kvLabel}>ADR</div>
-              <div className={styles.kvValue}>
-                {authProfile.tiene_adr ? (authProfile.adr_caducidad || 'Sí') : 'No'}
+          </div>
+        )}
+
+        {/* grid principal */}
+        <div className={styles.grid}>
+          {/* Conductor */}
+          <section className={styles.card}>
+            <h3 className={styles.cardTitle}>Conductor</h3>
+            <div className={styles.infoGrid}>
+              <div>
+                <div className={styles.kvLabel}>Nombre completo</div>
+                <div className={styles.kvValue}>{nombre}</div>
+              </div>
+              <div>
+                <div className={styles.kvLabel}>CAP</div>
+                <div className={styles.kvValue}>{authProfile.cap_expirare || '—'}</div>
+              </div>
+              <div>
+                <div className={styles.kvLabel}>Carnet conducir</div>
+                <div className={styles.kvValue}>{authProfile.carnet_caducidad || '—'}</div>
+              </div>
+              <div>
+                <div className={styles.kvLabel}>ADR</div>
+                <div className={styles.kvValue}>{authProfile.tiene_adr ? (authProfile.adr_caducidad || 'Sí') : 'No'}</div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Camión */}
-        <section className={styles.card}>
-          <div className={styles.cardHeadRow}>
-            <h3 className={styles.cardTitle}>Camión</h3>
-            {authProfile.camion_id && (
-              <button
-                className={styles.btnGhost}
-                onClick={() => navigate(`/camion/${authProfile.camion_id}`)}
-              >
-                Ver ficha
-              </button>
-            )}
-          </div>
-          <div className={styles.infoGrid}>
-            <div>
-              <div className={styles.kvLabel}>Matrícula</div>
-              <div className={styles.kvValue}>{camionMat}</div>
+          {/* Camión */}
+          <section className={styles.card}>
+            <div className={styles.cardHeadRow}>
+              <h3 className={styles.cardTitle}>Camión</h3>
+              {authProfile.camion_id && (
+                <button className={styles.btnGhost} onClick={()=>navigate(`/camion/${authProfile.camion_id}`)}>
+                  Ver ficha
+                </button>
+              )}
             </div>
-            <div>
-              <div className={styles.kvLabel}>ITV</div>
-              <div className={styles.kvValue}>{authProfile.camioane?.fecha_itv || '—'}</div>
+            <div className={styles.infoGrid}>
+              <div>
+                <div className={styles.kvLabel}>Matrícula</div>
+                <div className={styles.kvValue}>{camionMat}</div>
+              </div>
+              <div>
+                <div className={styles.kvLabel}>ITV</div>
+                <div className={styles.kvValue}>{authProfile.camioane?.fecha_itv || '—'}</div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Remolque */}
-        <section className={styles.card}>
-          <div className={styles.cardHeadRow}>
-            <h3 className={styles.cardTitle}>Remolque</h3>
-            {authProfile.remorca_id && (
-              <button
-                className={styles.btnGhost}
-                onClick={() => navigate(`/remorca/${authProfile.remorca_id}`)}
-              >
-                Ver ficha
-              </button>
-            )}
-          </div>
-          <div className={styles.infoGrid}>
-            <div>
-              <div className={styles.kvLabel}>Matrícula</div>
-              <div className={styles.kvValue}>{remolqueMat}</div>
+          {/* Remolque */}
+          <section className={styles.card}>
+            <div className={styles.cardHeadRow}>
+              <h3 className={styles.cardTitle}>Remolque</h3>
+              {authProfile.remorca_id && (
+                <button className={styles.btnGhost} onClick={()=>navigate(`/remorca/${authProfile.remorca_id}`)}>
+                  Ver ficha
+                </button>
+              )}
             </div>
-            <div>
-              <div className={styles.kvLabel}>ITV</div>
-              <div className={styles.kvValue}>{authProfile.remorci?.fecha_itv || '—'}</div>
+            <div className={styles.infoGrid}>
+              <div>
+                <div className={styles.kvLabel}>Matrícula</div>
+                <div className={styles.kvValue}>{remolqueMat}</div>
+              </div>
+              <div>
+                <div className={styles.kvLabel}>ITV</div>
+                <div className={styles.kvValue}>{authProfile.remorci?.fecha_itv || '—'}</div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Widget Nómina */}
-        <section className={`${styles.card} ${styles.widget}`}>
-          <div className={styles.widgetHeader}>
-            <h3 className={styles.cardTitle}>Nómina</h3>
-            <span className={styles.widgetBadge}>Beta</span>
-          </div>
-          <p className={styles.widgetText}>
-            Calcula dietas, kilómetros y pluses del mes.
-          </p>
-          <button className={styles.btnPrimary} onClick={() => navigate('/nomina')}>
-            Abrir calculadora
-          </button>
-        </section>
-
-        {/* Widget Vacaciones */}
-        <section className={`${styles.card} ${styles.widget}`}>
-          <div className={styles.widgetHeader}>
-            <h3 className={styles.cardTitle}>Vacaciones</h3>
-            <span className={styles.widgetDot}></span>
-          </div>
-          <p className={styles.widgetText}>
-            Solicita días, ve aprobaciones y pendientes.
-          </p>
-          <button className={styles.btnPrimary} onClick={() => navigate('/vacaciones')}>
-            Abrir vacaciones
-          </button>
-        </section>
-      </div>
-
-      {/* MODAL editar perfil */}
-      {isEditOpen && editable && (
-        <div className={styles.modalOverlay} onClick={()=>setIsEditOpen(false)}>
-          <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
-            <div className={styles.modalTop}>
-              <h3>Editar perfil</h3>
-              <button className={styles.iconClose} onClick={()=>setIsEditOpen(false)}>
-                <CloseIcon/>
-              </button>
+          {/* Widget Nómina */}
+          <section className={`${styles.card} ${styles.widget}`}>
+            <div className={styles.widgetHeader}>
+              <h3 className={styles.cardTitle}>Nómina</h3>
+              <span className={styles.widgetBadge}>Beta</span>
             </div>
-            <form className={styles.form} onSubmit={onSubmitEdit}>
-              <label>
-                <span>Nombre completo</span>
-                <input
-                  type="text"
-                  value={editable.nombre_completo || ''}
-                  onChange={(e)=>setEditable({...editable, nombre_completo:e.target.value})}
-                />
-              </label>
+            <p className={styles.widgetText}>Calcula dietas, kilómetros y pluses del mes.</p>
+            <button className={styles.btnPrimary} onClick={()=>navigate('/nomina')}>
+              Abrir calculadora
+            </button>
+          </section>
 
-              <div className={styles.formTwo}>
-                <label>
-                  <span>Caducidad CAP</span>
-                  <input
-                    type="date"
-                    value={editable.cap_expirare || ''}
-                    onChange={(e)=>setEditable({...editable, cap_expirare:e.target.value})}
-                  />
-                </label>
-                <label>
-                  <span>Caducidad Carnet</span>
-                  <input
-                    type="date"
-                    value={editable.carnet_caducidad || ''}
-                    onChange={(e)=>setEditable({...editable, carnet_caducidad:e.target.value})}
-                  />
-                </label>
+          {/* Widget Vacaciones */}
+          <section className={`${styles.card} ${styles.widget}`}>
+            <div className={styles.widgetHeader}>
+              <h3 className={styles.cardTitle}>Vacaciones</h3>
+              <span className={styles.widgetDot}></span>
+            </div>
+            <p className={styles.widgetText}>Solicita días, ve aprobaciones y pendientes.</p>
+            <button className={styles.btnPrimary} onClick={()=>navigate('/vacaciones')}>
+              Abrir vacaciones
+            </button>
+          </section>
+        </div>
+
+        {/* Modal editar */}
+        {isEditOpen && editable && (
+          <div className={styles.modalOverlay} onClick={()=>setIsEditOpen(false)}>
+            <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
+              <div className={styles.modalTop}>
+                <h3>Editar perfil</h3>
+                <button className={styles.iconClose} onClick={()=>setIsEditOpen(false)}><CloseIcon/></button>
               </div>
 
-              <div className={styles.formTwo}>
+              <form className={styles.form} onSubmit={submitEdit}>
                 <label>
-                  <span>¿Tiene ADR?</span>
-                  <select
-                    value={editable.tiene_adr ? 'true' : 'false'}
-                    onChange={(e)=>setEditable({...editable, tiene_adr: e.target.value==='true'})}
-                  >
-                    <option value="false">No</option>
-                    <option value="true">Sí</option>
-                  </select>
+                  <span>Nombre completo</span>
+                  <input type="text" value={editable.nombre_completo || ''} onChange={(e)=>setEditable({...editable, nombre_completo:e.target.value})}/>
                 </label>
-                {editable.tiene_adr && (
+
+                <div className={styles.formTwo}>
                   <label>
-                    <span>Caducidad ADR</span>
-                    <input
-                      type="date"
-                      value={editable.adr_caducidad || ''}
-                      onChange={(e)=>setEditable({...editable, adr_caducidad:e.target.value})}
-                    />
+                    <span>Caducidad CAP</span>
+                    <input type="date" value={editable.cap_expirare || ''} onChange={(e)=>setEditable({...editable, cap_expirare:e.target.value})}/>
+                  </label>
+                  <label>
+                    <span>Caducidad Carnet</span>
+                    <input type="date" value={editable.carnet_caducidad || ''} onChange={(e)=>setEditable({...editable, carnet_caducidad:e.target.value})}/>
+                  </label>
+                </div>
+
+                <div className={styles.formTwo}>
+                  <label>
+                    <span>¿Tiene ADR?</span>
+                    <select value={editable.tiene_adr ? 'true' : 'false'} onChange={(e)=>setEditable({...editable, tiene_adr:e.target.value==='true'})}>
+                      <option value="false">No</option>
+                      <option value="true">Sí</option>
+                    </select>
+                  </label>
+                  {editable.tiene_adr && (
+                    <label>
+                      <span>Caducidad ADR</span>
+                      <input type="date" value={editable.adr_caducidad || ''} onChange={(e)=>setEditable({...editable, adr_caducidad:e.target.value})}/>
+                    </label>
+                  )}
+                </div>
+
+                {!authProfile.camion_id ? (
+                  <label>
+                    <span>Matrícula Camión (crear)</span>
+                    <input type="text" placeholder="1710KKY" value={editable.new_camion_matricula} onChange={(e)=>setEditable({...editable, new_camion_matricula:e.target.value.toUpperCase()})}/>
+                  </label>
+                ) : (
+                  <label>
+                    <span>Camión asignado</span>
+                    <input type="text" disabled value={camionMat}/>
                   </label>
                 )}
-              </div>
 
-              {!authProfile.camion_id ? (
-                <label>
-                  <span>Matrícula Camión (crear)</span>
-                  <input
-                    type="text"
-                    placeholder="p.ej. 1710KKY"
-                    value={editable.new_camion_matricula}
-                    onChange={(e)=>setEditable({...editable, new_camion_matricula:e.target.value.toUpperCase()})}
-                  />
-                </label>
-              ) : (
-                <label>
-                  <span>Camión asignado</span>
-                  <input type="text" disabled value={camionMat}/>
-                </label>
-              )}
+                {!authProfile.remorca_id ? (
+                  <label>
+                    <span>Matrícula Remolque (crear)</span>
+                    <input type="text" placeholder="R0000ABC" value={editable.new_remorca_matricula} onChange={(e)=>setEditable({...editable, new_remorca_matricula:e.target.value.toUpperCase()})}/>
+                  </label>
+                ) : (
+                  <label>
+                    <span>Remolque asignado</span>
+                    <input type="text" disabled value={remolqueMat}/>
+                  </label>
+                )}
 
-              {!authProfile.remorca_id ? (
-                <label>
-                  <span>Matrícula Remolque (crear)</span>
-                  <input
-                    type="text"
-                    placeholder="ABC-1234"
-                    value={editable.new_remorca_matricula}
-                    onChange={(e)=>setEditable({...editable, new_remorca_matricula:e.target.value.toUpperCase()})}
-                  />
-                </label>
-              ) : (
-                <label>
-                  <span>Remolque asignado</span>
-                  <input type="text" disabled value={remolqueMat}/>
-                </label>
-              )}
-
-              <div className={styles.formActions}>
-                <button type="button" className={styles.btnGhost} onClick={()=>setIsEditOpen(false)}>Cancelar</button>
-                <button type="submit" className={styles.btnPrimary}>Guardar cambios</button>
-              </div>
-            </form>
+                <div className={styles.formActions}>
+                  <button type="button" className={styles.btnGhost} onClick={()=>setIsEditOpen(false)}>Cancelar</button>
+                  <button type="submit" className={styles.btnPrimary}>Guardar cambios</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Layout>
   );
 }
-
-export default MiPerfilPage;
