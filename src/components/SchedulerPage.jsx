@@ -18,61 +18,74 @@ const SearchIcon = () => (
 
 export default function SchedulerPage() {
   const navigate = useNavigate();
-
-  // roluri din context
   const { role: ctxRole, profile } = useAuth() || {};
-  const role = String((profile?.role || ctxRole || '')).toLowerCase();
-  const isManager = role === 'dispecer' || role === 'admin';
-  const canHecho = isManager || role === 'mecanic';
+  const role = String((profile?.role || ctxRole || '')).toLowerCase(); // 'dispecer' | 'admin' | 'mecanic' ...
 
-  // stare UI
-  const [tab, setTab] = useState('todos'); // todos | programado | pendiente | completado
+  const [tab, setTab] = useState('todos'); // 'todos' | 'programado' | 'pendiente' | 'completado'
   const [query, setQuery] = useState('');
   const [date, setDate] = useState(() => new Date());
-
-  // liste
+  const [items, setItems] = useState([]);            // mix: programados + depozit
+  const [doneItems, setDoneItems] = useState([]);    // salidos pentru zi
   const [loading, setLoading] = useState(true);
-  const [list, setList] = useState([]);        // programados + contenedores (cu kind)
-  const [doneList, setDoneList] = useState([]);// contenedores_salidos (pe zi)
 
-  // ====== FETCH (programados + contenedores) ======
+  // --- modal Programar ---
+  const [isOpenProgramar, setIsOpenProgramar] = useState(false);
+  const [depotList, setDepotList] = useState([]);    // doar contenedores pentru selecție
+  const [pickQuery, setPickQuery] = useState('');
+  const [picked, setPicked] = useState(null);
+  const [form, setForm] = useState({
+    empresa_descarga: '',
+    fecha: new Date().toISOString().slice(0,10),
+    hora: '',
+    matricula_camion: ''
+  });
+
+  // ====== LOAD LISTE ======
   useEffect(() => {
-    let dead = false;
+    let cancelled = false;
     const load = async () => {
-      if (tab === 'completado') return;
       setLoading(true);
       try {
-        const [{ data: prog, error: e1 }, { data: depo, error: e2 }] = await Promise.all([
-          supabase.from('contenedores_programados').select('*').order('created_at', { ascending: false }),
-          supabase.from('contenedores').select('*').order('created_at', { ascending: false })
-        ]);
+        // programados
+        const { data: prog, error: e1 } = await supabase
+          .from('contenedores_programados')
+          .select('*')
+          .order('created_at', { ascending: false });
         if (e1) throw e1;
-        if (e2) throw e2;
+        const mappedProg = (prog || []).map(r => ({ ...r, programado_id: r.id, source: 'programados' }));
 
-        const mapped = [
-          ...(prog || []).map(r => ({ ...r, programado_id: r.id, kind: 'programado' })),
-          ...(depo || []).map(r => ({ ...r, programado_id: null, kind: 'depot' })),
-        ];
-        if (!dead) setList(mapped);
+        // depozit (contenedores)
+        const { data: depo, error: e2 } = await supabase
+          .from('contenedores')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (e2) throw e2;
+        const mappedDepot = (depo || []).map(r => ({ ...r, programado_id: null, source: 'contenedores' }));
+
+        if (!cancelled) {
+          setItems([...mappedProg, ...mappedDepot]);
+        }
       } catch (err) {
-        console.error('Error loading lists:', err);
+        console.error('Carga fallida:', err);
       } finally {
-        if (!dead) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    load();
-    return () => { dead = true; };
+
+    if (tab !== 'completado') load();
+    return () => { cancelled = true; };
   }, [tab]);
 
-  // ====== FETCH (completado pe zi) ======
+  // completados pe zi
   useEffect(() => {
-    let dead = false;
+    let cancelled = false;
     const loadDone = async () => {
       if (tab !== 'completado') return;
       setLoading(true);
       try {
         const start = new Date(date); start.setHours(0,0,0,0);
         const end = new Date(start); end.setDate(end.getDate() + 1);
+
         const { data, error } = await supabase
           .from('contenedores_salidos')
           .select('*')
@@ -80,148 +93,142 @@ export default function SchedulerPage() {
           .lt('fecha_salida', end.toISOString())
           .order('fecha_salida', { ascending: false });
         if (error) throw error;
-        if (!dead) setDoneList(data || []);
+        if (!cancelled) setDoneItems(data || []);
       } catch (err) {
-        console.error('Error loading completed:', err);
+        console.error('Carga completados fallida:', err);
       } finally {
-        if (!dead) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadDone();
-    return () => { dead = true; };
+    return () => { cancelled = true; };
   }, [tab, date]);
 
-  // ====== FILTRARE LISTE ======
+  // ====== FILTER ======
   const filtered = useMemo(() => {
-    if (tab === 'completado') return doneList;
-    let data = list;
-    if (tab === 'programado') data = data.filter(r => r.kind === 'programado');
-    if (tab === 'pendiente')  data = data.filter(r =>
-      r.kind === 'programado' &&
-      (r.estado === 'pendiente' || r.status === 'pendiente' || r.etapa === 'pendiente')
+    if (tab === 'completado') return doneItems;
+    let list = items;
+    if (tab === 'programado') list = list.filter(x => x.source === 'programados');
+    if (tab === 'pendiente')  list = list.filter(x =>
+      x.source === 'programados' &&
+      (x.estado === 'pendiente' || x.status === 'pendiente' || x.etapa === 'pendiente')
     );
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      data = data.filter(r =>
-        (r.matricula_contenedor || '').toLowerCase().includes(q) ||
-        (r.naviera || '').toLowerCase().includes(q) ||
-        (r.empresa_descarga || '').toLowerCase().includes(q)
+      list = list.filter(x =>
+        (x.matricula_contenedor || '').toLowerCase().includes(q) ||
+        (x.naviera || '').toLowerCase().includes(q) ||
+        (x.empresa_descarga || '').toLowerCase().includes(q)
       );
     }
-    return data;
-  }, [tab, list, doneList, query]);
+    return list;
+  }, [tab, items, doneItems, query]);
 
-  // ====== HECHO – NUMAI pentru programado ======
+  // ====== HECHO (numai pentru PROGRAMADOS) ======
   const handleHecho = async (row) => {
-    if (!canHecho) return;
-    if (row.kind !== 'programado') {
-      alert('„Hecho” este disponibil doar pentru contenedores programados.');
-      return;
-    }
+    if (!(role === 'mecanic' || role === 'dispecer' || role === 'admin')) return;
+    if (row.source !== 'programados') return; // protecție: nu permitem Hecho pe depozit
+
     const payload = {
       p_matricula: row.matricula_contenedor,
       p_programado_id: row.programado_id || row.id || null,
       p_matricula_camion: row.matricula_camion || null,
     };
+
     const { data, error } = await supabase.rpc('finalizar_contenedor', payload);
     if (error || !data?.ok) {
       console.error(error || data);
       alert(data?.error || 'No se pudo completar la salida.');
       return;
     }
-    // scoatem din listă elementul finalizat
-    setList(prev => prev.filter(x => x.matricula_contenedor !== row.matricula_contenedor));
+
+    // Scoatem din UI programatul finalizat
+    setItems(prev => prev.filter(x =>
+      !(x.source === 'programados' && (x.programado_id === row.programado_id || x.id === row.id))
+    ));
   };
 
-  // ====== MODAL PROGRAMAR ======
-  const [openProg, setOpenProg] = useState(false);
-  const [search, setSearch] = useState('');
-  const [options, setOptions] = useState([]);        // sugestii din contenedores
-  const [selected, setSelected] = useState(null);    // container ales (obligatoriu)
-  const [empresaDesc, setEmpresaDesc] = useState('');
-  const [fecha, setFecha] = useState('');
-  const [hora, setHora] = useState('');
-  const [matCamion, setMatCamion] = useState('');
+  // ====== PROGRAMAR (select din contenedores) ======
+  const openProgramar = async () => {
+    setPickQuery('');
+    setPicked(null);
+    setForm({
+      empresa_descarga: '',
+      fecha: new Date().toISOString().slice(0,10),
+      hora: '',
+      matricula_camion: ''
+    });
 
-  const resetProgramar = () => {
-    setSearch('');
-    setOptions([]);
-    setSelected(null);
-    setEmpresaDesc('');
-    setFecha('');
-    setHora('');
-    setMatCamion('');
-  };
+    // încarcă DOAR contenedores (depozit)
+    const { data, error } = await supabase
+      .from('contenedores')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  // căutare live în „contenedores” (min 2 caractere, max 10 rezultate)
-  useEffect(() => {
-    let dead = false;
-    const run = async () => {
-      const s = search.trim().toUpperCase();
-      if (s.length < 2) { if (!dead) setOptions([]); return; }
-      const { data, error } = await supabase
-        .from('contenedores')
-        .select('id, matricula_contenedor, naviera, tipo, posicion, estado, created_at')
-        .ilike('matricula_contenedor', `%${s}%`)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (!dead) {
-        if (error) { console.error(error); setOptions([]); }
-        else setOptions(data || []);
-      }
-    };
-    run();
-    return () => { dead = true; };
-  }, [search]);
-
-  const guardarProgramacion = async (e) => {
-    e.preventDefault();
-    if (!selected) {
-      alert('Selectează un container din listă (depozit).');
+    if (error) {
+      console.error(error);
+      alert('No se pudieron cargar los contenedores del depósito.');
       return;
     }
-    // 1) insert în programados
-    const insertObj = {
-      matricula_contenedor: selected.matricula_contenedor,
-      empresa_descarga: empresaDesc || null,
-      fecha: fecha || null,
-      hora: hora || null,
-      matricula_camion: matCamion || null,
-      naviera: selected.naviera || null,
-      tipo: selected.tipo || null,
-      posicion: selected.posicion || null,
-      estado: selected.estado || null,
+    setDepotList(data || []);
+    setIsOpenProgramar(true);
+  };
+
+  const saveProgramacion = async () => {
+    if (!picked) { alert('Selecciona un contenedor por matrícula.'); return; }
+
+    // 1) insert în contenedores_programados
+    const toInsert = {
+      matricula_contenedor: picked.matricula_contenedor,
+      naviera: picked.naviera || null,
+      tipo: picked.tipo || null,
+      posicion: picked.posicion || null,
+      empresa_descarga: form.empresa_descarga || null,
+      fecha: form.fecha || null,
+      hora: form.hora || null,
+      matricula_camion: form.matricula_camion || null,
+      estado: 'programado'
     };
-    const { data: ins, error: insErr } = await supabase
+    const { data: inserted, error: insErr } = await supabase
       .from('contenedores_programados')
-      .insert(insertObj)
+      .insert([toInsert])
       .select()
-      .maybeSingle();
+      .single();
+
     if (insErr) {
       console.error(insErr);
       alert('No se pudo programar el contenedor.');
       return;
     }
+
     // 2) șterge din contenedores
-    const { error: delErr } = await supabase.from('contenedores').delete().eq('id', selected.id);
+    const { error: delErr } = await supabase
+      .from('contenedores')
+      .delete()
+      .eq('id', picked.id);
+
     if (delErr) {
       console.error(delErr);
-      alert('Se programó, pero no se pudo quitar de "contenedores".');
+      alert('Programado, pero no se pudo eliminar del depósito.');
+      // Continuăm totuși, pentru a nu bloca fluxul.
     }
-    // 3) actualizează lista locală
-    setList(prev => ([
-      { ...ins, programado_id: ins?.id, kind: 'programado' },
-      ...prev.filter(x => x.matricula_contenedor !== selected.matricula_contenedor)
+
+    // 3) actualizează UI: scoate din listă depozit & adaugă la programados
+    setItems(prev => ([
+      // elimin depozitul respectiv
+      ...prev.filter(x => !(x.source === 'contenedores' && x.id === picked.id)),
+      // adaug proaspătul programado
+      { ...inserted, programado_id: inserted.id, source: 'programados' }
     ]));
-    setOpenProg(false);
-    resetProgramar();
+
+    setIsOpenProgramar(false);
   };
 
-  // ====== CALENDAR LATERAL ======
   const monthTitle = useMemo(
     () => date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()),
     [date]
   );
+
   const renderCalendar = () => {
     const y = date.getFullYear();
     const m = date.getMonth();
@@ -244,7 +251,10 @@ export default function SchedulerPage() {
           ) : (
             <button
               key={c.key}
-              className={[styles.day, c.day === date.getDate() ? styles.dayActive : ''].join(' ')}
+              className={[
+                styles.day,
+                c.day === date.getDate() ? styles.dayActive : ''
+              ].join(' ')}
               onClick={() => setDate(new Date(y, m, c.day))}
             >
               {c.day}
@@ -255,23 +265,27 @@ export default function SchedulerPage() {
     );
   };
 
+  // ====== UI ======
   return (
     <div className={styles.pageWrap}>
       <div className={styles.bg} />
       <div className={styles.vignette} />
 
-      {/* Top bar */}
+      {/* top bar */}
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => navigate('/depot')}>
           <BackIcon /> Depot
         </button>
         <h1 className={styles.title}>Programar Contenedor</h1>
-        {isManager ? (
-          <button className={styles.newBtn} onClick={() => setOpenProg(true)}>Programar</button>
-        ) : <span style={{ width: 120 }} />}
+
+        {(role === 'dispecer' || role === 'admin') ? (
+          <button className={styles.newBtn} onClick={openProgramar}>Programar</button>
+        ) : (
+          <span style={{ width: 112 }} />
+        )}
       </div>
 
-      {/* Toolbar */}
+      {/* toolbar */}
       <div className={`${styles.card} ${styles.toolbar}`}>
         <div className={styles.chips}>
           {['todos','programado','pendiente','completado'].map(k => (
@@ -280,14 +294,22 @@ export default function SchedulerPage() {
               className={`${styles.chip} ${tab === k ? styles.chipActive : ''}`}
               onClick={() => setTab(k)}
             >
-              {k === 'todos' ? 'Todos' : k === 'programado' ? 'Programado' : k === 'pendiente' ? 'Pendiente' : 'Completado'}
+              {k === 'todos' && 'Todos'}
+              {k === 'programado' && 'Programado'}
+              {k === 'pendiente' && 'Pendiente'}
+              {k === 'completado' && 'Completado'}
             </button>
           ))}
         </div>
+
         <div className={styles.inputs}>
           <div className={styles.search}>
             <span className={styles.searchIcon}><SearchIcon/></span>
-            <input placeholder="Buscar…" value={query} onChange={(e)=>setQuery(e.target.value)} />
+            <input
+              placeholder="Buscar…"
+              value={query}
+              onChange={(e)=>setQuery(e.target.value)}
+            />
           </div>
           {tab === 'completado' && (
             <input
@@ -300,7 +322,7 @@ export default function SchedulerPage() {
         </div>
       </div>
 
-      {/* Listă + Calendar */}
+      {/* listă + calendar */}
       <div className={styles.grid}>
         <div className={styles.card}>
           {loading ? (
@@ -329,16 +351,19 @@ export default function SchedulerPage() {
             </ul>
           ) : (
             <ul className={styles.list}>
-              {filtered.length === 0 && <p>No hay contenedores.</p>}
+              {filtered.length === 0 && <p>No hay contenedores {tab === 'programado' ? 'programados' : 'en depósito'}.</p>}
               {filtered.map(row => (
-                <li key={(row.kind==='programado'? row.programado_id : row.id) || row.matricula_contenedor} className={styles.item}>
+                <li
+                  key={(row.source==='programados'? row.programado_id : row.id) || row.matricula_contenedor}
+                  className={styles.item}
+                >
                   <div>
                     <div className={styles.itemTop}>
                       <span className={styles.dot} />
                       <span className={styles.cid}>{row.matricula_contenedor}</span>
-                      {row.kind === 'programado'
+                      {row.source === 'programados'
                         ? <span className={`${styles.badge} ${styles.badgeInfo}`}>Programado</span>
-                        : <span className={`${styles.badge} ${styles.badgeWarn}`}>No programado</span>
+                        : <span className={`${styles.badge} ${styles.badgeWarn}`}>En depósito</span>
                       }
                     </div>
                     <div className={styles.meta}>
@@ -352,16 +377,21 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className={styles.actions}>
-                    {/* Edit/Cancel doar pentru programado + manager */}
-                    {isManager && row.kind === 'programado' && (
+                    {/* DOAR pentru programados */}
+                    {(role === 'dispecer' || role === 'admin') && row.source === 'programados' && (
                       <>
-                        <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>Editar</button>
-                        <button className={styles.actionGhost} onClick={()=>alert('Cancelar próximamente')}>Cancelar</button>
+                        <button className={styles.actionMini} onClick={()=>alert('Editar próximamente')}>
+                          Editar
+                        </button>
+                        <button className={styles.actionGhost} onClick={()=>alert('Cancelar próximamente')}>
+                          Cancelar
+                        </button>
                       </>
                     )}
-                    {/* Hecho doar pentru programado */}
-                    {canHecho && row.kind === 'programado' && (
-                      <button className={styles.actionOk} onClick={()=>handleHecho(row)}>Hecho</button>
+                    {(role === 'mecanic' || role === 'dispecer' || role === 'admin') && row.source === 'programados' && (
+                      <button className={styles.actionOk} onClick={()=>handleHecho(row)}>
+                        Hecho
+                      </button>
                     )}
                   </div>
                 </li>
@@ -373,81 +403,71 @@ export default function SchedulerPage() {
         {renderCalendar()}
       </div>
 
-      {/* MODAL PROGRAMAR (manager only) */}
-      {openProg && isManager && (
-        <div className={styles.modalOverlay} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>
+      {/* MODAL Programar */}
+      {isOpenProgramar && (role === 'dispecer' || role === 'admin') && (
+        <div className={styles.modalOverlay} onClick={()=>setIsOpenProgramar(false)}>
           <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h3>Programar contenedor</h3>
-              <button className={styles.closeIcon} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>✕</button>
+              <button className={styles.closeIcon} onClick={()=>setIsOpenProgramar(false)}>✕</button>
             </div>
 
-            <form className={styles.modalBody} onSubmit={guardarProgramacion}>
-              {/* Căutare + rezultate */}
+            <div className={styles.modalBody}>
+              {/* selector din contenedores */}
               <div className={styles.inputGroup}>
-                <label>Matrícula (selectează din depozit)</label>
+                <label>Buscar por matrícula</label>
                 <input
                   type="text"
-                  placeholder="Ej: TEST1234567"
-                  value={search}
-                  onChange={(e)=>{ setSearch(e.target.value.toUpperCase()); setSelected(null); }}
+                  placeholder="Ej. MSKU1234567"
+                  value={pickQuery}
+                  onChange={(e)=>setPickQuery(e.target.value.toUpperCase())}
                 />
-                {options.length > 0 && (
-                  <div style={{marginTop:8, border:'1px solid rgba(255,255,255,.15)', borderRadius:10, overflow:'hidden'}}>
-                    {options.map(opt => (
-                      <button
-                        type="button"
-                        key={opt.id}
-                        onClick={()=> setSelected(opt)}
-                        style={{
-                          width:'100%', textAlign:'left', padding:'10px 12px',
-                          background: selected?.id===opt.id ? 'rgba(59,130,246,.25)' : 'rgba(255,255,255,.05)',
-                          color:'#fff', border:'none', cursor:'pointer'
-                        }}
-                      >
-                        <strong>{opt.matricula_contenedor}</strong> &nbsp;·&nbsp;
-                        <span style={{opacity:.85}}>{opt.naviera || '—'}</span> &nbsp;·&nbsp;
-                        <span style={{opacity:.65}}>{opt.tipo || '—'}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {selected && (
-                  <small style={{display:'block', marginTop:6, opacity:.9}}>
-                    Selectat: <strong>{selected.matricula_contenedor}</strong> ({selected.naviera || '—'}, {selected.tipo || '—'})
-                  </small>
-                )}
               </div>
 
-              <div className={styles.inputGrid}>
+              <div style={{maxHeight: 220, overflowY: 'auto', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: 8}}>
+                {depotList
+                  .filter(c => (c.matricula_contenedor || '').toUpperCase().includes(pickQuery))
+                  .map(c => (
+                    <label key={c.id} style={{display:'flex', alignItems:'center', gap:10, padding:'6px 8px', cursor:'pointer'}}>
+                      <input
+                        type="radio"
+                        name="pick"
+                        checked={picked?.id === c.id}
+                        onChange={()=>setPicked(c)}
+                      />
+                      <span style={{fontWeight:700}}>{c.matricula_contenedor}</span>
+                      <span style={{opacity:.8}}>{c.naviera || '—'} • {c.tipo || '—'} {c.posicion ? `• ${c.posicion}` : ''}</span>
+                    </label>
+                  ))
+                }
+                {depotList.length === 0 && <p style={{opacity:.7, margin:8}}>No hay contenedores en depósito.</p>}
+              </div>
+
+              {/* detalii programare */}
+              <div className={styles.inputGrid} style={{marginTop:12}}>
                 <div className={styles.inputGroup}>
                   <label>Empresa de descarga</label>
-                  <input value={empresaDesc} onChange={(e)=>setEmpresaDesc(e.target.value)} placeholder="Empresa X" />
+                  <input value={form.empresa_descarga} onChange={e=>setForm(f=>({...f, empresa_descarga: e.target.value}))} />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Fecha</label>
-                  <input type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} />
+                  <input type="date" value={form.fecha} onChange={e=>setForm(f=>({...f, fecha: e.target.value}))} />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Hora</label>
-                  <input type="time" value={hora} onChange={(e)=>setHora(e.target.value)} />
+                  <input type="time" value={form.hora} onChange={e=>setForm(f=>({...f, hora: e.target.value}))} />
                 </div>
                 <div className={styles.inputGroup}>
-                  <label>Matrícula camión</label>
-                  <input value={matCamion} onChange={(e)=>setMatCamion(e.target.value.toUpperCase())} placeholder="B-123-ABC" />
+                  <label>Matrícula camión (opcional)</label>
+                  <input value={form.matricula_camion} onChange={e=>setForm(f=>({...f, matricula_camion: e.target.value.toUpperCase()}))} />
                 </div>
               </div>
+            </div>
 
-              <div className={styles.modalFooter}>
-                <button type="button" className={styles.actionGhost} onClick={()=>{ setOpenProg(false); resetProgramar(); }}>
-                  Cancelar
-                </button>
-                <button type="submit" className={styles.actionMini} disabled={!selected}>
-                  Guardar programación
-                </button>
-              </div>
-            </form>
-
+            <div className={styles.modalFooter}>
+              <button className={styles.actionGhost} onClick={()=>setIsOpenProgramar(false)}>Cancelar</button>
+              <button className={styles.actionMini} onClick={saveProgramacion}>Guardar</button>
+            </div>
           </div>
         </div>
       )}
