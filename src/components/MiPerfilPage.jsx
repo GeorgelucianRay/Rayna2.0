@@ -2,442 +2,453 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import Layout from './Layout';
 import styles from './MiPerfilPage.module.css';
 
+/* ===== Iconos minimal ===== */
 const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+    <path d="M17 3a2.828 2.828 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
   </svg>
 );
 const CloseIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line>
-  </svg>
-);
-const AlertIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
-    <line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
+    <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
 
-/** 👉 ajustează aici dacă ai alte rute */
-const ROUTES = {
-  nomina: ['/calculadora-nomina', '/nomina', '/calculadora'],
-  vacaciones: ['/vacaciones', '/mi-perfil/vacaciones'],
-};
+/* ===== Helpers ===== */
+const startOfDay = (d)=>{ const x=new Date(d); x.setHours(0,0,0,0); return x; };
+const monthLabelES = (d) =>
+  d.toLocaleDateString('es-ES',{month:'long', year:'numeric'})
+   .replace(/^\p{L}/u, c => c.toUpperCase());
 
+/* Mini Calendar (widget) */
+function MiniCalendar({ date, marks }) {
+  const y = date.getFullYear(), m = date.getMonth();
+  const first = new Date(y, m, 1);
+  const startDay = (first.getDay() + 6) % 7; // L(0)..D(6)
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, key: `d-${d}` });
+
+  return (
+    <div className={styles.miniCal}>
+      <div className={styles.miniCalHead}>
+        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+      </div>
+      <div className={styles.miniCalGrid}>
+        {cells.map((c) => c.blank ? (
+          <div key={c.key} className={styles.miniBlank}/>
+        ) : (
+          <div
+            key={c.key}
+            className={[
+              styles.miniDay,
+              marks?.has(c.day) ? styles.miniHasData : ''
+            ].join(' ')}
+          >
+            {c.day}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Donut (Vacaciones) – conic-gradient, sin libs */
+function Donut({ total=23, usadas=0, pendientes=0 }) {
+  const done = usadas + pendientes; // tomadas o ya aprobadas a futuro
+  const left = Math.max(total - done, 0);
+  const pct = total > 0 ? (done / total) : 0;
+  const angle = Math.min(360 * pct, 360);
+  const bg = `conic-gradient(var(--accent) ${angle}deg, rgba(255,255,255,.08) ${angle}deg)`;
+  return (
+    <div className={styles.donutWrap}>
+      <div className={styles.donutRing} style={{ background: bg }}>
+        <div className={styles.donutHole}>
+          <div className={styles.donutBig}>{left}</div>
+          <div className={styles.donutSub}>días<br/>disponibles</div>
+        </div>
+      </div>
+      <div className={styles.donutLegend}>
+        <span><i className={styles.dotLeft}/> Disponibles: {left}</span>
+        <span><i className={styles.dotUsed}/> Usadas: {usadas}</span>
+        <span><i className={styles.dotPend}/> Pendientes: {pendientes}</span>
+        <span><i className={styles.dotTotal}/> Total año: {total}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Página ===== */
 export default function MiPerfilPage() {
-  const navigate = useNavigate();
   const { user, profile: authProfile, loading, setProfile: setAuthProfile } = useAuth();
+  const navigate = useNavigate();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editable, setEditable] = useState(null);
+  const [editableProfile, setEditableProfile] = useState(null);
 
-  // widgets data
-  const [alerts, setAlerts] = useState([]);
-  const [nomina, setNomina] = useState({
-    desayunos: 0, cenas: 0, procenas: 0, km: 0, contenedores: 0, plus: 0, dias: 0,
+  // Widgets data
+  const [currentDate] = useState(()=> new Date());
+  const [nominaSummary, setNominaSummary] = useState({
+    desayunos: 0, cenas: 0, procenas: 0, km: 0, conts: 0, dias: 0
   });
-  const [vac, setVac] = useState({ disponibles: 0, anuales: 23, pendientes: 0 });
-
-  const year = useMemo(() => new Date().getFullYear(), []);
-  const month = useMemo(() => new Date().getMonth() + 1, []);
-
-  // ---- helpers
-  const buildAlerts = (p) => {
-    if (!p) return [];
-    const arr = [];
-    const today = new Date(); today.setHours(0,0,0,0);
-    const pushDate = (date, label) => {
-      if (!date) return;
-      const d = new Date(date); d.setHours(0,0,0,0);
-      const diff = Math.ceil((d - today) / 86400000);
-      if (diff <= 30) arr.push({ label, diff, expired: diff < 0 });
+  const [nominaMarks, setNominaMarks] = useState(new Set());
+  const vacacionesInfo = useMemo(() => {
+    // Dacă nu ai încă schema, folosim defaults sigure.
+    // Dacă ai un json în profiles.vacaciones_info, citește-l aici.
+    const v = authProfile?.vacaciones_info || null;
+    return {
+      total: v?.total ?? 23,
+      usadas: v?.usadas ?? 0,
+      pendientes: v?.pendientes ?? 0
     };
-    pushDate(p.cap_expirare, 'CAP');
-    pushDate(p.carnet_caducidad, 'Permiso de conducir');
-    if (p.tiene_adr) pushDate(p.adr_caducidad, 'ADR');
-    if (p.camioane?.fecha_itv) pushDate(p.camioane.fecha_itv, `ITV Camión ${p.camioane?.matricula || ''}`);
-    if (p.remorci?.fecha_itv) pushDate(p.remorci.fecha_itv, `ITV Remolque ${p.remorci?.matricula || ''}`);
-    return arr.sort((a,b)=>a.diff-b.diff);
-  };
+  }, [authProfile]);
 
-  const openFirst = (arr) => navigate(arr[0]);
-
-  // ---- load widgets
+  /* === Cargar nomina widget (boceto) ===
+     Lee pontaje_curente(user_id, an, mes).pontaj_complet.zilePontaj[0..30]
+  */
   useEffect(() => {
-    if (!authProfile || !user) return;
+    const run = async () => {
+      if (!user) return;
 
-    setAlerts(buildAlerts(authProfile));
+      const y = currentDate.getFullYear();
+      const m = currentDate.getMonth() + 1;
+      const { data, error } = await supabase
+        .from('pontaje_curente') // tabla ta
+        .select('pontaj_complet')
+        .eq('user_id', user.id)
+        .eq('an', y)
+        .eq('mes', m)
+        .maybeSingle();
 
-    // Nómina (din ciorna curentă)
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('pontaje_curente')
-          .select('pontaj_complet')
-          .eq('user_id', user.id)
-          .eq('an', year)
-          .eq('mes', month)
-          .maybeSingle();
-
-        const zile = data?.pontaj_complet?.zilePontaj || [];
-        let d=0,c=0,p=0,km=0,cont=0,plus=0,workDays=0;
-
-        zile.forEach(z => {
-          if (z?.desayuno) d++;
-          if (z?.cena) c++;
-          if (z?.procena) p++;
-          const start = parseFloat(z?.km_iniciar || 0);
-          const end   = parseFloat(z?.km_final   || 0);
-          if (end > start) km += (end - start);
-          cont += parseFloat(z?.contenedores || 0);
-          plus += parseFloat(z?.suma_festivo || 0);
-          if (z?.desayuno || z?.cena || z?.procena || (end>start) || (z?.contenedores>0) || (z?.suma_festivo>0)) {
-            workDays++;
-          }
-        });
-
-        setNomina({ desayunos:d, cenas:c, procenas:p, km, contenedores:cont, plus, dias: workDays });
-      } catch {
-        // dacă tabela nu există / nu e rând -> păstrăm zero-uri
+      if (error) {
+        console.warn('No se pudo leer borrador de nómina:', error.message);
+        setNominaSummary({desayunos:0,cenas:0,procenas:0,km:0,conts:0,dias:0});
+        setNominaMarks(new Set());
+        return;
       }
-    })();
 
-    // Vacaciones – încearcă să citească un rezumat; dacă nu există, folosește fallback
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('vacaciones_estado')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (!error && data) {
-          setVac({
-            disponibles: Number(data.disponibles ?? 0),
-            anuales: Number(data.anuales ?? 23),
-            pendientes: Number(data.pendientes ?? 0),
-          });
+      const zile = data?.pontaj_complet?.zilePontaj || [];
+      let D=0, C=0, P=0, KM=0, CT=0;
+      const marks = new Set();
+
+      zile.forEach((zi, idx) => {
+        if (!zi) return;
+        const d = (idx+1);
+        const kmZi = (parseFloat(zi.km_final)||0) - (parseFloat(zi.km_iniciar)||0);
+        if (zi.desayuno) D++;
+        if (zi.cena) C++;
+        if (zi.procena) P++;
+        if (kmZi > 0) KM += kmZi;
+        if ((zi.contenedores||0) > 0) CT += (zi.contenedores||0);
+
+        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores||0) > 0 || (zi.suma_festivo||0)>0) {
+          marks.add(d);
         }
-      } catch {
-        // ignorăm – rămâne fallback-ul
-      }
-    })();
+      });
 
-  }, [authProfile, user, year, month]);
+      setNominaSummary({
+        desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size
+      });
+      setNominaMarks(marks);
+    };
+    run();
+  }, [user, currentDate]);
 
-  // ---- edit profile
   const openEdit = () => {
     if (!authProfile) return;
-    setEditable({
+    setEditableProfile({
       ...authProfile,
       new_camion_matricula: '',
-      new_remorca_matricula: '',
+      new_remorca_matricula: ''
     });
     setIsEditOpen(true);
   };
 
-  const submitEdit = async (e) => {
+  const saveProfile = async (e) => {
     e.preventDefault();
     try {
-      let camionId = authProfile.camion_id;
-      let remorcaId = authProfile.remorca_id;
+      let camionIdToUpdate = authProfile.camion_id;
+      let remorcaIdToUpdate = authProfile.remorca_id;
 
-      if (!camionId && editable.new_camion_matricula) {
-        const { data, error } = await supabase
+      if (!camionIdToUpdate && editableProfile.new_camion_matricula) {
+        const { data: newCamion, error } = await supabase
           .from('camioane')
-          .insert({ matricula: editable.new_camion_matricula.toUpperCase() })
+          .insert({ matricula: editableProfile.new_camion_matricula })
           .select().single();
         if (error) throw error;
-        camionId = data.id;
+        camionIdToUpdate = newCamion.id;
       }
-      if (!remorcaId && editable.new_remorca_matricula) {
-        const { data, error } = await supabase
+
+      if (!remorcaIdToUpdate && editableProfile.new_remorca_matricula) {
+        const { data: newRemorca, error } = await supabase
           .from('remorci')
-          .insert({ matricula: editable.new_remorca_matricula.toUpperCase() })
+          .insert({ matricula: editableProfile.new_remorca_matricula })
           .select().single();
         if (error) throw error;
-        remorcaId = data.id;
+        remorcaIdToUpdate = newRemorca.id;
       }
 
       const payload = {
-        nombre_completo: editable.nombre_completo,
-        cap_expirare: editable.cap_expirare || null,
-        carnet_caducidad: editable.carnet_caducidad || null,
-        tiene_adr: !!editable.tiene_adr,
-        adr_caducidad: editable.tiene_adr ? (editable.adr_caducidad || null) : null,
-        camion_id: camionId || null,
-        remorca_id: remorcaId || null,
+        nombre_completo: editableProfile.nombre_completo,
+        cap_expirare: editableProfile.cap_expirare || null,
+        carnet_caducidad: editableProfile.carnet_caducidad || null,
+        tiene_adr: editableProfile.tiene_adr,
+        adr_caducidad: editableProfile.tiene_adr ? (editableProfile.adr_caducidad || null) : null,
+        camion_id: camionIdToUpdate || null,
+        remorca_id: remorcaIdToUpdate || null,
       };
 
-      const { error: upErr } = await supabase.from('profiles')
-        .update(payload).eq('id', user.id);
+      const { error: upErr } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', user.id);
       if (upErr) throw upErr;
 
-      const { data: refreshed } = await supabase
+      const { data: updated } = await supabase
         .from('profiles')
         .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
         .eq('id', user.id).maybeSingle();
-
-      setAuthProfile(refreshed);
+      setAuthProfile(updated);
       setIsEditOpen(false);
-      alert('¡Perfil actualizado!');
+      alert('Perfil actualizado con éxito.');
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
   };
 
+  const goNomina = () => navigate('/calculadora-nomina');
+  const goVacaciones = () => navigate('/vacaciones-standalone');
+  const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
+  const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
+
   if (loading || !authProfile) {
-    return <div className={styles.loadingScreen}>Cargando…</div>;
+    return <div className={styles.loading}>Cargando…</div>;
   }
 
-  const nombre = authProfile.nombre_completo || 'Sin nombre';
-  const camionMat = authProfile.camioane?.matricula || 'No asignado';
-  const remolqueMat = authProfile.remorci?.matricula || 'No asignado';
-
-  // ring vacaciones
-  const vacTot = vac.anuales > 0 ? vac.anuales : 23;
-  const vacDisp = Math.max(0, Math.min(vacTot, vac.disponibles));
-  const vacPct = vacTot ? (vacDisp / vacTot) : 0;
-  const CIRC = 2 * Math.PI * 36; // r=36
-
   return (
-    <Layout backgroundClassName="profile-background">
-      <div className={styles.page}>
-        {/* header */}
-        <div className={styles.header}>
-          <h1 className={styles.title}>Mi Perfil</h1>
-          <button className={styles.btnPrimary} onClick={openEdit}>
-            <EditIcon /> Editar perfil
-          </button>
-        </div>
-
-        {/* alert widget */}
-        {alerts.length > 0 && (
-          <div className={`${styles.card} ${styles.cardAlert}`}>
-            <div className={styles.alertHeader}>
-              <span className={styles.alertIcon}><AlertIcon/></span>
-              <h3>Alertas próximas / vencidas</h3>
-            </div>
-            <div className={styles.alertChips}>
-              {alerts.map((a,i)=>(
-                <span key={i} className={`${styles.chip} ${a.expired?styles.chipDanger:styles.chipWarn}`}>
-                  {a.label} · {a.expired?`vencido hace ${Math.abs(a.diff)} días`:`vence en ${a.diff} días`}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* grid principal */}
-        <div className={styles.grid}>
-          {/* Conductor */}
-          <section className={styles.card}>
-            <h3 className={styles.cardTitle}>Conductor</h3>
-            <div className={styles.infoGrid}>
-              <div>
-                <div className={styles.kvLabel}>Nombre completo</div>
-                <div className={styles.kvValue}>{nombre}</div>
-              </div>
-              <div>
-                <div className={styles.kvLabel}>CAP</div>
-                <div className={styles.kvValue}>{authProfile.cap_expirare || '—'}</div>
-              </div>
-              <div>
-                <div className={styles.kvLabel}>Carnet conducir</div>
-                <div className={styles.kvValue}>{authProfile.carnet_caducidad || '—'}</div>
-              </div>
-              <div>
-                <div className={styles.kvLabel}>ADR</div>
-                <div className={styles.kvValue}>{authProfile.tiene_adr ? (authProfile.adr_caducidad || 'Sí') : 'No'}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Camión */}
-          <section className={styles.card}>
-            <div className={styles.cardHeadRow}>
-              <h3 className={styles.cardTitle}>Camión</h3>
-              {authProfile.camion_id && (
-                <button className={styles.btnGhost} onClick={()=>navigate(`/camion/${authProfile.camion_id}`)}>
-                  Ver ficha
-                </button>
-              )}
-            </div>
-            <div className={styles.infoGrid}>
-              <div>
-                <div className={styles.kvLabel}>Matrícula</div>
-                <div className={styles.kvValue}>{camionMat}</div>
-              </div>
-              <div>
-                <div className={styles.kvLabel}>ITV</div>
-                <div className={styles.kvValue}>{authProfile.camioane?.fecha_itv || '—'}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Remolque */}
-          <section className={styles.card}>
-            <div className={styles.cardHeadRow}>
-              <h3 className={styles.cardTitle}>Remolque</h3>
-              {authProfile.remorca_id && (
-                <button className={styles.btnGhost} onClick={()=>navigate(`/remorca/${authProfile.remorca_id}`)}>
-                  Ver ficha
-                </button>
-              )}
-            </div>
-            <div className={styles.infoGrid}>
-              <div>
-                <div className={styles.kvLabel}>Matrícula</div>
-                <div className={styles.kvValue}>{remolqueMat}</div>
-              </div>
-              <div>
-                <div className={styles.kvLabel}>ITV</div>
-                <div className={styles.kvValue}>{authProfile.remorci?.fecha_itv || '—'}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Widget Nómina */}
-          <section className={`${styles.card} ${styles.widget}`}>
-            <div className={styles.widgetHeader}>
-              <h3 className={styles.cardTitle}>Nómina</h3>
-              <span className={styles.widgetBadge}>Beta</span>
-            </div>
-
-            <div className={styles.pills}>
-              <span className={styles.pill}>Desayunos: <b>{nomina.desayunos}</b></span>
-              <span className={styles.pill}>Cenas: <b>{nomina.cenas}</b></span>
-              <span className={styles.pill}>Procenas: <b>{nomina.procenas}</b></span>
-            </div>
-
-            <div className={styles.widgetLine}>
-              <span>Este mes:</span>
-              <span className={styles.dim}> {nomina.km} km</span>
-              <span className={styles.sep}>•</span>
-              <span className={styles.dim}>{nomina.contenedores} contenedores</span>
-              <span className={styles.sep}>•</span>
-              <span className={styles.dim}>+{nomina.plus.toFixed ? nomina.plus.toFixed(2) : nomina.plus} €</span>
-              <span className={styles.sep}>•</span>
-              <span className={styles.dim}>{nomina.dias} días trabajados</span>
-            </div>
-
-            <button className={styles.btnPrimary} onClick={() => openFirst(ROUTES.nomina)}>
-              Abrir calculadora
-            </button>
-          </section>
-
-          {/* Widget Vacaciones */}
-          <section className={`${styles.card} ${styles.widget}`}>
-            <div className={styles.widgetHeader}>
-              <h3 className={styles.cardTitle}>Vacaciones</h3>
-            </div>
-
-            <div className={styles.vacBox}>
-              <div className={styles.donut} aria-label="días disponibles">
-                <svg viewBox="0 0 80 80">
-                  <circle className={styles.donutBg} cx="40" cy="40" r="36" />
-                  <circle
-                    className={styles.donutProg}
-                    cx="40" cy="40" r="36"
-                    style={{ strokeDasharray: `${CIRC * vacPct} ${CIRC}` }}
-                  />
-                </svg>
-                <div className={styles.donutLabel}>
-                  <div className={styles.donutBig}>{vacDisp}</div>
-                  <div className={styles.donutSmall}>días</div>
-                </div>
-              </div>
-
-              <div className={styles.vacText}>
-                <div><b>Te quedan {vacDisp}</b> de <b>{vacTot}</b> este año.</div>
-                <div className={styles.dim}>Pendientes de aprobación: {vac.pendientes}</div>
-              </div>
-            </div>
-
-            <button className={styles.btnPrimary} onClick={() => openFirst(ROUTES.vacaciones)}>
-              Abrir vacaciones
-            </button>
-          </section>
-        </div>
-
-        {/* Modal editar */}
-        {isEditOpen && editable && (
-          <div className={styles.modalOverlay} onClick={()=>setIsEditOpen(false)}>
-            <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
-              <div className={styles.modalTop}>
-                <h3>Editar perfil</h3>
-                <button className={styles.iconClose} onClick={()=>setIsEditOpen(false)}><CloseIcon/></button>
-              </div>
-
-              <form className={styles.form} onSubmit={submitEdit}>
-                <label>
-                  <span>Nombre completo</span>
-                  <input type="text" value={editable.nombre_completo || ''} onChange={(e)=>setEditable({...editable, nombre_completo:e.target.value})}/>
-                </label>
-
-                <div className={styles.formTwo}>
-                  <label>
-                    <span>Caducidad CAP</span>
-                    <input type="date" value={editable.cap_expirare || ''} onChange={(e)=>setEditable({...editable, cap_expirare:e.target.value})}/>
-                  </label>
-                  <label>
-                    <span>Caducidad Carnet</span>
-                    <input type="date" value={editable.carnet_caducidad || ''} onChange={(e)=>setEditable({...editable, carnet_caducidad:e.target.value})}/>
-                  </label>
-                </div>
-
-                <div className={styles.formTwo}>
-                  <label>
-                    <span>¿Tiene ADR?</span>
-                    <select value={editable.tiene_adr ? 'true' : 'false'} onChange={(e)=>setEditable({...editable, tiene_adr:e.target.value==='true'})}>
-                      <option value="false">No</option>
-                      <option value="true">Sí</option>
-                    </select>
-                  </label>
-                  {editable.tiene_adr && (
-                    <label>
-                      <span>Caducidad ADR</span>
-                      <input type="date" value={editable.adr_caducidad || ''} onChange={(e)=>setEditable({...editable, adr_caducidad:e.target.value})}/>
-                    </label>
-                  )}
-                </div>
-
-                {!authProfile.camion_id ? (
-                  <label>
-                    <span>Matrícula Camión (crear)</span>
-                    <input type="text" placeholder="1710KKY" value={editable.new_camion_matricula} onChange={(e)=>setEditable({...editable, new_camion_matricula:e.target.value.toUpperCase()})}/>
-                  </label>
-                ) : (
-                  <label>
-                    <span>Camión asignado</span>
-                    <input type="text" disabled value={camionMat}/>
-                  </label>
-                )}
-
-                {!authProfile.remorca_id ? (
-                  <label>
-                    <span>Matrícula Remolque (crear)</span>
-                    <input type="text" placeholder="R0000ABC" value={editable.new_remorca_matricula} onChange={(e)=>setEditable({...editable, new_remorca_matricula:e.target.value.toUpperCase()})}/>
-                  </label>
-                ) : (
-                  <label>
-                    <span>Remolque asignado</span>
-                    <input type="text" disabled value={remolqueMat}/>
-                  </label>
-                )}
-
-                <div className={styles.formActions}>
-                  <button type="button" className={styles.btnGhost} onClick={()=>setIsEditOpen(false)}>Cancelar</button>
-                  <button type="submit" className={styles.btnPrimary}>Guardar cambios</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+    <div className={styles.page}>
+      {/* Header */}
+      <div className={styles.header}>
+        <h1>Mi Perfil</h1>
+        <button className={styles.editBtn} onClick={openEdit}><EditIcon/> Editar perfil</button>
       </div>
-    </Layout>
+
+      {/* Cards: Conductor / Camión / Remolque */}
+      <div className={styles.cardsGrid}>
+        <section className={styles.card}>
+          <div className={styles.cardTitle}>Conductor</div>
+          <div className={styles.rows2}>
+            <div>
+              <span className={styles.k}>Nombre completo</span>
+              <span className={styles.v}>{authProfile.nombre_completo || '—'}</span>
+            </div>
+            <div>
+              <span className={styles.k}>CAP</span>
+              <span className={styles.v}>{authProfile.cap_expirare || '—'}</span>
+            </div>
+            <div>
+              <span className={styles.k}>Carnet conducir</span>
+              <span className={styles.v}>{authProfile.carnet_caducidad || '—'}</span>
+            </div>
+            <div>
+              <span className={styles.k}>ADR</span>
+              <span className={styles.v}>{authProfile.tiene_adr ? (authProfile.adr_caducidad || 'Sí') : 'No'}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.card}>
+          <div className={styles.cardTitleRow}>
+            <div className={styles.cardTitle}>Camión</div>
+            <button className={styles.ghostBtn} onClick={goCamion}>Ver ficha</button>
+          </div>
+          <div className={styles.rows2}>
+            <div>
+              <span className={styles.k}>Matrícula</span>
+              <span className={styles.v}>{authProfile.camioane?.matricula || 'No asignado'}</span>
+            </div>
+            <div>
+              <span className={styles.k}>ITV</span>
+              <span className={styles.v}>{authProfile.camioane?.fecha_itv || '—'}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.card}>
+          <div className={styles.cardTitleRow}>
+            <div className={styles.cardTitle}>Remolque</div>
+            <button className={styles.ghostBtn} onClick={goRemolque}>Ver ficha</button>
+          </div>
+          <div className={styles.rows2}>
+            <div>
+              <span className={styles.k}>Matrícula</span>
+              <span className={styles.v}>{authProfile.remorci?.matricula || 'No asignado'}</span>
+            </div>
+            <div>
+              <span className={styles.k}>ITV</span>
+              <span className={styles.v}>{authProfile.remorci?.fecha_itv || '—'}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Widgets: Nómina + Vacaciones */}
+      <div className={styles.widgetsGrid}>
+        <section className={`${styles.card} ${styles.widget}`}>
+          <div className={styles.widgetHeader}>
+            <div className={styles.cardTitle}>Nómina</div>
+            <span className={styles.badge}>Beta</span>
+          </div>
+
+          <div className={styles.widgetBody}>
+            <div className={styles.widgetCol}>
+              <div className={styles.statLine}>
+                <strong>Desayunos:</strong> {nominaSummary.desayunos}
+                <strong className={styles.dotSep}>Cenas:</strong> {nominaSummary.cenas}
+                <strong className={styles.dotSep}>Procenas:</strong> {nominaSummary.procenas}
+              </div>
+              <div className={styles.statLine2}>
+                Este mes: <b>{nominaSummary.km}</b> km • <b>{nominaSummary.conts}</b> contenedores • <b>{nominaSummary.dias}</b> días trabajados
+              </div>
+              <button className={styles.cta} onClick={goNomina}>Abrir calculadora</button>
+            </div>
+
+            <div className={styles.widgetColMiniCal}>
+              <div className={styles.miniCalTitle}>{monthLabelES(currentDate)}</div>
+              <MiniCalendar date={currentDate} marks={nominaMarks}/>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${styles.card} ${styles.widget}`}>
+          <div className={styles.widgetHeader}>
+            <div className={styles.cardTitle}>Vacaciones</div>
+          </div>
+
+          <div className={styles.widgetBody}>
+            <div className={styles.widgetColMini}>
+              <Donut
+                total={vacacionesInfo.total}
+                usadas={vacacionesInfo.usadas}
+                pendientes={vacacionesInfo.pendientes}
+              />
+            </div>
+            <div className={styles.widgetCol}>
+              <p className={styles.vacHint}>
+                Solicita días, ve aprobaciones y pendientes. <br/>
+                Hoy: {new Date().toLocaleDateString('es-ES')}
+              </p>
+              <button className={styles.cta} onClick={goVacaciones}>Abrir vacaciones</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Popup Editar Perfil */}
+      {isEditOpen && editableProfile && (
+        <div className={styles.modalOverlay} onClick={()=>setIsEditOpen(false)}>
+          <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>Editar perfil</h3>
+              <button className={styles.iconBtn} onClick={()=>setIsEditOpen(false)}><CloseIcon/></button>
+            </div>
+
+            <form className={styles.modalBody} onSubmit={saveProfile}>
+              <div className={styles.inputGroup}>
+                <label>Nombre Completo</label>
+                <input
+                  type="text"
+                  value={editableProfile.nombre_completo || ''}
+                  onChange={(e)=> setEditableProfile(p=>({...p, nombre_completo: e.target.value}))}
+                />
+              </div>
+              <div className={styles.grid2}>
+                <div className={styles.inputGroup}>
+                  <label>Caducidad CAP</label>
+                  <input
+                    type="date"
+                    value={editableProfile.cap_expirare || ''}
+                    onChange={(e)=> setEditableProfile(p=>({...p, cap_expirare: e.target.value}))}
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Caducidad Carnet</label>
+                  <input
+                    type="date"
+                    value={editableProfile.carnet_caducidad || ''}
+                    onChange={(e)=> setEditableProfile(p=>({...p, carnet_caducidad: e.target.value}))}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.grid2}>
+                <div className={styles.inputGroup}>
+                  <label>¿Tiene ADR?</label>
+                  <select
+                    value={String(!!editableProfile.tiene_adr)}
+                    onChange={(e)=> setEditableProfile(p=>({...p, tiene_adr: e.target.value === 'true'}))}
+                  >
+                    <option value="false">No</option>
+                    <option value="true">Sí</option>
+                  </select>
+                </div>
+                {editableProfile.tiene_adr && (
+                  <div className={styles.inputGroup}>
+                    <label>Caducidad ADR</label>
+                    <input
+                      type="date"
+                      value={editableProfile.adr_caducidad || ''}
+                      onChange={(e)=> setEditableProfile(p=>({...p, adr_caducidad: e.target.value}))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Nuevos vehículos si faltan */}
+              {!authProfile.camion_id ? (
+                <div className={styles.inputGroup}>
+                  <label>Matrícula Camión</label>
+                  <input
+                    type="text"
+                    placeholder="Introduce la matrícula…"
+                    value={editableProfile.new_camion_matricula}
+                    onChange={(e)=> setEditableProfile(p=>({...p, new_camion_matricula: e.target.value.toUpperCase()}))}
+                  />
+                </div>
+              ) : (
+                <div className={styles.inputGroup}>
+                  <label>Camión asignado</label>
+                  <input type="text" value={authProfile.camioane?.matricula || ''} disabled />
+                </div>
+              )}
+              {!authProfile.remorca_id ? (
+                <div className={styles.inputGroup}>
+                  <label>Matrícula Remolque</label>
+                  <input
+                    type="text"
+                    placeholder="Introduce la matrícula…"
+                    value={editableProfile.new_remorca_matricula}
+                    onChange={(e)=> setEditableProfile(p=>({...p, new_remorca_matricula: e.target.value.toUpperCase()}))}
+                  />
+                </div>
+              ) : (
+                <div className={styles.inputGroup}>
+                  <label>Remolque asignado</label>
+                  <input type="text" value={authProfile.remorci?.matricula || ''} disabled />
+                </div>
+              )}
+
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnGhost} onClick={()=>setIsEditOpen(false)}>Cancelar</button>
+                <button type="submit" className={styles.btnPrimary}>Guardar cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
