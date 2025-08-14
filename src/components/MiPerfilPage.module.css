@@ -1,7 +1,6 @@
-/* fundal & layout-ul tău vin din <Layout backgroundClassName="profile-background"> */
+.page{color:#fff}
 
 /* header */
-.page{color:#fff}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
 .title{font-size:2rem;font-weight:800;letter-spacing:.3px}
 
@@ -21,7 +20,7 @@
 }
 .btnGhost:hover{opacity:.95}
 
-/* cards (strat solid + blur pentru iOS) */
+/* card (solid + blur pentru iOS) */
 .card{
   position:relative;
   background: linear-gradient(180deg, rgba(9,12,20,.85), rgba(13,19,33,.85));
@@ -55,15 +54,33 @@
 /* head row card */
 .cardHeadRow{display:flex;justify-content:space-between;align-items:center}
 
-/* widget tiles */
+/* widget */
 .widget{display:flex;flex-direction:column;gap:10px}
 .widgetHeader{display:flex;justify-content:space-between;align-items:center}
 .widgetBadge{
   padding:2px 8px;border-radius:999px;font-size:.7rem;
   background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.45);color:#c7d2fe;
 }
-.widgetDot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e}
 .widgetText{margin:0 0 4px 0;color:#e5e7eb;opacity:.9}
+.widgetLine{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dim{opacity:.8}
+.sep{opacity:.35}
+
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  padding:6px 10px;border-radius:999px;font-weight:800;font-size:.8rem
+}
+
+/* donut vacaciones */
+.vacBox{display:flex;gap:14px;align-items:center}
+.donut{--size:96px;position:relative;width:var(--size);height:var(--size)}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donutBg{fill:none;stroke:#1f2937;stroke-width:8}
+.donutProg{fill:none;stroke:#22c55e;stroke-width:8;stroke-linecap:round;transition:stroke-dasharray .4s ease}
+.donutLabel{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donutBig{font-size:1.25rem;font-weight:900}
+.donutSmall{font-size:.7rem;opacity:.8}
 
 /* modal */
 .modalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px;z-index:3000}
