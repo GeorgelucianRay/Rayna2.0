@@ -1,264 +1,107 @@
-/* ===== Layout de bază ===== */
-.loadingScreen {
-  padding: 2rem;
-  text-align: center;
-  color: #fff;
+/* === contenedor general */
+.page{
+  color:#fff;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+/* header */
+.header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:18px;
+}
+.title{font-size:2rem;font-weight:800;letter-spacing:.3px}
+
+/* botones */
+.btnPrimary{
+  display:inline-flex;align-items:center;gap:8px;
+  background: linear-gradient(90deg,#06b6d4,#3b82f6);
+  color:#fff;border:none;border-radius:10px;padding:10px 14px;
+  font-weight:700;cursor:pointer;transition:.15s transform, .15s box-shadow;
+}
+.btnPrimary:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(59,130,246,.35)}
+.btnGhost{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.18);
+  color:#e5e7eb;border-radius:8px;padding:8px 12px;font-weight:700;
+  cursor:pointer;transition:.15s opacity
+}
+.btnGhost:hover{opacity:.95}
+
+/* cards */
+.card{
+  background:rgba(17,24,39,.55);
+  backdrop-filter: blur(10px);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:16px;padding:16px;
+}
+.cardTitle{margin:0 0 10px 0;font-size:1.05rem;font-weight:800}
+
+/* alerts */
+.cardAlert{border-color:rgba(248,113,113,.45);background:rgba(248,113,113,.08)}
+.alertHeader{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.alertIcon svg{color:#fb7185}
+.alertChips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 10px;border-radius:999px;font-weight:800;font-size:.75rem;letter-spacing:.2px}
+.chipWarn{background:rgba(234,179,8,.15);color:#fde68a;border:1px solid rgba(234,179,8,.35)}
+.chipDanger{background:rgba(248,113,113,.2);color:#fecaca;border:1px solid rgba(248,113,113,.4)}
+
+/* grid principal */
+.grid{
+  display:grid;gap:16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
-.h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #fff;
+/* info grid din card */
+.infoGrid{
+  display:grid;gap:10px;
+  grid-template-columns: repeat(2, minmax(0,1fr));
 }
+.kvLabel{font-size:.8rem;color:#cbd5e1;opacity:.75}
+.kvValue{font-weight:800}
 
-.editBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: #f97316;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.editBtn:hover {
-  background: #ea580c;
-}
+/* head row card secundare (camión/remolque) */
+.cardHeadRow{display:flex;justify-content:space-between;align-items:center}
 
-/* ===== Coloană unică ===== */
-.leftCol {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+/* widgets mici */
+.widget{display:flex;flex-direction:column;gap:10px}
+.widgetHeader{display:flex;justify-content:space-between;align-items:center}
+.widgetBadge{
+  padding:2px 8px;border-radius:999px;font-size:.7rem;
+  background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.45);color:#c7d2fe;
 }
+.widgetDot{
+  width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e;
+}
+.widgetText{margin:0 0 2px 0;color:#e5e7eb;opacity:.85}
 
-/* ===== Carduri și alerte ===== */
-.card {
-  background: rgba(15, 23, 42, 0.8);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #fff;
+/* modal */
+.modalOverlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);
+  display:grid;place-items:center;padding:16px;z-index:3000;
 }
+.modal{
+  background:#0b1220;color:#fff;border:1px solid rgba(255,255,255,.15);
+  border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.35);
+  width:100%;max-width:720px;max-height:90vh;overflow:auto;
+}
+.modalTop{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.15)
+}
+.iconClose{appearance:none;border:none;background:transparent;color:#cbd5e1;cursor:pointer}
+.iconClose:hover{color:#fff}
+.form{display:flex;flex-direction:column;gap:12px;padding:14px 16px}
+.formTwo{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.form label{display:flex;flex-direction:column;gap:6px}
+.form input,.form select{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:#fff;padding:10px 12px;border-radius:10px
+}
+.formActions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
 
-.cardAlert {
-  background: rgba(255, 59, 48, 0.15);
-  border-color: rgba(255, 59, 48, 0.4);
-}
+/* loading */
+.loadingScreen{display:grid;place-items:center;height:60vh;color:#fff}
 
-.alertHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.alertIcon svg {
-  color: #f87171;
-}
-
-.alertList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.alertExpired {
-  color: #f87171;
-}
-
-/* ===== Tile-uri ===== */
-.tileGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.tile {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 12px;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tileLabel {
-  font-size: 0.8rem;
-  opacity: 0.7;
-}
-
-.tileLink {
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.tileLink:hover {
-  background: rgba(255,255,255,0.05);
-}
-
-/* ===== Vacaciones ===== */
-.vacHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.vacHint {
-  font-size: 0.85rem;
-  opacity: 0.75;
-}
-
-.ghostBtn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-.ghostBtn:hover {
-  border-color: rgba(255,255,255,0.4);
-}
-
-/* ===== Modal general ===== */
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-  z-index: 9999;
-}
-
-.modalSheet {
-  width: 100%;
-  max-width: 1000px;
-  background: #0f172a;
-  color: #fff;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.15);
-  max-height: 90vh;
-  overflow: auto;
-  box-shadow: 0 18px 50px rgba(0,0,0,0.35);
-}
-
-.modalSheetSmall {
-  width: 100%;
-  max-width: 720px;
-  background: #0f172a;
-  color: #fff;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.15);
-  max-height: 90vh;
-  overflow: auto;
-  box-shadow: 0 18px 50px rgba(0,0,0,0.35);
-}
-
-/* ===== Modal intern ===== */
-.modalTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.modalTop h3 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.iconClose {
-  background: transparent;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-}
-
-.modalBody {
-  padding: 16px;
-}
-
-/* ===== Formular ===== */
-.formGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
-.formGrid label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-
-.formGrid input,
-.formGrid select {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(255,255,255,0.05);
-  color: #fff;
-}
-
-.formGrid input:disabled {
-  opacity: 0.5;
-}
-
-.formActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btnPrimary {
-  background: #f97316;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.btnPrimary:hover {
-  background: #ea580c;
-}
-
-.btnGhost {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.btnGhost:hover {
-  border-color: rgba(255,255,255,0.5);
-}
-
-/* ===== Responsivitate ===== */
-@media (max-width: 640px) {
-  .tileGrid {
-    grid-template-columns: 1fr;
-  }
+/* responsive */
+@media (max-width:640px){
+  .formTwo{grid-template-columns:1fr}
 }
