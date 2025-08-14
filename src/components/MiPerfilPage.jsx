@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
-import Vacaciones from './VacacionesStandalone';          // <- widgetul complet, în modal
+import Vacaciones from './VacacionesStandalone';
 import styles from './MiPerfilPage.module.css';
 
-/* ——— iconițe ——— */
+/* Icone */
 const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -23,7 +23,7 @@ const AlarmIcon = () => (
   </svg>
 );
 
-/* ——— helper expirări ——— */
+/* Expirări */
 const calculatePersonalExpirations = (profile) => {
   if (!profile) return [];
   const alarms = [];
@@ -64,7 +64,7 @@ export default function MiPerfilPage() {
     if (authProfile) setPersonalAlarms(calculatePersonalExpirations(authProfile));
   }, [authProfile]);
 
-  const handleEditClick = () => {
+  const openEdit = () => {
     if (!authProfile) return;
     setEditableProfile({ ...authProfile, new_camion_matricula: '', new_remorca_matricula: '' });
     setIsEditOpen(true);
@@ -134,81 +134,95 @@ export default function MiPerfilPage() {
 
   return (
     <Layout backgroundClassName="profile-background">
-      {/* header */}
+      {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.h1}>Mi Perfil</h1>
-        <button className={styles.editBtn} onClick={handleEditClick}>
+        <button className={styles.editBtn} onClick={openEdit}>
           <EditIcon /> Editar Perfil
         </button>
       </div>
 
-      {/* grid 2 coloane: stânga info + alerte, dreapta panel edit/vacaciones */}
-      <div className={styles.grid}>
-        {/* col stânga */}
-        <div className={styles.leftCol}>
-          {/* alerte */}
-          {personalAlarms.length > 0 && (
-            <div className={`${styles.card} ${styles.cardAlert}`}>
-              <div className={styles.alertHead}>
-                <span className={styles.alertIcon}><AlarmIcon/></span>
-                <h3>Mis alertas de caducidad</h3>
-              </div>
-              <ul className={styles.alertList}>
-                {personalAlarms.map((a, i) => (
-                  <li key={i} className={a.expired ? styles.alertExpired : ''}>{a.message}</li>
-                ))}
-              </ul>
+      {/* Coloană unică cu carduri + widget Vacaciones */}
+      <div className={styles.leftCol}>
+        {personalAlarms.length > 0 && (
+          <div className={`${styles.card} ${styles.cardAlert}`}>
+            <div className={styles.alertHead}>
+              <span className={styles.alertIcon}><AlarmIcon/></span>
+              <h3>Mis alertas de caducidad</h3>
             </div>
-          )}
-
-          {/* info tiles */}
-          <div className={styles.tileGrid}>
-            <div className={styles.tile}><span className={styles.tileLabel}>Nombre</span><strong>{authProfile.nombre_completo || 'No completado'}</strong></div>
-            <div className={styles.tile}><span className={styles.tileLabel}>Caducidad CAP</span><strong>{authProfile.cap_expirare || 'N/A'}</strong></div>
-            <div className={styles.tile}><span className={styles.tileLabel}>Caducidad Carnet</span><strong>{authProfile.carnet_caducidad || 'N/A'}</strong></div>
-            <div className={styles.tile}><span className={styles.tileLabel}>Certificado ADR</span><strong>{authProfile.tiene_adr ? (`Sí · ${authProfile.adr_caducidad || 'N/A'}`) : 'No'}</strong></div>
-
-            <button className={`${styles.tile} ${styles.tileLink}`} onClick={() => gotoVeh(authProfile.camion_id, 'camion')}>
-              <span className={styles.tileLabel}>Camión</span><strong>{authProfile.camioane?.matricula || 'No asignado'}</strong>
-            </button>
-            <button className={`${styles.tile} ${styles.tileLink}`} onClick={() => gotoVeh(authProfile.remorca_id, 'remolque')}>
-              <span className={styles.tileLabel}>Remolque</span><strong>{authProfile.remorci?.matricula || 'No asignado'}</strong>
-            </button>
+            <ul className={styles.alertList}>
+              {personalAlarms.map((a, i) => (
+                <li key={i} className={a.expired ? styles.alertExpired : ''}>{a.message}</li>
+              ))}
+            </ul>
           </div>
+        )}
 
-          {/* widget Vacaciones (compact) */}
-          <div className={styles.card}>
-            <div className={styles.vacHeader}>
-              <h3>Vacaciones</h3>
-              <button className={styles.ghostBtn} onClick={() => setIsVacOpen(true)}>Abrir</button>
-            </div>
-            <p className={styles.vacHint}>Gestiona solicitudes, días pendientes y vacaciones de empresa.</p>
-          </div>
+        <div className={styles.tileGrid}>
+          <div className={styles.tile}><span className={styles.tileLabel}>Nombre</span><strong>{authProfile.nombre_completo || 'No completado'}</strong></div>
+          <div className={styles.tile}><span className={styles.tileLabel}>Caducidad CAP</span><strong>{authProfile.cap_expirare || 'N/A'}</strong></div>
+          <div className={styles.tile}><span className={styles.tileLabel}>Caducidad Carnet</span><strong>{authProfile.carnet_caducidad || 'N/A'}</strong></div>
+          <div className={styles.tile}><span className={styles.tileLabel}>Certificado ADR</span><strong>{authProfile.tiene_adr ? (`Sí · ${authProfile.adr_caducidad || 'N/A'}`) : 'No'}</strong></div>
+
+          <button className={`${styles.tile} ${styles.tileLink}`} onClick={() => gotoVeh(authProfile.camion_id, 'camion')}>
+            <span className={styles.tileLabel}>Camión</span><strong>{authProfile.camioane?.matricula || 'No asignado'}</strong>
+          </button>
+          <button className={`${styles.tile} ${styles.tileLink}`} onClick={() => gotoVeh(authProfile.remorca_id, 'remolque')}>
+            <span className={styles.tileLabel}>Remolque</span><strong>{authProfile.remorci?.matricula || 'No asignado'}</strong>
+          </button>
         </div>
 
-        {/* col dreapta: „panou editare” (butonul sus îl deschide ca modal, însă păstrăm vizualul în pagina curentă) */}
-        <div className={styles.rightCol}>
-          <div className={`${styles.card} ${styles.editPanel}`}>
-            <div className={styles.editHead}>
+        <div className={styles.card}>
+          <div className={styles.vacHeader}>
+            <h3>Vacaciones</h3>
+            <button className={styles.ghostBtn} onClick={() => setIsVacOpen(true)}>Abrir</button>
+          </div>
+          <p className={styles.vacHint}>Gestiona solicitudes, días pendientes y vacaciones de empresa.</p>
+        </div>
+      </div>
+
+      {/* MODAL: Vacaciones */}
+      {isVacOpen && (
+        <div className={styles.modalOverlay} onClick={()=>setIsVacOpen(false)}>
+          <div className={styles.modalSheet} onClick={(e)=>e.stopPropagation()}>
+            <div className={styles.modalTop}>
+              <h3>Vacaciones</h3>
+              <button className={styles.iconClose} onClick={()=>setIsVacOpen(false)}><CloseIcon/></button>
+            </div>
+            <div className={styles.modalBody}>
+              <Vacaciones />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Editar Perfil (nou) */}
+      {isEditOpen && (
+        <div className={styles.modalOverlay} onClick={()=>setIsEditOpen(false)}>
+          <div className={styles.modalSheetSmall} onClick={(e)=>e.stopPropagation()}>
+            <div className={styles.modalTop}>
               <h3>Editar Perfil</h3>
               <button className={styles.iconClose} onClick={()=>setIsEditOpen(false)}><CloseIcon/></button>
             </div>
 
             <form className={styles.formGrid} onSubmit={handleProfileUpdate}>
               <label>Nombre Completo
-                <input type="text"
+                <input
+                  type="text"
                   value={editableProfile?.nombre_completo ?? authProfile.nombre_completo ?? ''}
                   onChange={(e)=>setEditableProfile(p=>({...p, nombre_completo:e.target.value}))}/>
               </label>
 
               <label>Caducidad CAP
-                <input type="date"
+                <input
+                  type="date"
                   value={editableProfile?.cap_expirare ?? authProfile.cap_expirare ?? ''}
                   onChange={(e)=>setEditableProfile(p=>({...p, cap_expirare:e.target.value}))}/>
               </label>
 
               <label>Caducidad Carnet
-                <input type="date"
+                <input
+                  type="date"
                   value={editableProfile?.carnet_caducidad ?? authProfile.carnet_caducidad ?? ''}
                   onChange={(e)=>setEditableProfile(p=>({...p, carnet_caducidad:e.target.value}))}/>
               </label>
@@ -224,7 +238,8 @@ export default function MiPerfilPage() {
 
               {(editableProfile?.tiene_adr ?? authProfile.tiene_adr) && (
                 <label>Caducidad ADR
-                  <input type="date"
+                  <input
+                    type="date"
                     value={editableProfile?.adr_caducidad ?? authProfile.adr_caducidad ?? ''}
                     onChange={(e)=>setEditableProfile(p=>({...p, adr_caducidad:e.target.value}))}/>
                 </label>
@@ -263,21 +278,6 @@ export default function MiPerfilPage() {
                 <button type="submit" className={styles.btnPrimary}>Guardar Cambios</button>
               </div>
             </form>
-          </div>
-        </div>
-      </div>
-
-      {/* MODAL Vacaciones (standalone, fără Layout) */}
-      {isVacOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalSheet} onClick={(e)=>e.stopPropagation()}>
-            <div className={styles.modalTop}>
-              <h3>Vacaciones</h3>
-              <button className={styles.iconClose} onClick={()=>setIsVacOpen(false)}><CloseIcon/></button>
-            </div>
-            <div className={styles.modalBody}>
-              <Vacaciones />
-            </div>
           </div>
         </div>
       )}
