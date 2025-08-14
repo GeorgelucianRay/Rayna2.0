@@ -13,7 +13,7 @@ const ArchiveIcon = () => (
 );
 
 /* ------------ Helpers ------------ */
-const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
+const CalendarDay = ({ day, data = {}, onClick, isPlaceholder }) => {
   const hasData = !isPlaceholder && (
     data.desayuno || data.cena || data.procena ||
     ((+data.km_final || 0) > (+data.km_iniciar || 0)) ||
@@ -94,7 +94,8 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
         </div>
 
         <div className={styles.modalFooter}>
-          <button className={styles.actionMini} type="button" onClick={onClose}>Guardar y cerrar</button>
+          {/* FIX: usa el botón estilizado existente */}
+          <button className={styles.saveButton} type="button" onClick={onClose}>Guardar y cerrar</button>
         </div>
       </div>
     </div>
@@ -161,11 +162,11 @@ export default function CalculadoraNomina() {
     }
     (async () => {
       setIsLoading(true);
-      const { data: prof, error: e1 } = await supabase
+      const { data: prof } = await supabase
         .from('nomina_perfiles')
         .select('config_nomina')
         .eq('user_id', targetUserId)
-        .single();
+        .maybeSingle();
 
       setConfig(prof?.config_nomina ?? defaultConfig);
 
@@ -185,7 +186,7 @@ export default function CalculadoraNomina() {
     })();
   }, [targetUserId, currentDate, defaultConfig, defaultPontaj]);
 
-  /* debounced auto-save draft -> triggers DB to update km via trigger */
+  /* debounced auto-save draft */
   useEffect(() => {
     if (!targetUserId) return;
     const y = currentDate.getFullYear();
@@ -195,7 +196,6 @@ export default function CalculadoraNomina() {
         { user_id: targetUserId, an: y, mes: m, pontaj_complet: pontaj },
         { onConflict: 'user_id,an,mes' }
       );
-      // trigger-ul din DB va actualiza camioane.kilometros dacă km_final a crescut
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,6 +239,7 @@ export default function CalculadoraNomina() {
     let d=0,c=0,p=0, km=0, cont=0, plus=0;
     const worked = new Set();
     pontaj.zilePontaj.forEach((z, i) => {
+      if (!z) return;
       if (z.desayuno) d++;
       if (z.cena) c++;
       if (z.procena) p++;
@@ -428,7 +429,10 @@ export default function CalculadoraNomina() {
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role==='dispecer' && driverLabel(selectedDriver) ? `— ${driverLabel(selectedDriver)}` : ''}</h3>
+              <h3 className={styles.modalTitle}>
+                Archivo de Nóminas
+                {profile?.role==='dispecer' && driverLabel(selectedDriver) ? ` — ${driverLabel(selectedDriver)}` : ''}
+              </h3>
               <button className={styles.closeIcon} onClick={()=>setIsArchiveOpen(false)}><CloseIcon/></button>
             </div>
             <div className={styles.archiveModalBody}>
