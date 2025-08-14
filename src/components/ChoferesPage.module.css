@@ -3,23 +3,18 @@
   --border: rgba(255,255,255,.16);
   --text: #e5e7eb;
   --muted: #94a3b8;
-  --cta1:#2563eb; --cta2:#3b82f6;
   --warn: #fca5a5;
 }
 
 /* Header */
-.profileHeader{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
+.header{
   margin: 88px 24px 16px;
   color: var(--text);
 }
 @media (min-width: 768px){
-  .profileHeader{ margin: 96px 32px 18px; }
+  .header{ margin: 96px 32px 18px; }
 }
-.profileHeader h1{
+.header h1{
   margin:0;
   font-size:2rem;
   font-weight:800;
@@ -28,8 +23,8 @@
   text-shadow: 0 0 22px rgba(103,232,249,.22), 0 0 2px rgba(103,232,249,.45);
 }
 
-/* Alarme */
-.alarmSection{
+/* Alarm box */
+.alarm{
   margin: 0 24px 16px;
   background: linear-gradient(180deg, rgba(239,68,68,.10), rgba(239,68,68,.06));
   border: 1px solid rgba(239,68,68,.35);
@@ -39,21 +34,28 @@
   backdrop-filter: blur(8px);
 }
 @media (min-width: 768px){
-  .alarmSection{ margin: 0 32px 18px; }
+  .alarm{ margin: 0 32px 18px; }
 }
-.alarmHeader{
-  display:flex; align-items:center; gap:10px;
-  color:#fff; font-weight:700; margin-bottom:8px;
+.alarmHead{ display:flex; align-items:center; gap:10px; color:#fff; font-weight:700; margin-bottom:8px; }
+.alarm ul{ margin:0; padding-left:18px; color:#ffd7d7; }
+
+/* Centered search area */
+.centerWrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  padding: 0 24px 32px;
 }
-.alarmSection ul{
-  margin:0; padding-left:18px; color:#ffd7d7;
+@media (min-width: 768px){
+  .centerWrap{ padding: 0 32px 40px; }
 }
 
-/* === Autocomplete / Typeahead === */
+/* Autocomplete */
 .searchWrap{
   position: relative;
   width: 100%;
-  max-width: 560px; /* păstrează un look compact */
+  max-width: 560px;
 }
 .suggestList{
   position: absolute;
@@ -80,55 +82,13 @@
 }
 .suggestItem:hover{ background: rgba(255,255,255,.08); }
 .active{ background: rgba(59,130,246,.18); }
-.sName{
-  font-weight: 800; color:#fff;
-  line-height: 1.2;
-}
-.sMeta{
-  font-size: .85rem; color:#cbd5e1;
-}
+.sName{ font-weight: 800; color:#fff; line-height: 1.2; }
+.sMeta{ font-size: .85rem; color:#cbd5e1; }
 
-/* Grid carduri șoferi */
-.choferesGrid{
-  display:grid;
-  gap:14px;
-  grid-template-columns: 1fr;
-  padding: 0 24px 24px;
-}
-@media (min-width: 600px){
-  .choferesGrid{ grid-template-columns: repeat(2, 1fr); }
-}
-@media (min-width: 1000px){
-  .choferesGrid{ grid-template-columns: repeat(3, 1fr); padding: 0 32px 32px; }
-}
-
-/* Card “cyber glass” */
-.choferCard{
-  background: var(--glass);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px;
-  color: var(--text);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
-  cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.choferCard:hover{
-  transform: translateY(-2px);
-  border-color: rgba(255,255,255,.28);
-  box-shadow: 0 16px 44px rgba(37,99,235,.28);
-}
-.choferCard h4{
-  margin:0 0 6px;
-  font-size: 1.05rem;
-  font-weight:800;
-  color:#fff;
-}
-.choferCard p{
-  margin: 2px 0;
-  color: #cbd5e1;
-  font-size: .95rem;
+.hint, .nores{
+  margin: 6px 0 0;
+  color: var(--muted);
+  text-align: center;
 }
 
 /* Loading */
