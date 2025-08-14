@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
@@ -22,35 +22,113 @@ const AlertIcon = () => (
   </svg>
 );
 
+/** 👉 ajustează aici dacă ai alte rute */
+const ROUTES = {
+  nomina: ['/calculadora-nomina', '/nomina', '/calculadora'],
+  vacaciones: ['/vacaciones', '/mi-perfil/vacaciones'],
+};
+
 export default function MiPerfilPage() {
   const navigate = useNavigate();
   const { user, profile: authProfile, loading, setProfile: setAuthProfile } = useAuth();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editable, setEditable] = useState(null);
-  const [alerts, setAlerts] = useState([]);
 
-  // --- alert logic
+  // widgets data
+  const [alerts, setAlerts] = useState([]);
+  const [nomina, setNomina] = useState({
+    desayunos: 0, cenas: 0, procenas: 0, km: 0, contenedores: 0, plus: 0, dias: 0,
+  });
+  const [vac, setVac] = useState({ disponibles: 0, anuales: 23, pendientes: 0 });
+
+  const year = useMemo(() => new Date().getFullYear(), []);
+  const month = useMemo(() => new Date().getMonth() + 1, []);
+
+  // ---- helpers
   const buildAlerts = (p) => {
     if (!p) return [];
-    const res = [];
+    const arr = [];
     const today = new Date(); today.setHours(0,0,0,0);
-    const collect = (date, label) => {
+    const pushDate = (date, label) => {
       if (!date) return;
       const d = new Date(date); d.setHours(0,0,0,0);
       const diff = Math.ceil((d - today) / 86400000);
-      if (diff <= 30) res.push({ label, diff, expired: diff < 0 });
+      if (diff <= 30) arr.push({ label, diff, expired: diff < 0 });
     };
-    collect(p.cap_expirare, 'CAP');
-    collect(p.carnet_caducidad, 'Permiso de conducir');
-    if (p.tiene_adr) collect(p.adr_caducidad, 'ADR');
-    if (p.camioane?.fecha_itv) collect(p.camioane.fecha_itv, `ITV Camión ${p.camioane?.matricula || ''}`);
-    if (p.remorci?.fecha_itv) collect(p.remorci.fecha_itv, `ITV Remolque ${p.remorci?.matricula || ''}`);
-    return res.sort((a,b)=>a.diff-b.diff);
+    pushDate(p.cap_expirare, 'CAP');
+    pushDate(p.carnet_caducidad, 'Permiso de conducir');
+    if (p.tiene_adr) pushDate(p.adr_caducidad, 'ADR');
+    if (p.camioane?.fecha_itv) pushDate(p.camioane.fecha_itv, `ITV Camión ${p.camioane?.matricula || ''}`);
+    if (p.remorci?.fecha_itv) pushDate(p.remorci.fecha_itv, `ITV Remolque ${p.remorci?.matricula || ''}`);
+    return arr.sort((a,b)=>a.diff-b.diff);
   };
 
-  useEffect(() => { if (authProfile) setAlerts(buildAlerts(authProfile)); }, [authProfile]);
+  const openFirst = (arr) => navigate(arr[0]);
 
+  // ---- load widgets
+  useEffect(() => {
+    if (!authProfile || !user) return;
+
+    setAlerts(buildAlerts(authProfile));
+
+    // Nómina (din ciorna curentă)
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('pontaje_curente')
+          .select('pontaj_complet')
+          .eq('user_id', user.id)
+          .eq('an', year)
+          .eq('mes', month)
+          .maybeSingle();
+
+        const zile = data?.pontaj_complet?.zilePontaj || [];
+        let d=0,c=0,p=0,km=0,cont=0,plus=0,workDays=0;
+
+        zile.forEach(z => {
+          if (z?.desayuno) d++;
+          if (z?.cena) c++;
+          if (z?.procena) p++;
+          const start = parseFloat(z?.km_iniciar || 0);
+          const end   = parseFloat(z?.km_final   || 0);
+          if (end > start) km += (end - start);
+          cont += parseFloat(z?.contenedores || 0);
+          plus += parseFloat(z?.suma_festivo || 0);
+          if (z?.desayuno || z?.cena || z?.procena || (end>start) || (z?.contenedores>0) || (z?.suma_festivo>0)) {
+            workDays++;
+          }
+        });
+
+        setNomina({ desayunos:d, cenas:c, procenas:p, km, contenedores:cont, plus, dias: workDays });
+      } catch {
+        // dacă tabela nu există / nu e rând -> păstrăm zero-uri
+      }
+    })();
+
+    // Vacaciones – încearcă să citească un rezumat; dacă nu există, folosește fallback
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('vacaciones_estado')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!error && data) {
+          setVac({
+            disponibles: Number(data.disponibles ?? 0),
+            anuales: Number(data.anuales ?? 23),
+            pendientes: Number(data.pendientes ?? 0),
+          });
+        }
+      } catch {
+        // ignorăm – rămâne fallback-ul
+      }
+    })();
+
+  }, [authProfile, user, year, month]);
+
+  // ---- edit profile
   const openEdit = () => {
     if (!authProfile) return;
     setEditable({
@@ -118,6 +196,12 @@ export default function MiPerfilPage() {
   const nombre = authProfile.nombre_completo || 'Sin nombre';
   const camionMat = authProfile.camioane?.matricula || 'No asignado';
   const remolqueMat = authProfile.remorci?.matricula || 'No asignado';
+
+  // ring vacaciones
+  const vacTot = vac.anuales > 0 ? vac.anuales : 23;
+  const vacDisp = Math.max(0, Math.min(vacTot, vac.disponibles));
+  const vacPct = vacTot ? (vacDisp / vacTot) : 0;
+  const CIRC = 2 * Math.PI * 36; // r=36
 
   return (
     <Layout backgroundClassName="profile-background">
@@ -222,8 +306,25 @@ export default function MiPerfilPage() {
               <h3 className={styles.cardTitle}>Nómina</h3>
               <span className={styles.widgetBadge}>Beta</span>
             </div>
-            <p className={styles.widgetText}>Calcula dietas, kilómetros y pluses del mes.</p>
-            <button className={styles.btnPrimary} onClick={()=>navigate('/nomina')}>
+
+            <div className={styles.pills}>
+              <span className={styles.pill}>Desayunos: <b>{nomina.desayunos}</b></span>
+              <span className={styles.pill}>Cenas: <b>{nomina.cenas}</b></span>
+              <span className={styles.pill}>Procenas: <b>{nomina.procenas}</b></span>
+            </div>
+
+            <div className={styles.widgetLine}>
+              <span>Este mes:</span>
+              <span className={styles.dim}> {nomina.km} km</span>
+              <span className={styles.sep}>•</span>
+              <span className={styles.dim}>{nomina.contenedores} contenedores</span>
+              <span className={styles.sep}>•</span>
+              <span className={styles.dim}>+{nomina.plus.toFixed ? nomina.plus.toFixed(2) : nomina.plus} €</span>
+              <span className={styles.sep}>•</span>
+              <span className={styles.dim}>{nomina.dias} días trabajados</span>
+            </div>
+
+            <button className={styles.btnPrimary} onClick={() => openFirst(ROUTES.nomina)}>
               Abrir calculadora
             </button>
           </section>
@@ -232,10 +333,31 @@ export default function MiPerfilPage() {
           <section className={`${styles.card} ${styles.widget}`}>
             <div className={styles.widgetHeader}>
               <h3 className={styles.cardTitle}>Vacaciones</h3>
-              <span className={styles.widgetDot}></span>
             </div>
-            <p className={styles.widgetText}>Solicita días, ve aprobaciones y pendientes.</p>
-            <button className={styles.btnPrimary} onClick={()=>navigate('/vacaciones')}>
+
+            <div className={styles.vacBox}>
+              <div className={styles.donut} aria-label="días disponibles">
+                <svg viewBox="0 0 80 80">
+                  <circle className={styles.donutBg} cx="40" cy="40" r="36" />
+                  <circle
+                    className={styles.donutProg}
+                    cx="40" cy="40" r="36"
+                    style={{ strokeDasharray: `${CIRC * vacPct} ${CIRC}` }}
+                  />
+                </svg>
+                <div className={styles.donutLabel}>
+                  <div className={styles.donutBig}>{vacDisp}</div>
+                  <div className={styles.donutSmall}>días</div>
+                </div>
+              </div>
+
+              <div className={styles.vacText}>
+                <div><b>Te quedan {vacDisp}</b> de <b>{vacTot}</b> este año.</div>
+                <div className={styles.dim}>Pendientes de aprobación: {vac.pendientes}</div>
+              </div>
+            </div>
+
+            <button className={styles.btnPrimary} onClick={() => openFirst(ROUTES.vacaciones)}>
               Abrir vacaciones
             </button>
           </section>
