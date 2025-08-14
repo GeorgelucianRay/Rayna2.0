@@ -23,7 +23,7 @@ import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 // ===================================
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
-
+import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 
 function App() {
   return (
@@ -52,21 +52,31 @@ function App() {
       <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
       
       {/* ===================================
-      Rutele noi pentru hartă și programare
+      Rutele noi pentru hartă, programare și vacanțe
       =================================== */}
       <Route path="/mapa" element={<MapPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
+      <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
       
       {/* --- Rută 404 (Pagina nu a fost găsită) --- */}
-      <Route path="*" element={
-        <div className="login-container">
-          <div className="login-card text-center">
-            <h1 style={{color: '#dc2626', fontSize: '2rem', fontWeight: 'bold'}}>404 - Página no encontrada</h1>
-            <p style={{color: '#4b5563', margin: '16px 0'}}>La página que buscas no existe.</p>
-            <Link to="/login" className="link-style">Volver a Iniciar Sesión</Link>
+      <Route
+        path="*"
+        element={
+          <div className="login-container">
+            <div className="login-card text-center">
+              <h1 style={{ color: '#dc2626', fontSize: '2rem', fontWeight: 'bold' }}>
+                404 - Página no encontrada
+              </h1>
+              <p style={{ color: '#4b5563', margin: '16px 0' }}>
+                La página que buscas no existe.
+              </p>
+              <Link to="/login" className="link-style">
+                Volver a Iniciar Sesión
+              </Link>
+            </div>
           </div>
-        </div>
-      } />
+        }
+      />
     </Routes>
   );
 }
