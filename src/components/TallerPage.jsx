@@ -4,9 +4,9 @@ import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './TallerPage.module.css';
 
-// Icoană pentru bara de căutare
 const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="8"></circle>
     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
@@ -14,7 +14,6 @@ const SearchIcon = () => (
 
 function TallerPage() {
   const ITEMS_PER_PAGE = 10;
-  // MODIFICARE: Folosim numele corecte la plural pentru tabele
   const [activeTab, setActiveTab] = useState('camioane');
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,16 +38,14 @@ function TallerPage() {
       
       const { data, error: queryError, count } = await query.range(from, to);
 
-      if (queryError) {
-        throw queryError;
-      }
+      if (queryError) throw queryError;
 
       setVehicles(data || []);
       setTotalCount(count || 0);
 
     } catch (err) {
-      console.error(`Error fetching data from '${activeTab}':`, err);
-      setError(`A apărut o eroare: ${err.message}. Verificați consola și regulile de securitate (RLS) din Supabase.`);
+      console.error(`Error en la tabla '${activeTab}':`, err);
+      setError(`Error: ${err.message}. Revisa la consola y las reglas RLS en Supabase.`);
       setVehicles([]);
       setTotalCount(0);
     } finally {
@@ -77,6 +74,7 @@ function TallerPage() {
     <Layout backgroundClassName="taller-background">
       <div className={styles.pageHeader}>
         <h1>Taller</h1>
+        <p className={styles.subTitle}>Gestión de Camiones y Remolques</p>
       </div>
 
       <div className={styles.controlsHeader}>
@@ -105,7 +103,6 @@ function TallerPage() {
         </div>
       </div>
 
-      {/* Afișare conținut */}
       {loading ? (
         <div className={styles.loadingText}>Cargando vehículos...</div>
       ) : error ? (
@@ -116,9 +113,15 @@ function TallerPage() {
         <>
           <div className={styles.vehicleGrid}>
             {vehicles.map(vehicle => (
-              // MODIFICARE: Logica pentru link este corectată pentru a mapa numele tabelei la ruta corectă
-              <Link to={`/reparatii/${activeTab === 'camioane' ? 'camion' : 'remorca'}/${vehicle.id}`} key={vehicle.id} className={styles.vehicleCard}>
-                <h3>{vehicle.matricula}</h3>
+              <Link to={`/reparatii/${activeTab === 'camioane' ? 'camion' : 'remorca'}/${vehicle.id}`} 
+                key={vehicle.id} 
+                className={styles.vehicleCard}>
+                <div className={styles.cardHeader}>
+                  <h3>{vehicle.matricula}</h3>
+                  <span className={styles.cardType}>
+                    {activeTab === 'camioane' ? 'Camión' : 'Remolque'}
+                  </span>
+                </div>
                 <p>Ver historial de reparaciones</p>
               </Link>
             ))}
