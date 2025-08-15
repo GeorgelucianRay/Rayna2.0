@@ -1,15 +1,15 @@
-/* Structura generală a wrapper-ului */
+/* =========================
+   LAYOUT & BACKGROUND
+   ========================= */
 .layoutWrapper {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  /* Eliminăm culoarea de fundal; o aplicăm doar dacă nu există imagine */
 }
 .layoutWrapper:not(.hasBackground) {
-  background-color: #f3f4f6; /* fundal gri doar când nu există hasBackground */
+  background-color: #f3f4f6;
 }
 
-/* Containerul pentru efectele de fundal (imagine + overlay) */
 .backgroundContainer {
   position: fixed;
   inset: 0;
@@ -29,7 +29,7 @@
   background-color: rgba(10, 10, 20, 0.8);
 }
 
-/* Definițiile imaginilor */
+/* fundaluri existente */
 .homepageBackground { background-image: url('/homepage.jpg'); }
 .depotBackground    { background-image: url('/depot.jpg'); }
 .tallerBackground   { background-image: url('/taller.jpg'); }
@@ -38,24 +38,22 @@
 .choferesBackground { background-image: url('/IMG_9050.jpeg'); }
 .homepageSoferBackground { background-image: url('/homepage.jpg'); }
 .miPerfilBackground { background-image: url('/miprofile.jpg'); }
-.remorcaBackground { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
-.camionBackground { background-image: url('/IMG_9678.jpeg'); }
-.reparatiiBackground { background-image: url('/IMG_9693.jpeg'); }
-
-/* === MODIFICARE NOUĂ: Imagine pentru Calculator Nómina === */
+.remorcaBackground  { background-image: url('/20D414C4-278F-4D74-A543-45E417909FE7.png'); }
+.camionBackground   { background-image: url('/IMG_9678.jpeg'); }
+.reparatiiBackground{ background-image: url('/IMG_9693.jpeg'); }
 .calculadoraBackground { background-image: url('/IMG_9705.jpeg'); }
 
-
-/* Meniul lateral */
+/* =========================
+   SIDE NAV
+   ========================= */
 .navMenu {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   height: 100%;
   width: 300px;
   z-index: 2000;
   transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
+  transition: transform .3s ease-in-out;
   display: flex;
   flex-direction: column;
   background-color: #111827;
@@ -63,43 +61,30 @@
 }
 .menuOpen .navMenu {
   transform: translateX(0);
-  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px -15px rgba(0,0,0,.3);
 }
 
-/* Wrapper-ul conținutului paginii */
 .pageContentWrapper {
-  transition: margin-left 0.3s ease-in-out;
+  transition: margin-left .3s ease-in-out;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   background-color: transparent;
 }
+.layoutWrapper:not(.hasBackground) .pageContentWrapper { background-color: #f3f4f6; }
+.hasBackground .pageContentWrapper { background-color: transparent; }
 
-/* Fundal gri pentru conținut atunci când nu există imagine */
-.layoutWrapper:not(.hasBackground) .pageContentWrapper {
-  background-color: #f3f4f6;
-}
-/* Conținut transparent când există fundal */
-.hasBackground .pageContentWrapper {
-  background-color: transparent;
-}
-
-/* Overlay-ul când meniul este deschis (pe mobil) */
 .navMenuOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,.5);
   z-index: 1999;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease-in-out;
+  opacity: 0; visibility: hidden;
+  transition: opacity .3s ease-in-out;
 }
-.menuOpen .navMenuOverlay {
-  opacity: 1;
-  visibility: visible;
-}
+.menuOpen .navMenuOverlay { opacity: 1; visibility: visible; }
 
-/* Header-ul paginii (dreapta, pe mobil) */
+/* header (dreapta, pe mobil) */
 .header {
   padding: 1rem;
   display: flex;
@@ -110,248 +95,111 @@
   background-color: #ffffff;
   border-bottom: 1px solid #e5e7eb;
 }
-.headerTransparent {
-  background-color: transparent;
-  border-bottom: none;
-}
-.menuButtonHeader {
-  background: transparent;
-  border: none;
-  padding: 0.25rem;
-  color: #1f2937;
-  cursor: pointer;
-}
+.headerTransparent { background-color: transparent; border-bottom: none; }
+.menuButtonHeader { background: transparent; border: none; padding: .25rem; color: #1f2937; cursor: pointer; }
 
-/* Atunci când există fundal, facem meniul și header-ul transparente */
+/* glas pe fundal când există imagine */
 .hasBackground .navMenu {
-  background-color: rgba(17, 24, 39, 0.8);
+  background-color: rgba(17,24,39,.8);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255,255,255,.1);
 }
-.hasBackground .header {
-  background-color: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.hasBackground .menuButtonHeader {
-  color: white;
+.hasBackground .header { background-color: transparent; border-bottom: 1px solid rgba(255,255,255,.1); }
+.hasBackground .menuButtonHeader { color: #fff; }
+
+/* =========================
+   NAV HEADER (HUB + ICONIȚE)
+   ========================= */
+.navHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding: .9rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  color:#fff;
+  gap:.75rem;
 }
 
-/* === NAVIGATION MENU STYLES === */
-.navHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-}
-.navTitle {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  color: white;
-}
-.userEmail {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  margin-top: 0.25rem;
-}
-.headerIcons {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.notificationBell {
-  position: relative;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-}
-.notificationBadge {
-  position: absolute;
-  top: -0.25rem;
-  right: -0.25rem;
-  background: #ef4444;
-  color: white;
+/* Butonul de sus – RaynaHub */
+.hubButton{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 44px; height: 44px;
   border-radius: 9999px;
-  padding: 0 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: radial-gradient(120% 120% at 10% 10%, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.12),
+    0 10px 25px -12px rgba(6, 182, 212, .55);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
-.closeButtonMenu {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
+.hubButton:hover{
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.18),
+    0 14px 32px -10px rgba(6, 182, 212, .7);
 }
-
-/* Linkurile din meniu */
-.navLinks {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
-  gap: 0.5rem;
-}
-.navLink {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #d1d5db;
-  text-decoration: none;
-  font-weight: 500;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
-}
-.navLink:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-.navLink span {
-  font-size: 1rem;
-}
-.navLinkLogout {
-  color: #f87171;
-}
-.active {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-weight: 600;
+.hubButton:focus-visible{ outline: 2px solid #06b6d4; outline-offset: 2px; }
+.hubLogo{
+  width: 30px; height: 30px;
+  border-radius: 9999px;
+  display:block;
 }
 
-/* Stil pentru elementele de notificare expirate */
-.expired {
-  color: #ef4444;
-  font-weight: 600;
+/* iconițe din dreapta */
+.headerIcons{ display:flex; align-items:center; gap:1rem; }
+.notificationBell{
+  position:relative;
+  background: rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.3);
+  color:#fff;
+  border-radius:50%;
+  width:2.5rem; height:2.5rem;
+  display:flex; justify-content:center; align-items:center;
+  cursor:pointer;
+}
+.notificationBadge{
+  position:absolute; top:-.25rem; right:-.25rem;
+  background:#ef4444; color:#fff; border-radius:9999px;
+  padding:0 .4rem; font-size:.75rem; font-weight:600;
+}
+.closeButtonMenu{
+  background: rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.3);
+  color:#fff; border-radius:50%;
+  width:2.5rem; height:2.5rem; display:flex; justify-content:center; align-items:center;
+  cursor:pointer;
 }
 
-/* === MEDIA QUERIES === */
-@media (max-width: 1279px) {
-  .menuOpen .pageContentWrapper {
-    margin-left: 300px;
-    border-radius: 10px 0 0 10px;
-    overflow: hidden;
-  }
+/* =========================
+   NUMELE UTILIZATORULUI (sub HUB)
+   ========================= */
+.userBlock{
+  display:flex; align-items:center; gap:.75rem;
+  padding: .75rem 1rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-@media (min-width: 1280px) {
-  .layoutWrapper {
-    display: flex;
-  }
-  .navMenu {
-    position: static;
-    transform: none;
-    box-shadow: none;
-    width: 300px;
-    flex-shrink: 0;
-  }
-  .pageContentWrapper {
-    margin-left: 0 !important;
-    flex-grow: 1;
-  }
-  .header {
-    display: none;
-  }
-  .navMenuOverlay {
-    display: none !important;
-  }
-}
+.userName{ color:#fff; font-weight:700; line-height:1; }
 
-/* === MODAL === */
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
-  z-index: 3000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-  overflow-y: auto;
-}
-.modalContent {
-  background-color: white;
-  padding: 0;
-  border-radius: 1rem;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.modalHeader {
-  padding: 1.5rem;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-}
-.modalBody {
-  overflow-y: auto;
-  padding: 1.5rem;
-}
-.modalFooter {
-  padding: 1.5rem;
-  flex-shrink: 0;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-.modalTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-.notificationsModal {
-  max-height: 60vh;
-}
-.notificationsList {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-.notificationsList li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-/* —— Avatar + nume —— */
-.userBlock { display:flex; align-items:center; gap:.75rem; }
-.userAvatar {
+/* (opțional) avatar inițiale – dacă vrei să-l păstrezi */
+.userAvatar{
   width:42px; height:42px; border-radius:9999px;
   display:flex; align-items:center; justify-content:center;
   font-weight:800; color:#fff; letter-spacing:.5px;
-  background:
-    radial-gradient(120% 120% at 10% 10%, #22d3ee 0%, #06b6d4 55%, #0ea5e9 100%);
+  background: radial-gradient(120% 120% at 10% 10%, #22d3ee 0%, #06b6d4 55%, #0ea5e9 100%);
   box-shadow: 0 6px 16px rgba(14,165,233,.35);
 }
-.userMeta { display:flex; flex-direction:column; }
-.userName { color:#fff; font-weight:700; line-height:1; }
+.userMeta{ display:flex; flex-direction:column; }
 
-/* —— Buton RaynaHub (imagine rotundă) —— */
-.hubIcon {
-  width:22px; height:22px; border-radius:9999px;
-  box-shadow: 0 0 0 2px rgba(255,255,255,.1);
+/* =========================
+   MENIU LINK-URI
+   ========================= */
+.navLinks{
+  display:flex; flex-direction:column;
+  padding: 1rem; gap:.5rem;
 }
-
-/* —— Link-uri cu accent neon când sunt active —— */
-.navLink {
+.navLink{
   position: relative;
   display:flex; align-items:center; gap:.75rem;
   color:#d1d5db; text-decoration:none; font-weight:600;
@@ -359,11 +207,10 @@
   transition: transform .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease;
   overflow:hidden;
 }
-.navLink:hover { background:rgba(255,255,255,.08); transform: translateX(2px); color:#fff; }
-.navLink svg { opacity:.95; }
+.navLink:hover{ background:rgba(255,255,255,.08); transform: translateX(2px); color:#fff; }
+.navLink svg{ opacity:.95; }
 
-/* **ACTIVE** – folosește variabilele primite inline din React */
-.active {
+.active{
   color:#fff;
   background: linear-gradient(90deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
   box-shadow:
@@ -377,5 +224,46 @@
   box-shadow: 0 0 10px var(--accent, #60a5fa);
 }
 
-/* Logout la fel ca înainte */
-.navLinkLogout { color:#f87171; }
+.navLink span{ font-size:1rem; }
+.navLinkLogout{ color:#f87171; }
+
+/* expirate (notificări) */
+.expired{ color:#ef4444; font-weight:600; }
+
+/* =========================
+   MEDIA QUERIES
+   ========================= */
+@media (max-width: 1279px){
+  .menuOpen .pageContentWrapper{
+    margin-left:300px; border-radius:10px 0 0 10px; overflow:hidden;
+  }
+}
+@media (min-width: 1280px){
+  .layoutWrapper{ display:flex; }
+  .navMenu{ position: static; transform: none; box-shadow:none; width:300px; flex-shrink:0; }
+  .pageContentWrapper{ margin-left:0 !important; flex-grow:1; }
+  .header{ display:none; }
+  .navMenuOverlay{ display:none !important; }
+}
+
+/* =========================
+   MODAL (nedezvoltat)
+   ========================= */
+.modalOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  backdrop-filter: blur(5px);
+  z-index:3000; display:flex; justify-content:center; align-items:center;
+  padding:1rem; overflow-y:auto;
+}
+.modalContent{
+  background:#fff; padding:0; border-radius:1rem;
+  width:100%; max-width:500px; box-shadow:0 10px 30px rgba(0,0,0,.2);
+  max-height:90vh; display:flex; flex-direction:column; overflow:hidden;
+}
+.modalHeader{ padding:1.5rem; flex-shrink:0; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; }
+.modalBody{ overflow-y:auto; padding:1.5rem; }
+.modalFooter{ padding:1.5rem; flex-shrink:0; border-top:1px solid #e5e7eb; display:flex; justify-content:flex-end; gap:.5rem; }
+.modalTitle{ font-size:1.25rem; font-weight:600; color:#1f2937; }
+.notificationsModal{ max-height:60vh; }
+.notificationsList{ list-style:none; padding:0; margin:0; }
+.notificationsList li{ padding:.75rem 0; border-bottom:1px solid #e5e7eb; }
