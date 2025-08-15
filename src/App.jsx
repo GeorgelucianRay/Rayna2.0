@@ -1,7 +1,8 @@
 // src/App.jsx
+
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
-// Páginas existentes
+// --- Pagini existente ---
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
 import RestaurarContrasena from './components/RestaurarContrasena.jsx';
@@ -13,28 +14,28 @@ import GpsPage from './components/GpsPage.jsx';
 import MiPerfilPage from './components/MiPerfilPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
-// ❌ Eliminadas: ChoferesPage y ChoferProfilePage
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 
-// Nuevas
+// --- Noi / actualizate ---
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
+import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
 function App() {
   return (
     <Routes>
-      {/* Públicas */}
+      {/* --- Publice --- */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registrar />} />
       <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
       <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-      {/* Protegidas */}
+      {/* --- Protejate (după login) --- */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
@@ -42,26 +43,30 @@ function App() {
       <Route path="/gps" element={<GpsPage />} />
 
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
-      <Route path="/vacaciones" element={<VacacionesStandalone />} />
 
+      {/* Vacaciones: user (standalone) + admin/dispatcher */}
+      <Route path="/vacaciones" element={<VacacionesStandalone />} />
+      <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
+
+      {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      {/* ✅ Nueva única página combinada para chóferes */}
-      <Route path="/choferes" element={<ChoferFinderProfile />} />
-      {/* 🔁 Redirect seguro si existen enlaces antiguos */}
-      <Route path="/chofer/:id" element={<Navigate to="/choferes" replace />} />
+      {/* Chofer finder (înlocuiește paginile vechi de listă + profil) */}
+      <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
 
+      {/* Taller / Reparații */}
       <Route path="/taller" element={<TallerPage />} />
       <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} />
 
+      {/* Nómina */}
       <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
 
-      {/* Extras */}
+      {/* Extra */}
       <Route path="/mapa" element={<MapPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
 
-      {/* 404 */}
+      {/* --- 404 --- */}
       <Route
         path="*"
         element={
