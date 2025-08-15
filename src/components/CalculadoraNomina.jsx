@@ -1,4 +1,6 @@
+// src/components/CalculadoraNomina.jsx
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
@@ -13,7 +15,7 @@ const ArchiveIcon = () => (
 );
 
 /* ------------ Helpers ------------ */
-const CalendarDay = ({ day, data = {}, onClick, isPlaceholder }) => {
+const CalendarDay = ({ day, data, onClick, isPlaceholder }) => {
   const hasData = !isPlaceholder && (
     data.desayuno || data.cena || data.procena ||
     ((+data.km_final || 0) > (+data.km_iniciar || 0)) ||
@@ -29,17 +31,28 @@ const CalendarDay = ({ day, data = {}, onClick, isPlaceholder }) => {
 };
 
 const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1 }) => {
-  const inc = () => onDataChange(name, (value || 0) + step);
+  const inc = () => onDataChange(name, Number(value || 0) + step);
   const dec = () => {
-    const nv = (value || 0) - step;
-    if (nv >= min) onDataChange(name, nv);
+    const nv = Number(value || 0) - step;
+    onDataChange(name, nv < min ? min : nv);
+  };
+  const onType = (e) => {
+    const raw = e.target.value;
+    if (raw === '') return onDataChange(name, '');     // permite să ștergi 0 complet
+    const n = Number(raw);
+    if (!Number.isNaN(n)) onDataChange(name, n);
   };
   return (
     <div className={styles.inputGroup}>
       <label>{label}</label>
       <div className={styles.customNumberInput}>
         <button type="button" onClick={dec} className={styles.stepperButton}>-</button>
-        <input type="number" readOnly value={value || 0} className={styles.numericDisplay} />
+        <input
+          type="number"
+          value={value === '' ? '' : (value ?? 0)}
+          onChange={onType}
+          className={styles.numericDisplay}
+        />
         <button type="button" onClick={inc} className={styles.stepperButton}>+</button>
       </div>
     </div>
@@ -87,15 +100,14 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
           <div className={styles.parteDiarioSection}>
             <h4>Actividades especiales</h4>
             <div className={styles.inputGrid}>
-              <CustomNumberInput label="Contenedores barridos" name="contenedores" value={data.contenedores || 0} onDataChange={onDataChange} />
-              <CustomNumberInput label="Suma festivo/plus (€)" name="suma_festivo" value={data.suma_festivo || 0} onDataChange={onDataChange} step={10} />
+              <CustomNumberInput label="Contenedores barridos" name="contenedores" value={data.contenedores ?? 0} onDataChange={onDataChange} />
+              <CustomNumberInput label="Suma festivo/plus (€)" name="suma_festivo" value={data.suma_festivo ?? 0} onDataChange={onDataChange} step={10} />
             </div>
           </div>
         </div>
 
         <div className={styles.modalFooter}>
-          {/* FIX: usa el botón estilizado existente */}
-          <button className={styles.saveButton} type="button" onClick={onClose}>Guardar y cerrar</button>
+          <button className={styles.actionMini} type="button" onClick={onClose}>Guardar y cerrar</button>
         </div>
       </div>
     </div>
@@ -105,6 +117,9 @@ const ParteDiarioModal = ({ isOpen, onClose, data, onDataChange, onToggleChange,
 /* ------------ Main component ------------ */
 export default function CalculadoraNomina() {
   const { user, profile } = useAuth();
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  const preselectUserId = search.get('user_id'); // vine din ChoferFinderProfile
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [drivers, setDrivers] = useState([]);        // {user_id, nombre_completo}
@@ -138,6 +153,13 @@ export default function CalculadoraNomina() {
   const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const targetUserId = profile?.role === 'dispecer' ? selectedDriver : user?.id;
   const ready = (profile?.role === 'dispecer' && selectedDriver) || profile?.role === 'sofer';
+
+  /* preselect din query (?user_id=...) pentru dispecer */
+  useEffect(() => {
+    if (profile?.role === 'dispecer' && preselectUserId) {
+      setSelectedDriver(preselectUserId);
+    }
+  }, [profile?.role, preselectUserId]);
 
   /* load drivers for dispatcher */
   useEffect(() => {
@@ -186,7 +208,7 @@ export default function CalculadoraNomina() {
     })();
   }, [targetUserId, currentDate, defaultConfig, defaultPontaj]);
 
-  /* debounced auto-save draft */
+  /* debounced auto-save draft -> triggers DB to update km via trigger */
   useEffect(() => {
     if (!targetUserId) return;
     const y = currentDate.getFullYear();
@@ -196,6 +218,7 @@ export default function CalculadoraNomina() {
         { user_id: targetUserId, an: y, mes: m, pontaj_complet: pontaj },
         { onConflict: 'user_id,an,mes' }
       );
+      // trigger-ul din DB va actualiza camioane.kilometros dacă km_final a crescut
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,6 +228,7 @@ export default function CalculadoraNomina() {
   const onDriverChange = (e) => setSelectedDriver(e.target.value || null);
   const onConfigChange = (e) => {
     const { name, value } = e.target;
+    // permite '', altfel număr
     setConfig((prev) => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
   };
 
@@ -228,9 +252,20 @@ export default function CalculadoraNomina() {
 
   const saveConfig = async () => {
     if (!targetUserId) return;
+    const coerce = (v) => (v === '' ? 0 : Number(v));
+    const clean = {
+      salario_base: coerce(config.salario_base),
+      antiguedad: coerce(config.antiguedad),
+      precio_dia_trabajado: coerce(config.precio_dia_trabajado),
+      precio_desayuno: coerce(config.precio_desayuno),
+      precio_cena: coerce(config.precio_cena),
+      precio_procena: coerce(config.precio_procena),
+      precio_km: coerce(config.precio_km),
+      precio_contenedor: coerce(config.precio_contenedor),
+    };
     const { error } = await supabase
       .from('nomina_perfiles')
-      .update({ config_nomina: config })
+      .update({ config_nomina: clean })
       .eq('user_id', targetUserId);
     if (!error) alert('¡Configuración guardada!');
   };
@@ -239,7 +274,6 @@ export default function CalculadoraNomina() {
     let d=0,c=0,p=0, km=0, cont=0, plus=0;
     const worked = new Set();
     pontaj.zilePontaj.forEach((z, i) => {
-      if (!z) return;
       if (z.desayuno) d++;
       if (z.cena) c++;
       if (z.procena) p++;
@@ -250,25 +284,25 @@ export default function CalculadoraNomina() {
       if (z.desayuno || z.cena || z.procena || k>0 || (z.contenedores||0)>0 || (z.suma_festivo||0)>0) worked.add(i);
     });
     const dz = worked.size;
-    const sDes = d * (config.precio_desayuno || 0);
-    const sCen = c * (config.precio_cena || 0);
-    const sPro = p * (config.precio_procena || 0);
-    const sKm  = km * (config.precio_km || 0);
-    const sCon = cont * (config.precio_contenedor || 0);
-    const sDia = dz * (config.precio_dia_trabajado || 0);
-    const total = (config.salario_base || 0) + (config.antiguedad || 0) + sDes + sCen + sPro + sKm + sCon + sDia + plus;
+    const sDes = d * (Number(config.precio_desayuno) || 0);
+    const sCen = c * (Number(config.precio_cena) || 0);
+    const sPro = p * (Number(config.precio_procena) || 0);
+    const sKm  = km * (Number(config.precio_km) || 0);
+    const sCon = cont * (Number(config.precio_contenedor) || 0);
+    const sDia = dz * (Number(config.precio_dia_trabajado) || 0);
+    const total = (Number(config.salario_base) || 0) + (Number(config.antiguedad) || 0) + sDes + sCen + sPro + sKm + sCon + sDia + plus;
 
     setResult({
       totalBruto: total.toFixed(2),
       detalii_calcul: {
-        'Salario Base': `${(config.salario_base || 0).toFixed(2)}€`,
-        'Antigüedad': `${(config.antiguedad || 0).toFixed(2)}€`,
-        'Total Días Trabajados': `${dz} días x ${(config.precio_dia_trabajado || 0).toFixed(2)}€ = ${sDia.toFixed(2)}€`,
-        'Total Desayunos': `${d} x ${(config.precio_desayuno || 0).toFixed(2)}€ = ${sDes.toFixed(2)}€`,
-        'Total Cenas': `${c} x ${(config.precio_cena || 0).toFixed(2)}€ = ${sCen.toFixed(2)}€`,
-        'Total Procenas': `${p} x ${(config.precio_procena || 0).toFixed(2)}€ = ${sPro.toFixed(2)}€`,
-        'Total Kilómetros': `${km} km x ${(config.precio_km || 0).toFixed(2)}€ = ${sKm.toFixed(2)}€`,
-        'Total Contenedores': `${cont} x ${(config.precio_contenedor || 0).toFixed(2)}€ = ${sCon.toFixed(2)}€`,
+        'Salario Base': `${(Number(config.salario_base) || 0).toFixed(2)}€`,
+        'Antigüedad': `${(Number(config.antiguedad) || 0).toFixed(2)}€`,
+        'Total Días Trabajados': `${dz} días x ${(Number(config.precio_dia_trabajado) || 0).toFixed(2)}€ = ${sDia.toFixed(2)}€`,
+        'Total Desayunos': `${d} x ${(Number(config.precio_desayuno) || 0).toFixed(2)}€ = ${sDes.toFixed(2)}€`,
+        'Total Cenas': `${c} x ${(Number(config.precio_cena) || 0).toFixed(2)}€ = ${sCen.toFixed(2)}€`,
+        'Total Procenas': `${p} x ${(Number(config.precio_procena) || 0).toFixed(2)}€ = ${sPro.toFixed(2)}€`,
+        'Total Kilómetros': `${km} km x ${(Number(config.precio_km) || 0).toFixed(2)}€ = ${sKm.toFixed(2)}€`,
+        'Total Contenedores': `${cont} x ${(Number(config.precio_contenedor) || 0).toFixed(2)}€ = ${sCon.toFixed(2)}€`,
         'Total Festivos/Plus': `${plus.toFixed(2)}€`,
       },
       sumar_activitate: {
@@ -341,7 +375,7 @@ export default function CalculadoraNomina() {
   return (
     <Layout backgroundClassName="calculadora-background">
       <div className={styles.header}>
-        <h1>Calculadora de Nómina</h1>
+        <h1>Calculadora de Nómina {profile?.role==='dispecer' && selectedDriver ? `— ${driverLabel(selectedDriver)}` : ''}</h1>
         <button className={styles.archiveButton} onClick={openArchive} disabled={!ready}>
           <ArchiveIcon/> Ver Archivo
         </button>
@@ -350,7 +384,11 @@ export default function CalculadoraNomina() {
       {profile?.role === 'dispecer' && (
         <div className={styles.dispatcherSelector}>
           <label htmlFor="driver">Seleccione un Conductor:</label>
-          <select id="driver" onChange={(e)=>onDriverChange(e)} value={selectedDriver || ''}>
+          <select
+            id="driver"
+            onChange={onDriverChange}
+            value={selectedDriver || ''}
+          >
             <option value="" disabled>-- Elija un conductor --</option>
             {drivers.map(d => (
               <option key={d.user_id} value={d.user_id}>{d.nombre_completo}</option>
@@ -363,21 +401,21 @@ export default function CalculadoraNomina() {
         <div className={styles.mainContainer}>
           <div className={styles.column}>
             <div className={styles.card}>
-              <h3>1. Configuración de Contrato {profile?.role==='dispecer' && driverLabel(selectedDriver) ? `— ${driverLabel(selectedDriver)}`:''}</h3>
+              <h3>1. Configuración de Contrato</h3>
               <div className={styles.inputGrid}>
-                <div className={styles.inputGroup}><label>Salario Base (€)</label><input type="number" name="salario_base" value={config.salario_base} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Antigüedad (€)</label><input type="number" name="antiguedad" value={config.antiguedad} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio Día Trabajado (€)</label><input type="number" name="precio_dia_trabajado" value={config.precio_dia_trabajado} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio Desayuno (€)</label><input type="number" name="precio_desayuno" value={config.precio_desayuno} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio Cena (€)</label><input type="number" name="precio_cena" value={config.precio_cena} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio Procena (€)</label><input type="number" name="precio_procena" value={config.precio_procena} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio/km (€)</label><input type="number" name="precio_km" value={config.precio_km} onChange={onConfigChange} /></div>
-                <div className={styles.inputGroup}><label>Precio Contenedor (€)</label><input type="number" name="precio_contenedor" value={config.precio_contenedor} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Salario Base (€)</label><input type="number" name="salario_base" value={config.salario_base === '' ? '' : config.salario_base} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Antigüedad (€)</label><input type="number" name="antiguedad" value={config.antiguedad === '' ? '' : config.antiguedad} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Día Trabajado (€)</label><input type="number" name="precio_dia_trabajado" value={config.precio_dia_trabajado === '' ? '' : config.precio_dia_trabajado} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Desayuno (€)</label><input type="number" name="precio_desayuno" value={config.precio_desayuno === '' ? '' : config.precio_desayuno} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Cena (€)</label><input type="number" name="precio_cena" value={config.precio_cena === '' ? '' : config.precio_cena} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Procena (€)</label><input type="number" name="precio_procena" value={config.precio_procena === '' ? '' : config.precio_procena} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio/km (€)</label><input type="number" name="precio_km" value={config.precio_km === '' ? '' : config.precio_km} onChange={onConfigChange} /></div>
+                <div className={styles.inputGroup}><label>Precio Contenedor (€)</label><input type="number" name="precio_contenedor" value={config.precio_contenedor === '' ? '' : config.precio_contenedor} onChange={onConfigChange} /></div>
               </div>
-              <button className={styles.saveButton} onClick={saveConfig}>Guardar Configuración</button>
+              <button className={styles.saveButton} onClick={saveConfig}>Guardar configuración</button>
             </div>
 
-            <button className={styles.calculateButton} onClick={calc}>Calcular Nómina</button>
+            <button className={styles.calculateButton} onClick={calc}>Calcular nómina</button>
           </div>
 
           <div className={styles.column}>
@@ -403,7 +441,7 @@ export default function CalculadoraNomina() {
                     <li key={k}><span>{k}</span><span>{v}</span></li>
                   ))}
                 </ul>
-                <button className={styles.saveButton} onClick={saveToArchive}>Guardar en Archivo</button>
+                <button className={styles.saveButton} onClick={saveToArchive}>Guardar cálculo</button>
               </div>
             )}
           </div>
@@ -429,10 +467,7 @@ export default function CalculadoraNomina() {
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>
-                Archivo de Nóminas
-                {profile?.role==='dispecer' && driverLabel(selectedDriver) ? ` — ${driverLabel(selectedDriver)}` : ''}
-              </h3>
+              <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role==='dispecer' && selectedDriver && `— ${driverLabel(selectedDriver)}`}</h3>
               <button className={styles.closeIcon} onClick={()=>setIsArchiveOpen(false)}><CloseIcon/></button>
             </div>
             <div className={styles.archiveModalBody}>
