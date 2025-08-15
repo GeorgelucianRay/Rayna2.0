@@ -1,12 +1,12 @@
 // src/components/CalculadoraNomina.jsx
 import React, { useMemo, useState } from 'react';
 import Layout from './Layout';
-import styles from './nomina/Nominas.module.css';
+import styles from './components/Nominas.module.css';
 
-import NominaConfigCard from './nomina/NominaConfigCard';
-import NominaCalendar from './nomina/NominaCalendar';
-import ParteDiarioModal from './nomina/ParteDiarioModal';
-import NominaResultCard from './nomina/NominaResultCard';
+import NominaConfigCard from './components/NominaConfigCard';
+import NominaCalendar from './components/NominaCalendar';
+import ParteDiarioModal from './components/ParteDiarioModal';
+import NominaResultCard from './components/NominaResultCard';
 
 export default function CalculadoraNomina() {
   const monthNames = useMemo(
