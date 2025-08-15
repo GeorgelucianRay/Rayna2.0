@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import styles from './RaynaHub.module.css';
+import styles from './Chatbot.module.css';
 
 // Icon X minimal
 const CloseIcon = () => (
