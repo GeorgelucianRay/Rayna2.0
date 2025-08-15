@@ -6,50 +6,46 @@ import { supabase } from '../supabaseClient';
 import styles from './Layout.module.css';
 import UpdatePrompt from './UpdatePrompt';
 
-/* Icons */
+/* Icons (păstrăm SVG inline ca până acum) */
 const BellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
 );
-const HomeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-);
-const DepotIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"></path><path d="M14 5v14"></path><path d="M6 5v14"></path><path d="M10 5v14"></path><path d="M18 5v14"></path></svg>
-);
-const ProfileIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-);
-const UsersIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-);
-const GpsIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-);
-const WrenchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-);
-const LogoutIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
-);
-const MenuIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
-);
-const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>
-);
-const CalculatorIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="10" x2="16" y2="18"></line><line x1="8" y1="10" x2="8" y2="18"></line><line x1="12" y1="10" x2="12" y2="18"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg>
-);
+const HomeIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 7v10a2 2 0 0 1-2 2h-5v-6H10v6H5a2 2 0 0 1-2-2V10l9-7z"/></svg>);
+const DepotIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l9-4 9 4v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm4 3h10v8H7v-8zM9 5.9l3-1.3 3 1.3V7H9V5.9z"/></svg>);
+const ProfileIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5Z"/></svg>);
+const UsersIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 1a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.3 0-6 1.7-6 4v2h8v-2c0-1.2.5-2.2 1.3-3A8 8 0 0 0 8 14Zm8 0a6 6 0 0 0-4.8 2.3A4.4 4.4 0 0 0 10 20v2h12v-2c0-2.3-2.7-4-6-4Z"/></svg>);
+const GpsIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v2a7 7 0 0 1 6 6h2a1 1 0 0 1 0 2h-2a7 7 0 0 1-6 6v2a1 1 0 0 1-2 0v-2a7 7 0 0 1-6-6H2a1 1 0 0 1 0-2h2a7 7 0 0 1 6-6V3a1 1 0 0 1 1-1Zm0 6a4 4 0 1 0 4 4 4 4 0 0 0-4-4Z"/></svg>);
+const WrenchIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 7.5a5.5 5.5 0 0 1-7.8 5L6 19.7 4.3 18 12.2 10a5.5 5.5 0 1 1 8.8-2.5Z"/></svg>);
+const LogoutIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>);
+const MenuIcon = () => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>);
+const CloseIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>);
+const CalculatorIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm1 4h10v3H7V6Zm0 5h3v3H7v-3Zm4 0h3v3h-3v-3Zm4 0h3v3h-3v-3ZM7 15h3v3H7v-3Zm4 0h7v3h-7v-3Z"/></svg>);
 
-const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
-  const linkClasses = [
+/* util */
+const HUB_ROUTE = '/rayna-hub';                 // ruta noului RaynaHub
+const HUB_IMG   = '/A8CB7FEF-A63A-444E-8B70-B03426F25960.png'; // imagine din /public
+
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '•';
+  const first = parts[0][0] || '';
+  const last  = (parts[parts.length - 1] || '')[0] || '';
+  return (first + last).toUpperCase();
+}
+
+/* Link cu accent dinamic (neon cyber) când e activ */
+const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive, accentFrom, accentTo, children, useImage }) => {
+  const inlineStyle = isActive ? ({ '--accent': accentFrom, '--accent-strong': accentTo }) : undefined;
+  const cls = [
     styles.navLink,
     isLogout ? styles.navLinkLogout : '',
     isActive ? styles.active : ''
   ].join(' ');
   return (
-    <Link to={to} className={linkClasses} onClick={onClick}>
-      {icon} <span>{text}</span>
+    <Link to={to} className={cls} onClick={onClick} style={inlineStyle}>
+      {useImage ? <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubIcon} /> : icon}
+      <span>{text}</span>
+      {children}
     </Link>
   );
 };
@@ -60,55 +56,70 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const { user, profile, alarms } = useAuth();
   const navigate = useNavigate();
-
   const { pathname } = location;
 
-  /* fundaluri pentru rutele noi */
+  /* map de accente per rută (neon cyber) */
+  const accentMap = {
+    '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
+    '/sofer-homepage': ['#22d3ee', '#06b6d4'],
+    [HUB_ROUTE]: ['#06b6d4', '#0891b2'],          // RaynaHub – cyan
+    '/choferes-finder': ['#a78bfa', '#8b5cf6'],   // violet
+    '/gps': ['#fb923c', '#f97316'],               // orange
+    '/taller': ['#38bdf8', '#0ea5e9'],            // blue
+    '/depot': ['#34d399', '#10b981'],             // green
+    '/calculadora-nomina': ['#f59e0b', '#d97706'],// amber
+    '/mi-perfil': ['#f472b6', '#ec4899'],         // pink
+  };
+  const getAccent = (routeId) => {
+    const [from, to] = accentMap[routeId] || ['#60a5fa', '#3b82f6'];
+    return { from, to };
+  };
+
+  /* fundaluri (NE-MODIFICATE) */
   const backgroundMap = {
     '/sofer-homepage': styles.homepageSoferBackground,
     '/dispecer-homepage': styles.homepageSoferBackground,
     '/camion': styles.camionBackground,
     '/remorca': styles.remorcaBackground,
     '/taller': styles.tallerBackground,
-    '/choferes-finder': styles.choferesBackground,   // <— NOU
-    '/choferes': styles.choferesBackground,          // fallback in caz de link vechi
+    '/choferes-finder': styles.choferesBackground,
+    '/choferes': styles.choferesBackground,
     '/mi-perfil': styles.miPerfilBackground,
     '/depot': styles.depotBackground,
     '/gps': styles.gpsBackground,
     '/reparatii': styles.reparatiiBackground,
     '/calculadora-nomina': styles.calculadoraBackground,
-    '/vacaciones': styles.miPerfilBackground,        // <— vacanțe user
-    '/vacaciones-admin': styles.miPerfilBackground,  // <— vacanțe admin
-    '/chofer': styles.miPerfilBackground,            // detalii profil /chofer/:id
+    '/vacaciones': styles.miPerfilBackground,
+    '/vacaciones-admin': styles.miPerfilBackground,
+    '/chofer': styles.miPerfilBackground,
   };
-
   const getBackgroundClass = () => {
     const matchingPath = Object.keys(backgroundMap)
       .sort((a, b) => b.length - a.length)
       .find(key => pathname.startsWith(key));
     return matchingPath ? backgroundMap[matchingPath] : null;
   };
-
   const backgroundClassName = getBackgroundClass();
 
-  /* meniuri role-based */
+  /* meniuri role-based (aceleași rute; doar adăugăm RaynaHub în top) */
   const soferMenu = [
+    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
     { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
     { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' },
   ];
-
   const dispecerMenu = [
+    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
-    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' }, // <— actualizat
+    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
     { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
   ];
-
   const mecanicMenu = [
+    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
   ];
@@ -140,16 +151,16 @@ const Layout = ({ children }) => {
 
       <aside className={styles.navMenu}>
         <div className={styles.navHeader}>
-          <div>
-            <h2 className={styles.navTitle}>Rayna</h2>
-            {user && <p className={styles.userEmail}>{user.email}</p>}
+          {/* Nume + avatar (fără rol, fără email) */}
+          <div className={styles.userBlock}>
+            <div className={styles.userAvatar}>{getInitials(profile?.nombre_completo)}</div>
+            <div className={styles.userMeta}>
+              <div className={styles.userName}>{profile?.nombre_completo || 'Usuario'}</div>
+            </div>
           </div>
           <div className={styles.headerIcons}>
             {alarms.length > 0 && (
-              <button
-                className={styles.notificationBell}
-                onClick={() => setIsNotificationsOpen(true)}
-              >
+              <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
                 <BellIcon />
                 <span className={styles.notificationBadge}>{alarms.length}</span>
               </button>
@@ -161,16 +172,23 @@ const Layout = ({ children }) => {
         </div>
 
         <nav className={styles.navLinks}>
-          {navLinksData.map(link => (
-            <NavLink
-              key={link.id}
-              to={link.id}
-              icon={link.icon}
-              text={link.text}
-              isActive={location.pathname.startsWith(link.id)}
-              onClick={() => setIsMenuOpen(false)}
-            />
-          ))}
+          {navLinksData.map(link => {
+            const isActive = pathname.startsWith(link.id);
+            const { from, to } = getAccent(link.id);
+            return (
+              <NavLink
+                key={link.id}
+                to={link.id}
+                icon={link.icon}
+                text={link.text}
+                isActive={isActive}
+                onClick={() => setIsMenuOpen(false)}
+                accentFrom={from}
+                accentTo={to}
+                useImage={link.isImage}
+              />
+            );
+          })}
 
           <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
 
@@ -180,6 +198,7 @@ const Layout = ({ children }) => {
             text="Cerrar Sesión"
             onClick={handleLogout}
             isLogout={true}
+            isActive={false}
           />
         </nav>
       </aside>
