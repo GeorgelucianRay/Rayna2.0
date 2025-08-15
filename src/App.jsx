@@ -13,7 +13,7 @@ import GpsPage from './components/GpsPage.jsx';
 import MiPerfilPage from './components/MiPerfilPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
-import ChoferesPage from './components/ChoferesPage.jsx'; // ✅ extensie corectă
+import ChoferesPage from './components/ChoferFinderProfile.jsx'; // ✅ extensie corectă
 import ChoferProfilePage from './components/ChoferProfilePage.jsx';
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
