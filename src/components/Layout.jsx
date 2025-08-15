@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import styles from './Layout.module.css';
 import UpdatePrompt from './UpdatePrompt';
 
-/* Icons (păstrăm SVG inline ca până acum) */
+/* Icons */
 const BellIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
 );
@@ -21,20 +21,12 @@ const MenuIcon = () => (<svg width="28" height="28" viewBox="0 0 24 24" fill="no
 const CloseIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>);
 const CalculatorIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm1 4h10v3H7V6Zm0 5h3v3H7v-3Zm4 0h3v3h-3v-3Zm4 0h3v3h-3v-3ZM7 15h3v3H7v-3Zm4 0h7v3h-7v-3Z"/></svg>);
 
-/* util */
-const HUB_ROUTE = '/rayna-hub';                 // ruta noului RaynaHub
-const HUB_IMG   = '/A8CB7FEF-A63A-444E-8B70-B03426F25960.png'; // imagine din /public
+/* rute & asset */
+const HUB_ROUTE = '/rayna-hub';
+const HUB_IMG   = '/A8CB7FEF-A63A-444E-8B70-B03426F25960.png';
 
-function getInitials(name = '') {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '•';
-  const first = parts[0][0] || '';
-  const last  = (parts[parts.length - 1] || '')[0] || '';
-  return (first + last).toUpperCase();
-}
-
-/* Link cu accent dinamic (neon cyber) când e activ */
-const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive, accentFrom, accentTo, children, useImage }) => {
+/* link de meniu cu accent neon când e activ */
+const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive, accentFrom, accentTo }) => {
   const inlineStyle = isActive ? ({ '--accent': accentFrom, '--accent-strong': accentTo }) : undefined;
   const cls = [
     styles.navLink,
@@ -43,9 +35,7 @@ const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive, accentFr
   ].join(' ');
   return (
     <Link to={to} className={cls} onClick={onClick} style={inlineStyle}>
-      {useImage ? <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubIcon} /> : icon}
-      <span>{text}</span>
-      {children}
+      {icon} <span>{text}</span>
     </Link>
   );
 };
@@ -58,24 +48,23 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const { pathname } = location;
 
-  /* map de accente per rută (neon cyber) */
+  /* accente neon per rută (pentru highlight activ) */
   const accentMap = {
     '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
     '/sofer-homepage': ['#22d3ee', '#06b6d4'],
-    [HUB_ROUTE]: ['#06b6d4', '#0891b2'],          // RaynaHub – cyan
-    '/choferes-finder': ['#a78bfa', '#8b5cf6'],   // violet
-    '/gps': ['#fb923c', '#f97316'],               // orange
-    '/taller': ['#38bdf8', '#0ea5e9'],            // blue
-    '/depot': ['#34d399', '#10b981'],             // green
-    '/calculadora-nomina': ['#f59e0b', '#d97706'],// amber
-    '/mi-perfil': ['#f472b6', '#ec4899'],         // pink
+    '/choferes-finder': ['#a78bfa', '#8b5cf6'],
+    '/gps': ['#fb923c', '#f97316'],
+    '/taller': ['#38bdf8', '#0ea5e9'],
+    '/depot': ['#34d399', '#10b981'],
+    '/calculadora-nomina': ['#f59e0b', '#d97706'],
+    '/mi-perfil': ['#f472b6', '#ec4899'],
   };
   const getAccent = (routeId) => {
     const [from, to] = accentMap[routeId] || ['#60a5fa', '#3b82f6'];
     return { from, to };
   };
 
-  /* fundaluri (NE-MODIFICATE) */
+  /* fundaluri (nemodificate) */
   const backgroundMap = {
     '/sofer-homepage': styles.homepageSoferBackground,
     '/dispecer-homepage': styles.homepageSoferBackground,
@@ -101,16 +90,14 @@ const Layout = ({ children }) => {
   };
   const backgroundClassName = getBackgroundClass();
 
-  /* meniuri role-based (aceleași rute; doar adăugăm RaynaHub în top) */
+  /* meniuri role-based — FĂRĂ Rayna Hub aici (e sus, în header) */
   const soferMenu = [
-    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
     { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
     { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' },
   ];
   const dispecerMenu = [
-    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
     { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
@@ -119,7 +106,6 @@ const Layout = ({ children }) => {
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
   ];
   const mecanicMenu = [
-    { id: HUB_ROUTE, icon: null, text: 'Rayna Hub', isImage: true },
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
   ];
@@ -150,14 +136,21 @@ const Layout = ({ children }) => {
       )}
 
       <aside className={styles.navMenu}>
+        {/* HEADER MENIU: buton RaynaHub + iconițe */}
         <div className={styles.navHeader}>
-          {/* Nume + avatar (fără rol, fără email) */}
-          <div className={styles.userBlock}>
-            <div className={styles.userAvatar}>{getInitials(profile?.nombre_completo)}</div>
-            <div className={styles.userMeta}>
-              <div className={styles.userName}>{profile?.nombre_completo || 'Usuario'}</div>
-            </div>
-          </div>
+          <Link
+            to={HUB_ROUTE}
+            className={styles.hubButton}
+            onClick={() => setIsMenuOpen(false)}
+            aria-label="Rayna Hub"
+          >
+            <img
+              src={HUB_IMG}
+              alt="Rayna Hub"
+              className={styles.hubLogo}
+              draggable="false"
+            />
+          </Link>
           <div className={styles.headerIcons}>
             {alarms.length > 0 && (
               <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
@@ -171,6 +164,12 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
+        {/* Numele utilizatorului sub butonul Hub */}
+        <div className={styles.userBlock}>
+          <div className={styles.userName}>{profile?.nombre_completo || user?.email || 'Usuario'}</div>
+        </div>
+
+        {/* LINKURI MENIU */}
         <nav className={styles.navLinks}>
           {navLinksData.map(link => {
             const isActive = pathname.startsWith(link.id);
@@ -185,7 +184,6 @@ const Layout = ({ children }) => {
                 onClick={() => setIsMenuOpen(false)}
                 accentFrom={from}
                 accentTo={to}
-                useImage={link.isImage}
               />
             );
           })}
