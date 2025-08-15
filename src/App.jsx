@@ -24,9 +24,6 @@ import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
-// (opțional) dacă încă folosești profil separat la /chofer/:id
-import ChoferProfilePage from './components/ChoferProfilePage.jsx';
-
 function App() {
   return (
     <Routes>
@@ -37,7 +34,7 @@ function App() {
       <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
       <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-      {/* --- Protejate (după login) --- */}
+      {/* --- Protejate --- */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
@@ -46,7 +43,7 @@ function App() {
 
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
-      {/* Vacaciones: user (standalone) + admin/dispatcher */}
+      {/* Vacaciones */}
       <Route path="/vacaciones" element={<VacacionesStandalone />} />
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
@@ -54,11 +51,8 @@ function App() {
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      {/* Chofer finder (înlocuiește listele vechi) */}
+      {/* Finder unificat pentru șoferi */}
       <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
-
-      {/* Profil separat (dacă e încă folosit de ChoferFinderProfile pentru /chofer/:id) */}
-      <Route path="/chofer/:id" element={<ChoferProfilePage />} />
 
       {/* Taller / Reparații */}
       <Route path="/taller" element={<TallerPage />} />
@@ -71,7 +65,7 @@ function App() {
       <Route path="/mapa" element={<MapPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
 
-      {/* --- 404 --- */}
+      {/* 404 */}
       <Route
         path="*"
         element={
