@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import styles from './MapStalone.module.css';
+import styles from './MapStandalone.module.css';
 
 /** ===============================
  *  CONFIG
