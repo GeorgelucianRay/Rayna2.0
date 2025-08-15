@@ -1,473 +1,283 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
+// src/components/MapPage.jsx
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import styles from './MapStandalone.module.css';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import styles from './MapStandalone.module.css';
 
-/** ===============================
- *  CONFIG
- *  =============================== */
-
-// setările scenei
-const ROWS = ['A','B','C','D','E','F'];      // A-C față, D-F spate
-const COLS = 10;                              // 1..10
-const CELL_LEN = 12.2;                        // ~ lungimea pt 40ft (m) – axa Z
-const LANE_W = 3.0;                           // distanță între rânduri – axa X
-const CELL_W = 2.6;                           // lățime + buffer (axa X intern pentru “bandă”)
-const STACK_H = 2.9;                          // înălțime per container high-cube (m)
-const GND_MARGIN = 8;                         // margini asfalt
-
-// tipuri containere (L, H, W aproximativ metri)
-const TYPE_DIM = {
-  '20':           { L: 6.1,  H: 2.6, W: 2.44, label: '20' },
-  '20-opentop':   { L: 6.1,  H: 2.6, W: 2.44, label: '20 OpenTop' },
-  '40-bajo':      { L: 12.2, H: 2.6, W: 2.44, label: '40 Bajo' },
-  '40-alto':      { L: 12.2, H: 2.9, W: 2.44, label: '40 Alto' },
-  '40-opentop':   { L: 12.2, H: 2.6, W: 2.44, label: '40 OpenTop' },
-  '45':           { L: 13.7, H: 2.9, W: 2.44, label: '45' },
+/* —— culori naviera —— */
+const NAVIERA_COLORS = {
+  MAERSK: 0xbfc7cf,
+  MSK: 0xeab308,        // muștar
+  HAPAG: 0xf97316,
+  MESSINA: 0xf97316,
+  ONE: 0xec4899,
+  EVERGREEN: 0x22c55e,
+  ARCAS: 0x2563eb,
+  OTROS: 0x8b5e3c
 };
 
-// culori “naviera”
-const LINE_COLOR = {
-  'Maersk':        '#c9d6df',
-  'Hapag-Lloyd':   '#ff5a00',
-  'ONE':           '#e4007f',
-  'Messina':       '#dd4f00',
-  'Evergreen':     '#009f42',
-  'Arkas':         '#1e64c8',
-  'MSC':           '#d4b100',   // “MSK/MSC” galben muștar
-  'Otros':         '#8b5e3c',
+/* —— dimensiuni container (aprox, în metri) —— */
+const SIZE_BY_TIPO = {
+  '20':       { L: 6.06,  H: 2.59, W: 2.44 },
+  '20opentop':{ L: 6.06,  H: 2.59, W: 2.44 },
+  '40alto':   { L:12.19,  H:2.89,  W:2.44 },
+  '40bajo':   { L:12.19,  H:2.59,  W:2.44 },
+  '40opentop':{ L:12.19,  H:2.59,  W:2.44 },
+  '45':       { L:13.72,  H:2.89,  W:2.44 }
 };
 
-// fallback
-const safeColor = (name) => LINE_COLOR[name] || LINE_COLOR['Otros'];
-
-const USE_SUPABASE = true; // schimbă pe false dacă vrei doar demo local
-
-/** Helpers coordonate **/
-const rowToIndex = (r) => ROWS.indexOf(r); // A->0
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-function posToXYZ({ row, col, stack, L = 12.2 }) {
-  // rând pe axa X, coloana pe axa Z, stiva pe axa Y
-  const rIdx = rowToIndex(row);
-  const x = (rIdx - (ROWS.length - 1) / 2) * (CELL_W + LANE_W);
-  const z = (col - (COLS + 1) / 2) * CELL_LEN + L/2; // aliniem la celulă, lungimea influențează
-  const y = (stack - 1) * STACK_H + STACK_H / 2;     // centrat pe înălțime
-  return [x, y, z];
+function pickColor(naviera = '', roto = false, programado = false) {
+  if (roto) return 0xef4444; // roșu aprins pentru roto
+  const key = (naviera || '').trim().toUpperCase();
+  const base = NAVIERA_COLORS[key] ?? NAVIERA_COLORS.OTROS;
+  // ușor mai “electric” dacă e programado
+  return programado ? new THREE.Color(base).offsetHSL(0, 0, 0.1).getHex() : base;
 }
 
-/** ===============================
- *  Mesh Container
- *  =============================== */
-function ContainerMesh({
-  cont, isSelected, onClick, onDoubleClick
-}) {
-  const { tipo, naviera = 'Otros', estado = 'bueno', programado = false } = cont;
-  const dims = TYPE_DIM[tipo] || TYPE_DIM['40-alto'];
-  const colorBase = estado === 'roto' ? '#ef4444' : safeColor(naviera);
-  const groupRef = useRef();
-  const pulseRef = useRef(0);
-
-  useFrame((_, delta) => {
-    if (programado && groupRef.current) {
-      pulseRef.current += delta * 3;
-      const s = 1 + Math.sin(pulseRef.current) * 0.05;
-      groupRef.current.scale.set(s, 1, s);
-    } else if (groupRef.current) {
-      groupRef.current.scale.set(1,1,1);
-    }
-  });
-
-  const [x, y, z] = posToXYZ({
-    row: cont.fila, col: cont.columna, stack: cont.pila, L: dims.L
-  });
-
-  return (
-    <group
-      ref={groupRef}
-      position={[x, y, z]}
-      onClick={(e)=>{e.stopPropagation(); onClick?.(cont);}}
-      onDoubleClick={(e)=>{e.stopPropagation(); onDoubleClick?.(cont);}}
-    >
-      {/* cutie */}
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={[dims.W, dims.H, dims.L]} />
-        <meshStandardMaterial color={colorBase} metalness={0.2} roughness={0.6} />
-      </mesh>
-
-      {/* contur subțire */}
-      <mesh>
-        <boxGeometry args={[dims.W*1.002, dims.H*1.002, dims.L*1.002]} />
-        <meshBasicMaterial color={isSelected ? '#ffffff' : '#000000'} wireframe opacity={0.4} transparent />
-      </mesh>
-
-      {/* etichetă mică în față */}
-      <Text
-        position={[0, dims.H/2 + 0.2, 0]}
-        fontSize={0.45}
-        color={isSelected ? '#ffffff' : '#e5e7eb'}
-        anchorX="center"
-        anchorY="bottom"
-        outlineWidth={0.02}
-        outlineColor="black"
-      >
-        {cont.codigo || cont.naviera || 'CNTR'}
-      </Text>
-    </group>
-  );
+/* Parsează “posicion” tip A1, A10B (B=etaj 2) */
+function parsePos(pos = '') {
+  const m = pos.trim().toUpperCase().match(/^([A-F])(\d{1,2})([A-Z])?$/);
+  if (!m) return null;
+  const row = m[1];       // A..F
+  const col = Number(m[2]); // 1..n
+  const levelLetter = m[3] || 'A'; // A=etaj 1
+  const level = levelLetter.charCodeAt(0) - 64; // A=1, B=2...
+  return { row, col, level };
 }
 
-/** ===============================
- *  Grilă curte + etichete rânduri
- *  =============================== */
-function YardGrid() {
-  const lines = [];
+/* Transformă row/col/level în coordonate X/Z/Y */
+function toCoord(row, col, level, height) {
+  // distanțe între rânduri/coloane (metri)
+  const ROW_SPACING = 6;     // distanță între A,B,C… pe axa Z
+  const COL_SPACING = 14;    // distanță între coloane pe axa X
+  const BASE_Y = 0;          // sol
+  // mapăm rândurile: A=0, B=-1, C=-2, D=+0, E=+1, F=+2 cu două zone
+  const rowIndex = { A:-0, B:-1, C:-2, D:+0, E:+1, F:+2 }[row] ?? 0;
+  // lăsăm un “culoar” între ABC (x negativ) și DEF (x pozitiv)
+  const sideShift = (row <= 'C') ? -1 : +1;
 
-  // Linii pe rânduri
-  for (let r = 0; r < ROWS.length; r++) {
-    const x = (r - (ROWS.length - 1) / 2) * (CELL_W + LANE_W);
-    const z1 = - (COLS * CELL_LEN)/2 - GND_MARGIN;
-    const z2 =   (COLS * CELL_LEN)/2 + GND_MARGIN;
-    lines.push(<line key={`r${r}`}>
-      <bufferGeometry
-        attach="geometry"
-        attributes={{
-          position: new THREE.Float32BufferAttribute([x, 0.01, z1, x, 0.01, z2], 3)
-        }}
-      />
-      <lineBasicMaterial attach="material" color="#3b3b3b" />
-    </line>);
-  }
-
-  // Linii pe coloane
-  for (let c = 0; c <= COLS; c++) {
-    const z = (c - COLS/2) * CELL_LEN;
-    const x1 = -((ROWS.length - 1)/2) * (CELL_W + LANE_W) - GND_MARGIN;
-    const x2 =  ((ROWS.length - 1)/2) * (CELL_W + LANE_W) + GND_MARGIN;
-    lines.push(<line key={`c${c}`}>
-      <bufferGeometry
-        attach="geometry"
-        attributes={{
-          position: new THREE.Float32BufferAttribute([x1, 0.01, z, x2, 0.01, z], 3)
-        }}
-      />
-      <lineBasicMaterial attach="material" color="#2a2a2a" />
-    </line>);
-  }
-
-  return <group>{lines}</group>;
+  const x = sideShift * (COL_SPACING * (col - 1) + 10);
+  const z = rowIndex * ROW_SPACING;
+  const y = BASE_Y + (height / 2) + (height * (level - 1));
+  return new THREE.Vector3(x, y, z);
 }
 
-/** ===============================
- *  Scena 3D
- *  =============================== */
-function Scene({ containers, selectedId, setSelectedId, onDoubleMove }) {
-  return (
-    <>
-      {/* lumină */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 18, 10]} intensity={0.8} castShadow />
+export default function MapPage() {
+  const mountRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const sceneRef = useRef(null);
+  const controlsRef = useRef(null);
+  const frameRef = useRef(null);
 
-      {/* asfalt */}
-      <mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow>
-        <planeGeometry args={[ (ROWS.length+4)*(CELL_W+LANE_W), COLS*CELL_LEN + GND_MARGIN*2 ]} />
-        <meshStandardMaterial color="#2a2f34" roughness={1} metalness={0} />
-      </mesh>
-
-      {/* grilă și litere rânduri */}
-      <YardGrid />
-      {ROWS.map((r, i) => {
-        const x = (i - (ROWS.length - 1)/2) * (CELL_W + LANE_W);
-        return (
-          <Text key={r} position={[x, 0.05, -COLS*CELL_LEN/2 - 3]} fontSize={1.2} color="#9aa3ac" rotation={[-Math.PI/2,0,0]}>
-            {r}
-          </Text>
-        );
-      })}
-
-      {/* containere */}
-      {containers.map(c => (
-        <ContainerMesh
-          key={c.id}
-          cont={c}
-          isSelected={selectedId === c.id}
-          onClick={(ct)=> setSelectedId(ct.id)}
-          onDoubleClick={(ct)=> onDoubleMove(ct)}
-        />
-      ))}
-
-      <OrbitControls enablePan enableRotate enableZoom />
-    </>
-  );
-}
-
-/** ===============================
- *  Componenta principală
- *  =============================== */
-export default function Depot3D() {
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [containers, setContainers] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [showMove, setShowMove] = useState(null); // obiect container pt mutare
 
-  // formular “add”
-  const [form, setForm] = useState({
-    tipo: '40-alto',
-    naviera: 'Maersk',
-    naviera_manual: '',
-    estado: 'bueno',  // 'bueno' | 'roto'
-    detalles: '',
-    carga: 'vacio',   // 'vacio' | 'lleno'
-    matricula_camion: '',
-    programado: false,
-    fila: 'A', columna: 1, pila: 1,
-    codigo: ''
-  });
+  // încarc datele (fără să blochez scena dacă pică)
+  const loadContainers = async () => {
+    try {
+      const [{ data: enDep, error: e1 }, { data: progr, error: e2 }, { data: rotos, error: e3 }] =
+        await Promise.all([
+          supabase.from('contenedores').select('*'),
+          supabase.from('contenedores_programados').select('*'),
+          supabase.from('contenedores_rotos').select('*'),
+        ]);
+      if (e1 || e2 || e3) throw e1 || e2 || e3;
 
-  // DEMO fallback local
-  function demoData() {
-    return [
-      { id: 'd1', tipo:'40-alto', naviera:'Maersk', estado:'bueno', carga:'vacio', programado:false, fila:'A', columna:1, pila:1, codigo:'MSKU 1234' },
-      { id: 'd2', tipo:'20', naviera:'Hapag-Lloyd', estado:'bueno', carga:'lleno', programado:true, fila:'B', columna:3, pila:1, codigo:'HLCU 5678' },
-      { id: 'd3', tipo:'45', naviera:'MSC', estado:'roto', detalles:'golpe esquina', programado:false, fila:'E', columna:6, pila:2, codigo:'MSCU 9012' },
-    ];
-  }
+      return {
+        enDeposito: enDep || [],
+        programados: progr || [],
+        rotos: rotos || [],
+      };
+    } catch (e) {
+      console.warn('Supabase fetch failed (continuăm cu demo):', e?.message || e);
+      return { enDeposito: [], programados: [], rotos: [] };
+    }
+  };
 
-  // fetch din Supabase sau demo
   useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    // 1) Renderer sigur
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      mount.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
+    } catch (e) {
+      setError('Tu dispositivo/navegador no soporta WebGL.');
+      return;
+    }
+
+    // 2) Scenă, cameră, lumini
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0f1a);
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      mount.clientWidth / mount.clientHeight,
+      0.1,
+      3000
+    );
+    camera.position.set(36, 28, 42);
+    cameraRef.current = camera;
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x404040, 1.1);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(50, 60, 20);
+    scene.add(dir);
+
+    // 3) Sol + grilă
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(600, 300),
+      new THREE.MeshStandardMaterial({ color: 0x2a2f35, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+    const grid = new THREE.GridHelper(600, 60, 0x2dd4bf, 0x374151);
+    grid.position.y = 0.02;
+    scene.add(grid);
+
+    // 4) Controls (mobil ok)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI * 0.495;
+    controls.target.set(0, 1.2, 0);
+    controlsRef.current = controls;
+
+    // 5) Grup containere
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // 6) funcție utilă de creat container
+    const makeContainer = (tipo, colorHex) => {
+      const key = (tipo || '').toLowerCase();
+      const dims = SIZE_BY_TIPO[key] || SIZE_BY_TIPO['40bajo'];
+      const geom = new THREE.BoxGeometry(dims.L, dims.H, dims.W);
+      const mat = new THREE.MeshStandardMaterial({ color: colorHex });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.userData.__dims = dims;
+      return mesh;
+    };
+
+    // 7) Încarcă date & plasează
     (async () => {
-      if (!USE_SUPABASE) { setContainers(demoData()); return; }
-      const { data, error } = await supabase
-        .from('contenedores') // <- adaptează numele tabelului tău
-        .select('*')
-        .limit(500);
-      if (error) { console.warn('SB error:', error.message); setContainers(demoData()); }
-      else setContainers(data || []);
+      const { enDeposito, programados, rotos } = await loadContainers();
+
+      const addItem = (rec, { roto = false, programado = false } = {}) => {
+        const color = pickColor(rec.naviera, roto, programado);
+        const mesh = makeContainer(rec.tipo, color);
+
+        const pos = parsePos(rec.posicion || '');
+        if (pos) {
+          const yH = mesh.userData.__dims.H;
+          const v = toCoord(pos.row, pos.col, pos.level, yH);
+          mesh.position.copy(v);
+        } else {
+          // fallback „zona parcare” dacă nu are poziție
+          mesh.position.set(0, mesh.userData.__dims.H / 2, 40);
+        }
+
+        // pulse ușor pentru programados
+        if (programado) {
+          mesh.userData.__pulse = { base: mesh.scale.y, t: Math.random() * Math.PI * 2 };
+        }
+
+        mesh.userData.__record = rec;
+        group.add(mesh);
+      };
+
+      enDeposito.forEach((r) => addItem(r));
+      programados.forEach((r) => addItem(r, { programado: true }));
+      rotos.forEach((r) => addItem(r, { roto: true }));
+
+      // demo dacă nu e nimic
+      if (group.children.length === 0) {
+        const demo = [
+          { naviera: 'EVERGREEN', tipo: '40alto', posicion: 'A1' },
+          { naviera: 'HAPAG', tipo: '20', posicion: 'A2B' },
+          { naviera: 'ONE', tipo: '40bajo', posicion: 'E3' },
+        ];
+        demo.forEach((r) => addItem(r));
+      }
+
+      setLoading(false);
     })();
+
+    // 8) animație
+    const animate = () => {
+      // pulse pentru programados
+      group.children.forEach((m) => {
+        if (m.userData.__pulse) {
+          const p = m.userData.__pulse;
+          p.t += 0.04;
+          const s = 1 + Math.sin(p.t) * 0.05;
+          m.scale.set(1, s, 1);
+        }
+      });
+      controls.update();
+      renderer.render(scene, camera);
+      frameRef.current = requestAnimationFrame(animate);
+    };
+    animate();
+
+    // 9) Resize
+    const onResize = () => {
+      if (!mount) return;
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', onResize);
+
+    // 10) Cleanup
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      window.removeEventListener('resize', onResize);
+      controls.dispose();
+      renderer.dispose();
+      mount.removeChild(renderer.domElement);
+      scene.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose?.();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose?.());
+          else obj.material.dispose?.();
+        }
+      });
+    };
   }, []);
 
-  // adaugă container
-  async function handleAdd(e) {
-    e?.preventDefault?.();
-    const nav = form.naviera === 'Otros' ? (form.naviera_manual || 'Otros') : form.naviera;
-    const payload = { ...form, naviera: nav };
-    delete payload.naviera_manual;
-
-    if (!USE_SUPABASE) {
-      setContainers(prev => [...prev, { id: 'local_'+Date.now(), ...payload }]);
-      setShowAdd(false);
-      return;
-    }
-    const { data, error } = await supabase.from('contenedores').insert([payload]).select().single();
-    if (error) { alert('Error guardando: ' + error.message); return; }
-    setContainers(prev => [data, ...prev]);
-    setShowAdd(false);
-  }
-
-  // mută container
-  async function handleMove(e) {
-    e?.preventDefault?.();
-    if (!showMove) return;
-    const { id } = showMove;
-
-    const fila = clampRow(form.fila);
-    const columna = clamp(form.columna, 1, COLS);
-    const pila = clamp(form.pila, 1, 5);
-
-    if (!USE_SUPABASE) {
-      setContainers(prev => prev.map(c => c.id===id ? { ...c, fila, columna, pila } : c));
-      setShowMove(null);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('contenedores')
-      .update({ fila, columna, pila })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) { alert('Error moviendo: ' + error.message); return; }
-    setContainers(prev => prev.map(c => c.id===id ? data : c));
-    setShowMove(null);
-  }
-
-  const clampRow = (r) => (ROWS.includes(r) ? r : 'A');
-
-  // la dublu-click pe un container deschidem dialogul de mutare cu poziția lui
-  function openMoveDialog(cont) {
-    setShowMove(cont);
-    setForm(f => ({ ...f, fila: cont.fila, columna: cont.columna, pila: cont.pila }));
-  }
-
-  // UI helpers
-  const selected = useMemo(() => containers.find(c => c.id === selectedId), [containers, selectedId]);
-
   return (
-    <div className={styles.wrap}>
-      {/* BARĂ TOP: X & + */}
-      <div className={styles.topbar}>
-        <button className={styles.roundBtn} onClick={() => navigate('/depot')} aria-label="Volver a Depot">✕</button>
-        <div className={styles.flexGrow} />
-        <button className={`${styles.roundBtn} ${styles.primary}`} onClick={() => setShowAdd(true)} aria-label="Añadir contenedor">＋</button>
+    <div className={styles.fullscreenRoot}>
+      {/* butoane flotante */}
+      <div className={styles.topBar}>
+        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
+        {/* deocamdată + te duce la Depot unde ai modalul Add */}
+        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>＋</button>
       </div>
 
-      {/* CARD INFO SELECȚIE */}
-      {selected && (
-        <div className={styles.sideCard}>
-          <div className={styles.sideHeader}>
-            <strong>{selected.codigo || 'Contenedor'}</strong>
-            <span className={styles.badge}>{(TYPE_DIM[selected.tipo]?.label) || selected.tipo}</span>
-          </div>
-          <div className={styles.kv}><span>Naviera</span><b>{selected.naviera}</b></div>
-          <div className={styles.kv}><span>Estado</span><b>{selected.estado}</b></div>
-          <div className={styles.kv}><span>Carga</span><b>{selected.carga || '-'}</b></div>
-          <div className={styles.kv}><span>Fila/Col/Pila</span><b>{selected.fila}-{selected.columna}-{selected.pila}</b></div>
-          {selected.matricula_camion && <div className={styles.kv}><span>Matrícula</span><b>{selected.matricula_camion}</b></div>}
-          {selected.detalles && <div className={styles.kv}><span>Detalles</span><b>{selected.detalles}</b></div>}
-
-          <div className={styles.cardActions}>
-            <button className={styles.btn} onClick={()=>openMoveDialog(selected)}>Mover</button>
-            <button className={styles.btnGhost} onClick={()=>setSelectedId(null)}>Cerrar</button>
-          </div>
+      {error ? (
+        <div className={styles.fallback}>
+          <h2>Rayna 3D Depot</h2>
+          <p>{error}</p>
+          <button className={styles.primary} onClick={() => navigate('/depot')}>Volver al Depot</button>
         </div>
-      )}
-
-      {/* CANVAS 3D */}
-      <Canvas
-        shadows
-        gl={{ antialias: true }}
-        camera={{ position:[18, 22, 38], fov: 50 }}
-        onPointerMissed={()=> setSelectedId(null)}
-      >
-        <Scene
-          containers={containers}
-          selectedId={selectedId}
-          setSelectedId={setSelectedId}
-          onDoubleMove={openMoveDialog}
-        />
-      </Canvas>
-
-      {/* MODAL: ADD */}
-      {showAdd && (
-        <div className={styles.modal} onClick={()=>setShowAdd(false)}>
-          <div className={styles.modalBox} onClick={(e)=>e.stopPropagation()}>
-            <div className={styles.modalHead}>
-              <h3>Añadir Contenedor</h3>
-              <button className={styles.iconBtn} onClick={()=>setShowAdd(false)}>✕</button>
-            </div>
-            <form className={styles.form} onSubmit={handleAdd}>
-              <div className={styles.grid2}>
-                <label>Tipo
-                  <select value={form.tipo} onChange={e=>setForm(f=>({...f, tipo:e.target.value}))}>
-                    {Object.keys(TYPE_DIM).map(k=><option key={k} value={k}>{TYPE_DIM[k].label}</option>)}
-                  </select>
-                </label>
-                <label>Código
-                  <input value={form.codigo} onChange={e=>setForm(f=>({...f, codigo:e.target.value}))} placeholder="Ej: MSKU 123456" />
-                </label>
-              </div>
-
-              <div className={styles.grid2}>
-                <label>Naviera
-                  <select value={form.naviera} onChange={e=>setForm(f=>({...f, naviera:e.target.value}))}>
-                    {Object.keys(LINE_COLOR).map(n=><option key={n} value={n}>{n}</option>)}
-                  </select>
-                </label>
-                {form.naviera === 'Otros' && (
-                  <label>Naviera (manual)
-                    <input value={form.naviera_manual} onChange={e=>setForm(f=>({...f, naviera_manual:e.target.value}))} />
-                  </label>
-                )}
-              </div>
-
-              <div className={styles.grid3}>
-                <label>Estado
-                  <select value={form.estado} onChange={e=>setForm(f=>({...f, estado:e.target.value}))}>
-                    <option value="bueno">Bueno</option>
-                    <option value="roto">Roto</option>
-                  </select>
-                </label>
-                <label>Carga
-                  <select value={form.carga} onChange={e=>setForm(f=>({...f, carga:e.target.value}))}>
-                    <option value="vacio">Vacío</option>
-                    <option value="lleno">Lleno</option>
-                  </select>
-                </label>
-                <label>Programado
-                  <select value={form.programado ? 'si' : 'no'} onChange={e=>setForm(f=>({...f, programado: e.target.value==='si'}))}>
-                    <option value="no">No</option>
-                    <option value="si">Sí</option>
-                  </select>
-                </label>
-              </div>
-
-              {form.estado === 'roto' && (
-                <label>Detalles (daños)
-                  <textarea rows="2" value={form.detalles} onChange={e=>setForm(f=>({...f, detalles:e.target.value}))}/>
-                </label>
-              )}
-
-              <div className={styles.grid2}>
-                <label>Matrícula Camión
-                  <input value={form.matricula_camion} onChange={e=>setForm(f=>({...f, matricula_camion:e.target.value}))} placeholder="Ej: 1234ABC"/>
-                </label>
-                <div />
-              </div>
-
-              <div className={styles.grid3}>
-                <label>Fila
-                  <select value={form.fila} onChange={e=>setForm(f=>({...f, fila:e.target.value}))}>
-                    {ROWS.map(r=><option key={r}>{r}</option>)}
-                  </select>
-                </label>
-                <label>Columna
-                  <input type="number" min="1" max={COLS} value={form.columna} onChange={e=>setForm(f=>({...f, columna: +e.target.value}))}/>
-                </label>
-                <label>Pila
-                  <input type="number" min="1" max="5" value={form.pila} onChange={e=>setForm(f=>({...f, pila: +e.target.value}))}/>
-                </label>
-              </div>
-
-              <div className={styles.modalActions}>
-                <button type="button" className={styles.btnGhost} onClick={()=>setShowAdd(false)}>Cancelar</button>
-                <button type="submit" className={styles.btnPrimary}>Guardar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: MOVE */}
-      {showMove && (
-        <div className={styles.modal} onClick={()=>setShowMove(null)}>
-          <div className={styles.modalBox} onClick={(e)=>e.stopPropagation()}>
-            <div className={styles.modalHead}>
-              <h3>Mover {showMove.codigo || showMove.naviera}</h3>
-              <button className={styles.iconBtn} onClick={()=>setShowMove(null)}>✕</button>
-            </div>
-            <form className={styles.form} onSubmit={handleMove}>
-              <div className={styles.grid3}>
-                <label>Fila
-                  <select value={form.fila} onChange={e=>setForm(f=>({...f, fila:e.target.value}))}>
-                    {ROWS.map(r=><option key={r}>{r}</option>)}
-                  </select>
-                </label>
-                <label>Columna
-                  <input type="number" min="1" max={COLS} value={form.columna} onChange={e=>setForm(f=>({...f, columna:+e.target.value}))}/>
-                </label>
-                <label>Pila
-                  <input type="number" min="1" max="5" value={form.pila} onChange={e=>setForm(f=>({...f, pila:+e.target.value}))}/>
-                </label>
-              </div>
-              <div className={styles.modalActions}>
-                <button type="button" className={styles.btnGhost} onClick={()=>setShowMove(null)}>Cancelar</button>
-                <button type="submit" className={styles.btnPrimary}>Mover</button>
-              </div>
-            </form>
-          </div>
-        </div>
+      ) : (
+        <>
+          {loading && <div className={styles.loader}>Cargando mapa 3D…</div>}
+          <div ref={mountRef} className={styles.canvasHost} />
+        </>
       )}
     </div>
   );
