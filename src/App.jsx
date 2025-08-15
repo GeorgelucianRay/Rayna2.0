@@ -1,4 +1,6 @@
 // src/App.jsx
+import './index.css'; // <- important: stiluri globale
+
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // --- Pagini existente ---
@@ -27,14 +29,14 @@ import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 function App() {
   return (
     <Routes>
-      {/* --- Publice --- */}
+      {/* Publice */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registrar />} />
       <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
       <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-      {/* --- Protejate --- */}
+      {/* Protejate */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
@@ -51,7 +53,8 @@ function App() {
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      {/* Finder unificat pentru șoferi */}
+      {/* Finder unificat (redirect de pe ruta veche) */}
+      <Route path="/choferes" element={<Navigate to="/choferes-finder" replace />} />
       <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
 
       {/* Taller / Reparații */}
@@ -69,15 +72,11 @@ function App() {
       <Route
         path="*"
         element={
-          <div className="login-container">
-            <div className="login-card text-center">
-              <h1 style={{ color: '#dc2626', fontSize: '2rem', fontWeight: 'bold' }}>
-                404 - Página no encontrada
-              </h1>
-              <p style={{ color: '#4b5563', margin: '16px 0' }}>
-                La página que buscas no existe.
-              </p>
-              <Link to="/login" className="link-style">Volver a Iniciar Sesión</Link>
+          <div className="container-center">
+            <div className="card text-center">
+              <h1 className="text-red-600 font-bold text-2xl">404 - Página no encontrada</h1>
+              <p className="text-gray-600 mb-4">La página que buscas no existe.</p>
+              <Link to="/login" className="text-blue-600 hover-underline">Volver a Iniciar Sesión</Link>
             </div>
           </div>
         }
