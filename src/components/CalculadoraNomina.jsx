@@ -38,7 +38,7 @@ const CustomNumberInput = ({ label, name, value, onDataChange, min = 0, step = 1
   };
   const onType = (e) => {
     const raw = e.target.value;
-    if (raw === '') return onDataChange(name, '');     // permite să ștergi 0 complet
+    if (raw === '') return onDataChange(name, ''); // permite ștergerea lui 0
     const n = Number(raw);
     if (!Number.isNaN(n)) onDataChange(name, n);
   };
@@ -151,8 +151,10 @@ export default function CalculadoraNomina() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
   const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const targetUserId = profile?.role === 'dispecer' ? selectedDriver : user?.id;
-  const ready = (profile?.role === 'dispecer' && selectedDriver) || profile?.role === 'sofer';
+
+  // target = cui îi calculăm: dispecer -> selectat, sofer -> user curent
+  const targetUserId = profile?.role === 'dispecer' ? (selectedDriver || preselectUserId) : user?.id;
+  const ready = (profile?.role === 'dispecer' && !!targetUserId) || profile?.role === 'sofer';
 
   /* preselect din query (?user_id=...) pentru dispecer */
   useEffect(() => {
@@ -169,7 +171,11 @@ export default function CalculadoraNomina() {
         .from('nomina_perfiles')
         .select('user_id, nombre_completo')
         .order('nombre_completo', { ascending: true });
-      if (!error) setDrivers(data || []);
+      if (error) {
+        console.error('Load drivers error:', error);
+      } else {
+        setDrivers(data || []);
+      }
     })();
   }, [profile]);
 
@@ -184,23 +190,24 @@ export default function CalculadoraNomina() {
     }
     (async () => {
       setIsLoading(true);
-      const { data: prof } = await supabase
+      const { data: prof, error: e1 } = await supabase
         .from('nomina_perfiles')
         .select('config_nomina')
         .eq('user_id', targetUserId)
         .maybeSingle();
-
+      if (e1) console.error('Load config error:', e1);
       setConfig(prof?.config_nomina ?? defaultConfig);
 
       const y = currentDate.getFullYear();
       const m = currentDate.getMonth() + 1;
-      const { data: dr } = await supabase
+      const { data: dr, error: e2 } = await supabase
         .from('pontaje_curente')
         .select('pontaj_complet')
         .eq('user_id', targetUserId)
         .eq('an', y)
         .eq('mes', m)
         .maybeSingle();
+      if (e2) console.error('Load draft error:', e2);
 
       setPontaj(dr?.pontaj_complet ?? defaultPontaj);
       setResult(null);
@@ -208,17 +215,33 @@ export default function CalculadoraNomina() {
     })();
   }, [targetUserId, currentDate, defaultConfig, defaultPontaj]);
 
-  /* debounced auto-save draft -> triggers DB to update km via trigger */
+  /* debounced auto-save draft -> vezi erorile 400 clar în consolă */
   useEffect(() => {
     if (!targetUserId) return;
     const y = currentDate.getFullYear();
     const m = currentDate.getMonth() + 1;
     const t = setTimeout(async () => {
-      await supabase.from('pontaje_curente').upsert(
-        { user_id: targetUserId, an: y, mes: m, pontaj_complet: pontaj },
-        { onConflict: 'user_id,an,mes' }
-      );
-      // trigger-ul din DB va actualiza camioane.kilometros dacă km_final a crescut
+      try {
+        const { data, error } = await supabase
+          .from('pontaje_curente')
+          .upsert(
+            { user_id: targetUserId, an: y, mes: m, pontaj_complet: pontaj },
+            { onConflict: 'user_id,an,mes' }
+          )
+          .select(); // <- IMPORTANT: forțează mesaj clar de eroare
+        if (error) {
+          console.error('UPsert pontaje_curente error:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          });
+        } else {
+          // console.log('UPsert OK', data);
+        }
+      } catch (e) {
+        console.error('UPsert pontaje_curente threw:', e);
+      }
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +251,6 @@ export default function CalculadoraNomina() {
   const onDriverChange = (e) => setSelectedDriver(e.target.value || null);
   const onConfigChange = (e) => {
     const { name, value } = e.target;
-    // permite '', altfel număr
     setConfig((prev) => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
   };
 
@@ -267,7 +289,12 @@ export default function CalculadoraNomina() {
       .from('nomina_perfiles')
       .update({ config_nomina: clean })
       .eq('user_id', targetUserId);
-    if (!error) alert('¡Configuración guardada!');
+    if (error) {
+      console.error('Save config error:', error);
+      alert('No se pudo guardar la configuración.');
+    } else {
+      alert('¡Configuración guardada!');
+    }
   };
 
   const calc = () => {
@@ -326,19 +353,26 @@ export default function CalculadoraNomina() {
       total_bruto: Number(result.totalBruto),
       detalles: result.sumar_activitate
     });
-    if (!error) { alert('Cálculo guardado en el archivo.'); setResult(null); }
+    if (error) {
+      console.error('Save to archive error:', error);
+      alert('No se pudo guardar el cálculo.');
+    } else {
+      alert('Cálculo guardado en el archivo.');
+      setResult(null);
+    }
   };
 
   const openArchive = async () => {
     if (!targetUserId) { alert('Seleccione un conductor.'); return; }
     setIsArchiveOpen(true);
     setArchiveBusy(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('nominas_calculadas')
       .select('*')
       .eq('user_id', targetUserId)
       .order('an', { ascending: false })
       .order('mes', { ascending: false });
+    if (error) console.error('Load archive error:', error);
     setArchiveData(data || []);
     setArchiveBusy(false);
   };
@@ -349,7 +383,7 @@ export default function CalculadoraNomina() {
     const m = currentDate.getMonth();
     const first = new Date(y, m, 1).getDay();      // 0=Do
     const daysIn = new Date(y, m + 1, 0).getDate();
-    const start = first === 0 ? 6 : first - 1;     // Por interfaz L->D
+    const start = first === 0 ? 6 : first - 1;     // Luni începe grila
     const cells = [];
     for (let i=0; i<start; i++) cells.push(<div key={`ph-s-${i}`} className={`${styles.calendarDay} ${styles.placeholderDay}`} />);
     for (let d=1; d<=daysIn; d++) {
@@ -375,7 +409,7 @@ export default function CalculadoraNomina() {
   return (
     <Layout backgroundClassName="calculadora-background">
       <div className={styles.header}>
-        <h1>Calculadora de Nómina {profile?.role==='dispecer' && selectedDriver ? `— ${driverLabel(selectedDriver)}` : ''}</h1>
+        <h1>Calculadora de Nómina {profile?.role==='dispecer' && targetUserId ? `— ${driverLabel(targetUserId)}` : ''}</h1>
         <button className={styles.archiveButton} onClick={openArchive} disabled={!ready}>
           <ArchiveIcon/> Ver Archivo
         </button>
@@ -386,8 +420,8 @@ export default function CalculadoraNomina() {
           <label htmlFor="driver">Seleccione un Conductor:</label>
           <select
             id="driver"
-            onChange={onDriverChange}
-            value={selectedDriver || ''}
+            onChange={(e)=>setSelectedDriver(e.target.value || null)}
+            value={targetUserId || ''}
           >
             <option value="" disabled>-- Elija un conductor --</option>
             {drivers.map(d => (
@@ -425,7 +459,7 @@ export default function CalculadoraNomina() {
                 <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
                 <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))}>&gt;</button>
               </div>
-              <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
+              <p className={styles.calendarHint}>Haz clic en un día pentru a adăuga parte diario.</p>
               <div className={styles.calendarWeekdays}>
                 <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div><div>Do</div>
               </div>
@@ -467,7 +501,7 @@ export default function CalculadoraNomina() {
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role==='dispecer' && selectedDriver && `— ${driverLabel(selectedDriver)}`}</h3>
+              <h3 className={styles.modalTitle}>Archivo de Nóminas {profile?.role==='dispecer' && targetUserId && `— ${driverLabel(targetUserId)}`}</h3>
               <button className={styles.closeIcon} onClick={()=>setIsArchiveOpen(false)}><CloseIcon/></button>
             </div>
             <div className={styles.archiveModalBody}>
