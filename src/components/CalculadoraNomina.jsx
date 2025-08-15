@@ -1,7 +1,7 @@
 // src/components/CalculadoraNomina.jsx
 import React, { useMemo, useState } from 'react';
 import Layout from './Layout';
-import styles from './calculadoraNominas.module.css';
+import styles from './CalculadoraNominas.module.css';
 
 import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
