@@ -1,5 +1,4 @@
 // src/App.jsx
-
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // --- Pagini existente ---
@@ -23,7 +22,7 @@ import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
-import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
+import ChoferesFinder from './components/ChoferesFinder.jsx';
 
 function App() {
   return (
@@ -46,14 +45,15 @@ function App() {
 
       {/* Vacaciones: user (standalone) + admin/dispatcher */}
       <Route path="/vacaciones" element={<VacacionesStandalone />} />
-      <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
+      {/* Admin: se accesează din ChoferesFinder; ia user_id din query string */}
+      <Route path="/choferes-finder/vacaciones-admin" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
       {/* Chofer finder (înlocuiește paginile vechi de listă + profil) */}
-      <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
+      <Route path="/choferes-finder" element={<ChoferesFinder />} />
 
       {/* Taller / Reparații */}
       <Route path="/taller" element={<TallerPage />} />
