@@ -1,12 +1,10 @@
 // src/App.jsx
-import './index.css'; // <- important: stiluri globale
+import './index.css';
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // --- Pagini existente ---
-// import deja creat mai sus
 import RaynaHub from './components/RaynaHub.jsx';
-<Route path="/rayna-hub" element={<RaynaHub />} />
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
 import RestaurarContrasena from './components/RestaurarContrasena.jsx';
@@ -40,6 +38,7 @@ function App() {
       <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
       {/* Protejate */}
+      <Route path="/rayna-hub" element={<RaynaHub />} />   {/* ✅ NOU */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
@@ -56,7 +55,7 @@ function App() {
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      {/* Finder unificat (redirect de pe ruta veche) */}
+      {/* Finder unificat */}
       <Route path="/choferes" element={<Navigate to="/choferes-finder" replace />} />
       <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
 
