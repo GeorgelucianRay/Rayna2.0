@@ -22,9 +22,10 @@ import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
-
-// ATENȚIE: acesta este numele corect al fișierului tău
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
+
+// (opțional) dacă încă folosești profil separat la /chofer/:id
+import ChoferProfilePage from './components/ChoferProfilePage.jsx';
 
 function App() {
   return (
@@ -45,17 +46,19 @@ function App() {
 
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
-      {/* Vacaciones */}
+      {/* Vacaciones: user (standalone) + admin/dispatcher */}
       <Route path="/vacaciones" element={<VacacionesStandalone />} />
-      {/* Admin: se accesează din ChoferFinderProfile; primește user_id în query string */}
-      <Route path="/choferes-finder/vacaciones-admin" element={<VacacionesAdminStandalone />} />
+      <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      {/* Chofer finder (înlocuiește paginile vechi) */}
+      {/* Chofer finder (înlocuiește listele vechi) */}
       <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
+
+      {/* Profil separat (dacă e încă folosit de ChoferFinderProfile pentru /chofer/:id) */}
+      <Route path="/chofer/:id" element={<ChoferProfilePage />} />
 
       {/* Taller / Reparații */}
       <Route path="/taller" element={<TallerPage />} />
