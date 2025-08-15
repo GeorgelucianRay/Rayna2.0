@@ -1,137 +1,328 @@
-:root{
-  --bg: #0b1220;
-  --panel: rgba(17, 24, 39, 0.55);
-  --panel-2: rgba(31, 41, 55, 0.85);
-  --stroke: rgba(255,255,255,0.18);
-  --stroke-2: rgba(255,255,255,0.28);
-  --txt: #d1d5db;
-  --txt-dim: #9ca3af;
-  --txt-weak:#6b7280;
-  --txt-strong:#ffffff;
-  --brand-1:#fb923c; /* orange neon */
-  --brand-2:#f97316;
-  --brand-3:#ea580c;
-  --glow: 0 10px 30px rgba(251,146,60,0.25);
-  --glass: blur(10px) saturate(110%);
+/* ReparatiiPage.module.css — versiune modernă/futuristă (drop-in) */
+
+/* ---------- Header & layout ---------- */
+.repairsHeaderContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  color: #eef2ff;
 }
 
-/* header */
-.repairsHeaderContainer{
-  display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;color:var(--txt);
-}
-.pageTitle{font-size:2.25rem;font-weight:800;margin:0;line-height:1.2;color:var(--txt-strong);letter-spacing:.3px}
-.headerActions{display:flex;gap:1rem;flex-shrink:0}
-.vehicleSubtitle{color:var(--txt);opacity:.85;font-size:1.1rem;margin:.25rem 0 1.25rem}
-
-/* buttons */
-.addButton,.backButton,.saveButton,.cancelButton{
-  display:flex;align-items:center;gap:.5rem;font-weight:700;padding:.65rem 1.2rem;border-radius:.7rem;cursor:pointer;transition:all .18s ease;
-}
-.addButton{
-  border:none;
-  color:#fff;
-  background:linear-gradient(90deg,var(--brand-1),var(--brand-2),var(--brand-3));
-  box-shadow:var(--glow);
-}
-.addButton:hover{transform:translateY(-2px);box-shadow:0 16px 35px -8px rgba(251,146,60,.45)}
-.backButton{
-  background:rgba(255,255,255,.06);border:1px solid var(--stroke-2);color:#fff;
-}
-.backButton:hover{background:rgba(255,255,255,.12)}
-.saveButton{
-  border:none;color:#fff;background:linear-gradient(90deg,var(--brand-1),var(--brand-2),var(--brand-3));
-  box-shadow:var(--glow);
-}
-.saveButton:hover{transform:translateY(-2px)}
-.cancelButton{
-  border:1px solid var(--stroke-2);background:transparent;color:var(--txt);
-}
-.cancelButton:hover{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.4)}
-
-/* search */
-.searchBar{
-  display:flex;align-items:center;background:var(--panel-2);
-  border:1px solid var(--stroke);padding:.8rem 1rem;border-radius:.9rem;margin-bottom:1.6rem;
-  backdrop-filter:var(--glass);
-}
-.searchBar svg{color:var(--txt-dim);margin-right:.75rem}
-.searchBar input{
-  background:transparent;border:none;color:#fff;width:100%;font-size:1rem;
-}
-.searchBar input::placeholder{color:var(--txt-weak)}
-.searchBar input:focus{outline:none}
-
-/* list */
-.repairsList{display:flex;flex-direction:column;gap:1.1rem}
-.repairCard{
-  background:var(--panel);backdrop-filter:var(--glass);
-  padding:1.25rem;border-radius:1rem;border:1px solid var(--stroke);color:var(--txt);
-  transition:border-color .18s ease, transform .18s ease;
-}
-.repairCard:hover{border-color:rgba(251,146,60,.45);transform:translateY(-1px)}
-.repairHeader{
-  display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;
-  padding-bottom:1rem;margin-bottom:1rem;border-bottom:1px solid var(--stroke);
-}
-.repairTitle{display:flex;flex-direction:column;gap:.25rem}
-.repairTitle h4{color:#fff;font-size:1.15rem;font-weight:700;margin:0}
-.repairDate{font-size:.9rem;color:var(--txt-dim)}
-.repairMeta{display:flex;flex-direction:column;align-items:flex-end;gap:.45rem;font-size:.9rem;font-weight:600;text-align:right}
-.repairKilometers{
-  background:rgba(0,0,0,.25);padding:.28rem .6rem;border-radius:.45rem;border:1px solid rgba(255,255,255,.12)
-}
-.repairCard p{margin:.4rem 0 0;line-height:1.6}
-.repairDetails{
-  white-space:pre-wrap;background:rgba(0,0,0,.22);padding:.75rem;border-radius:.6rem;margin-top:.7rem;border:1px solid rgba(255,255,255,.1)
+.pageTitle {
+  font-size: clamp(1.6rem, 2.4vw, 2.25rem);
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.15;
+  letter-spacing: 0.2px;
+  background: linear-gradient(90deg, #fff 0%, #ffd7b1 40%, #ff8c3a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-.noRepairs{
-  text-align:center;font-size:1.05rem;color:var(--txt-dim);padding:2rem;
-  background:var(--panel);border-radius:1rem;border:1px solid var(--stroke)
+.headerActions {
+  display: flex;
+  gap: 0.8rem;
+  flex-shrink: 0;
 }
 
-/* loading */
-.loadingScreen{
-  display:flex;justify-content:center;align-items:center;height:100vh;color:#fff;font-size:1.35rem
+/* ---------- Buttons ---------- */
+.addButton,
+.backButton,
+.paginationButton,
+.cancelButton,
+.saveButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  will-change: transform, box-shadow;
 }
 
-/* modal */
-.modalOverlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:50;display:flex;justify-content:center;align-items:center;padding:1rem
+.addButton {
+  background: linear-gradient(135deg, #ff8c3a 0%, #ff6a00 50%, #ff4d00 100%);
+  color: #0b0f1a;
+  border: 1px solid rgba(255, 140, 58, 0.65);
+  box-shadow: 0 10px 28px -12px rgba(255, 106, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
-.modalContent{
-  background:#141a2a;border:1px solid var(--stroke);padding:1.6rem;border-radius:1rem;width:100%;max-width:640px;color:#fff;
-  box-shadow:0 24px 60px rgba(0,0,0,.45)
-}
-.modalHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
-.modalTitle{font-size:1.35rem;font-weight:800;margin:0}
-.modalCloseButton{
-  background:transparent;border:none;color:var(--txt-dim);cursor:pointer;padding:.45rem;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;transition:background-color .18s ease,color .18s ease
-}
-.modalCloseButton:hover{background:rgba(255,255,255,.08);color:#fff}
+.addButton:hover { transform: translateY(-2px); }
+.addButton:active { transform: translateY(0); }
+.addButton:focus-visible { outline: 2px solid #ff8c3a; outline-offset: 2px; }
 
-.modalForm{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.formGroup,.formGroupFull{display:flex;flex-direction:column;gap:.5rem}
-.formGroupFull{grid-column:1/-1}
-.formGroup label,.formGroupFull label{font-weight:700;color:var(--txt)}
-.formGroup input,.formGroupFull textarea{
-  width:100%;padding:.8rem;border-radius:.6rem;border:1px solid var(--stroke-2);
-  background:rgba(255,255,255,.06);color:#e5e7eb;transition:border-color .18s ease, box-shadow .18s ease
+.backButton {
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  border-color: rgba(255,255,255,0.18);
+  color: #e5e7eb;
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.55);
 }
-.formGroup input:focus,.formGroupFull textarea:focus{
-  outline:none;border-color:rgba(251,146,60,.7);box-shadow:0 0 0 3px rgba(251,146,60,.28)
-}
-.formGroupFull textarea{resize:vertical;min-height:120px}
-.modalActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:.8rem;margin-top:.5rem}
+.backButton:hover { background: rgba(255,255,255,0.14); }
+.backButton:focus-visible { outline: 2px solid #9ca3af; outline-offset: 2px; }
 
-/* pagination */
-.paginationContainer{
-  display:flex;justify-content:center;align-items:center;gap:1rem;margin-top:1.6rem;color:#fff
+/* ---------- Subheader ---------- */
+.vehicleSubtitle {
+  color: #cbd5e1;
+  font-size: 1.1rem;
+  margin-top: 0.35rem;
+  margin-bottom: 1.35rem;
+  letter-spacing: 0.2px;
+  opacity: 0.9;
 }
-.paginationButton{
-  background:rgba(255,255,255,.08);border:1px solid var(--stroke-2);color:#fff;padding:.5rem 1rem;border-radius:.6rem;font-weight:700;cursor:pointer;transition:background-color .18s ease
+
+/* ---------- Search ---------- */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(180deg, rgba(17,24,39,0.75), rgba(17,24,39,0.55));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  padding: 0.8rem 1rem;
+  border-radius: 0.9rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
-.paginationButton:not(:disabled):hover{background:rgba(255,255,255,.16)}
-.paginationButton:disabled{opacity:.5;cursor:not-allowed}
-.pageIndicator{font-weight:700}
+.searchBar svg { color: #a3a3a3; flex: 0 0 auto; }
+.searchBar input {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  width: 100%;
+  font-size: 1rem;
+}
+.searchBar input::placeholder { color: #7c899a; }
+.searchBar input:focus { outline: none; }
+
+/* ---------- Listă reparații ---------- */
+.repairsList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.1rem;
+}
+@media (min-width: 900px) {
+  .repairsList { grid-template-columns: 1fr 1fr; }
+}
+
+.repairCard {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(9,12,20,0.7), rgba(17,24,39,0.65));
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  color: #d1d5db;
+  box-shadow: 0 16px 40px -20px rgba(0,0,0,0.65);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.repairCard::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  background: radial-gradient(1200px 1200px at var(--mx, 50%) var(--my, 0%), rgba(255,140,58,0.08), transparent 45%);
+  transition: opacity 200ms ease;
+  opacity: 0;
+}
+.repairCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255,140,58,0.4);
+  box-shadow: 0 20px 46px -22px rgba(255,106,0,0.4);
+}
+.repairCard:hover::after { opacity: 1; }
+.repairCard:focus-within { outline: 2px solid rgba(255,140,58,0.55); outline-offset: 2px; }
+
+.repairHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px dashed rgba(148,163,184,0.28);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.repairTitle { display: flex; flex-direction: column; gap: 0.25rem; }
+.repairTitle h4 {
+  color: #f8fafc;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+.repairDate { font-size: 0.9rem; color: #9aa6b2; }
+
+.repairMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.repairKilometers {
+  background: radial-gradient(100% 100% at 50% 50%, rgba(255,140,58,0.18), rgba(255,140,58,0.06));
+  border: 1px solid rgba(255,140,58,0.38);
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.45rem;
+  color: #ffd7b1;
+}
+
+.repairDetails {
+  margin-top: 0.75rem;
+  white-space: pre-wrap;
+  line-height: 1.65;
+  color: #e5e7eb;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid rgba(148,163,184,0.18);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.65rem;
+}
+
+/* ---------- Empty / Loading ---------- */
+.noRepairs {
+  text-align: center;
+  font-size: 1.05rem;
+  color: #9aa6b2;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(17,24,39,0.6), rgba(17,24,39,0.4));
+  border-radius: 1rem;
+  border: 1px dashed rgba(148,163,184,0.28);
+}
+.loadingScreen {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  color: #fff;
+  font-size: 1.35rem;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- Modal ---------- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(1200px 800px at 50% 30%, rgba(0,0,0,0.6), rgba(0,0,0,0.85));
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.modalContent {
+  width: 100%;
+  max-width: 640px;
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(10,12,20,0.85), rgba(17,24,39,0.88));
+  border: 1px solid rgba(148,163,184,0.25);
+  border-radius: 1rem;
+  padding: 1.4rem;
+  box-shadow: 0 40px 90px -20px rgba(0,0,0,0.7);
+}
+.modalHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem;
+}
+.modalTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.2px;
+  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.modalCloseButton {
+  background: transparent; border: none; color: #cbd5e1; cursor: pointer;
+  padding: 0.4rem; border-radius: 0.5rem;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.modalCloseButton:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+.modalForm {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+}
+.formGroup, .formGroupFull { display: flex; flex-direction: column; gap: 0.5rem; }
+.formGroupFull { grid-column: 1 / -1; }
+.formGroup label, .formGroupFull label { font-weight: 700; color: #dbe4ef; }
+
+.formGroup input,
+.formGroupFull textarea {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  color: #f1f5f9;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.formGroup input:focus,
+.formGroupFull textarea:focus {
+  outline: none;
+  border-color: rgba(255,140,58,0.75);
+  box-shadow: 0 0 0 3px rgba(255,140,58,0.25);
+}
+.formGroupFull textarea {
+  resize: vertical; min-height: 120px; line-height: 1.55;
+}
+
+.modalActions {
+  grid-column: 1 / -1;
+  display: flex; justify-content: flex-end; gap: 0.8rem;
+  margin-top: 0.2rem;
+}
+.cancelButton {
+  border-color: rgba(148,163,184,0.35);
+  background: transparent;
+  color: #e5e7eb;
+}
+.cancelButton:hover { background: rgba(255,255,255,0.08); }
+.cancelButton:focus-visible { outline: 2px solid #9ca3af; outline-offset: 2px; }
+
+.saveButton {
+  background: linear-gradient(135deg, #ff8c3a, #ff6a00);
+  color: #0b0f1a;
+  border: 1px solid rgba(255,140,58,0.6);
+  box-shadow: 0 10px 28px -12px rgba(255,106,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+.saveButton:hover { transform: translateY(-2px); }
+.saveButton:active { transform: translateY(0); }
+.saveButton:focus-visible { outline: 2px solid #ff8c3a; outline-offset: 2px; }
+
+/* ---------- Pagination ---------- */
+.paginationContainer {
+  display: flex; justify-content: center; align-items: center;
+  gap: 1rem; margin-top: 1.8rem; color: #e5e7eb;
+}
+.paginationButton {
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border-color: rgba(255,255,255,0.26);
+  color: #f3f4f6;
+}
+.paginationButton:not(:disabled):hover { background: rgba(255,255,255,0.18); }
+.paginationButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.pageIndicator { font-weight: 700; letter-spacing: 0.3px; }
+
+/* ---------- Hover halo pentru card (cursor tracking) ---------- */
+.repairCard:hover { --mx: var(--mx, 50%); --my: var(--my, 0%); }
+.repairCard { /* JS optional poate seta --mx/--my pe mousemove */ }
+
+/* ---------- Motion reduce ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .addButton, .backButton, .paginationButton, .cancelButton, .saveButton,
+  .repairCard {
+    transition: none;
+  }
+}
