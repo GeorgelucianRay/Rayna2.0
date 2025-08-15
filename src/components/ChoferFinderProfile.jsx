@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
-import styles from './ChofereFinderProfile.module.css';
+import styles from './ChoferFinderProfile.module.css'; // ← NUME FIX
 
+/* Icons */
 const SearchIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"></circle>
@@ -19,25 +20,24 @@ const UsersIcon = () => (
   </svg>
 );
 
-export default function ChoferesFinder() {
+export default function ChoferFinderProfile() {
   const navigate = useNavigate();
   const inputRef = useRef(null);
+
   const [q, setQ] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hi, setHi] = useState(-1); // highlighted index
+  const [hi, setHi] = useState(-1);       // index evidențiat în listă
   const [open, setOpen] = useState(false);
   const [lastClickedId, setLastClickedId] = useState(null);
 
-  // Fetch la 250ms debounce
+  // Debounce fetch la 250ms
   useEffect(() => {
     let cancel = false;
     const t = setTimeout(async () => {
       const term = q.trim();
       if (!term) {
-        setRows([]);
-        setHi(-1);
-        setOpen(false);
+        setRows([]); setHi(-1); setOpen(false);
         return;
       }
       setLoading(true);
@@ -53,13 +53,11 @@ export default function ChoferesFinder() {
         if (!cancel) {
           setRows(data || []);
           setOpen(true);
-          setHi(data && data.length ? 0 : -1);
+          setHi((data && data.length) ? 0 : -1);
         }
       } catch (e) {
         if (!cancel) {
-          setRows([]);
-          setOpen(true);
-          setHi(-1);
+          setRows([]); setOpen(true); setHi(-1);
         }
         console.warn('Search error:', e.message);
       } finally {
@@ -69,15 +67,8 @@ export default function ChoferesFinder() {
     return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
-  const goProfile = (id) => {
-    if (!id) return;
-    navigate(`/chofer/${id}`);
-  };
-
-  const goVacacionesAdmin = (id) => {
-    if (!id) return;
-    navigate(`/choferes-finder/vacaciones-admin?user_id=${encodeURIComponent(id)}`);
-  };
+  const goProfile = (id) => id && navigate(`/chofer/${id}`);
+  const goVacacionesAdmin = (id) => id && navigate(`/vacaciones-admin/${id}`);
 
   const selectedId = useMemo(() => {
     if (hi >= 0 && hi < rows.length) return rows[hi]?.id || null;
@@ -87,11 +78,9 @@ export default function ChoferesFinder() {
   const onKeyDown = (e) => {
     if (!open || !rows.length) return;
     if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHi((p) => Math.min(p + 1, rows.length - 1));
+      e.preventDefault(); setHi((p) => Math.min(p + 1, rows.length - 1));
     } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHi((p) => Math.max(p - 1, 0));
+      e.preventDefault(); setHi((p) => Math.max(p - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (hi >= 0 && hi < rows.length) goProfile(rows[hi].id);
@@ -100,11 +89,9 @@ export default function ChoferesFinder() {
     }
   };
 
-  // Închide dropdown la blur (cu un mic delay ca să permită click-ul)
+  // Închidere dropdown la blur (ușor delay pentru click)
   const blurTimer = useRef(null);
-  const handleBlur = () => {
-    blurTimer.current = setTimeout(() => setOpen(false), 120);
-  };
+  const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
   const handleFocus = () => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
     if (rows.length) setOpen(true);
