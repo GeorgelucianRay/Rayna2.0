@@ -2,7 +2,6 @@
 import React, { useMemo, useState } from 'react';
 import Layout from './Layout';
 import styles from './Nominas.module.css';
-
 import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
 import ParteDiarioModal from './ParteDiarioModal';
@@ -16,7 +15,6 @@ export default function CalculadoraNomina() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Config implicit (poți ajusta valorile)
   const defaultConfig = useMemo(() => ({
     salario_base: 1050,
     antiguedad: 0,
@@ -28,7 +26,6 @@ export default function CalculadoraNomina() {
     precio_contenedor: 6,
   }), []);
 
-  // Generează pontajul pentru luna curentă (fără DB)
   const makePontajForMonth = (date) => {
     const y = date.getFullYear();
     const m = date.getMonth();
@@ -47,7 +44,10 @@ export default function CalculadoraNomina() {
   const [config, setConfig] = useState(defaultConfig);
   const [zilePontaj, setZilePontaj] = useState(makePontajForMonth(currentDate));
 
-  // Modal parte-diario (editare pe zi)
+  // pentru NominaConfigCard
+  const [showConfig, setShowConfig] = useState(false);
+
+  // modal parte-diario
   const [isParteOpen, setIsParteOpen] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
@@ -69,7 +69,6 @@ export default function CalculadoraNomina() {
     });
   };
 
-  // Navigare lună (resetăm foaia pentru lună nouă – local, fără DB)
   const goPrevMonth = () => {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     setCurrentDate(d);
@@ -81,7 +80,6 @@ export default function CalculadoraNomina() {
     setZilePontaj(makePontajForMonth(d));
   };
 
-  // Calcul rezultat
   const [result, setResult] = useState(null);
   const calc = () => {
     let d=0,c=0,p=0, km=0, cont=0, plus=0;
@@ -151,10 +149,21 @@ export default function CalculadoraNomina() {
 
       <div className={styles.mainContainer}>
         <div className={styles.column}>
-          <NominaConfigCard
-            config={config}
-            onChange={setConfig}
-          />
+          <button
+            className={styles.calculateButton}
+            onClick={() => setShowConfig(true)}
+          >
+            Configurar contrato
+          </button>
+
+          {showConfig && (
+            <NominaConfigCard
+              config={config}
+              onChange={setConfig}
+              onSave={() => setShowConfig(false)}
+            />
+          )}
+
           <button className={styles.calculateButton} onClick={calc}>
             Calcular nómina
           </button>
