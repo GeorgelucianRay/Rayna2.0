@@ -326,3 +326,52 @@
     animation: none !important;
   }
 }
+/* ---- FIX scroll modale pe mobil ---- */
+
+/* Folosește înălțime dinamică a viewport-ului pe mobile */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;            /* iOS/Android friendly */
+}
+
+/* Containerul modalului: flex col, cu limită pe înălțime și fără să taie scroll-ul intern */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;         /* puțin mai mult decât 90vh pentru mobile */
+  width: 100%;
+  max-width: 500px;
+}
+
+/* Cheia: în flex container, ca să permită copilului să devină zonă de scroll */
+.formWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;             /* IMPORTANT: altfel nu se scrollează */
+  overflow: hidden;          /* păstrăm hidden aici... */
+}
+
+/* ...dar facem body-ul modalului zona reală de scroll */
+.modalBody {
+  flex: 1;
+  min-height: 0;             /* permite shrink în flex */
+  overflow-y: auto;          /* scroll vertical */
+  -webkit-overflow-scrolling: touch; /* inerție pe iOS */
+  overscroll-behavior: contain;
+}
+
+/* Footer-ul rămâne fix la bază, nu intră în scroll */
+.modalFooter {
+  flex-shrink: 0;
+}
+
+/* Variante foarte mici de ecran */
+@media (max-width: 640px) {
+  .modalContent {
+    max-width: 100%;
+    margin: 1rem;
+    max-height: 96dvh;
+  }
+}
