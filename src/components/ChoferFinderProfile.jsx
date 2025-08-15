@@ -1,10 +1,11 @@
+// src/components/ChoferFinderProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './ChoferFinderProfile.module.css';
 
-/* Icons */
+/* --------- Icons (mici, simple) --------- */
 const SearchIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"></circle>
@@ -19,128 +20,174 @@ const UsersIcon = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
   </svg>
 );
+const TruckIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10 17h4M1 17h2m18 0h2M3 17V7a2 2 0 0 1 2-2h9v12M22 17v-5a2 2 0 0 0-2-2h-4" />
+    <circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" />
+  </svg>
+);
+const TrailerIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="8" width="13" height="7" rx="1" />
+    <circle cx="8" cy="17" r="1.5" /><circle cx="15" cy="17" r="1.5" />
+  </svg>
+);
+const CalcIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="4" y="2" width="16" height="20" rx="2" />
+    <line x1="8" y1="6" x2="16" y2="6" />
+    <line x1="8" y1="10" x2="8" y2="18" /><line x1="12" y1="10" x2="12" y2="18" /><line x1="16" y1="10" x2="16" y2="18" />
+  </svg>
+);
+const CalendarIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
 
+/* --------- Componentă --------- */
 export default function ChoferFinderProfile() {
   const navigate = useNavigate();
   const inputRef = useRef(null);
 
+  // căutare
   const [q, setQ] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(-1);
+  const [lastClickedId, setLastClickedId] = useState(null);
 
-  const [profile, setProfile] = useState(null); // profilul încărcat jos
-  const [busyProfile, setBusyProfile] = useState(false);
+  // profil selectat (preview jos)
+  const [selectedId, setSelectedId] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profileBusy, setProfileBusy] = useState(false);
 
-  /* ---- Căutare cu AND pe cuvinte (ex: "Lucian George") ---- */
+  /* --------- Fetch căutare (tolerant la ordine) --------- */
   useEffect(() => {
-    let cancelled = false;
+    let cancel = false;
     const t = setTimeout(async () => {
       const term = q.trim();
       if (!term) {
-        if (!cancelled) { setRows([]); setOpen(false); setHi(-1); }
+        if (!cancel) { setRows([]); setHi(-1); setOpen(false); }
         return;
       }
       setLoading(true);
       try {
-        const tokens = term.split(/\s+/).filter(Boolean);
-
+        const words = term.split(/\s+/).filter(Boolean);
         let query = supabase
           .from('profiles')
-          .select('id, nombre_completo, camion_id, remorca_id')
-          .eq('role', 'sofer')
+          .select('id, nombre_completo, camion_id, remorca_id, camioane:camion_id(matricula), remorci:remorca_id(matricula)')
+          .eq('role', 'sofer');
+
+        if (words.length) {
+          const orFilter = words.map(w => `nombre_completo.ilike.%${w}%`).join(',');
+          query = query.or(orFilter);
+        }
+
+        const { data, error } = await query
           .order('nombre_completo', { ascending: true })
           .limit(12);
 
-        // AND pe fiecare token
-        tokens.forEach(tok => {
-          query = query.ilike('nombre_completo', `%${tok}%`);
-        });
-
-        const { data, error } = await query;
         if (error) throw error;
-
-        if (!cancelled) {
+        if (!cancel) {
           setRows(data || []);
           setOpen(true);
           setHi(data && data.length ? 0 : -1);
         }
       } catch (e) {
-        if (!cancelled) {
-          setRows([]);
-          setOpen(true);
-          setHi(-1);
-        }
+        if (!cancel) { setRows([]); setOpen(true); setHi(-1); }
         console.warn('Search error:', e.message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancel) setLoading(false);
       }
     }, 250);
 
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
-  /* ---- Încarcă profilul complet în pagină ---- */
+  /* --------- Când aleg un șofer -> încarc profilul jos --------- */
   const loadProfile = async (id) => {
-    setBusyProfile(true);
+    if (!id) return;
+    setProfileBusy(true);
+    setProfile(null);
     try {
-      // 1) profilul basic
+      // 1) profilul de bază (fără join-uri embed)
       const { data: p, error: e1 } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, camion_id, remorca_id')
         .eq('id', id)
         .single();
       if (e1) throw e1;
-      // 2) camion
-      let camion = null;
-      if (p?.camion_id) {
+
+      // 2) camion (opțional)
+      let camioane = null;
+      if (p.camion_id) {
         const { data: c } = await supabase
           .from('camioane')
-          .select('*')
+          .select('id, matricula, itv')
           .eq('id', p.camion_id)
           .maybeSingle();
-        camion = c || null;
-      }
-      // 3) remorcă
-      let remorca = null;
-      if (p?.remorca_id) {
-        const { data: r } = await supabase
-          .from('remorci')
-          .select('*')
-          .eq('id', p.remorca_id)
-          .maybeSingle();
-        remorca = r || null;
+        camioane = c || null;
       }
 
-      setProfile({ ...p, camion, remorca });
+      // 3) remorcă (opțional)
+      let remorci = null;
+      if (p.remorca_id) {
+        const { data: r } = await supabase
+          .from('remorci')
+          .select('id, matricula, itv')
+          .eq('id', p.remorca_id)
+          .maybeSingle();
+        remorci = r || null;
+      }
+
+      // 4) setează obiectul agregat pentru randare
+      setProfile({ ...p, camioane, remorci });
     } catch (e) {
-      console.error('Profile load error:', e.message);
-      setProfile({ __error: 'No se pudo cargar el perfil.' });
+      console.error('Load profile error:', e.message);
+      setProfile(null);
     } finally {
-      setBusyProfile(false);
+      setProfileBusy(false);
     }
   };
 
-  /* ---- Handlere UI ---- */
-  const onKeyDown = (e) => {
-    if (!open || !rows.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHi(p => Math.min(p + 1, rows.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(p => Math.max(p - 1, 0)); }
-    else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (hi >= 0 && hi < rows.length) loadProfile(rows[hi].id);
-    } else if (e.key === 'Escape') setOpen(false);
+  const onPick = (id) => {
+    setLastClickedId(id);
+    setSelectedId(id);
+    setOpen(false);
+    loadProfile(id);
   };
 
+  /* --------- Keyboard nav --------- */
+  const onKeyDown = (e) => {
+    if (!open || !rows.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); setHi(p => Math.min(p + 1, rows.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); setHi(p => Math.max(p - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (hi >= 0 && hi < rows.length) onPick(rows[hi].id);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
+  // închiderea dropdown-ului la blur
   const blurTimer = useRef(null);
   const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
   const handleFocus = () => { if (blurTimer.current) clearTimeout(blurTimer.current); if (rows.length) setOpen(true); };
 
-  /* ---- Acțiuni ---- */
-  const abrirVistaCompleta = () => profile?.id && navigate(`/chofer/${profile.id}`);
-  const abrirVacacionesAdmin = () => profile?.id && navigate(`/vacaciones-admin/${profile.id}`);
-  const abrirNomina = () => profile?.id && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(profile.id)}`);
+  /* --------- Acțiuni rapide --------- */
+  const goCamion = () => profile?.camion_id && navigate(`/camion/${profile.camion_id}`);
+  const goRemorca = () => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`);
+  const goNomina = () => selectedId && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(selectedId)}`);
+  const goVacacionesAdmin = () => selectedId && navigate(`/vacaciones-admin/${encodeURIComponent(selectedId)}`);
+
+  const highlightedId = useMemo(() => (hi >= 0 && hi < rows.length) ? rows[hi]?.id : lastClickedId, [hi, rows, lastClickedId]);
 
   return (
     <Layout>
@@ -148,13 +195,16 @@ export default function ChoferFinderProfile() {
         <header className={styles.header}>
           <h1><UsersIcon /> Buscar chófer</h1>
           <div className={styles.actions}>
-            <button className={styles.btn} onClick={abrirVistaCompleta} disabled={!profile?.id}>Abrir vista completa</button>
-            <button className={styles.btn} onClick={abrirNomina} disabled={!profile?.id}>Calculadora Nómina</button>
-            <button className={styles.btnAccent} onClick={abrirVacacionesAdmin} disabled={!profile?.id}>Vacaciones (admin)</button>
+            <button className={styles.btn} disabled={!selectedId} onClick={goNomina}>
+              <CalcIcon /> Nómina
+            </button>
+            <button className={styles.btnAccent} disabled={!selectedId} onClick={goVacacionesAdmin}>
+              <CalendarIcon /> Vacaciones (admin)
+            </button>
           </div>
         </header>
 
-        {/* Căutare */}
+        {/* ---- Search ---- */}
         <div className={styles.searchWrap}>
           <div className={styles.searchBox}>
             <span className={styles.icon}><SearchIcon/></span>
@@ -179,12 +229,13 @@ export default function ChoferFinderProfile() {
                 <button
                   key={r.id}
                   className={`${styles.item} ${idx===hi ? styles.active : ''}`}
-                  onClick={() => loadProfile(r.id)}
+                  onClick={() => onPick(r.id)}
                   onMouseEnter={() => setHi(idx)}
                 >
                   <div className={styles.itemTitle}>{r.nombre_completo}</div>
                   <div className={styles.meta}>
-                    <span>ID: <b>{r.id.slice(0,8)}…</b></span>
+                    <span>Camión: <b>{r.camioane?.matricula || '—'}</b></span>
+                    <span>Remolque: <b>{r.remorci?.matricula || '—'}</b></span>
                   </div>
                 </button>
               ))}
@@ -192,55 +243,44 @@ export default function ChoferFinderProfile() {
           )}
         </div>
 
-        {/* Panoul de profil */}
-        <div className={styles.profilePanel}>
-          {!profile && (
-            <p className={styles.hint}>Caută un nume și alege din listă — profilul complet se afișează mai jos.</p>
-          )}
-
-          {busyProfile && <p className={styles.hint}>Se încarcă profilul…</p>}
-
-          {profile && !busyProfile && profile.__error && (
-            <p className={styles.hint}>{profile.__error}</p>
-          )}
-
-          {profile && !busyProfile && !profile.__error && (
+        {/* ---- Profilul jos ---- */}
+        <section className={styles.profilePanel}>
+          {!selectedId ? (
+            <p className={styles.hint}>Selectează un chófer din căutare pentru a-i vedea detaliile aici.</p>
+          ) : profileBusy ? (
+            <div className={styles.card}><p>Cargando perfil…</p></div>
+          ) : !profile ? (
+            <div className={styles.card}><p>No se pudo cargar el perfil.</p></div>
+          ) : (
             <div className={styles.grid}>
-              {/* Card: Conductor */}
               <div className={styles.card}>
-                <div className={styles.rowHeader}><h3>Conductor</h3></div>
-                <div className={styles.kv}><span className={styles.k}>Nombre completo</span><span className={styles.v}>{profile.nombre_completo || '—'}</span></div>
+                <h3>Conductor</h3>
+                <div className={styles.kv}><span className={styles.k}>Nombre</span><span className={styles.v}>{profile.nombre_completo || '—'}</span></div>
                 <div className={styles.kv}><span className={styles.k}>CAP</span><span className={styles.v}>{profile.cap_expirare || '—'}</span></div>
                 <div className={styles.kv}><span className={styles.k}>Carnet</span><span className={styles.v}>{profile.carnet_caducidad || '—'}</span></div>
-                <div className={styles.kv}><span className={styles.k}>ADR</span><span className={styles.v}>{profile.tiene_adr ? (profile.adr_caducidad || 'Sí') : 'No'}</span></div>
+                <div className={styles.kv}><span className={styles.k}>ADR</span><span className={styles.v}>{profile.tiene_adr ? (`Sí — ${profile.adr_caducidad || 'N/A'}`) : 'No'}</span></div>
               </div>
 
-              {/* Card: Camión */}
               <div className={styles.card}>
                 <div className={styles.rowHeader}>
                   <h3>Camión</h3>
-                  {profile.camion?.id && (
-                    <button className={styles.ghost} onClick={()=>navigate(`/camion/${profile.camion.id}`)}>Ver ficha</button>
-                  )}
+                  <button className={styles.ghost} disabled={!profile.camion_id} onClick={goCamion}><TruckIcon/> Ver ficha</button>
                 </div>
-                <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camion?.matricula || 'No asignado'}</span></div>
-                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camion?.itv || '—'}</span></div>
+                <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || '—'}</span></div>
+                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.itv || '—'}</span></div>
               </div>
 
-              {/* Card: Remolque */}
               <div className={styles.card}>
                 <div className={styles.rowHeader}>
                   <h3>Remolque</h3>
-                  {profile.remorca?.id && (
-                    <button className={styles.ghost} onClick={()=>navigate(`/remorca/${profile.remorca.id}`)}>Ver ficha</button>
-                  )}
+                  <button className={styles.ghost} disabled={!profile.remorca_id} onClick={goRemorca}><TrailerIcon/> Ver ficha</button>
                 </div>
-                <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorca?.matricula || 'No asignado'}</span></div>
-                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.remorca?.itv || '—'}</span></div>
+                <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || '—'}</span></div>
+                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.remorci?.itv || '—'}</span></div>
               </div>
             </div>
           )}
-        </div>
+        </section>
       </div>
     </Layout>
   );
