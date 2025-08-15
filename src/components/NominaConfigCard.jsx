@@ -1,8 +1,11 @@
-// src/components/nomina/NominaConfigCard.jsx
-import React from 'react';
+// src/components/NominaConfigCard.jsx
+import React, { useState } from 'react';
 import styles from './Nominas.module.css';
+import { supabase } from '../supabaseClient';
 
-export default function NominaConfigCard({ config, onChange }) {
+export default function NominaConfigCard({ config, onChange, onSave }) {
+  const [loading, setLoading] = useState(false);
+
   const set = (name, value) => {
     onChange(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
   };
@@ -18,6 +21,19 @@ export default function NominaConfigCard({ config, onChange }) {
     </div>
   );
 
+  const saveConfig = async () => {
+    setLoading(true);
+    const { error } = await supabase
+      .from('config_nomina')
+      .upsert(config, { onConflict: ['id'] }); // ajustează coloanele
+    setLoading(false);
+    if (!error) {
+      onSave();
+    } else {
+      console.error('Eroare salvare config:', error);
+    }
+  };
+
   return (
     <div className={styles.card}>
       <h3>1. Configuración de Contrato</h3>
@@ -31,6 +47,14 @@ export default function NominaConfigCard({ config, onChange }) {
         {input('precio_km', 'Precio/km (€)')}
         {input('precio_contenedor', 'Precio Contenedor (€)')}
       </div>
+
+      <button
+        className={styles.calculateButton}
+        onClick={saveConfig}
+        disabled={loading}
+      >
+        {loading ? 'Salvando...' : 'Guardar configuración'}
+      </button>
     </div>
   );
 }
