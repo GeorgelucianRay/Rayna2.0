@@ -108,44 +108,24 @@ export default function ChoferFinderProfile() {
     return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
-  /* --------- Când aleg un șofer -> încarc profilul jos --------- */
+  /* --------- Încarcă profilul complet jos --------- */
   const loadProfile = async (id) => {
     if (!id) return;
     setProfileBusy(true);
     setProfile(null);
     try {
-      // 1) profilul de bază (fără join-uri embed)
-      const { data: p, error: e1 } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('id, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, camion_id, remorca_id')
+        .select(`
+          id, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad,
+          camion_id, remorca_id,
+          camioane:camion_id(id, matricula, itv),
+          remorci:remorca_id(id, matricula, itv)
+        `)
         .eq('id', id)
-        .single();
-      if (e1) throw e1;
-
-      // 2) camion (opțional)
-      let camioane = null;
-      if (p.camion_id) {
-        const { data: c } = await supabase
-          .from('camioane')
-          .select('id, matricula, itv')
-          .eq('id', p.camion_id)
-          .maybeSingle();
-        camioane = c || null;
-      }
-
-      // 3) remorcă (opțional)
-      let remorci = null;
-      if (p.remorca_id) {
-        const { data: r } = await supabase
-          .from('remorci')
-          .select('id, matricula, itv')
-          .eq('id', p.remorca_id)
-          .maybeSingle();
-        remorci = r || null;
-      }
-
-      // 4) setează obiectul agregat pentru randare
-      setProfile({ ...p, camioane, remorci });
+        .maybeSingle();
+      if (error) throw error;
+      setProfile(data || null);
     } catch (e) {
       console.error('Load profile error:', e.message);
       setProfile(null);
@@ -176,18 +156,21 @@ export default function ChoferFinderProfile() {
     }
   };
 
-  // închiderea dropdown-ului la blur
+  // închidere dropdown la blur
   const blurTimer = useRef(null);
   const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
   const handleFocus = () => { if (blurTimer.current) clearTimeout(blurTimer.current); if (rows.length) setOpen(true); };
 
-  /* --------- Acțiuni rapide --------- */
-  const goCamion = () => profile?.camion_id && navigate(`/camion/${profile.camion_id}`);
-  const goRemorca = () => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`);
+  /* --------- Acțiuni rapide (FIX aici) --------- */
+  const goCamion = () => profile?.camioane?.id && navigate(`/camion/${profile.camioane.id}`);
+  const goRemorca = () => profile?.remorci?.id && navigate(`/remorca/${profile.remorci.id}`);
   const goNomina = () => selectedId && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(selectedId)}`);
   const goVacacionesAdmin = () => selectedId && navigate(`/vacaciones-admin/${encodeURIComponent(selectedId)}`);
 
-  const highlightedId = useMemo(() => (hi >= 0 && hi < rows.length) ? rows[hi]?.id : lastClickedId, [hi, rows, lastClickedId]);
+  const highlightedId = useMemo(
+    () => (hi >= 0 && hi < rows.length) ? rows[hi]?.id : lastClickedId,
+    [hi, rows, lastClickedId]
+  );
 
   return (
     <Layout>
@@ -264,7 +247,7 @@ export default function ChoferFinderProfile() {
               <div className={styles.card}>
                 <div className={styles.rowHeader}>
                   <h3>Camión</h3>
-                  <button className={styles.ghost} disabled={!profile.camion_id} onClick={goCamion}><TruckIcon/> Ver ficha</button>
+                  <button className={styles.ghost} disabled={!profile.camioane?.id} onClick={goCamion}><TruckIcon/> Ver ficha</button>
                 </div>
                 <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || '—'}</span></div>
                 <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.itv || '—'}</span></div>
@@ -273,7 +256,7 @@ export default function ChoferFinderProfile() {
               <div className={styles.card}>
                 <div className={styles.rowHeader}>
                   <h3>Remolque</h3>
-                  <button className={styles.ghost} disabled={!profile.remorca_id} onClick={goRemorca}><TrailerIcon/> Ver ficha</button>
+                  <button className={styles.ghost} disabled={!profile.remorci?.id} onClick={goRemorca}><TrailerIcon/> Ver ficha</button>
                 </div>
                 <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || '—'}</span></div>
                 <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.remorci?.itv || '—'}</span></div>
