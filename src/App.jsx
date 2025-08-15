@@ -13,8 +13,7 @@ import GpsPage from './components/GpsPage.jsx';
 import MiPerfilPage from './components/MiPerfilPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
-import ChoferesPage from './components/ChoferFinderProfile.jsx'; // ✅ extensie corectă
-import ChoferProfilePage from './components/ChoferProfilePage.jsx';
+// ❌ Eliminadas: ChoferesPage y ChoferProfilePage
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/CalculadoraNomina.jsx';
@@ -23,7 +22,7 @@ import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
-// import ChoferFinderProfile from './components/ChoferFinderProfile.jsx'; // activează doar dacă fișierul există
+import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
 function App() {
   return (
@@ -38,6 +37,7 @@ function App() {
       {/* Protegidas */}
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
+
       <Route path="/depot" element={<DepotPage />} />
       <Route path="/gps" element={<GpsPage />} />
 
@@ -47,16 +47,17 @@ function App() {
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
 
-      <Route path="/choferes" element={<ChoferesPage />} />
-      <Route path="/chofer/:id" element={<ChoferProfilePage />} />
-      {/* <Route path="/choferes-finder" element={<ChoferFinderProfile />} /> */}
+      {/* ✅ Nueva única página combinada para chóferes */}
+      <Route path="/choferes" element={<ChoferFinderProfile />} />
+      {/* 🔁 Redirect seguro si existen enlaces antiguos */}
+      <Route path="/chofer/:id" element={<Navigate to="/choferes" replace />} />
 
       <Route path="/taller" element={<TallerPage />} />
       <Route path="/reparatii/:type/:id" element={<ReparatiiPage />} />
 
       <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
 
-      {/* Extras nuevas */}
+      {/* Extras */}
       <Route path="/mapa" element={<MapPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
 
