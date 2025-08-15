@@ -1,3 +1,4 @@
+// src/components/Layout.jsx
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -5,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import styles from './Layout.module.css';
 import UpdatePrompt from './UpdatePrompt';
 
-// Iconițele SVG existente
+// Icons
 const BellIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> );
 const HomeIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> );
 const DepotIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"></path><path d="M14 5v14"></path><path d="M6 5v14"></path><path d="M10 5v14"></path><path d="M18 5v14"></path></svg> );
@@ -19,8 +20,12 @@ const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" hei
 const CalculatorIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="10" x2="16" y2="18"></line><line x1="8" y1="10" x2="8" y2="18"></line><line x1="12" y1="10" x2="12" y2="18"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg> );
 
 const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive }) => {
-  const linkClasses = [ styles.navLink, isLogout ? styles.navLinkLogout : '', isActive ? styles.active : '' ].join(' ');
-  return ( <Link to={to} className={linkClasses} onClick={onClick}> {icon} <span>{text}</span> </Link> );
+  const linkClasses = [styles.navLink, isLogout ? styles.navLinkLogout : '', isActive ? styles.active : ''].join(' ');
+  return (
+    <Link to={to} className={linkClasses} onClick={onClick}>
+      {icon}<span>{text}</span>
+    </Link>
+  );
 };
 
 const Layout = ({ children }) => {
@@ -32,61 +37,68 @@ const Layout = ({ children }) => {
 
   const { pathname } = location;
 
+  // Background map
   const backgroundMap = {
     '/sofer-homepage': styles.homepageSoferBackground,
     '/dispecer-homepage': styles.homepageSoferBackground,
     '/camion': styles.camionBackground,
     '/remorca': styles.remorcaBackground,
     '/taller': styles.tallerBackground,
-    '/choferes': styles.choferesBackground,
+    '/choferes-finder': styles.choferesBackground, // nou
+    '/choferes': styles.choferesBackground,        // compat vizual
     '/mi-perfil': styles.miPerfilBackground,
     '/depot': styles.depotBackground,
     '/gps': styles.gpsBackground,
     '/reparatii': styles.reparatiiBackground,
     '/calculadora-nomina': styles.calculadoraBackground,
-    // === MODIFICARE: Am adăugat această linie pentru a mapa ruta la fundalul corect ===
-    '/chofer': styles.miPerfilBackground, 
+    '/chofer': styles.miPerfilBackground,
   };
 
   const getBackgroundClass = () => {
     const matchingPath = Object.keys(backgroundMap)
       .sort((a, b) => b.length - a.length)
       .find(key => pathname.startsWith(key));
-    
     return matchingPath ? backgroundMap[matchingPath] : null;
   };
 
   const backgroundClassName = getBackgroundClass();
 
-  const soferMenu = [ 
-    { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' }, 
+  const soferMenu = [
+    { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
-    { id: '/gps', icon: <GpsIcon />, text: 'GPS' }, 
-    { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' }, 
+    { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
+    { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' },
   ];
 
-  const dispecerMenu = [ 
-    { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' }, 
-    { id: '/depot', icon: <DepotIcon />, text: 'Depot' }, 
-    { id: '/choferes', icon: <UsersIcon />, text: 'Choferes' }, 
+  const dispecerMenu = [
+    { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
+    { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
+    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' }, // ← actualizat
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
-    { id: '/gps', icon: <GpsIcon />, text: 'GPS' }, 
-    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' }, 
+    { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
+    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
   ];
-  
-  const mecanicMenu = [ 
-    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' }, 
-    { id: '/depot', icon: <DepotIcon />, text: 'Depot' }, 
+
+  const mecanicMenu = [
+    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
+    { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
   ];
-  
+
   let navLinksData = [];
   if (profile?.role === 'sofer') navLinksData = soferMenu;
   else if (profile?.role === 'mecanic') navLinksData = mecanicMenu;
   else if (profile?.role === 'dispecer') navLinksData = dispecerMenu;
 
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate('/login'); };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
-  const wrapperClass = [ styles.layoutWrapper, backgroundClassName ? styles.hasBackground : '', isMenuOpen ? styles.menuOpen : '', ].join(' ');
+  const wrapperClass = [
+    styles.layoutWrapper,
+    backgroundClassName ? styles.hasBackground : '',
+    isMenuOpen ? styles.menuOpen : '',
+  ].join(' ');
 
   return (
     <div className={wrapperClass}>
@@ -99,17 +111,46 @@ const Layout = ({ children }) => {
 
       <aside className={styles.navMenu}>
         <div className={styles.navHeader}>
-          <div> <h2 className={styles.navTitle}>Rayna</h2> {user && <p className={styles.userEmail}>{user.email}</p>} </div>
-          <div className={styles.headerIcons}> {alarms.length > 0 && ( <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}> <BellIcon /> <span className={styles.notificationBadge}>{alarms.length}</span> </button> )} <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}> <CloseIcon /> </button> </div>
+          <div>
+            <h2 className={styles.navTitle}>Rayna</h2>
+            {user && <p className={styles.userEmail}>{user.email}</p>}
+          </div>
+          <div className={styles.headerIcons}>
+            {alarms.length > 0 && (
+              <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
+                <BellIcon />
+                <span className={styles.notificationBadge}>{alarms.length}</span>
+              </button>
+            )}
+            <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>
+              <CloseIcon />
+            </button>
+          </div>
         </div>
-        <nav className={styles.navLinks}> {navLinksData.map(link => ( <NavLink key={link.id} to={link.id} icon={link.icon} text={link.text} isActive={location.pathname.startsWith(link.id)} onClick={() => setIsMenuOpen(false)} /> ))} <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} /> <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout={true} /> </nav>
+
+        <nav className={styles.navLinks}>
+          {navLinksData.map(link => (
+            <NavLink
+              key={link.id}
+              to={link.id}
+              icon={link.icon}
+              text={link.text}
+              isActive={location.pathname.startsWith(link.id)}
+              onClick={() => setIsMenuOpen(false)}
+            />
+          ))}
+          <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
+          <NavLink to="#" icon={<LogoutIcon />} text="Cerrar Sesión" onClick={handleLogout} isLogout />
+        </nav>
       </aside>
 
-      {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)}></div>}
+      {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)} />}
 
       <div className={styles.pageContentWrapper}>
         <header className={`${styles.header} ${backgroundClassName ? styles.headerTransparent : ''}`}>
-          <button onClick={() => setIsMenuOpen(true)} className={styles.menuButtonHeader}> <MenuIcon /> </button>
+          <button onClick={() => setIsMenuOpen(true)} className={styles.menuButtonHeader}>
+            <MenuIcon />
+          </button>
         </header>
         <main className={styles.mainContent}>{children}</main>
       </div>
@@ -117,8 +158,23 @@ const Layout = ({ children }) => {
       {isNotificationsOpen && (
         <div className={styles.modalOverlay}>
           <div className={`${styles.modalContent} ${styles.notificationsModal}`}>
-            <div className={styles.modalHeader}> <h3 className={styles.modalTitle}>Notificaciones</h3> <button onClick={() => setIsNotificationsOpen(false)} className="close-button"> <CloseIcon /> </button> </div>
-            <div className={styles.modalBody}> {alarms.length > 0 ? ( <ul className={styles.notificationsList}> {alarms.map((alarm, index) => ( <li key={index} className={alarm.expired ? styles.expired : ''}> {alarm.message} </li> ))} </ul> ) : ( <p>No hay notificaciones nuevas.</p> )} </div>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Notificaciones</h3>
+              <button onClick={() => setIsNotificationsOpen(false)} className="close-button">
+                <CloseIcon />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              {alarms.length > 0 ? (
+                <ul className={styles.notificationsList}>
+                  {alarms.map((alarm, index) => (
+                    <li key={index} className={alarm.expired ? styles.expired : ''}>{alarm.message}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No hay notificaciones nuevas.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
