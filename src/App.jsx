@@ -4,6 +4,9 @@ import './index.css'; // <- important: stiluri globale
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // --- Pagini existente ---
+// import deja creat mai sus
+import RaynaHub from './components/RaynaHub.jsx';
+<Route path="/rayna-hub" element={<RaynaHub />} />
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
 import RestaurarContrasena from './components/RestaurarContrasena.jsx';
