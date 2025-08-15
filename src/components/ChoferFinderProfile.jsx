@@ -1,11 +1,10 @@
-// src/components/ChoferFinderProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './ChoferFinderProfile.module.css';
 
-/* --------- Icons (mici, simple) --------- */
+/* Icons */
 const SearchIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"></circle>
@@ -47,7 +46,6 @@ const CalendarIcon = () => (
   </svg>
 );
 
-/* --------- Componentă --------- */
 export default function ChoferFinderProfile() {
   const navigate = useNavigate();
   const inputRef = useRef(null);
@@ -60,12 +58,12 @@ export default function ChoferFinderProfile() {
   const [hi, setHi] = useState(-1);
   const [lastClickedId, setLastClickedId] = useState(null);
 
-  // profil selectat (preview jos)
+  // profil selectat
   const [selectedId, setSelectedId] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileBusy, setProfileBusy] = useState(false);
 
-  /* --------- Fetch căutare (tolerant la ordine) --------- */
+  /* Căutare tolerantă la ordine */
   useEffect(() => {
     let cancel = false;
     const t = setTimeout(async () => {
@@ -79,7 +77,12 @@ export default function ChoferFinderProfile() {
         const words = term.split(/\s+/).filter(Boolean);
         let query = supabase
           .from('profiles')
-          .select('id, nombre_completo, camion_id, remorca_id, camioane:camion_id(matricula), remorci:remorca_id(matricula)')
+          .select(`
+            id, nombre_completo,
+            camion_id, remorca_id,
+            camioane:camion_id(matricula),
+            remorci:remorca_id(matricula)
+          `)
           .eq('role', 'sofer');
 
         if (words.length) {
@@ -108,7 +111,7 @@ export default function ChoferFinderProfile() {
     return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
-  /* --------- Încarcă profilul complet jos --------- */
+  /* Încarcă profilul complet jos (fără coloane inexistente) */
   const loadProfile = async (id) => {
     if (!id) return;
     setProfileBusy(true);
@@ -119,8 +122,8 @@ export default function ChoferFinderProfile() {
         .select(`
           id, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad,
           camion_id, remorca_id,
-          camioane:camion_id(id, matricula, itv),
-          remorci:remorca_id(id, matricula, itv)
+          camioane:camion_id(id, matricula),
+          remorci:remorca_id(id, matricula)
         `)
         .eq('id', id)
         .maybeSingle();
@@ -141,7 +144,7 @@ export default function ChoferFinderProfile() {
     loadProfile(id);
   };
 
-  /* --------- Keyboard nav --------- */
+  /* Keyboard nav */
   const onKeyDown = (e) => {
     if (!open || !rows.length) return;
     if (e.key === 'ArrowDown') {
@@ -161,7 +164,7 @@ export default function ChoferFinderProfile() {
   const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
   const handleFocus = () => { if (blurTimer.current) clearTimeout(blurTimer.current); if (rows.length) setOpen(true); };
 
-  /* --------- Acțiuni rapide (FIX aici) --------- */
+  /* Acțiuni rapide – folosesc ID-urile din join */
   const goCamion = () => profile?.camioane?.id && navigate(`/camion/${profile.camioane.id}`);
   const goRemorca = () => profile?.remorci?.id && navigate(`/remorca/${profile.remorci.id}`);
   const goNomina = () => selectedId && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(selectedId)}`);
@@ -187,7 +190,7 @@ export default function ChoferFinderProfile() {
           </div>
         </header>
 
-        {/* ---- Search ---- */}
+        {/* Search */}
         <div className={styles.searchWrap}>
           <div className={styles.searchBox}>
             <span className={styles.icon}><SearchIcon/></span>
@@ -226,7 +229,7 @@ export default function ChoferFinderProfile() {
           )}
         </div>
 
-        {/* ---- Profilul jos ---- */}
+        {/* Profil jos */}
         <section className={styles.profilePanel}>
           {!selectedId ? (
             <p className={styles.hint}>Selectează un chófer din căutare pentru a-i vedea detaliile aici.</p>
@@ -250,7 +253,7 @@ export default function ChoferFinderProfile() {
                   <button className={styles.ghost} disabled={!profile.camioane?.id} onClick={goCamion}><TruckIcon/> Ver ficha</button>
                 </div>
                 <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || '—'}</span></div>
-                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.itv || '—'}</span></div>
+                {/* Dacă vei avea o coloană ITV în viitor, o poți adăuga aici */}
               </div>
 
               <div className={styles.card}>
@@ -259,7 +262,6 @@ export default function ChoferFinderProfile() {
                   <button className={styles.ghost} disabled={!profile.remorci?.id} onClick={goRemorca}><TrailerIcon/> Ver ficha</button>
                 </div>
                 <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || '—'}</span></div>
-                <div className={styles.kv}><span className={styles.k}>ITV</span><span className={styles.v}>{profile.remorci?.itv || '—'}</span></div>
               </div>
             </div>
           )}
