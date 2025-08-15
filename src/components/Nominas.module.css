@@ -1,0 +1,71 @@
+/* Aspect general */
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.mainContainer { display:grid; grid-template-columns: 1fr; gap:16px; }
+@media (min-width: 980px){ .mainContainer { grid-template-columns: 1fr 1fr; } }
+.column { display:flex; flex-direction:column; gap:12px; }
+
+.card {
+  background: rgba(17,24,39,.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  padding: 16px;
+  color:#fff;
+}
+
+.inputGrid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; }
+@media (max-width: 680px){ .inputGrid { grid-template-columns: 1fr; } }
+.inputGroup { display:flex; flex-direction:column; gap:6px; }
+.inputGroup label { font-weight:800; color:#d1d5db; }
+.inputGroup input {
+  border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08);
+  color:#fff; padding:10px 12px;
+}
+
+.calculateButton {
+  width:100%; padding:12px 16px; border:none; border-radius:12px;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color:#fff; font-weight:800; cursor:pointer; transition: transform .12s ease, box-shadow .12s ease;
+}
+.calculateButton:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37,99,235,.35); }
+
+/* Calendar */
+.calendarHeader { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.calendarHint { color:#cbd5e1; margin: 0 0 8px; }
+.calendarWeekdays { display:grid; grid-template-columns: repeat(7,1fr); gap:6px; color:#9ca3af; margin-bottom:6px; text-align:center; }
+.calendarGrid { display:grid; grid-template-columns: repeat(7,1fr); gap:6px; }
+.calendarDay {
+  aspect-ratio: 1/1; border-radius:10px; display:grid; place-items:center; font-weight:700; font-size:.95rem;
+  background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#fff; cursor:pointer;
+}
+.placeholderDay { opacity:.25; cursor:default; }
+.hasData { outline:2px solid #38bdf8; box-shadow: inset 0 0 0 1px rgba(56,189,248,.2); }
+.dayNumber { opacity:.9; }
+
+/* Result */
+.resultCard { margin-top:12px; }
+.totalBruto { font-size:2rem; font-weight:800; margin:4px 0 10px; }
+.resultDetails { display:grid; gap:8px; }
+.resultDetails li {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08);
+  border-radius:10px; padding:8px 10px;
+}
+
+/* Modal */
+.modalOverlay { position:fixed; inset:0; display:grid; place-items:center; padding:16px; background: rgba(0,0,0,.6); backdrop-filter: blur(5px); z-index:3000; }
+.modal { background:#111827; color:#fff; width:100%; max-width:680px; border-radius:16px; border:1px solid rgba(255,255,255,.16); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.modalHeader { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.16); }
+.modalTitle { margin:0; }
+.closeIcon { background:transparent; border:none; color:#cbd5e1; cursor:pointer; }
+
+.modalBody { padding:16px; display:grid; gap:12px; }
+.parteDiarioSection h4 { margin:0 0 8px; }
+.checkboxGroupModal { display:flex; gap:14px; flex-wrap:wrap; }
+.kmPreview { color:#cbd5e1; margin-top:6px; }
+
+.modalFooter { padding:0 16px 16px; display:flex; justify-content:flex-end; gap:10px; }
+.actionMini {
+  padding:10px 14px; border:none; border-radius:10px;
+  background: linear-gradient(90deg, #2563eb, #3b82f6); color:#fff; font-weight:800; cursor:pointer;
+}
