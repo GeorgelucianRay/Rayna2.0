@@ -1,0 +1,38 @@
+.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; color:#fff; }
+.header h1 { margin:0; font-size:1.5rem; font-weight:800; letter-spacing:.2px; }
+.backBtn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; font-weight:700; cursor:pointer; }
+.backBtn:hover { background:rgba(255,255,255,.14); }
+
+.card { background: rgba(17,24,39,.55); border:1px solid rgba(255,255,255,.15); border-radius:16px; padding:14px; color:#fff; }
+.gridTop { display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px; }
+@media (max-width: 960px){ .gridTop { grid-template-columns: 1fr; } }
+
+.row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+.row label { font-weight:800; color:#d1d5db; }
+.row select { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; padding:8px 10px; border-radius:10px; }
+
+.grid3 { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
+@media (max-width: 680px){ .grid3 { grid-template-columns: 1fr; } }
+
+.grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+@media (max-width: 680px){ .grid2 { grid-template-columns: 1fr; } }
+
+.inputGroup { display:flex; flex-direction:column; gap:6px; }
+.inputGroup label { font-weight:800; color:#d1d5db; }
+.inputGroup input { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; padding:8px 10px; border-radius:10px; }
+
+.primary { margin-top:10px; padding:10px 14px; border:none; border-radius:10px; background: linear-gradient(90deg, #2563eb, #3b82f6); color:#fff; font-weight:800; cursor:pointer; }
+.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(37,99,235,.35); }
+.ghost { margin-top:10px; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; font-weight:800; cursor:pointer; }
+.ghost:hover { background:rgba(255,255,255,.14); }
+
+.saldoRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,.12); }
+.saldoTotal { margin-top:10px; font-weight:800; }
+.left { color:#22c55e; }
+.metaLine { color:#cbd5e1; font-size:.95rem; }
+
+.hint { margin-top:8px; color:#cbd5e1; font-size:.9rem; }
+
+.table { width:100%; border-collapse: collapse; margin-top:6px; }
+.table th, .table td { text-align:left; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,.12); }
+.table th { color:#d1d5db; font-weight:800; }
