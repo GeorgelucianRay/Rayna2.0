@@ -1,127 +1,68 @@
-/* Fundal + layout identic cu pagina de programare */
-.pageWrap {
-  position: relative;
-  padding: 24px;
-  color: #fff;
-  min-height: 100dvh;
-  box-sizing: border-box;
-}
-
-.bg {
+.wrap {
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
-    radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
-    linear-gradient(180deg, #0b1220, #0e172a);
-  z-index: -2;
-}
-.vignette {
-  position: fixed;
-  inset: 0;
-  box-shadow: inset 0 0 150px rgba(0,0,0,.45);
-  z-index: -1;
-}
-
-/* Top bar */
-.topBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
-  background: rgba(255,255,255,.08);
+  background: radial-gradient(120% 120% at 10% 10%, #0b1220 0%, #0a0f18 60%, #0a0f18 100%);
   color: #e5e7eb;
-  transition: transform .15s ease, box-shadow .15s ease, opacity .15s;
-}
-.backBtn:hover { opacity: .95; }
-.title { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; }
-.rightSpacer { width: 96px; }
-
-/* Conținut centrat */
-.centerWrap {
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  min-height: calc(100dvh - 80px);
 }
 
-/* Card */
-.card {
-  background: rgba(17,24,39,.55);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 16px;
-  padding: 20px;
-  max-width: 720px;
+/* top bar (X + +) */
+.topbar {
+  position: absolute; z-index: 20; inset: 0 auto auto 0;
+  display: flex; align-items: center; gap: .5rem;
+  padding: .75rem .75rem;
   width: 100%;
-  text-align: center;
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  pointer-events: none; /* doar butoanele iau evenimente */
 }
+.topbar .roundBtn { pointer-events: auto; }
+.flexGrow { flex: 1; }
 
-.iconCircle {
-  width: 64px; height: 64px;
-  margin: 0 auto 10px;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
-  border: 1px solid rgba(255,255,255,.1);
-  font-size: 28px;
-}
-.heading {
-  margin: 6px 0 8px;
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-.sub {
-  margin: 0 auto 16px;
-  color: #cbd5e1;
-  max-width: 56ch;
-  line-height: 1.5;
-}
-
-/* Acțiuni */
-.actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.primary {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 800;
-  background: linear-gradient(90deg, #2563eb, #3b82f6);
-  color: #fff;
-  cursor: pointer;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
-.ghost {
-  padding: 10px 16px;
-  border-radius: 10px;
+.roundBtn {
+  width: 42px; height: 42px; border-radius: 9999px;
   background: rgba(255,255,255,.08);
-  color: #e5e7eb;
-  border: 1px solid rgba(255,255,255,.18);
-  font-weight: 800;
-  cursor: not-allowed;
-  opacity: .7;
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff; cursor: pointer;
+  display: grid; place-items: center;
+  backdrop-filter: blur(8px);
+  transition: transform .15s ease, background .15s ease;
 }
+.roundBtn:hover { transform: translateY(-1px); background: rgba(255,255,255,.12); }
+.primary { box-shadow: 0 6px 20px rgba(6,182,212,.35); border-color: rgba(34,211,238,.35); }
 
-/* Mobile tweaks */
-@media (max-width: 520px) {
-  .title { font-size: 1.1rem; }
-  .card { padding: 16px; }
-  .heading { font-size: 1.2rem; }
+/* card lateral */
+.sideCard {
+  position: absolute; right: 16px; top: 70px; z-index: 20;
+  width: min(320px, 92vw);
+  background: rgba(15, 23, 42, .65);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: .75rem;
+  backdrop-filter: blur(10px);
+  padding: 1rem;
 }
+.sideHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+.badge { background: rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius: .5rem; padding: .1rem .5rem; font-size: .8rem; }
+.kv { display: flex; justify-content: space-between; font-size: .95rem; padding: .25rem 0; }
+.kv span { color: #93a3b4; }
+.cardActions { display: flex; gap: .5rem; margin-top: .75rem; }
+.btn { background: linear-gradient(90deg, #22d3ee, #06b6d4); color: #0b1020; border:none; padding:.5rem .75rem; border-radius:.5rem; font-weight:700; cursor:pointer; }
+.btnGhost { background: transparent; border:1px solid rgba(255,255,255,.25); color:#e5e7eb; padding:.5rem .75rem; border-radius:.5rem; cursor:pointer; }
+
+/* modal */
+.modal { position: absolute; inset: 0; z-index: 30; background: rgba(0,0,0,.5); display:grid; place-items:center; padding: 1rem; }
+.modalBox {
+  width: min(680px, 96vw); max-height: 90vh; overflow: auto;
+  background: #0f172a; color: #e5e7eb; border:1px solid rgba(255,255,255,.15);
+  border-radius: .75rem; padding: .5rem 1rem 1rem;
+}
+.modalHead { display:flex; justify-content: space-between; align-items:center; padding-top:.5rem; }
+.iconBtn { background: transparent; border:1px solid rgba(255,255,255,.25); color:#e5e7eb; border-radius:.5rem; padding:.25rem .5rem; cursor:pointer; }
+.form { display: grid; gap: .75rem; margin-top: .5rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+label { display:flex; flex-direction:column; gap:.35rem; font-weight:600; color:#cfd6de; }
+input, select, textarea {
+  background: rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.18);
+  border-radius:.5rem; padding:.55rem .6rem; outline:none;
+}
+textarea { resize: vertical; }
+.modalActions { display:flex; justify-content: flex-end; gap: .5rem; margin-top: .5rem; }
+.btnPrimary { background: linear-gradient(90deg, #22d3ee, #06b6d4); color:#0b1020; border:none; padding:.55rem .8rem; border-radius:.5rem; font-weight:800; cursor:pointer; }
