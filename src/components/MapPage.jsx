@@ -30,8 +30,8 @@ const CFG = {
 
   // Marcajele de pe asfalt (benzile ABC & DEF)
   markings: {
-    abcOffsetX: 10,   // deplasează tot blocul ABC pe axa X
-    defOffsetX: 50,   // deplasează tot blocul DEF pe axa X
+    abcOffsetX: 50,   // deplasează tot blocul ABC pe axa X
+    defOffsetX: 100,   // deplasează tot blocul DEF pe axa X
     abcToDefGap: -10, // distanța pe Z dintre ABC și DEF (culoarul; valori mai NEGATIVE = DEF mai jos)
   },
 
