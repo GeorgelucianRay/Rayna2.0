@@ -55,7 +55,8 @@ export default function MapPage() {
       0.1,
       2000
     );
-    camera.position.set(58, 34, 72);
+    camera.position.set(34, 20, 42);
+    controls.target.set(0, 1.2, 0);
     cameraRef.current = camera;
 
     // controale
@@ -66,10 +67,35 @@ export default function MapPage() {
     controlsRef.current = controls;
 
     // ——— Lumea (asfalt, cer, gard, copaci)
-    const ground = createGround({ width: 600, depth: 300 });
-    const sky = createSky({ radius: 800 });
-    const fence = createFence({ width: 560, depth: 260, postEvery: 18 });
-    const trees = createTrees({ width: 620, depth: 320, count: 28 });
+    // ——— Lumea (asfalt, cer, gard, copaci) — versiunea compactă
+const ground = createGround({
+  width: 180,
+  depth: 120,
+  color: 0x1f2937,     // gri închis curat
+  showGrid: false,     // fără “pătrățele”
+  showCenterLine: true // o linie discretă pe mijloc
+});
+
+const sky = createSky({
+  radius: 320,
+  topColor: 0x87ceeb,      // albastru senin sus
+  bottomColor: 0xb3e5fc    // albastru deschis jos
+});
+
+const fence = createFence({
+  width: 170,
+  depth: 110,
+  postEvery: 12
+});
+
+const trees = createTrees({
+  width: 190,
+  depth: 130,
+  count: 100               // mai puțini, doar pe margini
+});
+
+scene.add(ground, sky, fence, trees);
+worldRefs.current = { ground, sky, fence, trees };
 
     scene.add(ground, sky, fence, trees);
     worldRefs.current = { ground, sky, fence, trees };
