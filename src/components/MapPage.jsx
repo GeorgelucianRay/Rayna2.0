@@ -184,6 +184,12 @@ export default function MapPage() {
         setLoading(false);
       }
     })();
+    const containersLayer = createContainersLayer(data, {
+  abcOffsetX:  CFG.ground.abcOffsetX,
+  defOffsetX:  CFG.ground.defOffsetX,
+  abcToDefGap: CFG.ground.abcToDefGap,
+});
+scene.add(containersLayer);
 
     // Loop
     const animate = () => {
