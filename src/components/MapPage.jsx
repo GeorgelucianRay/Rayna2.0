@@ -182,14 +182,12 @@ const fence = createFence({
 
     scene.add(ground, sky, fence, trees);
 
-    // Containere
-    let containersLayer;
-    (async () => {
-      const data = await fetchContainers();
-      containersLayer = createContainersLayer(data);
-      scene.add(containersLayer);
-      setLoading(false);
-    })();
+    // în MapPage.jsx, după fetch:
+containersLayer = createContainersLayer(data, {
+  abcOffsetX: CFG.ground.abcOffsetX,
+  defOffsetX: CFG.ground.defOffsetX,
+  abcToDefGap: CFG.ground.abcToDefGap
+});
 
     // Loop
     const animate = () => {
