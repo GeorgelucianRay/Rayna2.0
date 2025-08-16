@@ -18,13 +18,10 @@ const YARD_WIDTH  = 90;   // ↔ lățime (X)
 const YARD_DEPTH  = 60;   // ↕ lungime (Z)
 const YARD_COLOR  = 0x9aa0a6;
 
-// Pasul real al unui slot de 20' (6.06m) + „fuga” vopselei (0.06m)
+// un slot de 20' (m) + mic spațiu de vopsea
 const SLOT_STEP = 6.06 + 0.06;
 
-/** Ca ABC să fie EXACT pe mijlocul scenei pe axa X:
- *  centrul celor 10 sloturi e la 5 * STEP la stânga de “ABC_BASE_X”.
- *  Deci alegem abcOffsetX = +5 * STEP ≈ 30.6
- */
+// ABC centrat pe X (centrul celor 10 celule este la 5*STEP în stânga originii rândului)
 const ABC_CENTER_OFFSET_X = 5 * SLOT_STEP; // ≈ 30.6
 
 const CFG = {
@@ -33,15 +30,15 @@ const CFG = {
     depth:  YARD_DEPTH,
     color:  YARD_COLOR,
 
-    // ancorează marcajele la capătul „sud” (spre tine) și lasă 3m margine
-    anchor: 'south',
-    edgePadding: 3.0,
+    // unde ancorăm marcajele față de marginea curții
+    anchor: 'south',      // 'south' | 'north'
+    edgePadding: 3.0,     // margine față de gard/asfalt (m)
 
-    // ABC centrat pe X; DEF îl deplasăm puțin spre dreapta
-    abcOffsetX: ABC_CENTER_OFFSET_X, // ► ABC pe mijloc
-    defOffsetX: 32,                  // ► ajustezi cât vrei (ex. 32)
+    // poziții laterale
+    abcOffsetX: ABC_CENTER_OFFSET_X, // ABC pe mijloc
+    defOffsetX: 32,                  // împinge DEF spre colțul din dreapta
 
-    // distanța ABC↔DEF pe Z (culoarul). Mai MARE => DEF mai jos (spre sud)
+    // distanța pe Z între ABC și DEF (culoarul)
     abcToDefGap: 16,
   },
 
@@ -56,8 +53,8 @@ const CFG = {
   },
 
   trees: {
-    ring: true,    // copaci pe contur
-    offset: 6.0,   // în afara gardului
+    ring: true,   // copaci pe contur
+    offset: 6.0,  // în afara gardului
     every: 4.0
   },
 
@@ -78,7 +75,7 @@ export default function MapPage() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // renderer
+    // Renderer
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -92,7 +89,7 @@ export default function MapPage() {
       return;
     }
 
-    // scenă + cameră + lumini
+    // Scenă + cameră + lumini
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 120, 360);
@@ -111,10 +108,11 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // lume: asfalt (cu marcaje ABC/DEF înăuntru), gard, copaci, cer
+    // === Curtea (asfalt + marcaje integrate), gard, copaci, cer ===
     const ground = createGround(CFG.ground);
     const sky = createSky(CFG.sky);
 
+    // gard interior cu poartă aliniată pe ABC
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
@@ -122,8 +120,9 @@ export default function MapPage() {
       gate: {
         side: CFG.fence.gate.side,
         width: CFG.fence.gate.width,
+        // centrăm poarta pe centrul blocului ABC:
+        // centrul ABC este la (abcOffsetX - 5*STEP)
         centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - (5 * SLOT_STEP) : 0
-        // notă: scădem 5*STEP pentru că centrul ABC e la 5*STEP stânga de abcOffsetX
       }
     });
 
@@ -137,7 +136,7 @@ export default function MapPage() {
 
     scene.add(ground, sky, fence, trees);
 
-    // containere
+    // Containere
     let containersLayer;
     (async () => {
       const data = await fetchContainers();
@@ -146,7 +145,7 @@ export default function MapPage() {
       setLoading(false);
     })();
 
-    // loop
+    // Loop
     const animate = () => {
       containersLayer?.userData?.tick?.();
       controls.update();
@@ -155,7 +154,7 @@ export default function MapPage() {
     };
     animate();
 
-    // resize
+    // Resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
@@ -164,7 +163,7 @@ export default function MapPage() {
     };
     window.addEventListener('resize', onResize);
 
-    // cleanup
+    // Cleanup
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('resize', onResize);
