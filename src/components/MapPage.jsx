@@ -22,8 +22,8 @@ const CFG = {
     anchor: 'south',   // 'south' | 'north'
     edgePadding: 3.0,  // cât de aproape de marginea asfaltului e banda A
     abcOffsetX:  -10,    // mută ABC stânga/dreapta
-    defOffsetX:  30,    // mută DEF stânga/dreapta
-    abcToDefGap: 35,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
+    defOffsetX:  33,    // mută DEF stânga/dreapta
+    abcToDefGap: 16,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
   },
 
   fence: {
