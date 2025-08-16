@@ -159,16 +159,17 @@ export default function MapPage() {
 
     // gard interior cu poartă aliniată pe ABC
     const fence = createFence({
-      width:  CFG.ground.width - 2 * CFG.fence.margin,
-      depth:  CFG.ground.depth - 2 * CFG.fence.margin,
-      postEvery: CFG.fence.postEvery,
-      gate: {
-        side: CFG.fence.gate.side,
-        width: CFG.fence.gate.width,
-        // centrăm poarta pe centrul blocului ABC:
-        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - (5 * STEP) : 0
-      }
-    });
+  width:  CFG.ground.width - 2 * CFG.fence.margin,
+  depth:  CFG.ground.depth - 2 * CFG.fence.margin,
+  postEvery: CFG.fence.postEvery,
+  gate: {
+    side: 'north',
+    width: 10,
+    // centrare pe ABC (abcOffsetX - 5 * STEP), plus reglaj fin dacă vrei
+    centerX: CFG.ground.abcOffsetX - (5 * (6.06 + 0.06)),
+    tweakX: 0   // pune +1 sau -1 ca să o mai miști stânga/dreapta
+  }
+});
 
     const trees = createTrees({
       width:  CFG.ground.width,
