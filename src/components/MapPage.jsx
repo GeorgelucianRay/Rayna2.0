@@ -15,7 +15,7 @@ import fetchContainers from './threeWorld/fetchContainers';
 
 /* ==== CONFIG SĂNĂTOASĂ (nu iese nimic din scenă) ==== */
 const CFG = {
-  ground: { width: 300, depth: 180, color: 0x9aa0a6 },
+  ground: { width: 140, depth: 90, color: 0x9aa0a6 },
   fence:  { margin: 6, postEvery: 15 },
   markings: {
     abcOffsetX: 0,      // ABC centrat pe X
