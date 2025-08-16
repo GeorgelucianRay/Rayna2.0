@@ -1,29 +1,28 @@
+// src/components/threeWorld/createTrees.js
 import * as THREE from 'three';
 
-export default function createTrees({ width = 620, depth = 320, count = 24 } = {}) {
+export default function createTrees({ width = 190, depth = 130, count = 10 } = {}) {
   const g = new THREE.Group();
-  const w = width/2 + 10, d = depth/2 + 10;
+  const w = width/2 + 6, d = depth/2 + 6;
 
   for (let i = 0; i < count; i++) {
+    const alongX = Math.random() < 0.5;
     const side = Math.random() < 0.5 ? -1 : 1;
-    const along = Math.random() < 0.5 ? 'x' : 'z';
 
-    let x = (along === 'x') ? (Math.random()*width - width/2) : side * w;
-    let z = (along === 'z') ? (Math.random()*depth - depth/2) : side * d;
+    const x = alongX ? (Math.random()*width - width/2) : side * w;
+    const z = !alongX ? (Math.random()*depth - depth/2) : side * d;
 
-    // trunchi
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.26, 2.2, 7),
+      new THREE.CylinderGeometry(0.14, 0.2, 1.6, 6),
       new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 })
     );
-    trunk.position.set(x, 1.1, z);
+    trunk.position.set(x, 0.8, z);
 
-    // coroană
     const crown = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(1.8, 0),
-      new THREE.MeshStandardMaterial({ color: 0x2d8f4f, roughness: 0.9 })
+      new THREE.DodecahedronGeometry(1.2, 0),
+      new THREE.MeshStandardMaterial({ color: 0x2e7d46, roughness: 0.9 })
     );
-    crown.position.set(x, 2.6, z);
+    crown.position.set(x, 1.9, z);
 
     g.add(trunk, crown);
   }
