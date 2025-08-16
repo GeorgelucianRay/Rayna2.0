@@ -62,8 +62,8 @@ export default function createGround({
   width = 300,
   depth = 180,
   color = 0x9aa0a6,
-  abcOffsetX = 0,       // <<< NOU: offset pe X pentru ABC
-  defOffsetX = 10,       // <<< NOU: offset pe X pentru DEF
+  abcOffsetX = 10,       // <<< NOU: offset pe X pentru ABC
+  defOffsetX = 50,       // <<< NOU: offset pe X pentru DEF
   abcToDefGap = -10.0,  // „distanța” pe Z dintre ABC și DEF (culoarul)
 } = {}) {
   const g = new THREE.Group();
