@@ -88,13 +88,13 @@ function paintSlot({ x = 0, z = 0, along = 'X' }) {
 /* ——— EXPORT PRINCIPAL ——— */
 export default function createGround({
   /* DIMENSIUNEA ASFALTULUI: schimbă aici cât „de mare” e curtea */
-  width = 200,            // LĂȚIMEA (pe X)
-  depth = 100,            // LUNGIMEA (pe Z)
+  width = 100,            // LĂȚIMEA (pe X)
+  depth = 50,            // LUNGIMEA (pe Z)
   color = 0x9aa0a6,       // culoarea asfaltului
 
   /* OFFSET-URI PE X: poziționează blocurile față de centrul scenei */
-  abcOffsetX = 10,        // mută benzile ABC stânga/dreapta
-  defOffsetX = 30,        // mută coloanele DEF stânga/dreapta
+  abcOffsetX = 0,        // mută benzile ABC stânga/dreapta
+  defOffsetX = 10,        // mută coloanele DEF stânga/dreapta
 
   /* DISTANȚA PE Z DINTRE ABC ȘI DEF (culoarul mare) */
   abcToDefGap = -10.0,    // valori mai negative → DEF mai „jos” (mai departe de ABC) → culoar mai lat
