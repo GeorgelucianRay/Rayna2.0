@@ -88,8 +88,8 @@ function paintSlot({ x = 0, z = 0, along = 'X' }) {
 /* ——— EXPORT PRINCIPAL ——— */
 export default function createGround({
   /* DIMENSIUNEA ASFALTULUI: schimbă aici cât „de mare” e curtea */
-  width = 100,            // LĂȚIMEA (pe X)
-  depth = 50,            // LUNGIMEA (pe Z)
+  width = 50,            // LĂȚIMEA (pe X)
+  depth = 10,            // LUNGIMEA (pe Z)
   color = 0x9aa0a6,       // culoarea asfaltului
 
   /* OFFSET-URI PE X: poziționează blocurile față de centrul scenei */
