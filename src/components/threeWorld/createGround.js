@@ -127,16 +127,18 @@ export default function createGround({
 
   // numerotare 1..10 (din 1 în 1) pe A (sus) și C (jos)
   for (let col = 1; col <= 10; col++) {
-    const xNum = ABC_BASE_X - (col - 0.5) * STEP;
+  const xNum = ABC_BASE_X - (col - 0.5) * STEP;
 
-    const nA = makePaintedText(String(col), { size: 1.2 });
-    nA.position.set(xNum, 0.03, ABC_ROW_Z.A + 1.6);
-    g.add(nA);
+  const label = 11 - col; // 10, 9, 8 … 1
 
-    const nC = makePaintedText(String(col), { size: 1.2 });
-    nC.position.set(xNum, 0.03, ABC_ROW_Z.C - 1.6);
-    g.add(nC);
-  }
+  const nA = makePaintedText(String(label), { size: 1.2 });
+  nA.position.set(xNum, 0.03, ABC_ROW_Z.A + 1.6);
+  g.add(nA);
+
+  const nC = makePaintedText(String(label), { size: 1.2 });
+  nC.position.set(xNum, 0.03, ABC_ROW_Z.C - 1.6);
+  g.add(nC);
+}
 
   /* ======================= DEF ======================= */
 
