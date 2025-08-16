@@ -8,7 +8,7 @@ const SLOT_GAP = 0.06;        // ~6cm între benzi (aproape lipite)
 const STEP     = SLOT_LEN + SLOT_GAP;
 
 /** ——— poziția grupului ABC (lipite între ele) ——— */
-const ABC_BASE_Z = -4.0;      // unde plasăm rândul A; B și C sunt deduse
+const ABC_BASE_Z = 0.0;      // unde plasăm rândul A; B și C sunt deduse
 const ABC_ROW_Z = {
   A: ABC_BASE_Z,
   B: ABC_BASE_Z - (SLOT_W + 0.10),
