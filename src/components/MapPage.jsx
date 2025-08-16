@@ -168,22 +168,23 @@ export default function MapPage() {
     scene.add(ground, sky, fence, trees);
 
     // === Containere din Supabase (SAFE) ===
+// chiar sub: const controls = new OrbitControls(...)
     let containersLayer; // DECLARAT aici!
-    (async () => {
-      try {
-        const data = await fetchContainers(); // { enDeposito, programados, rotos }
-        containersLayer = createContainersLayer(data, {
-          abcOffsetX:  CFG.ground.abcOffsetX,
-          defOffsetX:  CFG.ground.defOffsetX,
-          abcToDefGap: CFG.ground.abcToDefGap,
-        });
-        scene.add(containersLayer);
-      } catch (e) {
-        console.warn('fetch/create layer error:', e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    // Containere
+(async () => {
+  const data = await fetchContainers();
+
+  // dacă ai extins createContainersLayer să accepte offset-urile,
+  // îi treci opțiunile aici; dacă nu, lasă doar "data"
+  containersLayer = createContainersLayer(data, {
+    abcOffsetX:  CFG.ground.abcOffsetX,
+    defOffsetX:  CFG.ground.defOffsetX,
+    abcToDefGap: CFG.ground.abcToDefGap,
+  });
+
+  scene.add(containersLayer);
+  setLoading(false);
+})();
     const containersLayer = createContainersLayer(data, {
   abcOffsetX:  CFG.ground.abcOffsetX,
   defOffsetX:  CFG.ground.defOffsetX,
