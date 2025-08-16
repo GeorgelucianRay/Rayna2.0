@@ -1,54 +1,35 @@
 // src/components/threeWorld/fetchContainers.js
 import { supabase } from '../../supabaseClient';
 
+/**
+ * Citește datele din tabelele tale. Returnează mereu:
+ * { enDeposito:[], programados:[], rotos:[] }
+ * Acceptă atât câmpul "posicion" (ES) cât și "pos" (RO/EN).
+ */
 export default async function fetchContainers() {
-  const out = { enDeposito: [], programados: [], rotos: [] };
-
-  // --- contenedores (în depozit)
   try {
-    const { data, error } = await supabase
-      .from('contenedores')
-      .select('*'); // selectăm tot ce există, evităm erori
-    if (error) {
-      console.warn('[fetch] contenedores error:', error.message);
-    } else {
-      out.enDeposito = data || [];
+    const colsBase =
+      'id, created_at, matricula_contenedor, naviera, tipo, posicion, pos, estado, detalles, matricula_camion';
+
+    const [{ data: enDep, error: e1 }, { data: prog, error: e2 }, { data: rot, error: e3 }] =
+      await Promise.all([
+        supabase.from('contenedores').select(colsBase),
+        supabase.from('contenedores_programados').select(colsBase + ', empresa_descarga, fecha, hora'),
+        supabase.from('contenedores_rotos').select(colsBase),
+      ]);
+
+    if (e1 || e2 || e3) {
+      console.warn('Supabase fetch error:', (e1 || e2 || e3)?.message);
+      return { enDeposito: [], programados: [], rotos: [] };
     }
-  } catch (e) {
-    console.warn('[fetch] contenedores failed:', e?.message || e);
+
+    return {
+      enDeposito: enDep || [],
+      programados: prog || [],
+      rotos: rot || [],
+    };
+  } catch (err) {
+    console.warn('Supabase fetch failed:', err?.message || err);
+    return { enDeposito: [], programados: [], rotos: [] };
   }
-
-  // --- contenedores_programados
-  try {
-    const { data, error } = await supabase
-      .from('contenedores_programados')
-      .select('*');
-    if (error) {
-      console.warn('[fetch] programados error:', error.message);
-    } else {
-      out.programados = data || [];
-    }
-  } catch (e) {
-    console.warn('[fetch] programados failed:', e?.message || e);
-  }
-
-  // --- contenedores_rotos
-  try {
-    const { data, error } = await supabase
-      .from('contenedores_rotos')
-      .select('*');
-    if (error) {
-      console.warn('[fetch] rotos error:', error.message);
-    } else {
-      out.rotos = data || [];
-    }
-  } catch (e) {
-    console.warn('[fetch] rotos failed:', e?.message || e);
-  }
-
-  console.log('[fetchContainers] counts -> enDeposito:', out.enDeposito.length,
-              'programados:', out.programados.length,
-              'rotos:', out.rotos.length);
-
-  return out;
 }
