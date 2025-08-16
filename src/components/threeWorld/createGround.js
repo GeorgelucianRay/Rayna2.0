@@ -93,8 +93,8 @@ export default function createGround({
   color = 0x9aa0a6,       // culoarea asfaltului
 
   /* OFFSET-URI PE X: poziționează blocurile față de centrul scenei */
-  abcOffsetX = 0,        // mută benzile ABC stânga/dreapta
-  defOffsetX = 10,        // mută coloanele DEF stânga/dreapta
+  abcOffsetX = 50,        // mută benzile ABC stânga/dreapta
+  defOffsetX = 100,        // mută coloanele DEF stânga/dreapta
 
   /* DISTANȚA PE Z DINTRE ABC ȘI DEF (culoarul mare) */
   abcToDefGap = -10.0,    // valori mai negative → DEF mai „jos” (mai departe de ABC) → culoar mai lat
