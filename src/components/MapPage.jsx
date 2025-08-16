@@ -60,7 +60,7 @@ export default function MapPage() {
     controlsRef.current = controls;
 
     // Curtea
-    const ground   = createGround({ width: 300, depth: 180, color: 0x9aa0a6, showGrid: false });
+    const ground   = createGround({ width: 200, depth: 100, color: 0x9aa0a6, showGrid: false });
     const sky      = createSky({ radius: 800 });
     const fence    = createFence({ width: 280, depth: 160, postEvery: 15 });
     const trees    = createTrees({ width: 320, depth: 200, count: 18 });
