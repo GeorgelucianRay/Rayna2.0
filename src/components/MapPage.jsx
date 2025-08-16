@@ -9,27 +9,46 @@ import createGround from './threeWorld/createGround';
 import createSky from './threeWorld/createSky';
 import createFence from './threeWorld/createFence';
 import createTrees from './threeWorld/createTrees';
-import createAsphaltMarkings from './threeWorld/createAsphaltMarkings';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
-/* ==== CONFIG SĂNĂTOASĂ (nu iese nimic din scenă) ==== */
+/* —— CONFIG (modifici doar aici) —— */
 const CFG = {
-  ground: { width: 140, depth: 90, color: 0x9aa0a6 },
-  fence:  { margin: 6, postEvery: 15 },
-  markings: {
-    abcOffsetX: 0,      // ABC centrat pe X
-    defOffsetX: 40,     // DEF ușor spre dreapta față de centru
-    abcToDefGap: -12    // DEF „mai jos” pe Z (culoar între blocuri)
+  ground: {
+    width: 90,         // ↔ lățimea curții (X)
+    depth: 60,         // ↕ lungimea curții (Z)
+    color: 0x9aa0a6,
+    // marcajele la CAPĂTUL curții: ancorați ABC la “south” (marginea de jos)
+    anchor: 'south',   // 'south' | 'north'
+    edgePadding: 3.0,  // cât de aproape de marginea asfaltului e banda A
+    abcOffsetX: -2,    // mută ABC stânga/dreapta
+    defOffsetX:  8,    // mută DEF stânga/dreapta
+    abcToDefGap: -9,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
   },
+
+  fence: {
+    margin: 2.0,       // gardul intră cu X metri față de marginea asfaltului
+    postEvery: 10,
+    gate: {
+      side: 'south',   // pe ce latură e poarta: 'south'|'north'|'west'|'east'
+      width: 10,       // lățimea porții (metri)
+      alignToABC: true // aliniază poarta la centrul blocului ABC
+    }
+  },
+
+  trees: {
+    ring: true,        // copaci pe contur (inel)
+    offset: 6.0,       // cât de departe de asfalt (în exterior)
+    every: 4.0         // un copac la fiecare ~4m (aprox)
+  },
+
   sky: { radius: 800 },
-  trees: { count: 18 }
 };
-/* =============================================== */
 
 export default function MapPage() {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
+  const controlsRef = useRef(null);
   const frameRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,6 +58,7 @@ export default function MapPage() {
     const mount = mountRef.current;
     if (!mount) return;
 
+    // Renderer
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -52,15 +72,16 @@ export default function MapPage() {
       return;
     }
 
+    // Scenă + cameră + lumini
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.Fog(0x87ceeb, 150, 400);
+    scene.fog = new THREE.Fog(0x87ceeb, 120, 360);
 
     const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 2000);
-    camera.position.set(55, 32, 70);
+    camera.position.set(30, 20, 38);
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0x6b7280, 1.0));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.85);
     dir.position.set(60, 80, 30);
     scene.add(dir);
 
@@ -68,45 +89,53 @@ export default function MapPage() {
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.495;
     controls.target.set(0, 1.2, 0);
+    controlsRef.current = controls;
 
     // === Curtea ===
-    const { width, depth, color } = CFG.ground;
+    const ground = createGround(CFG.ground);
+    const sky = (() => {
+      const g = new THREE.Group();
+      const s = new THREE.SphereGeometry(CFG.sky.radius, 32, 24);
+      const m = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
+      g.add(new THREE.Mesh(s, m));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.35); sun.position.set(80,120,40); g.add(sun);
+      return g;
+    })();
 
-    const ground = createGround({ width, depth, color });
-    const sky    = createSky(CFG.sky);
-
-    const fence  = createFence({
-      width:  width - 2 * CFG.fence.margin,
-      depth:  depth - 2 * CFG.fence.margin,
-      postEvery: CFG.fence.postEvery
+    // gard cu poartă în fața ABC
+    const fence = createFence({
+      width: CFG.ground.width - 2 * CFG.fence.margin,
+      depth: CFG.ground.depth - 2 * CFG.fence.margin,
+      postEvery: CFG.fence.postEvery,
+      gate: {
+        side: CFG.fence.gate.side,
+        width: CFG.fence.gate.width,
+        // centrăm poarta pe centrul blocului ABC (în funcție de offset-ul ABC)
+        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - ((10 - 0.5) * 6.12) / 2 : 0
+      }
     });
 
-    const trees  = createTrees({
-      width: width + 20,
-      depth: depth + 20,
-      count: CFG.trees.count
+    // copaci pe contur (inel)
+    const trees = createTrees({
+      width: CFG.ground.width,
+      depth: CFG.ground.depth,
+      mode: CFG.trees.ring ? 'ring' : 'random',
+      offset: CFG.trees.offset,
+      every: CFG.trees.every,
     });
 
-    // IMPORTANT: trimitem și width/depth la marcaje (dacă funcția le primește)
-    const markings = createAsphaltMarkings({
-      width,
-      depth,
-      abcOffsetX:  CFG.markings.abcOffsetX,
-      defOffsetX:  CFG.markings.defOffsetX,
-      abcToDefGap: CFG.markings.abcToDefGap
-    });
+    scene.add(ground, sky, fence, trees);
 
-    scene.add(ground, sky, fence, trees, markings);
-
-    // === Containere ===
+    // Containere (se vor așeza pe marcaje conform pozițiilor)
     let containersLayer;
     (async () => {
       const data = await fetchContainers();
-      containersLayer = createContainersLayer(data); // are aceleași reguli A1..F7
+      containersLayer = createContainersLayer(data);
       scene.add(containersLayer);
       setLoading(false);
     })();
 
+    // Loop
     const animate = () => {
       containersLayer?.userData?.tick?.();
       controls.update();
@@ -115,6 +144,7 @@ export default function MapPage() {
     };
     animate();
 
+    // Resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
@@ -123,6 +153,7 @@ export default function MapPage() {
     };
     window.addEventListener('resize', onResize);
 
+    // Cleanup
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('resize', onResize);
