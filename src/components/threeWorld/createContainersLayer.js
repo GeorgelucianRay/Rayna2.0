@@ -13,7 +13,7 @@ const NAVIERA_COLORS = {
   OTROS: 0x8b5e3c,
 };
 
-/* ——— dimensiuni aproximative (m) ——— */
+/* ——— dimensiuni container (m) ——— */
 const SIZE_BY_TIPO = {
   '20':        { L: 6.06,  H: 2.59, W: 2.44 },
   '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
@@ -23,61 +23,70 @@ const SIZE_BY_TIPO = {
   '45':        { L:13.72,  H: 2.89, W: 2.44 },
 };
 
-/* ——— parse A1, A10B etc. ——— */
+/* ——— GRID constant: 1 slot = 20’ ——— */
+const SLOT_LEN = 6.06;         // lungimea unui 20'
+const SLOT_GAP = 0.20;         // spațiu mic între marcaje
+const STEP = SLOT_LEN + SLOT_GAP;
+
+/* rândurile ABC sunt aliniate pe Z negativ (lipite între ele) */
+const ROW_Z = { A: -11, B: -17, C: -23 };
+
+/* coloanele DEF: poziția pe X (lipite între ele). sloturile merg pe Z (vertical) */
+const COL_X = { D: +11, E: +17, F: +23 };
+
+/* câte sloturi ocupă în lungime */
+function slotsForTipo(tipo = '') {
+  const t = (tipo || '').toLowerCase();
+  if (t.startsWith('20')) return 1;
+  if (t.startsWith('40')) return 2;
+  if (t === '45') return 2; // va depăși puțin, acceptabil
+  return 2;
+}
+
+/* parsează A1, A10B (B=etaj 2) -> { row, startCol, level } */
 function parsePos(pos = '') {
   const m = pos.trim().toUpperCase().match(/^([A-F])(\d{1,2})([A-Z])?$/);
   if (!m) return null;
-  const row = m[1];                 // A..F
-  const col = Number(m[2]);         // 1..n
-  const levelLetter = m[3] || 'A';  // A=1, B=2, C=3, D=4
-  const level = levelLetter.charCodeAt(0) - 64;
-  return { row, col, level };
+  const row = m[1];
+  const startCol = Number(m[2]);
+  const levelLetter = m[3] || 'A';
+  const level = levelLetter.charCodeAt(0) - 64; // A=1, B=2...
+  return { row, startCol, level };
 }
 
-/* ——— hartă benzi ——— */
-const laneIndexABC = { A:0, B:1, C:2 };
-const laneIndexDEF = { D:0, E:1, F:2 };
-
-/* ——— parametri curte ——— */
-const LANE_W     = 2.44; // lățimea containerului – benzi lipite
-const GAP_X      = 0.20; // spațiu infim între benzi
-const GAP_Z      = 0.40; // spațiu între locuri pe Z
-const START_Z    = -32;  // începutul numerotării spre nord
-const ABC_BLOCK_X= -18;  // centrul blocului ABC (stânga)
-const DEF_BLOCK_X= +18;  // centrul blocului DEF (dreapta)
-
+/* culoare în funcție de naviera / roto / programado */
 function pickColor(naviera = '', roto = false, programado = false) {
-  if (roto) return 0xef4444; // roșu pentru roto
+  if (roto) return 0xef4444; // roșu tare pt. roto
   const key = naviera.trim().toUpperCase();
   const base = NAVIERA_COLORS[key] ?? NAVIERA_COLORS.OTROS;
   if (!programado) return base;
   const c = new THREE.Color(base);
-  c.offsetHSL(0, 0, +0.1); // puțin mai luminos la programados
+  c.offsetHSL(0, 0, +0.1); // puțin mai luminos pt. „programado”
   return c.getHex();
 }
 
-/* ——— coordonate din A1A / D7A etc. ——— */
-function toCoord(row, col, level, height, tipo) {
-  const dims = SIZE_BY_TIPO[(tipo || '').toLowerCase()] || SIZE_BY_TIPO['40bajo'];
-  const slotStepZ = dims.L + GAP_Z; // lungimea reală + spațiu
+/* poziționare:
+   - ABC: sloturile cresc spre stânga pe axa X (negativ); Z fix pe rândul A/B/C
+   - DEF: sloturile cresc „în față” pe axa Z (pozitiv); X fix pe D/E/F
+   mesh-ul e centrat pe mijlocul sloturilor ocupate (40’ = 2 sloturi) */
+function toCoord(parsed, occSlots, height) {
+  const { row, startCol, level } = parsed;
 
-  // X: 3 benzi lipite, centrate pe blockX
-  let blockX, idx;
-  if (row in laneIndexABC) {
-    blockX = ABC_BLOCK_X;
-    idx = laneIndexABC[row];
+  let x = 0, z = 0;
+
+  if (row === 'A' || row === 'B' || row === 'C') {
+    // ABC (orizontal): plecăm din centru spre stânga
+    const centerCol = startCol + (occSlots / 2 - 0.5);
+    x = -((centerCol - 0) * STEP);       // negativ = stânga
+    z = ROW_Z[row] ?? 0;                 // rând fix
   } else {
-    blockX = DEF_BLOCK_X;
-    idx = laneIndexDEF[row];
+    // DEF (vertical): plecăm din jos spre sus
+    const centerRow = startCol + (occSlots / 2 - 0.5);
+    x = COL_X[row] ?? 0;                 // coloană fixă în dreapta
+    z = -23 + (centerRow * STEP);        // 1..7 merg pe Z pozitiv
   }
-  const x = blockX + (idx - 1) * (LANE_W + GAP_X);
 
-  // Z: 1..N înainte
-  const z = START_Z + (col - 1) * slotStepZ;
-
-  // Y: etaj (A=1, B=2…)
   const y = (height / 2) + height * (level - 1);
-
   return new THREE.Vector3(x, y, z);
 }
 
@@ -99,15 +108,15 @@ export default function createContainersLayer({ enDeposito, programados, rotos }
 
     const parsed = parsePos(rec.posicion || '');
     if (parsed) {
+      const occ = slotsForTipo(rec.tipo);
       const { H } = mesh.userData.__dims;
-      mesh.position.copy(toCoord(parsed.row, parsed.col, parsed.level, H, rec.tipo));
+      mesh.position.copy(toCoord(parsed, occ, H));
     } else {
       // fallback: „parcare”
       mesh.position.set(0, mesh.userData.__dims.H / 2, 35);
     }
 
     if (programado) {
-      // pulse subtil
       const baseY = mesh.scale.y;
       mesh.userData.__pulse = { baseY, t: Math.random() * Math.PI * 2 };
     }
@@ -120,14 +129,13 @@ export default function createContainersLayer({ enDeposito, programados, rotos }
   (programados || []).forEach(r => addRecord(r, { programado: true }));
   (rotos || []).forEach(r => addRecord(r, { roto: true }));
 
-  // demo minim dacă nu e nimic
   if (layer.children.length === 0) {
     addRecord({ naviera: 'EVERGREEN', tipo: '40alto', posicion: 'A1' });
     addRecord({ naviera: 'HAPAG',     tipo: '20',     posicion: 'A2B' });
-    addRecord({ naviera: 'ONE',       tipo: '40bajo', posicion: 'D3'  });
+    addRecord({ naviera: 'ONE',       tipo: '40bajo', posicion: 'E3'  });
   }
 
-  // tick pt. programados
+  // animația ușoară pentru „programados”
   layer.userData.tick = () => {
     layer.children.forEach(m => {
       if (m.userData.__pulse) {
