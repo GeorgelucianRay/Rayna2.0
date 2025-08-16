@@ -94,7 +94,7 @@ export default function createGround({
 
   /* OFFSET-URI PE X: poziționează blocurile față de centrul scenei */
   abcOffsetX = 10,        // mută benzile ABC stânga/dreapta
-  defOffsetX = 50,        // mută coloanele DEF stânga/dreapta
+  defOffsetX = 30,        // mută coloanele DEF stânga/dreapta
 
   /* DISTANȚA PE Z DINTRE ABC ȘI DEF (culoarul mare) */
   abcToDefGap = -10.0,    // valori mai negative → DEF mai „jos” (mai departe de ABC) → culoar mai lat
