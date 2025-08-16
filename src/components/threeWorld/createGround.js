@@ -1,13 +1,39 @@
 // src/components/threeWorld/createGround.js
 import * as THREE from 'three';
 
-/* ——— dimensiuni sincronizate cu containerele ——— */
-const SLOT_LEN = 6.06;   // lungime slot 20'
-const SLOT_W   = 2.44;   // lățime container
-const SLOT_GAP = 0.06;   // ~6cm
-const STEP     = SLOT_LEN + SLOT_GAP;
+/**
+ * ------------------------------------------------------------
+ * createGround(options)
+ * ------------------------------------------------------------
+ * Creează „asfaltul” (planul) + marcajele 2D pentru benzile ABC (orizontale)
+ * și coloanele DEF (verticale).
+ *
+ * CONTROALE PRINCIPALE (apelezi din MapPage):
+ * - width, depth      → DIMENSIUNEA ASFALTULUI (lățime X, lungime Z)
+ * - color             → culoarea asfaltului
+ * - abcOffsetX        → deplasarea blocului ABC pe axa X (stânga/dreapta)
+ * - defOffsetX        → deplasarea blocului DEF pe axa X (stânga/dreapta)
+ * - abcToDefGap       → distanța (pe Z) dintre ABC și DEF (culoarul de trecere)
+ *
+ * EXEMPLE:
+ *   createGround({ width: 360, depth: 220, abcToDefGap: -18, abcOffsetX: 0, defOffsetX: 44 })
+ *
+ * NOTĂ: Dimensiunile sloturilor sunt sincronizate cu containerele (20ft = ~6.06m).
+ * Dacă schimbi SLOT_LEN/SLOT_W/SLOT_GAP, actualizează și poziționarea containerelor
+ * în stratul de containere ca să rămână aliniate perfect cu marcajele.
+ * ------------------------------------------------------------
+ */
 
-/* helper text „vopsit” pe asfalt */
+/* ——— DIMENSIUNI SLOTURI (sincronizate cu containerele) ——— */
+const SLOT_LEN = 6.06;   // lungime slot pentru un container de 20'
+const SLOT_W   = 2.44;   // lățimea containerului (pe axa „lată”)
+const SLOT_GAP = 0.06;   // spațiu foarte mic între sloturi (~6 cm), doar ca să fie vizibile benzi separate
+const STEP     = SLOT_LEN + SLOT_GAP; // pasul dintre două sloturi de 20' (pe lungime)
+
+/* ——— HELPER: text „vopsit” pe asfalt (2D) ———
+ * Desenează o literă/număr pe un canvas și îl mapează pe un plane subțire.
+ * Folosit pentru A/B/C/D/E/F și numerotări 1..10 / 1..7.
+ */
 function makePaintedText(text, { size = 1.6, color = '#e5e7eb', opacity = 0.75 } = {}) {
   const S = 256;
   const c = document.createElement('canvas');
@@ -25,23 +51,31 @@ function makePaintedText(text, { size = 1.6, color = '#e5e7eb', opacity = 0.75 }
   tex.anisotropy = 4;
   tex.colorSpace = THREE.SRGBColorSpace;
 
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false, // să nu „taie” alte elemente
+  });
   const geo = new THREE.PlaneGeometry(size, size);
   const m = new THREE.Mesh(geo, mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.y = 0.03;
+  m.rotation.x = -Math.PI / 2; // culcat pe asfalt
+  m.position.y = 0.03;         // foarte puțin deasupra asfaltului ca să nu zbată Z-fight
   return m;
 }
 
-/* un slot pictat (alb subtil) */
+/* ——— HELPER: un slot pictat (dreptunghi alb subtil) ———
+ * along = 'X'  → slot orientat pe axa X (benzi ABC)
+ * along = 'Z'  → slot orientat pe axa Z (coloane DEF)
+ */
 function paintSlot({ x = 0, z = 0, along = 'X' }) {
   const sizeX = along === 'X' ? STEP : SLOT_W;
   const sizeZ = along === 'X' ? SLOT_W : STEP;
+
   const geo = new THREE.PlaneGeometry(sizeX, sizeZ);
   const mat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.25,
+    opacity: 0.25,             // subtil, ca vopsea uzată
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -51,24 +85,25 @@ function paintSlot({ x = 0, z = 0, along = 'X' }) {
   return m;
 }
 
-/**
- * Creează asfalt + marcaje.
- * Poți muta benzile pe axa X cu:
- *  - abcOffsetX: deplasare pentru ABC (implicit 0)
- *  - defOffsetX: deplasare pentru DEF (implicit 0)
- * În rest păstrăm controlul pe Z (culoarul) prin abcToDefGap.
- */
+/* ——— EXPORT PRINCIPAL ——— */
 export default function createGround({
-  width = 300,
-  depth = 180,
-  color = 0x9aa0a6,
-  abcOffsetX = 10,       // <<< NOU: offset pe X pentru ABC
-  defOffsetX = 50,       // <<< NOU: offset pe X pentru DEF
-  abcToDefGap = -10.0,  // „distanța” pe Z dintre ABC și DEF (culoarul)
+  /* DIMENSIUNEA ASFALTULUI: schimbă aici cât „de mare” e curtea */
+  width = 300,            // LĂȚIMEA (pe X)
+  depth = 180,            // LUNGIMEA (pe Z)
+  color = 0x9aa0a6,       // culoarea asfaltului
+
+  /* OFFSET-URI PE X: poziționează blocurile față de centrul scenei */
+  abcOffsetX = 10,        // mută benzile ABC stânga/dreapta
+  defOffsetX = 50,        // mută coloanele DEF stânga/dreapta
+
+  /* DISTANȚA PE Z DINTRE ABC ȘI DEF (culoarul mare) */
+  abcToDefGap = -10.0,    // valori mai negative → DEF mai „jos” (mai departe de ABC) → culoar mai lat
 } = {}) {
   const g = new THREE.Group();
 
-  // asfalt
+  /* ——— ASFALT (plan mare) ———
+   * width, depth controlează mărimea.
+   */
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
     new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.02 })
@@ -76,54 +111,67 @@ export default function createGround({
   plane.rotation.x = -Math.PI / 2;
   g.add(plane);
 
-  /* ——— poziție ABC pe Z (lipite între ele) ——— */
-  const ABC_BASE_Z = -4.0;
+  /* ——— ABC (3 benzi orizontale, aproape lipite între ele) ———
+   * Control pe Z între benzi (ABC_BASE_Z + 0.10 distanță între lățimi).
+   * Coloană (1..10) merge spre X negativ (stânga), câte un „STEP” pe 20'.
+   */
+  const ABC_BASE_Z = -4.0; // poziția benzii A pe Z; B și C se deduc mai jos
   const ABC_ROW_Z = {
     A: ABC_BASE_Z,
-    B: ABC_BASE_Z - (SLOT_W + 0.10),
-    C: ABC_BASE_Z - 2 * (SLOT_W + 0.10),
+    B: ABC_BASE_Z - (SLOT_W + 0.10),                 // puțin sub A
+    C: ABC_BASE_Z - 2 * (SLOT_W + 0.10),            // puțin sub B
   };
 
-  /* ——— poziție DEF: „jos” pe Z (T) ——— */
+  /* ——— DEF (3 coloane verticale) ———
+   * START_Z_DEF este „mai jos” decât C, ca să obții forma de T. Reglat din abcToDefGap.
+   */
   const START_Z_DEF = ABC_ROW_Z.C + abcToDefGap;
 
-  /* ——— poziții pe X (cu offset-uri) ——— */
-  const ABC_BASE_X = 0 + abcOffsetX; // <<< se aplică la toate cele 3 rânduri
+  /* ——— POZIȚII PE X ———
+   * ABC_BASE_X și DEF_BASE_X aplică offseturile lateral.
+   */
+  const ABC_BASE_X = 0 + abcOffsetX;   // punctul de pornire pentru ABC
   const DEF_BASE_X = +4.0 + defOffsetX;
   const DEF_COL_X = {
     D: DEF_BASE_X,
-    E: DEF_BASE_X + (SLOT_W + 0.10),
+    E: DEF_BASE_X + (SLOT_W + 0.10),   // „lipite” între ele (poți micșora/crește 0.10)
     F: DEF_BASE_X + 2 * (SLOT_W + 0.10),
   };
 
-  /* ——— ABC: 3 benzi x 10 sloturi ——— */
+  /* ——— DESENARE ABC: 3 benzi × 10 sloturi ——— */
   for (const row of ['A', 'B', 'C']) {
     const z = ABC_ROW_Z[row];
     for (let col = 1; col <= 10; col++) {
-      const xCenter = ABC_BASE_X - (col - 0.5) * STEP; // spre stânga, + offset
+      // sloturile ABC merg spre stânga (X negativ), centrate pe fiecare pas STEP
+      const xCenter = ABC_BASE_X - (col - 0.5) * STEP;
       g.add(paintSlot({ x: xCenter, z, along: 'X' }));
     }
+    // litera „A/B/C” înaintea primei coloane
     const label = makePaintedText(row, { size: 2.0 });
     label.position.set(ABC_BASE_X - 10.8 * STEP, 0.03, z);
     g.add(label);
   }
+  // numerotare 1..10 (din 2 în 2) pe banda C, ușor mai jos
   for (let col = 1; col <= 10; col += 2) {
     const n = makePaintedText(String(col), { size: 1.2 });
     n.position.set(ABC_BASE_X - (col - 0.5) * STEP, 0.03, ABC_ROW_Z.C - 1.6);
     g.add(n);
   }
 
-  /* ——— DEF: 3 coloane x 7 sloturi ——— */
+  /* ——— DESENARE DEF: 3 coloane × 7 sloturi ——— */
   for (const key of ['D', 'E', 'F']) {
     const x = DEF_COL_X[key];
     for (let r = 1; r <= 7; r++) {
+      // sloturile DEF merg în jos (spre Z pozitiv), centrate pe fiecare pas STEP
       const zCenter = START_Z_DEF + (r - 0.5) * STEP;
       g.add(paintSlot({ x, z: zCenter, along: 'Z' }));
     }
+    // litera „D/E/F” deasupra primei celule
     const label = makePaintedText(key, { size: 2.0 });
     label.position.set(x, 0.03, START_Z_DEF - 1.6);
     g.add(label);
   }
+  // numerotare 1..7 (din 2 în 2) la dreapta de coloana F
   for (let r = 1; r <= 7; r += 2) {
     const n = makePaintedText(String(r), { size: 1.2 });
     n.position.set(DEF_COL_X.F + 1.6, 0.03, START_Z_DEF + (r - 0.5) * STEP);
