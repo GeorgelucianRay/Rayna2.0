@@ -13,55 +13,43 @@ import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
 /* ===================== CONFIG – modifici DOAR aici ===================== */
-// Dimensiunea curții (asfalt)
-const YARD_WIDTH  = 90;  // ↔ lățime (X)
-const YARD_DEPTH  = 60;  // ↕ lungime (Z)
+const YARD_WIDTH  = 90;   // ↔ lățime (X)
+const YARD_DEPTH  = 60;   // ↕ lungime (Z)
 const YARD_COLOR  = 0x9aa0a6;
 
-// Slot de 20' + mic spațiu de vopsea (metri)
+// slot de 20' (metri)
 const SLOT_W   = 2.44;
 const SLOT_LEN = 6.06;
 const SLOT_GAP = 0.06;
-const STEP     = SLOT_LEN + SLOT_GAP; // 6.12 m
+const STEP     = SLOT_LEN + SLOT_GAP; // ≈ 6.12m
 
 // ABC centrat pe X (centrul celor 10 celule e la 5*STEP în stânga originii rândului)
 const ABC_CENTER_OFFSET_X = 5 * STEP; // ≈ 30.6
 
 // Gard
-const FENCE_MARGIN   = 2.0;   // gardul intră cu X m față de marginea asfaltului
-const FENCE_POST_EVERY = 10;
+const FENCE_MARGIN      = 2.0;   // gardul intră cu X m față de marginea asfaltului
+const FENCE_POST_EVERY  = 10;
 
-// Cât spațiu să lăsăm între DEF și gard (în colț)
-const clearanceX = 0.4;   // spre gardul din est (dreapta)
-const clearanceZ = 0.4;   // spre gardul din sud (jos)
+// clearance colț sud-est pentru DEF
+const clearanceX = 0.4;
+const clearanceZ = 0.4;
 
-/** Calculează offset-urile ca F (cea mai din dreapta coloană) & r=7 (cel mai de jos slot)
- *  să ajungă în colțul interior al gardului, lăsând un mic clearance. */
+// calculează defOffsetX și abcToDefGap ca DEF(F,7) să ajungă în colțul sud-est al gardului
 function computeDEFToSouthEastCorner() {
-  // limitele interioare ale gardului
-  const innerHalfW = YARD_WIDTH / 2 - FENCE_MARGIN;
-  const innerHalfD = YARD_DEPTH / 2 - FENCE_MARGIN;
+  const innerHalfW = YARD_WIDTH / 2 - FENCE_MARGIN;  // x maxim (interior gard)
+  const innerHalfD = YARD_DEPTH / 2 - FENCE_MARGIN;  // z maxim (interior gard)
 
-  // vrem ca marginea EST a coloanei F să fie aproape de gard:
-  // centrul lui F pe X:
-  //   xF = DEF_BASE_X + 2*(SLOT_W+0.10)   (E și F sunt lipite la +0.10 m)
-  // marginea estică a lui F = xF + SLOT_W/2
-  // țintă: innerHalfW - clearanceX
+  // X: marginea EST a F la innerHalfW - clearanceX
   const xF_target_edge = innerHalfW - clearanceX;
   const xF_center      = xF_target_edge - SLOT_W / 2;
   const DEF_BASE_X_target = xF_center - 2 * (SLOT_W + 0.10);
-  // formula din createGround: DEF_BASE_X = 4.0 + defOffsetX
-  const defOffsetX = DEF_BASE_X_target - 4.0;
+  const defOffsetX = DEF_BASE_X_target - 4.0; // pentru formula din createGround
 
-  // pe Z: vrem ca marginea SUD a ultimului slot (r=7) să fie la innerHalfD - clearanceZ
-  // START_Z_DEF este poziția de la începutul coloanei, iar sudul ultimului slot e:
-  //   START_Z_DEF + 7 * STEP
+  // Z: marginea SUD a r=7 la innerHalfD - clearanceZ => START_Z_DEF + 7*STEP = țintă
   const startZ_target = innerHalfD - clearanceZ - 7 * STEP;
 
-  // iar în createGround: START_Z_DEF = ABC_ROW_Z.C + abcToDefGap
-  // unde ABC_ROW_Z.C = ABC_BASE_Z - 2*(SLOT_W + 0.10), iar ABC_BASE_Z = -4.0
   const ABC_BASE_Z = -4.0;
-  const ABC_ROW_C  = ABC_BASE_Z - 2 * (SLOT_W + 0.10); // ≈ -9.08
+  const ABC_ROW_C  = ABC_BASE_Z - 2 * (SLOT_W + 0.10); // poziția benzii C
   const abcToDefGap = startZ_target - ABC_ROW_C;
 
   return { defOffsetX, abcToDefGap };
@@ -75,15 +63,13 @@ const CFG = {
     depth:  YARD_DEPTH,
     color:  YARD_COLOR,
 
-    // ancorăm marcajele la capătul „sud” (spre noi) și lăsăm 3 m margine vizuală
+    // (ancore/margini – ignorate de createGround dacă nu sunt folosite intern)
     anchor: 'south',
     edgePadding: 3.0,
 
-    // ABC centrat pe X; DEF calculat să fie în colțul sud-est
+    // ABC centrat; DEF poziționat în colțul SE
     abcOffsetX: ABC_CENTER_OFFSET_X,
     defOffsetX: DEF_OFFSET_X,
-
-    // culoarul pe Z dintre ABC și DEF – calculat ca DEF să atingă sudul
     abcToDefGap: ABC_TO_DEF_GAP,
   },
 
@@ -91,9 +77,11 @@ const CFG = {
     margin: FENCE_MARGIN,
     postEvery: FENCE_POST_EVERY,
     gate: {
-      side: 'south',     // poarta pe latura de sud
+      side: 'west',   // poartă pe VEST (cum ai cerut)
       width: 10,
-      alignToABC: true   // centrează poarta pe blocul ABC
+      // pentru vest/est avem nevoie de centerZ; punem poarta pe banda B (~ -6.54)
+      centerZ: -6.54,
+      tweakZ: 0
     }
   },
 
@@ -153,24 +141,21 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // Curtea (asfalt + marcaje), gard, copaci, cer
+    // Curtea (asfalt + marcaje interne), gard, copaci, cer
     const ground = createGround(CFG.ground);
     const sky = createSky(CFG.sky);
 
-    // gard interior cu poartă aliniată pe ABC
-    // ... restul codului neschimbat
-
-const fence = createFence({
-  width:  CFG.ground.width - 2 * CFG.fence.margin,
-  depth:  CFG.ground.depth - 2 * CFG.fence.margin,
-  postEvery: CFG.fence.postEvery,
-  gate: {
-    side: 'west',   // ← VEST
-    width: 10,
-    centerZ: -6.54, // aliniază cu banda B (A: -4.00, B: -6.54, C: -9.08)
-    tweakZ: 0       // poți pune ±0.2 pentru reglaj fin
-  }
-});
+    const fence = createFence({
+      width:  CFG.ground.width - 2 * CFG.fence.margin,
+      depth:  CFG.ground.depth - 2 * CFG.fence.margin,
+      postEvery: CFG.fence.postEvery,
+      gate: {
+        side:   CFG.fence.gate.side,    // 'west'
+        width:  CFG.fence.gate.width,
+        centerZ: CFG.fence.gate.centerZ,
+        tweakZ: CFG.fence.gate.tweakZ
+      }
+    });
 
     const trees = createTrees({
       width:  CFG.ground.width,
@@ -182,11 +167,23 @@ const fence = createFence({
 
     scene.add(ground, sky, fence, trees);
 
-    containersLayer = createContainersLayer(data, {
-  abcOffsetX:  CFG.ground.abcOffsetX,
-  defOffsetX:  CFG.ground.defOffsetX,
-  abcToDefGap: CFG.ground.abcToDefGap,
-});
+    // === Containere din Supabase (SAFE) ===
+    let containersLayer; // DECLARAT aici!
+    (async () => {
+      try {
+        const data = await fetchContainers(); // { enDeposito, programados, rotos }
+        containersLayer = createContainersLayer(data, {
+          abcOffsetX:  CFG.ground.abcOffsetX,
+          defOffsetX:  CFG.ground.defOffsetX,
+          abcToDefGap: CFG.ground.abcToDefGap,
+        });
+        scene.add(containersLayer);
+      } catch (e) {
+        console.warn('fetch/create layer error:', e);
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     // Loop
     const animate = () => {
