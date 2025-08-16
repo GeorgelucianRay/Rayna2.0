@@ -165,10 +165,10 @@ const fence = createFence({
   depth:  CFG.ground.depth - 2 * CFG.fence.margin,
   postEvery: CFG.fence.postEvery,
   gate: {
-    side: 'east',      // <- poarta pe partea de est (dreapta)
-    width: 10,         // lățimea golului porții
-    centerZ: -6.54,    // aliniază pe banda B (între A și C). Mai mic -> spre sud, mai mare -> spre nord
-    tweakZ: 0          // reglaj fin: pune +1 / -1 dacă vrei să o mai muți puțin
+    side: 'east',     // poarta pe est (dreapta)
+    width: 10,        // cât de lată e poarta
+    centerZ: -6.54,   // aliniaz-o cu banda B (ajustezi aici)
+    tweakZ: 0         // reglaj fin în metri (opțional)
   }
 });
 
