@@ -18,7 +18,7 @@ const ABC_ROW_Z = {
 /** ——— culoarul mare + poziția blocului DEF „jos” ca un T ———
  * Poți regla doar ABC_TO_DEF_GAP dacă vrei și mai mare/mic.
  */
-const ABC_TO_DEF_GAP = 28.0;  // <<< lățimea culoarului (metri) dintre ABC și DEF
+const ABC_TO_DEF_GAP = 15.0;  // <<< lățimea culoarului (metri) dintre ABC și DEF
 const START_Z_DEF = ABC_ROW_Z.C + ABC_TO_DEF_GAP;
 
 /** ——— coloanele DEF (lipite între ele) ——— */
