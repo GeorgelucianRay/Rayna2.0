@@ -15,17 +15,17 @@ import fetchContainers from './threeWorld/fetchContainers';
 /* ========== CONFIG (modifici doar aici) ========== */
 const DEF_OFFSET_X = 32; // offset pe X pentru blocul DEF (poți pune 31.999 dacă vrei fin)
 
-const CFG = {
-  ground: {
-    width: 90,        // ↔ lățimea curții (X)
-    depth: 60,        // ↕ lungimea curții (Z)
-    color: 0x9aa0a6,
-    anchor: 'south',  // 'south' | 'north' | 'west' | 'east' (capătul unde ancorezi marcajele)
-    edgePadding: 3,   // cât spațiu la marginea asfaltului
-    abcOffsetX: -10,  // mută ABC stânga/dreapta (X)
-    defOffsetX: DEF_OFFSET_X, // mută DEF stânga/dreapta (X)
-    abcToDefGap: 16,  // distanța pe Z dintre ABC și DEF (culoarul)
-  },
+const ground = createGround({
+  width: 90,
+  depth: 60,
+  color: 0x9aa0a6,
+  anchor: 'south',   // sau 'north' în funcție de capăt
+  edgePadding: 3.0,  // cât spațiu de la gard/margine
+  abcOffsetX: -10,   // mută ABC pe X
+  defOffsetX: 32,    // mută DEF pe X (ex. 32)
+  abcToDefGap: 16    // distanța ABC↔DEF pe Z
+});
+scene.add(ground);
 
   fence: {
     margin: 2.0,      // gardul intră cu X metri față de marginea asfaltului
