@@ -93,13 +93,6 @@ export default function createContainersLayer({ enDeposito, programados, rotos }
   (programados || []).forEach(r => addRecord(r, { programado: true }));
   (rotos || []).forEach(r => addRecord(r, { roto: true }));
 
-  // dacă n-ai date, arată 3 demo (exact ce vedeai înainte)
-  if (layer.children.length === 0) {
-    addRecord({ naviera: 'EVERGREEN', tipo: '40alto', posicion: 'A1' });
-    addRecord({ naviera: 'HAPAG',     tipo: '20',     posicion: 'A2B' });
-    addRecord({ naviera: 'ONE',       tipo: '40bajo', posicion: 'E3'  });
-  }
-
   // tick pt. animația „programados”
   layer.userData.tick = () => {
     layer.children.forEach(m => {
