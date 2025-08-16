@@ -23,7 +23,7 @@ const CFG = {
     edgePadding: 3.0,  // cât de aproape de marginea asfaltului e banda A
     abcOffsetX:  40,    // mută ABC stânga/dreapta
     defOffsetX:  60,    // mută DEF stânga/dreapta
-    abcToDefGap: 18,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
+    abcToDefGap: 20,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
   },
 
   fence: {
