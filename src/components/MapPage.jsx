@@ -13,18 +13,22 @@ import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
 /* —— CONFIG (modifici doar aici) —— */
+const DEF_OFFSET_X = Number('32');
+const DEF_OFFSET_X = 16 * 2;
+const DEF_OFFSET_X = 31.9999;   // practic tot 32 vizual
 const CFG = {
   ground: {
-    width: 90,         // ↔ lățimea curții (X)
-    depth: 60,         // ↕ lungimea curții (Z)
+    width: 90,
+    depth: 60,
     color: 0x9aa0a6,
-    // marcajele la CAPĂTUL curții: ancorați ABC la “south” (marginea de jos)
-    anchor: 'south',   // 'south' | 'north'
-    edgePadding: 3.0,  // cât de aproape de marginea asfaltului e banda A
-    abcOffsetX:  -10,    // mută ABC stânga/dreapta
-defOffsetX: 32, // mută DEF stânga/dreapta
-    abcToDefGap: 16,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
+    anchor: 'south',
+    edgePadding: 3,
+    abcOffsetX: -10,
+    defOffsetX: DEF_OFFSET_X,   // <- aici
+    abcToDefGap: 16,
   },
+  // restul...
+};
 
   fence: {
     margin: 2.0,       // gardul intră cu X metri față de marginea asfaltului
