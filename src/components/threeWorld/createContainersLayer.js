@@ -1,5 +1,6 @@
 // src/components/threeWorld/createContainersLayer.js
 import * as THREE from 'three';
+import { slotToWorld } from './slotToWorld';
 
 /* — culori naviera — */
 const NAVIERA_COLORS = {
@@ -77,6 +78,36 @@ function computeCoordFromPos(parsed, layout, boxH) {
   const z = START_Z_DEF + (index - 0.5) * STEP;
   return new THREE.Vector3(x, y, z);
 }
+function slotToWorld(container, opts = {}) {
+  const STEP_X = opts.stepX || 2.5;
+  const STEP_Y = 2.9;
+  const STEP_Z = opts.stepZ || 2.7;
+
+  const baseX_ABC = opts.baseX_ABC || -5;
+  const baseX_DEF = opts.baseX_DEF || 15;
+  const baseZ = opts.baseZ || 0;
+
+  const { lane, index, tier, sizeFt } = container;
+  let x, z, rotationY = 0;
+
+  if (['A', 'B', 'C'].includes(lane)) {
+    // invers pentru ABC
+    x = baseX_ABC - (index - 1) * STEP_X;
+    z = lane === 'A' ? baseZ
+        : lane === 'B' ? baseZ + STEP_Z
+        : baseZ + 2 * STEP_Z;
+  } else {
+    // DEF pe vertical
+    z = baseZ + (index - 1) * STEP_X;
+    x = baseX_DEF + (lane === 'D' ? 0
+          : lane === 'E' ? STEP_Z
+          : 2 * STEP_Z);
+    rotationY = Math.PI / 2; // rotim 90°
+  }
+
+  const y = (tier - 1) * STEP_Y;
+  return { position: new THREE.Vector3(x, y, z), rotationY };
+}
 
 /**
  * data = { enDeposito:[], programados:[], rotos:[] }
@@ -97,18 +128,23 @@ export default function createContainersLayer(data, layout) {
     return m;
   };
 
-  const addRecord = (rec, opt = {}) => {
-    const color = pickColor(rec?.naviera, opt.roto, opt.programado);
-    const mesh = makeBox(rec?.tipo, color);
+  for (const c of containers) {
+  const mesh = makeContainerMesh(c.sizeFt, c.color);
 
-    const parsed = parsePos(rec?.posicion);
-    if (parsed) {
-      const v = computeCoordFromPos(parsed, layout, mesh.userData.__dims.H);
-      mesh.position.copy(v);
-    } else {
-      // fallback „zona parcare”
-      mesh.position.set(0, mesh.userData.__dims.H / 2, 35);
-    }
+  // obținem poziția și rotația corectă
+  const { position, rotationY } = slotToWorld(c, {
+    stepX: 2.5,
+    stepZ: 2.7,
+    baseX_ABC: -5,
+    baseX_DEF: 15,
+    baseZ: 0
+  });
+
+  mesh.position.copy(position);
+  mesh.rotation.y = rotationY;
+
+  group.add(mesh);
+}
 
     if (opt.programado) {
       mesh.userData.__pulse = { t: Math.random() * Math.PI * 2 };
