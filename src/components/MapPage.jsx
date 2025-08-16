@@ -14,22 +14,14 @@ import fetchContainers from './threeWorld/fetchContainers';
 
 export default function MapPage() {
   const mountRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-  const sceneRef = useRef(null);
-  const controlsRef = useRef(null);
-  const worldRefs = useRef({}); // ținem grupurile pentru cleanup
-  const frameRef = useRef(null);
-
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // renderer sigur
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -37,113 +29,56 @@ export default function MapPage() {
       renderer.setSize(mount.clientWidth, mount.clientHeight);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       mount.appendChild(renderer.domElement);
-      rendererRef.current = renderer;
-    } catch (e) {
+    } catch {
       setError('Tu dispositivo/navegador no soporta WebGL.');
       return;
     }
 
-    // scenă + cameră
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b0f1a);
-    scene.fog = new THREE.Fog(0x0b0f1a, 180, 420);
-    sceneRef.current = scene;
+    scene.background = new THREE.Color(0x87ceeb); // cer albastru
+    scene.fog = new THREE.Fog(0x87ceeb, 150, 400);
 
-    const camera = new THREE.PerspectiveCamera(
-      55,
-      mount.clientWidth / mount.clientHeight,
-      0.1,
-      2000
-    );
-    camera.position.set(34, 20, 42);
-    controls.target.set(0, 1.2, 0);
-    cameraRef.current = camera;
+    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 2000);
+    camera.position.set(50, 30, 60);
 
-    // controale
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.495;
     controls.target.set(0, 1.2, 0);
-    controlsRef.current = controls;
 
-    // ——— Lumea (asfalt, cer, gard, copaci)
-    // ——— Lumea (asfalt, cer, gard, copaci) — versiunea compactă
-const ground = createGround({
-  width: 180,
-  depth: 120,
-  color: 0x1f2937,     // gri închis curat
-  showGrid: false,     // fără “pătrățele”
-  showCenterLine: true // o linie discretă pe mijloc
-});
-
-const sky = createSky({
-  radius: 320,
-  topColor: 0x87ceeb,      // albastru senin sus
-  bottomColor: 0xb3e5fc    // albastru deschis jos
-});
-
-const fence = createFence({
-  width: 170,
-  depth: 110,
-  postEvery: 12
-});
-
-const trees = createTrees({
-  width: 190,
-  depth: 130,
-  count: 100               // mai puțini, doar pe margini
-});
-
-scene.add(ground, sky, fence, trees);
-worldRefs.current = { ground, sky, fence, trees };
+    // dimensiuni reduse la curte
+    const ground = createGround({ width: 300, depth: 180, color: 0x999999 }); // gri mai curat
+    const sky = createSky({ radius: 800 });
+    const fence = createFence({ width: 280, depth: 160, postEvery: 15 });
+    const trees = createTrees({ width: 320, depth: 200, count: 18 });
 
     scene.add(ground, sky, fence, trees);
-    worldRefs.current = { ground, sky, fence, trees };
 
-    // containere din supabase
     (async () => {
-      const data = await fetchContainers(); // {enDeposito, programados, rotos}
+      const data = await fetchContainers();
       const containersLayer = createContainersLayer(data);
       scene.add(containersLayer);
-      worldRefs.current.containersLayer = containersLayer;
       setLoading(false);
     })();
 
-    // loop
     const animate = () => {
-      // pulse pentru programados (este intern la containersLayer)
-      if (worldRefs.current.containersLayer?.userData?.tick) {
-        worldRefs.current.containersLayer.userData.tick();
-      }
       controls.update();
       renderer.render(scene, camera);
-      frameRef.current = requestAnimationFrame(animate);
+      requestAnimationFrame(animate);
     };
     animate();
 
-    // resize
-    const onResize = () => {
-      const w = mount.clientWidth, h = mount.clientHeight;
+    window.addEventListener('resize', () => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', onResize);
+    });
 
-    // cleanup
     return () => {
-      cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('resize', onResize);
-      controls.dispose();
-      renderer.dispose();
       mount.removeChild(renderer.domElement);
-      scene.traverse(obj => {
-        if (obj.geometry) obj.geometry.dispose?.();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose?.());
-          else obj.material.dispose?.();
-        }
-      });
+      renderer.dispose();
     };
   }, []);
 
@@ -151,9 +86,7 @@ worldRefs.current = { ground, sky, fence, trees };
     <div className={styles.fullscreenRoot}>
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
-        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>＋</button>
       </div>
-
       {error ? (
         <div className={styles.fallback}>
           <h2>Rayna 3D Depot</h2>
