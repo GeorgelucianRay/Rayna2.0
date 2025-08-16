@@ -21,9 +21,9 @@ const CFG = {
     // marcajele la CAPĂTUL curții: ancorați ABC la “south” (marginea de jos)
     anchor: 'south',   // 'south' | 'north'
     edgePadding: 3.0,  // cât de aproape de marginea asfaltului e banda A
-    abcOffsetX: -20,    // mută ABC stânga/dreapta
-    defOffsetX:  20,    // mută DEF stânga/dreapta
-    abcToDefGap: 60,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
+    abcOffsetX:  0,    // mută ABC stânga/dreapta
+    defOffsetX:  0,    // mută DEF stânga/dreapta
+    abcToDefGap: 80,   // distanța pe Z între ABC și DEF (mai negativ => DEF mai jos, culoar mai lat)
   },
 
   fence: {
