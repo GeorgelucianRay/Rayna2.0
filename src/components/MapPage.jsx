@@ -13,6 +13,34 @@ import createAsphaltMarkings from './threeWorld/createAsphaltMarkings';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
+/* ====== TOT CE VREI SĂ AJUSTEZI ESTE AICI ====== */
+const CFG = {
+  // Dimensiunea ASFALTULUI (lățime pe X, lungime pe Z)
+  ground: {
+    width: 100,     // ↔ lățime curte
+    depth: 65,     // ↕ lungime curte
+    color: 0x9aa0a6
+  },
+
+  // Gardul: îl facem ușor mai mic decât asfaltul cu o margine (în metri)
+  fence: {
+    margin: 6,      // cât “intri” gardul față de marginea asfaltului
+    postEvery: 15
+  },
+
+  // Marcajele de pe asfalt (benzile ABC & DEF)
+  markings: {
+    abcOffsetX: 10,   // deplasează tot blocul ABC pe axa X
+    defOffsetX: 50,   // deplasează tot blocul DEF pe axa X
+    abcToDefGap: -10, // distanța pe Z dintre ABC și DEF (culoarul; valori mai NEGATIVE = DEF mai jos)
+  },
+
+  // Decor
+  sky: { radius: 800 },
+  trees: { count: 18 } // plasăm copaci în jurul dimensiunilor ground
+};
+/* =============================================== */
+
 export default function MapPage() {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
@@ -45,7 +73,12 @@ export default function MapPage() {
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 150, 400);
 
-    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      mount.clientWidth / mount.clientHeight,
+      0.1,
+      2000
+    );
     camera.position.set(50, 30, 60);
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0x6b7280, 1.0));
@@ -59,19 +92,45 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // Curtea
-    const ground   = createGround({ width: 100, depth: 50, color: 0x9aa0a6, showGrid: false });
-    const sky      = createSky({ radius: 800 });
-    const fence    = createFence({ width: 280, depth: 160, postEvery: 15 });
-    const trees    = createTrees({ width: 320, depth: 200, count: 18 });
-    const markings = createAsphaltMarkings(); // DESENELE pe asfalt
+    // === Curtea (toate iau dimensiuni din CFG) ===
+    const { width, depth, color } = CFG.ground;
+
+    const ground = createGround({
+      width,
+      depth,
+      color,
+      // dacă ai lăsat opțiuni extra în createGround (showGrid etc.), le poți adăuga aici
+    });
+
+    const sky = createSky(CFG.sky);
+
+    // gardul îl facem cu o margine mică față de asfalt, ca să stea “pe interior”
+    const fence = createFence({
+      width:  width - 2 * CFG.fence.margin,
+      depth:  depth - 2 * CFG.fence.margin,
+      postEvery: CFG.fence.postEvery
+    });
+
+    // copacii “împrejmuiesc” curtea, așa că folosim ground.width/depth
+    const trees = createTrees({
+      width:  width + 20,
+      depth:  depth + 20,
+      count:  CFG.trees.count
+    });
+
+    // DESENELE pe asfalt — ABC/DEF — toate offset-urile și culoarul
+    const markings = createAsphaltMarkings({
+      abcOffsetX:  CFG.markings.abcOffsetX,
+      defOffsetX:  CFG.markings.defOffsetX,
+      abcToDefGap: CFG.markings.abcToDefGap
+    });
 
     scene.add(ground, sky, fence, trees, markings);
 
     // Containere
     let containersLayer;
     (async () => {
-      const data = await fetchContainers();       // {enDeposito, programados, rotos}
+      const data = await fetchContainers(); // { enDeposito, programados, rotos }
       containersLayer = createContainersLayer(data);
       scene.add(containersLayer);
       setLoading(false);
