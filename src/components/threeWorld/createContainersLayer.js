@@ -1,19 +1,13 @@
 // src/components/threeWorld/createContainersLayer.js
 import * as THREE from 'three';
 
-/* —— culori naviera —— */
+/* — culori naviera — */
 const NAVIERA_COLORS = {
-  MAERSK: 0xbfc7cf,
-  MSK: 0xeab308,
-  HAPAG: 0xf97316,
-  MESSINA: 0xf97316,
-  ONE: 0xec4899,
-  EVERGREEN: 0x22c55e,
-  ARCAS: 0x2563eb,
-  OTROS: 0x8b5e3c,
+  MAERSK: 0xbfc7cf, MSK: 0xeab308, HAPAG: 0xf97316, MESSINA: 0xf97316,
+  ONE: 0xec4899, EVERGREEN: 0x22c55e, ARCAS: 0x2563eb, OTROS: 0x8b5e3c,
 };
 
-/* —— dimensiuni container (m) —— */
+/* — dimensiuni containere — */
 const SIZE_BY_TIPO = {
   '20':        { L: 6.06,  H: 2.59, W: 2.44 },
   '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
@@ -23,35 +17,31 @@ const SIZE_BY_TIPO = {
   '45':        { L:13.72,  H: 2.89, W: 2.44 },
 };
 
-/* —— aceleași constante ca în createGround —— */
-const SLOT_LEN = 6.06;       // 20ft
-const SLOT_W   = 2.44;       // lățime container
-const SLOT_GAP = 0.06;       // spațiu vizual între sloturi
+/* — aceleași constante ca în createGround — */
+const SLOT_LEN = 6.06;
+const SLOT_W   = 2.44;
+const SLOT_GAP = 0.06;
 const STEP     = SLOT_LEN + SLOT_GAP;
 
-/* —— util: culoarea corectă —— */
+/* — utilitare — */
 function pickColor(naviera = '', roto = false, programado = false) {
-  if (roto) return 0xef4444; // roșu pentru roto
+  if (roto) return 0xef4444;
   const key = (naviera || '').trim().toUpperCase();
   const base = NAVIERA_COLORS[key] ?? NAVIERA_COLORS.OTROS;
   if (!programado) return base;
-  const c = new THREE.Color(base);
-  c.offsetHSL(0, 0, +0.1); // un pic mai luminos dacă e programado
-  return c.getHex();
+  const c = new THREE.Color(base); c.offsetHSL(0, 0, 0.1); return c.getHex();
 }
 
-/* —— parsează A1, A10B, D3C etc —— */
 function parsePos(pos = '') {
-  const m = pos.trim().toUpperCase().match(/^([A-F])(\d{1,2})([A-Z])?$/);
+  const m = String(pos).trim().toUpperCase().match(/^([A-F])(\d{1,2})([A-Z])?$/);
   if (!m) return null;
-  const band = m[1];              // A..F
-  const index = Number(m[2]);     // 1..n
+  const band = m[1];
+  const index = Number(m[2]);
   const levelLetter = m[3] || 'A';
-  const level = levelLetter.charCodeAt(0) - 64; // A=1,B=2...
+  const level = levelLetter.charCodeAt(0) - 64; // A=1
   return { band, index, level };
 }
 
-/* —— hartă Z pentru ABC și DEF, sincron cu createGround —— */
 function zForABCRow(row) {
   const ABC_BASE_Z = -4.0;
   if (row === 'A') return ABC_BASE_Z;
@@ -60,26 +50,22 @@ function zForABCRow(row) {
   return ABC_BASE_Z;
 }
 
-/**
- * Calculează poziția 3D pentru o etichetă (A..F + index + level),
- * folosind aceiași parametri ca marcajele de pe asfalt.
- *
- * abcOffsetX → deplasează blocul ABC pe X
- * defOffsetX → deplasează blocul DEF pe X
- * abcToDefGap → distanța pe Z între ABC și DEF (START_Z_DEF)
- */
-function computeCoordFromPos({ band, index, level }, { abcOffsetX, defOffsetX, abcToDefGap }, boxHeight) {
-  // înălțime Y în funcție de nivel (A=1 jos, B=2, C=3…)
-  const y = (boxHeight / 2) + boxHeight * (level - 1);
+function computeCoordFromPos(parsed, layout, boxH) {
+  const { band, index, level } = parsed;
+  const abcOffsetX  = Number(layout?.abcOffsetX  ?? 0);
+  const defOffsetX  = Number(layout?.defOffsetX  ?? 0);
+  const abcToDefGap = Number(layout?.abcToDefGap ?? 16);
+
+  // Y: etaje (A=1 jos, B=2, ...)
+  const y = (boxH / 2) + boxH * (level - 1);
 
   if (band === 'A' || band === 'B' || band === 'C') {
-    // ABC: benzi orizontale, sloturile merg spre X negativ
     const z = zForABCRow(band);
-    const x = (0 + abcOffsetX) - (index - 0.5) * STEP;
+    const x = abcOffsetX - (index - 0.5) * STEP; // ABC merg spre X negativ
     return new THREE.Vector3(x, y, z);
   }
 
-  // DEF: coloane verticale pe Z, lipite între ele pe X
+  // D/E/F: coloane verticale pe Z, lipite pe X
   const DEF_BASE_X = +4.0 + defOffsetX;
   const DEF_COL_X = {
     D: DEF_BASE_X,
@@ -87,17 +73,20 @@ function computeCoordFromPos({ band, index, level }, { abcOffsetX, defOffsetX, a
     F: DEF_BASE_X + 2 * (SLOT_W + 0.10),
   };
   const START_Z_DEF = zForABCRow('C') + abcToDefGap;
-
   const x = DEF_COL_X[band] ?? DEF_COL_X.D;
-  const z = START_Z_DEF + (index - 0.5) * STEP; // index crește „în jos” pe Z
+  const z = START_Z_DEF + (index - 0.5) * STEP;
   return new THREE.Vector3(x, y, z);
 }
 
-export default function createContainersLayer(
-  { enDeposito, programados, rotos },
-  layout = { abcOffsetX: 0, defOffsetX: 0, abcToDefGap: 16 }
-) {
+/**
+ * data = { enDeposito:[], programados:[], rotos:[] }
+ * layout = { abcOffsetX, defOffsetX, abcToDefGap }
+ */
+export default function createContainersLayer(data, layout) {
   const layer = new THREE.Group();
+  const enDeposito = data?.enDeposito || [];
+  const programados = data?.programados || [];
+  const rotos = data?.rotos || [];
 
   const makeBox = (tipo, colorHex) => {
     const dims = SIZE_BY_TIPO[(tipo || '').toLowerCase()] || SIZE_BY_TIPO['40bajo'];
@@ -108,31 +97,29 @@ export default function createContainersLayer(
     return m;
   };
 
-  const addRecord = (rec, { roto = false, programado = false } = {}) => {
-    const color = pickColor(rec.naviera || '', roto, programado);
-    const mesh = makeBox(rec.tipo, color);
+  const addRecord = (rec, opt = {}) => {
+    const color = pickColor(rec?.naviera, opt.roto, opt.programado);
+    const mesh = makeBox(rec?.tipo, color);
 
-    const parsed = parsePos(rec.posicion || '');
+    const parsed = parsePos(rec?.posicion);
     if (parsed) {
-      const dims = mesh.userData.__dims;
-      const v = computeCoordFromPos(parsed, layout, dims.H);
+      const v = computeCoordFromPos(parsed, layout, mesh.userData.__dims.H);
       mesh.position.copy(v);
     } else {
-      // fallback: parcare nord
+      // fallback „zona parcare”
       mesh.position.set(0, mesh.userData.__dims.H / 2, 35);
     }
 
-    if (programado) {
+    if (opt.programado) {
       mesh.userData.__pulse = { t: Math.random() * Math.PI * 2 };
     }
-
-    mesh.userData.__record = rec;
+    mesh.userData.__record = rec || {};
     layer.add(mesh);
   };
 
-  (enDeposito || []).forEach(r => addRecord(r));
-  (programados || []).forEach(r => addRecord(r, { programado: true }));
-  (rotos || []).forEach(r => addRecord(r, { roto: true }));
+  enDeposito.forEach(r => addRecord(r));
+  programados.forEach(r => addRecord(r, { programado: true }));
+  rotos.forEach(r => addRecord(r, { roto: true }));
 
   // animația „pulse” pentru programados
   layer.userData.tick = () => {
