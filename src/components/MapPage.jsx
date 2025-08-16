@@ -14,15 +14,60 @@ import fetchContainers from './threeWorld/fetchContainers';
 
 /* ===================== CONFIG – modifici DOAR aici ===================== */
 // Dimensiunea curții (asfalt)
-const YARD_WIDTH  = 90;   // ↔ lățime (X)
-const YARD_DEPTH  = 60;   // ↕ lungime (Z)
+const YARD_WIDTH  = 90;  // ↔ lățime (X)
+const YARD_DEPTH  = 60;  // ↕ lungime (Z)
 const YARD_COLOR  = 0x9aa0a6;
 
-// un slot de 20' (m) + mic spațiu de vopsea
-const SLOT_STEP = 6.06 + 0.06;
+// Slot de 20' + mic spațiu de vopsea (metri)
+const SLOT_W   = 2.44;
+const SLOT_LEN = 6.06;
+const SLOT_GAP = 0.06;
+const STEP     = SLOT_LEN + SLOT_GAP; // 6.12 m
 
-// ABC centrat pe X (centrul celor 10 celule este la 5*STEP în stânga originii rândului)
-const ABC_CENTER_OFFSET_X = 5 * SLOT_STEP; // ≈ 30.6
+// ABC centrat pe X (centrul celor 10 celule e la 5*STEP în stânga originii rândului)
+const ABC_CENTER_OFFSET_X = 5 * STEP; // ≈ 30.6
+
+// Gard
+const FENCE_MARGIN   = 2.0;   // gardul intră cu X m față de marginea asfaltului
+const FENCE_POST_EVERY = 10;
+
+// Cât spațiu să lăsăm între DEF și gard (în colț)
+const clearanceX = 0.4;   // spre gardul din est (dreapta)
+const clearanceZ = 0.4;   // spre gardul din sud (jos)
+
+/** Calculează offset-urile ca F (cea mai din dreapta coloană) & r=7 (cel mai de jos slot)
+ *  să ajungă în colțul interior al gardului, lăsând un mic clearance. */
+function computeDEFToSouthEastCorner() {
+  // limitele interioare ale gardului
+  const innerHalfW = YARD_WIDTH / 2 - FENCE_MARGIN;
+  const innerHalfD = YARD_DEPTH / 2 - FENCE_MARGIN;
+
+  // vrem ca marginea EST a coloanei F să fie aproape de gard:
+  // centrul lui F pe X:
+  //   xF = DEF_BASE_X + 2*(SLOT_W+0.10)   (E și F sunt lipite la +0.10 m)
+  // marginea estică a lui F = xF + SLOT_W/2
+  // țintă: innerHalfW - clearanceX
+  const xF_target_edge = innerHalfW - clearanceX;
+  const xF_center      = xF_target_edge - SLOT_W / 2;
+  const DEF_BASE_X_target = xF_center - 2 * (SLOT_W + 0.10);
+  // formula din createGround: DEF_BASE_X = 4.0 + defOffsetX
+  const defOffsetX = DEF_BASE_X_target - 4.0;
+
+  // pe Z: vrem ca marginea SUD a ultimului slot (r=7) să fie la innerHalfD - clearanceZ
+  // START_Z_DEF este poziția de la începutul coloanei, iar sudul ultimului slot e:
+  //   START_Z_DEF + 7 * STEP
+  const startZ_target = innerHalfD - clearanceZ - 7 * STEP;
+
+  // iar în createGround: START_Z_DEF = ABC_ROW_Z.C + abcToDefGap
+  // unde ABC_ROW_Z.C = ABC_BASE_Z - 2*(SLOT_W + 0.10), iar ABC_BASE_Z = -4.0
+  const ABC_BASE_Z = -4.0;
+  const ABC_ROW_C  = ABC_BASE_Z - 2 * (SLOT_W + 0.10); // ≈ -9.08
+  const abcToDefGap = startZ_target - ABC_ROW_C;
+
+  return { defOffsetX, abcToDefGap };
+}
+
+const { defOffsetX: DEF_OFFSET_X, abcToDefGap: ABC_TO_DEF_GAP } = computeDEFToSouthEastCorner();
 
 const CFG = {
   ground: {
@@ -30,31 +75,31 @@ const CFG = {
     depth:  YARD_DEPTH,
     color:  YARD_COLOR,
 
-    // unde ancorăm marcajele față de marginea curții
-    anchor: 'south',      // 'south' | 'north'
-    edgePadding: 3.0,     // margine față de gard/asfalt (m)
+    // ancorăm marcajele la capătul „sud” (spre noi) și lăsăm 3 m margine vizuală
+    anchor: 'south',
+    edgePadding: 3.0,
 
-    // poziții laterale
-    abcOffsetX: ABC_CENTER_OFFSET_X, // ABC pe mijloc
-    defOffsetX: 32,                  // împinge DEF spre colțul din dreapta
+    // ABC centrat pe X; DEF calculat să fie în colțul sud-est
+    abcOffsetX: ABC_CENTER_OFFSET_X,
+    defOffsetX: DEF_OFFSET_X,
 
-    // distanța pe Z între ABC și DEF (culoarul)
-    abcToDefGap: 16,
+    // culoarul pe Z dintre ABC și DEF – calculat ca DEF să atingă sudul
+    abcToDefGap: ABC_TO_DEF_GAP,
   },
 
   fence: {
-    margin: 2.0,     // gardul intră cu X m față de marginea asfaltului
-    postEvery: 10,
+    margin: FENCE_MARGIN,
+    postEvery: FENCE_POST_EVERY,
     gate: {
-      side: 'south', // poarta pe latura de sud
+      side: 'south',     // poarta pe latura de sud
       width: 10,
-      alignToABC: true // centrează poarta pe blocul ABC
+      alignToABC: true   // centrează poarta pe blocul ABC
     }
   },
 
   trees: {
-    ring: true,   // copaci pe contur
-    offset: 6.0,  // în afara gardului
+    ring: true,
+    offset: 6.0,
     every: 4.0
   },
 
@@ -108,7 +153,7 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // === Curtea (asfalt + marcaje integrate), gard, copaci, cer ===
+    // Curtea (asfalt + marcaje), gard, copaci, cer
     const ground = createGround(CFG.ground);
     const sky = createSky(CFG.sky);
 
@@ -121,8 +166,7 @@ export default function MapPage() {
         side: CFG.fence.gate.side,
         width: CFG.fence.gate.width,
         // centrăm poarta pe centrul blocului ABC:
-        // centrul ABC este la (abcOffsetX - 5*STEP)
-        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - (5 * SLOT_STEP) : 0
+        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - (5 * STEP) : 0
       }
     });
 
