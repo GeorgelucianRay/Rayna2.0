@@ -163,7 +163,7 @@ export default function MapPage() {
   depth:  CFG.ground.depth - 2 * CFG.fence.margin,
   postEvery: CFG.fence.postEvery,
   gate: {
-    side: 'north',
+    side: 'east',
     width: 10,
     // centrare pe ABC (abcOffsetX - 5 * STEP), plus reglaj fin dacă vrei
     centerX: CFG.ground.abcOffsetX - (5 * (6.06 + 0.06)),
