@@ -12,42 +12,40 @@ import createTrees from './threeWorld/createTrees';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
-/* —— CONFIG (modifici doar aici) —— */
-const DEF_OFFSET_X = Number('32');
-const DEF_OFFSET_X = 16 * 2;
-const DEF_OFFSET_X = 31.9999;   // practic tot 32 vizual
+/* ========== CONFIG (modifici doar aici) ========== */
+const DEF_OFFSET_X = 32; // offset pe X pentru blocul DEF (poți pune 31.999 dacă vrei fin)
+
 const CFG = {
   ground: {
-    width: 90,
-    depth: 60,
+    width: 90,        // ↔ lățimea curții (X)
+    depth: 60,        // ↕ lungimea curții (Z)
     color: 0x9aa0a6,
-    anchor: 'south',
-    edgePadding: 3,
-    abcOffsetX: -10,
-    defOffsetX: DEF_OFFSET_X,   // <- aici
-    abcToDefGap: 16,
+    anchor: 'south',  // 'south' | 'north' | 'west' | 'east' (capătul unde ancorezi marcajele)
+    edgePadding: 3,   // cât spațiu la marginea asfaltului
+    abcOffsetX: -10,  // mută ABC stânga/dreapta (X)
+    defOffsetX: DEF_OFFSET_X, // mută DEF stânga/dreapta (X)
+    abcToDefGap: 16,  // distanța pe Z dintre ABC și DEF (culoarul)
   },
-  // restul...
-};
 
   fence: {
-    margin: 2.0,       // gardul intră cu X metri față de marginea asfaltului
+    margin: 2.0,      // gardul intră cu X metri față de marginea asfaltului
     postEvery: 10,
     gate: {
-      side: 'south',   // pe ce latură e poarta: 'south'|'north'|'west'|'east'
-      width: 10,       // lățimea porții (metri)
-      alignToABC: true // aliniază poarta la centrul blocului ABC
+      side: 'south',  // latura pe care e poarta
+      width: 10,      // lățimea porții
+      alignToABC: true
     }
   },
 
   trees: {
-    ring: true,        // copaci pe contur (inel)
-    offset: 6.0,       // cât de departe de asfalt (în exterior)
-    every: 4.0         // un copac la fiecare ~4m (aprox)
+    ring: true,       // copaci pe contur
+    offset: 6.0,      // distanța în exterior față de asfalt
+    every: 4.0        // un copac la ~4m
   },
 
-  sky: { radius: 800 },
+  sky: { radius: 800 }
 };
+/* ================================================== */
 
 export default function MapPage() {
   const mountRef = useRef(null);
@@ -95,8 +93,10 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // === Curtea ===
+    // Curtea (asfalt + marcaje integrate în createGround)
     const ground = createGround(CFG.ground);
+
+    // Cer simplu (cupolă)
     const sky = (() => {
       const g = new THREE.Group();
       const s = new THREE.SphereGeometry(CFG.sky.radius, 32, 24);
@@ -106,7 +106,7 @@ export default function MapPage() {
       return g;
     })();
 
-    // gard cu poartă în fața ABC
+    // Gard + poartă
     const fence = createFence({
       width: CFG.ground.width - 2 * CFG.fence.margin,
       depth: CFG.ground.depth - 2 * CFG.fence.margin,
@@ -114,23 +114,24 @@ export default function MapPage() {
       gate: {
         side: CFG.fence.gate.side,
         width: CFG.fence.gate.width,
-        // centrăm poarta pe centrul blocului ABC (în funcție de offset-ul ABC)
-        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - ((10 - 0.5) * 6.12) / 2 : 0
+        centerX: CFG.fence.gate.alignToABC
+          ? CFG.ground.abcOffsetX - ((10 - 0.5) * 6.12) / 2
+          : 0
       }
     });
 
-    // copaci pe contur (inel)
+    // Copaci pe contur
     const trees = createTrees({
-      width: CFG.ground.width,
-      depth: CFG.ground.depth,
-      mode: CFG.trees.ring ? 'ring' : 'random',
+      width:  CFG.ground.width,
+      depth:  CFG.ground.depth,
+      mode:   CFG.trees.ring ? 'ring' : 'random',
       offset: CFG.trees.offset,
-      every: CFG.trees.every,
+      every:  CFG.trees.every,
     });
 
     scene.add(ground, sky, fence, trees);
 
-    // Containere (se vor așeza pe marcaje conform pozițiilor)
+    // Containere
     let containersLayer;
     (async () => {
       const data = await fetchContainers();
@@ -163,7 +164,9 @@ export default function MapPage() {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       renderer.dispose();
-      if (renderer.domElement?.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+      if (renderer.domElement?.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
       scene.traverse(obj => {
         if (obj.geometry) obj.geometry.dispose?.();
         if (obj.material) {
