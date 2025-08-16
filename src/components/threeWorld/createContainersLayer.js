@@ -128,30 +128,40 @@ export default function createContainersLayer(data, layout) {
     return m;
   };
 
-  for (const c of containers) {
-  const mesh = makeContainerMesh(c.sizeFt, c.color);
+  function addRecord(rec, opt = {}) {
+    const parsed = parsePos(rec.pos);
+    if (!parsed) return;
 
-  // obținem poziția și rotația corectă
-  const { position, rotationY } = slotToWorld(c, {
-    stepX: 2.5,
-    stepZ: 2.7,
-    baseX_ABC: -5,
-    baseX_DEF: 15,
-    baseZ: 0
-  });
+    const dims = SIZE_BY_TIPO[(rec.tipo || '').toLowerCase()] || SIZE_BY_TIPO['40bajo'];
+    const colorHex = pickColor(rec.naviera, opt.roto, opt.programado);
+    const mesh = makeBox(rec.tipo, colorHex);
 
-  mesh.position.copy(position);
-  mesh.rotation.y = rotationY;
+    // coordonate + rotație
+    const { position, rotationY } = slotToWorld(
+      {
+        lane: parsed.band,
+        index: parsed.index,
+        tier: parsed.level,
+        sizeFt: rec.tipo
+      },
+      {
+        stepX: 2.5,
+        stepZ: 2.7,
+        baseX_ABC: -5,
+        baseX_DEF: 15,
+        baseZ: 0
+      }
+    );
 
-  group.add(mesh);
-}
+    mesh.position.copy(position);
+    mesh.rotation.y = rotationY;
 
     if (opt.programado) {
       mesh.userData.__pulse = { t: Math.random() * Math.PI * 2 };
     }
     mesh.userData.__record = rec || {};
     layer.add(mesh);
-  };
+  }
 
   enDeposito.forEach(r => addRecord(r));
   programados.forEach(r => addRecord(r, { programado: true }));
