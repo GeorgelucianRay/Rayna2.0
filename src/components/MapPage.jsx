@@ -12,88 +12,28 @@ import createTrees from './threeWorld/createTrees';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
-/* ===================== CONFIG – modifici DOAR aici ===================== */
-const YARD_WIDTH  = 90;   // ↔ lățime (X)
-const YARD_DEPTH  = 60;   // ↕ lungime (Z)
+/* ===== CONFIG scurt (ajustezi doar aici) ===== */
+const YARD_WIDTH  = 90;           // ↔ X
+const YARD_DEPTH  = 60;           // ↕ Z
 const YARD_COLOR  = 0x9aa0a6;
 
-// slot de 20' (metri)
-const SLOT_W   = 2.44;
-const SLOT_LEN = 6.06;
-const SLOT_GAP = 0.06;
-const STEP     = SLOT_LEN + SLOT_GAP; // ≈ 6.12m
-
-// ABC centrat pe X (centrul celor 10 celule e la 5*STEP în stânga originii rândului)
-const ABC_CENTER_OFFSET_X = 5 * STEP; // ≈ 30.6
-
-// Gard
-const FENCE_MARGIN      = 2.0;   // gardul intră cu X m față de marginea asfaltului
-const FENCE_POST_EVERY  = 10;
-
-// clearance colț sud-est pentru DEF
-const clearanceX = 0.4;
-const clearanceZ = 0.4;
-
-// calculează defOffsetX și abcToDefGap ca DEF(F,7) să ajungă în colțul sud-est al gardului
-function computeDEFToSouthEastCorner() {
-  const innerHalfW = YARD_WIDTH / 2 - FENCE_MARGIN;  // x maxim (interior gard)
-  const innerHalfD = YARD_DEPTH / 2 - FENCE_MARGIN;  // z maxim (interior gard)
-
-  // X: marginea EST a F la innerHalfW - clearanceX
-  const xF_target_edge = innerHalfW - clearanceX;
-  const xF_center      = xF_target_edge - SLOT_W / 2;
-  const DEF_BASE_X_target = xF_center - 2 * (SLOT_W + 0.10);
-  const defOffsetX = DEF_BASE_X_target - 4.0; // pentru formula din createGround
-
-  // Z: marginea SUD a r=7 la innerHalfD - clearanceZ => START_Z_DEF + 7*STEP = țintă
-  const startZ_target = innerHalfD - clearanceZ - 7 * STEP;
-
-  const ABC_BASE_Z = -4.0;
-  const ABC_ROW_C  = ABC_BASE_Z - 2 * (SLOT_W + 0.10); // poziția benzii C
-  const abcToDefGap = startZ_target - ABC_ROW_C;
-
-  return { defOffsetX, abcToDefGap };
-}
-
-const { defOffsetX: DEF_OFFSET_X, abcToDefGap: ABC_TO_DEF_GAP } = computeDEFToSouthEastCorner();
+const STEP = 6.06 + 0.06;         // 20' + spațiul de vopsea
+const ABC_CENTER_OFFSET_X = 5 * STEP; // centrează ABC pe X
 
 const CFG = {
   ground: {
-    width:  YARD_WIDTH,
-    depth:  YARD_DEPTH,
-    color:  YARD_COLOR,
-
-    // (ancore/margini – ignorate de createGround dacă nu sunt folosite intern)
-    anchor: 'south',
-    edgePadding: 3.0,
-
-    // ABC centrat; DEF poziționat în colțul SE
-    abcOffsetX: ABC_CENTER_OFFSET_X,
-    defOffsetX: DEF_OFFSET_X,
-    abcToDefGap: ABC_TO_DEF_GAP,
+    width: YARD_WIDTH,
+    depth: YARD_DEPTH,
+    color: YARD_COLOR,
+    abcOffsetX: ABC_CENTER_OFFSET_X, // ABC pe mijloc
+    defOffsetX: 32,                  // mută DEF spre dreapta
+    abcToDefGap: 16,                 // distanța pe Z între ABC și DEF
   },
-
-  fence: {
-    margin: FENCE_MARGIN,
-    postEvery: FENCE_POST_EVERY,
-    gate: {
-      side: 'west',   // poartă pe VEST (cum ai cerut)
-      width: 10,
-      // pentru vest/est avem nevoie de centerZ; punem poarta pe banda B (~ -6.54)
-      centerZ: -6.54,
-      tweakZ: 0
-    }
-  },
-
-  trees: {
-    ring: true,
-    offset: 6.0,
-    every: 4.0
-  },
-
-  sky: { radius: 800 }
+  fence: { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
+  trees: { ring: true, offset: 6, every: 4 },
+  sky: { radius: 800 },
 };
-/* ====================================================================== */
+/* ============================================ */
 
 export default function MapPage() {
   const mountRef = useRef(null);
@@ -141,49 +81,45 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // Curtea (asfalt + marcaje interne), gard, copaci, cer
+    // Lumea
     const ground = createGround(CFG.ground);
     const sky = createSky(CFG.sky);
-
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
       postEvery: CFG.fence.postEvery,
       gate: {
-        side:   CFG.fence.gate.side,    // 'west'
-        width:  CFG.fence.gate.width,
-        centerZ: CFG.fence.gate.centerZ,
-        tweakZ: CFG.fence.gate.tweakZ
+        side: 'west',
+        width: CFG.fence.gate.width,
+        centerZ: CFG.fence.gate.centerZ + (CFG.fence.gate.tweakZ || 0),
       }
     });
-
     const trees = createTrees({
-      width:  CFG.ground.width,
-      depth:  CFG.ground.depth,
-      mode:   CFG.trees.ring ? 'ring' : 'random',
-      offset: CFG.trees.offset,
-      every:  CFG.trees.every
+      width: CFG.ground.width, depth: CFG.ground.depth,
+      mode: CFG.trees.ring ? 'ring' : 'random', offset: CFG.trees.offset, every: CFG.trees.every
     });
 
     scene.add(ground, sky, fence, trees);
 
-    // === Containere din Supabase (SAFE) ===
-// === Containere din Supabase (SAFE) ===
-let containersLayer;
+    // Containere
+    let containersLayer;
+    (async () => {
+      try {
+        const data = await fetchContainers(); // { enDeposito, programados, rotos }
+        containersLayer = createContainersLayer(data, {
+          abcOffsetX:  CFG.ground.abcOffsetX,
+          defOffsetX:  CFG.ground.defOffsetX,
+          abcToDefGap: CFG.ground.abcToDefGap,
+        });
+        scene.add(containersLayer);
+      } catch (e) {
+        console.warn(e);
+        setError('Nu am putut încărca containerele.');
+      } finally {
+        setLoading(false);
+      }
+    })();
 
-(async () => {
-  const data = await fetchContainers();
-
-  containersLayer = createContainersLayer(data, {
-    abcOffsetX:  CFG.ground.abcOffsetX,
-    defOffsetX:  CFG.ground.defOffsetX,
-    abcToDefGap: CFG.ground.abcToDefGap,
-  });
-
-  scene.add(containersLayer);
-  setLoading(false);
-})();
-    
     // Loop
     const animate = () => {
       containersLayer?.userData?.tick?.();
