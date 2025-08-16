@@ -12,40 +12,58 @@ import createTrees from './threeWorld/createTrees';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
-/* ========== CONFIG (modifici doar aici) ========== */
-const DEF_OFFSET_X = 32; // offset pe X pentru blocul DEF (poți pune 31.999 dacă vrei fin)
+/* ===================== CONFIG – modifici DOAR aici ===================== */
+// Dimensiunea curții (asfalt)
+const YARD_WIDTH  = 90;   // ↔ lățime (X)
+const YARD_DEPTH  = 60;   // ↕ lungime (Z)
+const YARD_COLOR  = 0x9aa0a6;
 
-const ground = createGround({
-  width: 90,
-  depth: 60,
-  color: 0x9aa0a6,
-  anchor: 'south',   // sau 'north' în funcție de capăt
-  edgePadding: 3.0,  // cât spațiu de la gard/margine
-  abcOffsetX: -10,   // mută ABC pe X
-  defOffsetX: 32,    // mută DEF pe X (ex. 32)
-  abcToDefGap: 16    // distanța ABC↔DEF pe Z
-});
-scene.add(ground);
+// Pasul real al unui slot de 20' (6.06m) + „fuga” vopselei (0.06m)
+const SLOT_STEP = 6.06 + 0.06;
+
+/** Ca ABC să fie EXACT pe mijlocul scenei pe axa X:
+ *  centrul celor 10 sloturi e la 5 * STEP la stânga de “ABC_BASE_X”.
+ *  Deci alegem abcOffsetX = +5 * STEP ≈ 30.6
+ */
+const ABC_CENTER_OFFSET_X = 5 * SLOT_STEP; // ≈ 30.6
+
+const CFG = {
+  ground: {
+    width:  YARD_WIDTH,
+    depth:  YARD_DEPTH,
+    color:  YARD_COLOR,
+
+    // ancorează marcajele la capătul „sud” (spre tine) și lasă 3m margine
+    anchor: 'south',
+    edgePadding: 3.0,
+
+    // ABC centrat pe X; DEF îl deplasăm puțin spre dreapta
+    abcOffsetX: ABC_CENTER_OFFSET_X, // ► ABC pe mijloc
+    defOffsetX: 32,                  // ► ajustezi cât vrei (ex. 32)
+
+    // distanța ABC↔DEF pe Z (culoarul). Mai MARE => DEF mai jos (spre sud)
+    abcToDefGap: 16,
+  },
 
   fence: {
-    margin: 2.0,      // gardul intră cu X metri față de marginea asfaltului
+    margin: 2.0,     // gardul intră cu X m față de marginea asfaltului
     postEvery: 10,
     gate: {
-      side: 'south',  // latura pe care e poarta
-      width: 10,      // lățimea porții
-      alignToABC: true
+      side: 'south', // poarta pe latura de sud
+      width: 10,
+      alignToABC: true // centrează poarta pe blocul ABC
     }
   },
 
   trees: {
-    ring: true,       // copaci pe contur
-    offset: 6.0,      // distanța în exterior față de asfalt
-    every: 4.0        // un copac la ~4m
+    ring: true,    // copaci pe contur
+    offset: 6.0,   // în afara gardului
+    every: 4.0
   },
 
   sky: { radius: 800 }
 };
-/* ================================================== */
+/* ====================================================================== */
 
 export default function MapPage() {
   const mountRef = useRef(null);
@@ -60,7 +78,7 @@ export default function MapPage() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // Renderer
+    // renderer
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -74,7 +92,7 @@ export default function MapPage() {
       return;
     }
 
-    // Scenă + cameră + lumini
+    // scenă + cameră + lumini
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 120, 360);
@@ -93,45 +111,33 @@ export default function MapPage() {
     controls.target.set(0, 1.2, 0);
     controlsRef.current = controls;
 
-    // Curtea (asfalt + marcaje integrate în createGround)
+    // lume: asfalt (cu marcaje ABC/DEF înăuntru), gard, copaci, cer
     const ground = createGround(CFG.ground);
+    const sky = createSky(CFG.sky);
 
-    // Cer simplu (cupolă)
-    const sky = (() => {
-      const g = new THREE.Group();
-      const s = new THREE.SphereGeometry(CFG.sky.radius, 32, 24);
-      const m = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
-      g.add(new THREE.Mesh(s, m));
-      const sun = new THREE.DirectionalLight(0xffffff, 0.35); sun.position.set(80,120,40); g.add(sun);
-      return g;
-    })();
-
-    // Gard + poartă
     const fence = createFence({
-      width: CFG.ground.width - 2 * CFG.fence.margin,
-      depth: CFG.ground.depth - 2 * CFG.fence.margin,
+      width:  CFG.ground.width - 2 * CFG.fence.margin,
+      depth:  CFG.ground.depth - 2 * CFG.fence.margin,
       postEvery: CFG.fence.postEvery,
       gate: {
         side: CFG.fence.gate.side,
         width: CFG.fence.gate.width,
-        centerX: CFG.fence.gate.alignToABC
-          ? CFG.ground.abcOffsetX - ((10 - 0.5) * 6.12) / 2
-          : 0
+        centerX: CFG.fence.gate.alignToABC ? CFG.ground.abcOffsetX - (5 * SLOT_STEP) : 0
+        // notă: scădem 5*STEP pentru că centrul ABC e la 5*STEP stânga de abcOffsetX
       }
     });
 
-    // Copaci pe contur
     const trees = createTrees({
       width:  CFG.ground.width,
       depth:  CFG.ground.depth,
       mode:   CFG.trees.ring ? 'ring' : 'random',
       offset: CFG.trees.offset,
-      every:  CFG.trees.every,
+      every:  CFG.trees.every
     });
 
     scene.add(ground, sky, fence, trees);
 
-    // Containere
+    // containere
     let containersLayer;
     (async () => {
       const data = await fetchContainers();
@@ -140,7 +146,7 @@ export default function MapPage() {
       setLoading(false);
     })();
 
-    // Loop
+    // loop
     const animate = () => {
       containersLayer?.userData?.tick?.();
       controls.update();
@@ -149,7 +155,7 @@ export default function MapPage() {
     };
     animate();
 
-    // Resize
+    // resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
@@ -158,20 +164,18 @@ export default function MapPage() {
     };
     window.addEventListener('resize', onResize);
 
-    // Cleanup
+    // cleanup
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('resize', onResize);
       controls.dispose();
       renderer.dispose();
-      if (renderer.domElement?.parentNode) {
-        renderer.domElement.parentNode.removeChild(renderer.domElement);
-      }
-      scene.traverse(obj => {
-        if (obj.geometry) obj.geometry.dispose?.();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose?.());
-          else obj.material.dispose?.();
+      if (renderer.domElement?.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+      scene.traverse(o => {
+        if (o.geometry) o.geometry.dispose?.();
+        if (o.material) {
+          if (Array.isArray(o.material)) o.material.forEach(m => m.dispose?.());
+          else o.material.dispose?.();
         }
       });
     };
