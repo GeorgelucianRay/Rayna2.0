@@ -158,16 +158,17 @@ export default function MapPage() {
     const sky = createSky(CFG.sky);
 
     // gard interior cu poartă aliniată pe ABC
-    const fence = createFence({
+    // ... restul codului neschimbat
+
+const fence = createFence({
   width:  CFG.ground.width - 2 * CFG.fence.margin,
   depth:  CFG.ground.depth - 2 * CFG.fence.margin,
   postEvery: CFG.fence.postEvery,
   gate: {
-    side: 'east',
-    width: 10,
-    // centrare pe ABC (abcOffsetX - 5 * STEP), plus reglaj fin dacă vrei
-    centerX: CFG.ground.abcOffsetX - (5 * (6.06 + 0.06)),
-    tweakX: 0   // pune +1 sau -1 ca să o mai miști stânga/dreapta
+    side: 'east',      // <- poarta pe partea de est (dreapta)
+    width: 10,         // lățimea golului porții
+    centerZ: -6.54,    // aliniază pe banda B (între A și C). Mai mic -> spre sud, mai mare -> spre nord
+    tweakZ: 0          // reglaj fin: pune +1 / -1 dacă vrei să o mai muți puțin
   }
 });
 
