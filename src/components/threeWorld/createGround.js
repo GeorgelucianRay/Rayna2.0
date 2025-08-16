@@ -59,8 +59,8 @@ function paintSlot({ x = 0, z = 0, along = 'X' }) {
  * În rest păstrăm controlul pe Z (culoarul) prin abcToDefGap.
  */
 export default function createGround({
-  width = 100,
-  depth = 50,
+  width = 300,
+  depth = 180,
   color = 0x9aa0a6,
   abcOffsetX = 10,       // <<< NOU: offset pe X pentru ABC
   defOffsetX = 50,       // <<< NOU: offset pe X pentru DEF
