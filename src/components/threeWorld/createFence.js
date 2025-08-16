@@ -1,14 +1,26 @@
 // src/components/threeWorld/createFence.js
 import * as THREE from 'three';
 
+/**
+ * Creează gardul perimetral și lasă un „gol” pentru poartă pe oricare latură.
+ * - side: 'south' | 'north' | 'east' | 'west'
+ * - width: lățimea porții (m)
+ * - centerX: centrul porții pe axa X (folosit doar pentru south/north)
+ * - centerZ: centrul porții pe axa Z (folosit doar pentru east/west)
+ * - tweakX/tweakZ: reglaj fin (opțional)
+ */
 export default function createFence({
-  width = 80,        // ↔ interior gard (X)
-  depth = 50,        // ↕ interior gard (Z)
+  width = 80,          // interio­r gard (pe X)
+  depth = 50,          // interio­r gard (pe Z)
   postEvery = 10,
-  // Poarta: side = 'south' | 'north' | 'west' | 'east'
-  // centerX / centerZ = poziția centrului golului de poartă pe axa relevantă
-  // tweakX / tweakZ = reglaj fin (metri)
-  gate = { side: 'south', width: 8, centerX: 0, centerZ: 0, tweakX: 0, tweakZ: 0 }
+  gate = {
+    side: 'south',
+    width: 8,
+    centerX: 0,
+    centerZ: 0,
+    tweakX: 0,
+    tweakZ: 0,
+  },
 } = {}) {
   const g = new THREE.Group();
   const w = width / 2;
@@ -24,69 +36,64 @@ export default function createFence({
     g.add(p);
   };
 
-  // --- stâlpi pe contur ---
+  // ——— Stâlpi ———
   for (let x = -w; x <= w; x += postEvery) { addPost(x, -d); addPost(x, d); }
   for (let z = -d; z <= d; z += postEvery) { addPost(-w, z); addPost(w, z); }
 
-  // helper pt. rail orizontal (N/S) cu gol de poartă
-  const addHorizontalRail = (z, y, side) => {
-    if (gate.side === side) {
-      const cx = (gate.centerX ?? 0) + (gate.tweakX ?? 0);
-      const half = Math.max(0, Math.min(gate.width / 2, w));   // clamp
-      const leftLen  = (cx - half) - (-w);
-      const rightLen = w - (cx + half);
-      if (leftLen > 0) {
-        const left = new THREE.Mesh(new THREE.BoxGeometry(leftLen, 0.1, 0.1), railMat);
-        left.position.set(-w + leftLen / 2, y, z);
-        g.add(left);
-      }
-      if (rightLen > 0) {
-        const right = new THREE.Mesh(new THREE.BoxGeometry(rightLen, 0.1, 0.1), railMat);
-        right.position.set(w - rightLen / 2, y, z);
-        g.add(right);
-      }
-    } else {
+  // ——— Helperi pentru traverse cu „gol” de poartă ———
+  const cutHorizontal = (z, y, side) => {
+    const cx = (gate.centerX ?? 0) + (gate.tweakX ?? 0);
+    const half = (gate.width ?? 0) / 2;
+    if (gate.side !== side) {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.1, 0.1), railMat);
       rail.position.set(0, y, z);
       g.add(rail);
+      return;
     }
+    const leftLen  = Math.max(0.001, cx - half - (-w));
+    const rightLen = Math.max(0.001, w - (cx + half));
+
+    const left = new THREE.Mesh(new THREE.BoxGeometry(leftLen, 0.1, 0.1), railMat);
+    left.position.set((-w + (cx - half)) / 2, y, z);
+    g.add(left);
+
+    const right = new THREE.Mesh(new THREE.BoxGeometry(rightLen, 0.1, 0.1), railMat);
+    right.position.set((cx + half + w) / 2, y, z);
+    g.add(right);
   };
 
-  // helper pt. rail vertical (W/E) cu gol de poartă – util dacă vreodată vrei poarta pe laterale
-  const addVerticalRail = (x, y, side) => {
-    if (gate.side === side) {
-      const cz = (gate.centerZ ?? 0) + (gate.tweakZ ?? 0);
-      const half = Math.max(0, Math.min(gate.width / 2, d));
-      const topLen    = (cz - half) - (-d);
-      const bottomLen = d - (cz + half);
-      if (topLen > 0) {
-        const top = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, topLen), railMat);
-        top.position.set(x, y, -d + topLen / 2);
-        g.add(top);
-      }
-      if (bottomLen > 0) {
-        const bot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, bottomLen), railMat);
-        bot.position.set(x, y, d - bottomLen / 2);
-        g.add(bot);
-      }
-    } else {
+  const cutVertical = (x, y, side) => {
+    const cz = (gate.centerZ ?? 0) + (gate.tweakZ ?? 0);
+    const half = (gate.width ?? 0) / 2;
+    if (gate.side !== side) {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, depth), railMat);
       rail.position.set(x, y, 0);
       g.add(rail);
+      return;
     }
+    const bottomLen = Math.max(0.001, cz - half - (-d));
+    const topLen    = Math.max(0.001, d - (cz + half));
+
+    const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, bottomLen), railMat);
+    bottom.position.set(x, y, (-d + (cz - half)) / 2);
+    g.add(bottom);
+
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, topLen), railMat);
+    top.position.set(x, y, (cz + half + d) / 2);
+    g.add(top);
   };
 
-  // --- traverse orizontale N/S (sus și la mijloc) ---
-  addHorizontalRail(-d, 1.5, 'south');
-  addHorizontalRail( d, 1.5, 'north');
-  addHorizontalRail(-d, 0.8, 'south');
-  addHorizontalRail( d, 0.8, 'north');
+  // ——— Traverse sus (1.5m) și la mijloc (0.8m) ———
+  // Sud/Nord sunt orizontale; Est/Vest sunt verticale.
+  cutHorizontal(-d, 1.5, 'south');
+  cutHorizontal( d, 1.5, 'north');
+  cutHorizontal(-d, 0.8, 'south');
+  cutHorizontal( d, 0.8, 'north');
 
-  // --- laterale W/E (fără poartă în mod normal; dar suportă dacă setezi gate.side='west'/'east') ---
-  addVerticalRail(-w, 1.5, 'west');
-  addVerticalRail(-w, 0.8,  'west');
-  addVerticalRail( w, 1.5,  'east');
-  addVerticalRail( w, 0.8,  'east');
+  cutVertical(-w, 1.5, 'west');
+  cutVertical( w, 1.5, 'east');
+  cutVertical(-w, 0.8, 'west');
+  cutVertical( w, 0.8, 'east');
 
   return g;
 }
