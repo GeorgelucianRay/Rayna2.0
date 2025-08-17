@@ -40,13 +40,19 @@ function pickColor(naviera = '', roto = false, programado = false) {
 
 // Acceptă "pos" sau "posicion" de forma A1, A10B, D3 etc.
 function parsePos(any) {
-  const s = String(any || '').trim().toUpperCase();
-  const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/);
+  // Normalizăm: uppercase + scoatem spații / cratime / puncte / underscore
+  const s = String(any || '')
+    .toUpperCase()
+    .replace(/[\s\-_\.]/g, '');
+
+  // Acceptăm A1, A10B, D3, D03 etc.
+  const m = s.match(/^([A-F])0?(\d{1,2})([A-Z])?$/);
   if (!m) return null;
-  const band = m[1];
-  const index = Number(m[2]);       // 1..10 (ABC) / 1..7 (DEF)
-  const levelLetter = m[3] || 'A';  // A/B/C... (A = jos)
-  const level = levelLetter.charCodeAt(0) - 64; // A=1, B=2...
+
+  const band = m[1];                 // A..F
+  const index = Number(m[2]);        // 1..10 (ABC) / 1..7 (DEF)
+  const levelLetter = m[3] || 'A';   // A=sol, B=etaj 2, ...
+  const level = levelLetter.charCodeAt(0) - 64;
   return { band, index, level };
 }
 
