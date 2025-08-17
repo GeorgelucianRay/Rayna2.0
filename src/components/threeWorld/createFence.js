@@ -2,25 +2,14 @@
 import * as THREE from 'three';
 
 /**
- * Creează gardul perimetral și lasă un „gol” pentru poartă pe oricare latură.
- * - side: 'south' | 'north' | 'east' | 'west'
- * - width: lățimea porții (m)
- * - centerX: centrul porții pe axa X (folosit doar pentru south/north)
- * - centerZ: centrul porții pe axa Z (folosit doar pentru east/west)
- * - tweakX/tweakZ: reglaj fin (opțional)
+ * Creează gardul perimetral, cu opțiunea de a exclude o latură.
  */
 export default function createFence({
-  width = 80,          // interio­r gard (pe X)
-  depth = 50,          // interio­r gard (pe Z)
+  width = 80,
+  depth = 50,
   postEvery = 10,
-  gate = {
-    side: 'south',
-    width: 8,
-    centerX: 0,
-    centerZ: 0,
-    tweakX: 0,
-    tweakZ: 0,
-  },
+  excludeSide = null, // Opțiune nouă: 'north', 'south', 'east', 'west'
+  gate = { side: 'south', width: 8, centerX: 0, centerZ: 0 },
 } = {}) {
   const g = new THREE.Group();
   const w = width / 2;
@@ -36,12 +25,16 @@ export default function createFence({
     g.add(p);
   };
 
-  // ——— Stâlpi ———
-  for (let x = -w; x <= w; x += postEvery) { addPost(x, -d); addPost(x, d); }
-  for (let z = -d; z <= d; z += postEvery) { addPost(-w, z); addPost(w, z); }
+  // --- Stâlpi --- (Am adăugat condiții pentru excludere)
+  if (excludeSide !== 'south') { for (let x = -w; x <= w; x += postEvery) addPost(x, -d); }
+  if (excludeSide !== 'north') { for (let x = -w; x <= w; x += postEvery) addPost(x, d); }
+  if (excludeSide !== 'west') { for (let z = -d; z <= d; z += postEvery) addPost(-w, z); }
+  if (excludeSide !== 'east') { for (let z = -d; z <= d; z += postEvery) addPost(w, z); }
 
-  // ——— Helperi pentru traverse cu „gol” de poartă ———
+  // --- Helperi pentru traverse ---
   const cutHorizontal = (z, y, side) => {
+    if (excludeSide === side) return; // <-- NU desena traversa dacă latura e exclusă
+    // ... restul funcției cutHorizontal rămâne la fel
     const cx = (gate.centerX ?? 0) + (gate.tweakX ?? 0);
     const half = (gate.width ?? 0) / 2;
     if (gate.side !== side) {
@@ -52,17 +45,17 @@ export default function createFence({
     }
     const leftLen  = Math.max(0.001, cx - half - (-w));
     const rightLen = Math.max(0.001, w - (cx + half));
-
     const left = new THREE.Mesh(new THREE.BoxGeometry(leftLen, 0.1, 0.1), railMat);
     left.position.set((-w + (cx - half)) / 2, y, z);
     g.add(left);
-
     const right = new THREE.Mesh(new THREE.BoxGeometry(rightLen, 0.1, 0.1), railMat);
     right.position.set((cx + half + w) / 2, y, z);
     g.add(right);
   };
 
   const cutVertical = (x, y, side) => {
+    if (excludeSide === side) return; // <-- NU desena traversa dacă latura e exclusă
+    // ... restul funcției cutVertical rămâne la fel
     const cz = (gate.centerZ ?? 0) + (gate.tweakZ ?? 0);
     const half = (gate.width ?? 0) / 2;
     if (gate.side !== side) {
@@ -73,23 +66,19 @@ export default function createFence({
     }
     const bottomLen = Math.max(0.001, cz - half - (-d));
     const topLen    = Math.max(0.001, d - (cz + half));
-
     const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, bottomLen), railMat);
     bottom.position.set(x, y, (-d + (cz - half)) / 2);
     g.add(bottom);
-
     const top = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, topLen), railMat);
     top.position.set(x, y, (cz + half + d) / 2);
     g.add(top);
   };
 
-  // ——— Traverse sus (1.5m) și la mijloc (0.8m) ———
-  // Sud/Nord sunt orizontale; Est/Vest sunt verticale.
+  // --- Traverse ---
   cutHorizontal(-d, 1.5, 'south');
   cutHorizontal( d, 1.5, 'north');
   cutHorizontal(-d, 0.8, 'south');
   cutHorizontal( d, 0.8, 'north');
-
   cutVertical(-w, 1.5, 'west');
   cutVertical( w, 1.5, 'east');
   cutVertical(-w, 0.8, 'west');
