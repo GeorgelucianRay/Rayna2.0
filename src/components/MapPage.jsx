@@ -9,7 +9,8 @@ import createGround from './threeWorld/createGround';
 import createSky from './threeWorld/createSky';
 import createFence from './threeWorld/createFence';
 import createTrees from './threeWorld/createTrees';
-import createRoad from './threeWorld/createRoad'; // <-- MODIFICARE: Import adăugat
+import createRoad from './threeWorld/createRoad';
+import createMountainWall from './threeWorld/createMountainWall'; // <-- MODIFICARE: Import adăugat
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
@@ -98,17 +99,24 @@ export default function MapPage() {
     // Lumea
     const ground = createGround(CFG.ground);
     const sky    = createSky(CFG.sky);
-
-    // MODIFICARE: Crearea drumului
-    const road = createRoad({
+    const road   = createRoad({
       yardWidth: CFG.ground.width,
       gateConfig: CFG.fence.gate
     });
 
+    // MODIFICARE: Crearea muntelui
+    const mountain = createMountainWall({
+        yardWidth: CFG.ground.width,
+        yardDepth: CFG.ground.depth,
+        fenceMargin: CFG.fence.margin,
+    });
+
+    // MODIFICARE: Apelarea gardului cu excluderea laturii de nord
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
       postEvery: CFG.fence.postEvery,
+      excludeSide: 'north', // <-- Aici excludem gardul
       gate: {
         side:   CFG.fence.gate.side,
         width:  CFG.fence.gate.width,
@@ -124,8 +132,8 @@ export default function MapPage() {
       every:  CFG.trees.every
     });
 
-    // MODIFICARE: Adăugarea drumului la scenă
-    scene.add(ground, sky, road, fence, trees);
+    // MODIFICARE: Adăugarea muntelui la scenă
+    scene.add(ground, sky, road, mountain, fence, trees);
 
     // Containere (din Supabase)
     let containersLayer;
