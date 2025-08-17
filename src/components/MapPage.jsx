@@ -12,28 +12,41 @@ import createTrees from './threeWorld/createTrees';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
-/* ===== CONFIG scurt (ajustezi doar aici) ===== */
-const YARD_WIDTH  = 90;           // ↔ X
-const YARD_DEPTH  = 60;           // ↕ Z
+/* ===================== CONFIG – modifici DOAR aici ===================== */
+const YARD_WIDTH  = 90;   // ↔ X
+const YARD_DEPTH  = 60;   // ↕ Z
 const YARD_COLOR  = 0x9aa0a6;
 
-const STEP = 6.06 + 0.06;         // 20' + spațiul de vopsea
-const ABC_CENTER_OFFSET_X = 5 * STEP; // centrează ABC pe X
+const STEP = 6.06 + 0.06;               // 20' + spațiul de vopsea ≈ 6.12m
+const ABC_CENTER_OFFSET_X = 5 * STEP;   // centrează ABC pe axa X (≈ 30.6)
 
 const CFG = {
   ground: {
-    width: YARD_WIDTH,
-    depth: YARD_DEPTH,
-    color: YARD_COLOR,
-    abcOffsetX: ABC_CENTER_OFFSET_X, // ABC pe mijloc
-    defOffsetX: 32,                  // mută DEF spre dreapta
-    abcToDefGap: 16,                 // distanța pe Z între ABC și DEF
+    width:  YARD_WIDTH,
+    depth:  YARD_DEPTH,
+    color:  YARD_COLOR,
+
+    // ABC pe mijloc; DEF împins în colțul sud-est (dreapta-jos)
+    abcOffsetX: ABC_CENTER_OFFSET_X,
+    defOffsetX: 32.3,   // stânga-dreapta (X) – ajustezi fin ±0.2 dacă vrei
+    abcToDefGap: -6.2,  // sus-jos (Z) – valori mai negative = mai jos
   },
-  fence: { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
+
+  fence: {
+    margin: 2,          // gardul intră cu 2m față de marginea asfaltului
+    postEvery: 10,
+    gate: {
+      side: 'west',     // poarta pe vest (stânga)
+      width: 10,
+      centerZ: -6.54,   // aliniată pe banda B (A:-4.00, B:-6.54, C:-9.08)
+      tweakZ: 0
+    }
+  },
+
   trees: { ring: true, offset: 6, every: 4 },
-  sky: { radius: 800 },
+  sky:   { radius: 800 },
 };
-/* ============================================ */
+/* ====================================================================== */
 
 export default function MapPage() {
   const mountRef = useRef(null);
@@ -83,25 +96,30 @@ export default function MapPage() {
 
     // Lumea
     const ground = createGround(CFG.ground);
-    const sky = createSky(CFG.sky);
+    const sky    = createSky(CFG.sky);
+
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
       postEvery: CFG.fence.postEvery,
       gate: {
-        side: 'west',
-        width: CFG.fence.gate.width,
+        side:   CFG.fence.gate.side,
+        width:  CFG.fence.gate.width,
         centerZ: CFG.fence.gate.centerZ + (CFG.fence.gate.tweakZ || 0),
       }
     });
+
     const trees = createTrees({
-      width: CFG.ground.width, depth: CFG.ground.depth,
-      mode: CFG.trees.ring ? 'ring' : 'random', offset: CFG.trees.offset, every: CFG.trees.every
+      width:  CFG.ground.width,
+      depth:  CFG.ground.depth,
+      mode:   CFG.trees.ring ? 'ring' : 'random',
+      offset: CFG.trees.offset,
+      every:  CFG.trees.every
     });
 
     scene.add(ground, sky, fence, trees);
 
-    // Containere
+    // Containere (din Supabase)
     let containersLayer;
     (async () => {
       try {
@@ -144,7 +162,9 @@ export default function MapPage() {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       renderer.dispose();
-      if (renderer.domElement?.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+      if (renderer.domElement?.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
       scene.traverse(o => {
         if (o.geometry) o.geometry.dispose?.();
         if (o.material) {
