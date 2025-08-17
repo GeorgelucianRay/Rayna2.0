@@ -9,6 +9,7 @@ import createGround from './threeWorld/createGround';
 import createSky from './threeWorld/createSky';
 import createFence from './threeWorld/createFence';
 import createTrees from './threeWorld/createTrees';
+import createRoad from './threeWorld/createRoad'; // <-- MODIFICARE: Import adăugat
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
@@ -98,6 +99,12 @@ export default function MapPage() {
     const ground = createGround(CFG.ground);
     const sky    = createSky(CFG.sky);
 
+    // MODIFICARE: Crearea drumului
+    const road = createRoad({
+      yardWidth: CFG.ground.width,
+      gateConfig: CFG.fence.gate
+    });
+
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
@@ -117,13 +124,14 @@ export default function MapPage() {
       every:  CFG.trees.every
     });
 
-    scene.add(ground, sky, fence, trees);
+    // MODIFICARE: Adăugarea drumului la scenă
+    scene.add(ground, sky, road, fence, trees);
 
     // Containere (din Supabase)
     let containersLayer;
     (async () => {
       try {
-        const data = await fetchContainers(); // { enDeposito, programados, rotos }
+        const data = await fetchContainers();
         containersLayer = createContainersLayer(data, {
           abcOffsetX:  CFG.ground.abcOffsetX,
           defOffsetX:  CFG.ground.defOffsetX,
