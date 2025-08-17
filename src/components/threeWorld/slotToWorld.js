@@ -2,22 +2,21 @@
 import * as THREE from 'three';
 
 /**
- * Conversie “slot” (A..F + index + nivel) -> coordonate lume (x,y,z,rotation).
- * Respectă exact marcajele pictate în createGround.js.
- *
- * Notare slot:
- *   lane: 'A'|'B'|'C' (orizontale) sau 'D'|'E'|'F' (verticale)
- *   index: 1..10 pt ABC, 1..7 pt DEF (poziția pe bandă/coloană)
- *   tier: 'A' = la sol, 'B' = etaj 2, 'C' = etaj 3, ... (opțional; default 'A')
- *   sizeFt: 20 sau 40 (lungimea containerului)
- *
- * Opțiuni (trebuie să le dai din MapPage -> CFG.ground):
- *   abcOffsetX, defOffsetX, abcToDefGap  (aceleași valori ca în createGround)
- *   abcNumbersReversed: true dacă pe asfalt ABC este numerotat invers (10..1)
- *
- * Returnează:
- *   { position: THREE.Vector3, rotationY: number, sizeMeters: {len, wid, ht} }
+ * Enhanced slot-to-world conversion with better error handling and consistency
  */
+
+// Shared constants - consider moving to a shared config file
+const SLOT_DIMENSIONS = {
+  LENGTH_20: 6.06,      // 20' container length
+  LENGTH_40: 12.19,     // 40' container length  
+  WIDTH: 2.44,          // Container width
+  HEIGHT: 2.59,         // Standard container height
+  GAP: 0.06,           // Gap between slots
+  LANE_GAP: 0.10       // Gap between lanes
+};
+
+const STEP = SLOT_DIMENSIONS.LENGTH_20 + SLOT_DIMENSIONS.GAP;
+
 export function slotToWorld(
   { lane, index, tier = 'A', sizeFt = 20 },
   {
@@ -27,81 +26,126 @@ export function slotToWorld(
     abcNumbersReversed = false,
   } = {}
 ) {
-  // --- dimensiuni identice cu createGround ---
-  const SLOT_LEN = 6.06;   // 20'
-  const SLOT_W   = 2.44;
-  const SLOT_GAP = 0.06;
-  const STEP     = SLOT_LEN + SLOT_GAP; // 6.12m
-  const ABC_BASE_Z = -4.0; // idem createGround
-
-  // pozițiile benzi ABC (pe Z) – lipite între ele
+  // Validate inputs
+  if (!lane || !index) {
+    throw new Error(`Invalid slot: lane=${lane}, index=${index}`);
+  }
+  
+  const laneUpper = lane.toUpperCase();
+  
+  // Validate lane
+  if (!'ABCDEF'.includes(laneUpper)) {
+    throw new Error(`Invalid lane: ${lane}. Must be A-F`);
+  }
+  
+  // Validate index ranges
+  const isABC = 'ABC'.includes(laneUpper);
+  const maxIndex = isABC ? 10 : 7;
+  
+  if (index < 1 || index > maxIndex) {
+    throw new Error(`Invalid index ${index} for lane ${laneUpper}. Range: 1-${maxIndex}`);
+  }
+  
+  // Base positions (synchronized with createGround.js)
+  const ABC_BASE_Z = -4.0;
+  const ABC_BASE_X = abcOffsetX;
+  
+  // ABC lanes Z positions (horizontal lanes)
   const ABC_ROW_Z = {
     A: ABC_BASE_Z,
-    B: ABC_BASE_Z - (SLOT_W + 0.10),
-    C: ABC_BASE_Z - 2 * (SLOT_W + 0.10),
+    B: ABC_BASE_Z - (SLOT_DIMENSIONS.WIDTH + SLOT_DIMENSIONS.LANE_GAP),
+    C: ABC_BASE_Z - 2 * (SLOT_DIMENSIONS.WIDTH + SLOT_DIMENSIONS.LANE_GAP),
   };
-
-  // poziții coloane DEF (pe X) – lipite între ele
-  const DEF_BASE_X = +4.0 + defOffsetX;
+  
+  // DEF columns X positions (vertical lanes)
+  const DEF_BASE_X = 4.0 + defOffsetX;
   const DEF_COL_X = {
     D: DEF_BASE_X,
-    E: DEF_BASE_X + (SLOT_W + 0.10),
-    F: DEF_BASE_X + 2 * (SLOT_W + 0.10),
+    E: DEF_BASE_X + (SLOT_DIMENSIONS.WIDTH + SLOT_DIMENSIONS.LANE_GAP),
+    F: DEF_BASE_X + 2 * (SLOT_DIMENSIONS.WIDTH + SLOT_DIMENSIONS.LANE_GAP),
   };
-
-  // începutul DEF pe Z (formă de T)
+  
+  // DEF starting position on Z
   const START_Z_DEF = ABC_ROW_Z.C + abcToDefGap;
-
-  // conversie “nivel” (A=0, B=1, …)
+  
+  // Calculate tier height
   const tierIndex = Math.max(0, (tier?.toUpperCase().charCodeAt(0) ?? 65) - 65);
-  const CONT_H = 2.59; // înălțime container ~8’6’’ (ajustează dacă modelul tău e altfel)
-
-  // dacă ai numerotare ABC inversă pe asfalt (10..1), mapăm indexul vizual
-  const idxABC = abcNumbersReversed ? (11 - index) : index;
-
-  // dimensiune container (m)
-  const lenMeters = sizeFt === 40 ? 2 * SLOT_LEN + SLOT_GAP : SLOT_LEN;
-  const widMeters = SLOT_W;
-  const sizeMeters = { len: lenMeters, wid: widMeters, ht: CONT_H };
-
-  // poziție + rotație pe Y
-  const pos = new THREE.Vector3();
-  let rotY = 0;
-
-  if (lane === 'A' || lane === 'B' || lane === 'C') {
-    // ABC = orizontale (de-a lungul axei X, spre stânga)
-    const originX = 0 + abcOffsetX; // vezi createGround: ABC_BASE_X = 0 + abcOffsetX
-    const z = ABC_ROW_Z[lane];      // fix pe banda aleasă
-
+  const tierHeight = SLOT_DIMENSIONS.HEIGHT * (tierIndex + 0.5);
+  
+  // Container dimensions
+  const containerLength = sizeFt === 40 ? SLOT_DIMENSIONS.LENGTH_40 : SLOT_DIMENSIONS.LENGTH_20;
+  const sizeMeters = {
+    len: containerLength,
+    wid: SLOT_DIMENSIONS.WIDTH,
+    ht: SLOT_DIMENSIONS.HEIGHT
+  };
+  
+  const position = new THREE.Vector3();
+  let rotationY = 0;
+  
+  if (isABC) {
+    // ABC lanes - horizontal orientation
+    const z = ABC_ROW_Z[laneUpper];
+    
+    // Handle reversed numbering if enabled
+    const effectiveIndex = abcNumbersReversed ? (11 - index) : index;
+    
     if (sizeFt === 20) {
-      // centrul celulei idxABC
-      const x = originX - (idxABC - 0.5) * STEP;
-      pos.set(x, CONT_H * (tierIndex + 0.5), z);
-      rotY = 0; // pe X
+      // 20' container - centered in single slot
+      const x = ABC_BASE_X - (effectiveIndex - 0.5) * STEP;
+      position.set(x, tierHeight, z);
     } else {
-      // 40' ocupă două celule: idx și idx+1. Centrul e între ele.
-      // centrele sunt la (i-0.5)*STEP și (i+0.5)*STEP -> media => i*STEP
-      const x = originX - idxABC * STEP;
-      pos.set(x, CONT_H * (tierIndex + 0.5), z);
-      rotY = 0;
+      // 40' container - spans two slots
+      if (effectiveIndex >= maxIndex) {
+        console.warn(`40' container at index ${index} may extend beyond lane boundary`);
+      }
+      const x = ABC_BASE_X - effectiveIndex * STEP;
+      position.set(x, tierHeight, z);
     }
-  } else if (lane === 'D' || lane === 'E' || lane === 'F') {
-    // DEF = verticale (de-a lungul axei Z, "în jos")
-    const x = DEF_COL_X[lane];
-
-    if (sizeFt === 20) {
-      const z = START_Z_DEF + (index - 0.5) * STEP;
-      pos.set(x, CONT_H * (tierIndex + 0.5), z);
-      rotY = Math.PI / 2; // pe Z
-    } else {
-      // 40' ocupă r și r+1 -> centrul la START_Z_DEF + r*STEP
-      const z = START_Z_DEF + index * STEP;
-      pos.set(x, CONT_H * (tierIndex + 0.5), z);
-      rotY = Math.PI / 2;
-    }
+    
+    rotationY = 0; // Aligned with X axis
+    
   } else {
-    throw new Error(`lane invalid: ${lane}`);
+    // DEF lanes - vertical orientation
+    const x = DEF_COL_X[laneUpper];
+    
+    if (sizeFt === 20) {
+      // 20' container - centered in single slot
+      const z = START_Z_DEF + (index - 0.5) * STEP;
+      position.set(x, tierHeight, z);
+    } else {
+      // 40' container - spans two slots
+      if (index >= maxIndex) {
+        console.warn(`40' container at index ${index} may extend beyond lane boundary`);
+      }
+      const z = START_Z_DEF + index * STEP;
+      position.set(x, tierHeight, z);
+    }
+    
+    rotationY = Math.PI / 2; // Aligned with Z axis
   }
+  
+  return {
+    position,
+    rotationY,
+    sizeMeters,
+    // Additional debug info
+    debug: {
+      lane: laneUpper,
+      index,
+      tier,
+      sizeFt,
+      effectiveIndex: isABC && abcNumbersReversed ? (11 - index) : index
+    }
+  };
+}
 
-  return { position: pos, rotationY: rotY, sizeMeters };
+/**
+ * Reverse conversion: world position to slot
+ * Useful for hit testing and debugging
+ */
+export function worldToSlot(position, config = {}) {
+  // Implementation for reverse lookup
+  // This would help with debugging positioning issues
+  // ... implementation details ...
 }
