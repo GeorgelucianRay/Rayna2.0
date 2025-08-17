@@ -10,41 +10,37 @@ import createSky from './threeWorld/createSky';
 import createFence from './threeWorld/createFence';
 import createTrees from './threeWorld/createTrees';
 import createRoad from './threeWorld/createRoad';
-import createMountainWall from './threeWorld/createMountainWall'; // <-- MODIFICARE: Import adăugat
+import createMountainWall from './threeWorld/createMountainWall';
 import createContainersLayer from './threeWorld/createContainersLayer';
 import fetchContainers from './threeWorld/fetchContainers';
 
 /* ===================== CONFIG – modifici DOAR aici ===================== */
-const YARD_WIDTH  = 90;   // ↔ X
-const YARD_DEPTH  = 60;   // ↕ Z
+const YARD_WIDTH  = 90;
+const YARD_DEPTH  = 60;
 const YARD_COLOR  = 0x9aa0a6;
 
-const STEP = 6.06 + 0.06;               // 20' + spațiul de vopsea ≈ 6.12m
-const ABC_CENTER_OFFSET_X = 5 * STEP;   // centrează ABC pe axa X (≈ 30.6)
+const STEP = 6.06 + 0.06;
+const ABC_CENTER_OFFSET_X = 5 * STEP;
 
 const CFG = {
   ground: {
     width:  YARD_WIDTH,
     depth:  YARD_DEPTH,
     color:  YARD_COLOR,
-
-    // ABC pe mijloc; DEF împins în colțul sud-est (dreapta-jos)
     abcOffsetX: ABC_CENTER_OFFSET_X,
-    defOffsetX: 32.3,   // stânga-dreapta (X) – ajustezi fin ±0.2 dacă vrei
-    abcToDefGap: -6.2,  // sus-jos (Z) – valori mai negative = mai jos
+    defOffsetX: 32.3,
+    abcToDefGap: -6.2,
   },
-
   fence: {
-    margin: 2,          // gardul intră cu 2m față de marginea asfaltului
+    margin: 2,
     postEvery: 10,
     gate: {
-      side: 'west',     // poarta pe vest (stânga)
+      side: 'west',
       width: 10,
-      centerZ: -6.54,   // aliniată pe banda B (A:-4.00, B:-6.54, C:-9.08)
+      centerZ: -6.54,
       tweakZ: 0
     }
   },
-
   trees: { ring: true, offset: 6, every: 4 },
   sky:   { radius: 800 },
 };
@@ -63,7 +59,7 @@ export default function MapPage() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // Renderer
+    // ... (Renderer, Scenă, Cameră, Lumini, Controale - rămân la fel) ...
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -76,20 +72,15 @@ export default function MapPage() {
       setError('Tu dispositivo/navegador no soporta WebGL.');
       return;
     }
-
-    // Scenă + cameră + lumini
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 120, 360);
-
     const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 2000);
     camera.position.set(30, 20, 38);
-
     scene.add(new THREE.HemisphereLight(0xffffff, 0x6b7280, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.85);
     dir.position.set(60, 80, 30);
     scene.add(dir);
-
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.495;
@@ -103,27 +94,26 @@ export default function MapPage() {
       yardWidth: CFG.ground.width,
       gateConfig: CFG.fence.gate
     });
-
-    // MODIFICARE: Crearea muntelui
+    
+    // ########## AICI ESTE MODIFICAREA ##########
+    // Am scos `yardWidth` pentru a se potrivi cu noul cod al muntelui
     const mountain = createMountainWall({
-        yardWidth: CFG.ground.width,
         yardDepth: CFG.ground.depth,
         fenceMargin: CFG.fence.margin,
     });
+    // #########################################
 
-    // MODIFICARE: Apelarea gardului cu excluderea laturii de nord
     const fence = createFence({
       width:  CFG.ground.width - 2 * CFG.fence.margin,
       depth:  CFG.ground.depth - 2 * CFG.fence.margin,
       postEvery: CFG.fence.postEvery,
-      excludeSide: 'north', // <-- Aici excludem gardul
+      excludeSide: 'north',
       gate: {
         side:   CFG.fence.gate.side,
         width:  CFG.fence.gate.width,
         centerZ: CFG.fence.gate.centerZ + (CFG.fence.gate.tweakZ || 0),
       }
     });
-
     const trees = createTrees({
       width:  CFG.ground.width,
       depth:  CFG.ground.depth,
@@ -131,11 +121,9 @@ export default function MapPage() {
       offset: CFG.trees.offset,
       every:  CFG.trees.every
     });
-
-    // MODIFICARE: Adăugarea muntelui la scenă
     scene.add(ground, sky, road, mountain, fence, trees);
 
-    // Containere (din Supabase)
+    // ... (Containere, Loop, Resize, Cleanup - rămân la fel) ...
     let containersLayer;
     (async () => {
       try {
@@ -153,8 +141,6 @@ export default function MapPage() {
         setLoading(false);
       }
     })();
-
-    // Loop
     const animate = () => {
       containersLayer?.userData?.tick?.();
       controls.update();
@@ -162,8 +148,6 @@ export default function MapPage() {
       frameRef.current = requestAnimationFrame(animate);
     };
     animate();
-
-    // Resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
@@ -171,8 +155,6 @@ export default function MapPage() {
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
-
-    // Cleanup
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('resize', onResize);
@@ -196,18 +178,10 @@ export default function MapPage() {
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
-
       {error ? (
-        <div className={styles.fallback}>
-          <h2>Rayna 3D Depot</h2>
-          <p>{error}</p>
-          <button className={styles.primary} onClick={() => navigate('/depot')}>Volver al Depot</button>
-        </div>
+        <div className={styles.fallback}><h2>Rayna 3D Depot</h2><p>{error}</p><button className={styles.primary} onClick={() => navigate('/depot')}>Volver al Depot</button></div>
       ) : (
-        <>
-          {loading && <div className={styles.loader}>Cargando mapa 3D…</div>}
-          <div ref={mountRef} className={styles.canvasHost} />
-        </>
+        <>{loading && <div className={styles.loader}>Cargando mapa 3D…</div>}<div ref={mountRef} className={styles.canvasHost} /></>
       )}
     </div>
   );
