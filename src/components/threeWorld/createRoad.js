@@ -18,11 +18,14 @@ export default function createRoad({
   });
 
   // --- 1. Șoseaua principală (Pol. Ind. de Constant) ---
-  // Este un plan lung care trece prin fața curții.
-  // O plasăm la marginea de vest a terenului.
-  const roadWidth = 12; // Lățimea drumului (m)
-  const roadLength = 200; // O facem destul de lungă
-  const roadX = -yardWidth / 2 - roadWidth / 2 - 2; // Poziția pe axa X
+  const roadWidth = 12;
+  const roadLength = 200;
+
+  // ########## LINIA MODIFICATĂ ##########
+  // Am mutat drumul mult mai la stânga pentru a face loc sensului giratoriu.
+  // Calculul anterior era (-53), acum este (-61).
+  const roadX = -61; 
+  // #####################################
 
   const roadGeo = new THREE.PlaneGeometry(roadWidth, roadLength);
   const road = new THREE.Mesh(roadGeo, roadMat);
@@ -31,27 +34,21 @@ export default function createRoad({
   g.add(road);
 
   // --- 2. Sensul Giratoriu ---
-  // Îl poziționăm în dreptul porții, bazat pe gateConfig.
-  const roundaboutRadius = 15; // Raza cercului exterior
-  const islandRadius = 6; // Raza insulei verzi din centru
-  
-  // Poziția Z a sensului giratoriu este aliniată cu centrul porții
+  const roundaboutRadius = 15;
+  const islandRadius = 6;
   const roundaboutZ = gateConfig.centerZ;
 
-  // Cercul de asfalt
   const roundaboutGeo = new THREE.RingGeometry(islandRadius, roundaboutRadius, 64);
   const roundabout = new THREE.Mesh(roundaboutGeo, roadMat);
   roundabout.rotation.x = -Math.PI / 2;
-  // Îl mutăm pe axa X ca să se intersecteze cu drumul principal
   roundabout.position.set(roadX, 0.01, roundaboutZ);
   g.add(roundabout);
 
-  // Insula de iarbă din centru
   const islandGeo = new THREE.CircleGeometry(islandRadius, 64);
-  const islandMat = new THREE.MeshStandardMaterial({ color: 0x556b2f }); // Verde închis
+  const islandMat = new THREE.MeshStandardMaterial({ color: 0x556b2f });
   const island = new THREE.Mesh(islandGeo, islandMat);
   island.rotation.x = -Math.PI / 2;
-  island.position.set(roadX, 0.02, roundaboutZ); // Puțin mai sus să nu clipească
+  island.position.set(roadX, 0.02, roundaboutZ);
   g.add(island);
 
   return g;
