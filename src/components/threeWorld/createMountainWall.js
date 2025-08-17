@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 
 /**
- * Creează un perete montan pe latura de nord a depozitului.
+ * Creează un perete montan stratificat pe latura de nord a depozitului.
  */
 export default function createMountainWall({
   yardWidth = 90,
@@ -11,47 +11,57 @@ export default function createMountainWall({
 } = {}) {
   const g = new THREE.Group();
 
-  const mountainWidth = yardWidth * 2; // Îl facem mult mai lat decât curtea
-  const mountainHeight = 35;           // Înălțimea muntelui
-  
-  // Folosim un PlaneGeometry cu multe segmente pentru a-l putea deforma
-  const geo = new THREE.PlaneGeometry(mountainWidth, mountainHeight, 100, 30);
-  const pos = geo.attributes.position;
+  const baseWidth = yardWidth * 2.5; // Le facem și mai late
+  const baseHeight = 30; // Înălțimea de bază a primului strat
 
-  // Deformăm vârfurile pentru a crea un aspect de munte/stâncă
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i);
-    const x = pos.getX(i);
+  // Vom crea 3 straturi de munți
+  for (let i = 0; i < 3; i++) {
+    const isFirstLayer = i === 0;
     
-    // Adăugăm zgomot pe adâncime (axa Z)
-    // Zgomotul este mai mare la bază și mai mic spre vârf
-    const noise = (1 - (y / mountainHeight)) * Math.random() * 8;
-    pos.setZ(i, pos.getZ(i) + noise);
+    // Fiecare strat este mai înalt și mai în spate
+    const currentHeight = baseHeight + (i * 15); // Creștem înălțimea cu 15m la fiecare pas
+    const zOffset = i * 8; // Mutăm fiecare strat cu 8m mai în spate
+    
+    const geo = new THREE.PlaneGeometry(baseWidth, currentHeight, 100, 30);
+    const pos = geo.attributes.position;
 
-    // Deformăm și linia de sus a muntelui (axa Y)
-    if (y > mountainHeight * 0.4) {
-      const peakNoise = Math.sin(x / 20) * Math.random() * 4;
-      pos.setY(i, y + peakNoise);
+    // Deformăm vârfurile (cu un factor aleatoriu diferit pentru fiecare strat)
+    const randomFactor = 1 + i * 0.5;
+    for (let j = 0; j < pos.count; j++) {
+      const y = pos.getY(j);
+      const x = pos.getX(j);
+      
+      const noise = (1 - (y / currentHeight)) * Math.random() * 8 * randomFactor;
+      pos.setZ(j, pos.getZ(j) + noise);
+
+      if (y > currentHeight * 0.4) {
+        const peakNoise = Math.sin(x / (20 + i*5)) * Math.random() * 4 * randomFactor;
+        pos.setY(j, y + peakNoise);
+      }
     }
+    geo.computeVertexNormals();
+
+    // Fiecare strat este puțin mai întunecat pentru a simula adâncimea
+    const baseColor = new THREE.Color(0x8d8070);
+    const finalColor = baseColor.lerp(new THREE.Color(0x000000), i * 0.15);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: finalColor,
+      roughness: 0.95,
+      side: THREE.DoubleSide,
+    });
+
+    const mountainLayer = new THREE.Mesh(geo, mat);
+
+    mountainLayer.rotation.x = -Math.PI / 2;
+    mountainLayer.rotation.y = Math.PI;
+
+    // Poziționăm stratul. Primul strat este lipit de gard, celelalte mai în spate.
+    const northFenceZ = yardDepth / 2 - fenceMargin;
+    mountainLayer.position.set(0, 0, northFenceZ + zOffset);
+    
+    g.add(mountainLayer);
   }
-  geo.computeVertexNormals(); // Recalculăm normalele pentru o iluminare corectă
 
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0x8d8070, // O culoare de stâncă
-    roughness: 0.95,
-    side: THREE.DoubleSide,
-  });
-
-  const mountain = new THREE.Mesh(geo, mat);
-
-  // Poziționăm muntele
-  mountain.rotation.x = -Math.PI / 2; // Îl rotim să stea culcat pe planul XZ
-  mountain.rotation.y = Math.PI;      // Îl întoarcem cu fața spre noi
-
-  // Linia gardului de nord este la (yardDepth / 2 - fenceMargin)
-  const northFenceZ = yardDepth / 2 - fenceMargin;
-  mountain.position.set(0, 0, northFenceZ); // Aliniem baza muntelui cu linia gardului
-
-  g.add(mountain);
   return g;
 }
