@@ -1,24 +1,24 @@
 :root{
-  --glass: rgba(17,24,39,.50);     /* transparență => se vede imaginea */
+  --glass: rgba(17,24,39,.50);
   --border: rgba(255,255,255,.16);
   --text: #e5e7eb;
   --muted:#9ca3af;
   --accent:#22c55e;
   --cta1:#2563eb; --cta2:#3b82f6;
-  --neon:#67e8f9;                  /* contur neon pentru titluri */
+  --neon:#67e8f9;
 }
 
-/* Pagina – FĂRĂ niciun background propriu */
+/* Pagina – fără background propriu */
 .page{
   color:var(--text);
-  padding:88px 24px 24px;          /* spațiu sub navbar */
+  padding:88px 24px 24px;
   min-height:100dvh;
-  background: transparent;         /* important: nu acoperă imaginea Layout-ului */
+  background: transparent;
   overflow-x:hidden;
 }
 @media (min-width:768px){ .page{ padding:96px 32px 32px; } }
 
-/* Header cu “aureolă” neon discretă */
+/* Header */
 .header{
   display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;
 }
@@ -26,6 +26,8 @@
   margin:0; font-size:2rem; font-weight:800; letter-spacing:.2px; color:#fff;
   text-shadow: 0 0 24px rgba(103,232,249,.25), 0 0 2px rgba(103,232,249,.5);
 }
+.headerRight{ display:flex; align-items:center; gap:12px; }
+
 .editBtn{
   display:inline-flex; align-items:center; gap:8px;
   padding:10px 14px; border-radius:12px; border:1px solid var(--border);
@@ -36,49 +38,63 @@
 }
 .editBtn:hover{ transform:translateY(-1px); box-shadow:0 8px 24px rgba(59,130,246,.35); }
 
-/* === Avatar header (NOU) === */
-.headerRight{
-  display:flex; align-items:center; gap:12px;
-}
+/* Avatar – modern */
 .avatarWrap{
   position:relative;
-  width:64px; height:64px;
+  width:72px; height:72px;
   border-radius:50%;
   overflow:hidden;
   border:2px solid var(--border);
-  box-shadow: 0 6px 24px rgba(0,0,0,.35);
-  background: rgba(255,255,255,.06);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  backdrop-filter: blur(8px);
   user-select:none;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
-.avatarImg{
-  width:100%; height:100%; object-fit:cover; display:block;
-  pointer-events:none; /* combinat cu overlay anti-copy */
+.avatarWrap:hover{
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  border-color: rgba(255,255,255,.25);
 }
+.avatarImg{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
 .avatarFallback{
   width:100%; height:100%; display:grid; place-items:center;
-  font-weight:900; color:#e6faff; letter-spacing:.5px;
-  background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  font-weight:900; color:#e6faff; letter-spacing:.6px;
+  background: radial-gradient(100% 100% at 0% 0%, rgba(59,130,246,.18) 0%, rgba(2,6,23,.4) 60%);
 }
 .avatarOverlay{
   position:absolute; inset:0;
-  background: repeating-linear-gradient(135deg, rgba(0,0,0,.08) 0 10px, rgba(0,0,0,.12) 10px 20px);
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.25)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 10px, rgba(255,255,255,.08) 10px 20px);
   mix-blend-mode: soft-light;
-  pointer-events:auto;        /* interceptează click dreapta */
+  pointer-events:auto;
 }
 .avatarEditBtn{
   position:absolute; right:6px; bottom:6px;
   width:28px; height:28px; border-radius:999px; border:1px solid var(--border);
   display:grid; place-items:center; cursor:pointer;
-  background:rgba(0,0,0,.6);
-  color:#fff; box-shadow:0 4px 12px rgba(0,0,0,.35);
+  background:rgba(0,0,0,.65);
+  color:#fff; box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+.avatarEditBtn::after{
+  content:"";
+  position:absolute; inset:-6px;
+  border-radius:999px;
+  box-shadow: 0 0 0 0 rgba(59,130,246,.45);
+  animation: pulse 1.8s infinite;
+}
+@keyframes pulse{
+  0% { box-shadow: 0 0 0 0 rgba(59,130,246,.45); }
+  70%{ box-shadow: 0 0 0 12px rgba(59,130,246,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(59,130,246,0); }
 }
 
 /* Grid carduri */
 .cardsGrid{ display:grid; gap:14px; grid-template-columns:1fr; }
 @media (min-width:900px){ .cardsGrid{ grid-template-columns:repeat(3,1fr); } }
 
-/* Card “glass” – semi-transparent ca să se vadă poza */
+/* Card glass */
 .card{
   background: var(--glass);
   backdrop-filter: blur(10px);
@@ -120,7 +136,6 @@
 .widgetColMini{ flex:0 0 220px; display:flex; align-items:center; justify-content:center; }
 .widgetColMiniCal{ flex:0 0 260px; }
 
-/* Linii statistici + CTA */
 .statLine{ font-size:.95rem; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .dotSep{ margin-left:8px; }
 .statLine2{ color:#dbeafe; text-shadow: 0 0 10px rgba(0,0,0,.25); }
@@ -176,7 +191,7 @@
 .dotLeft{ background:#22c55e; } .dotUsed{ background:#f97316; }
 .dotPend{ background:#eab308; } .dotTotal{ background:#60a5fa; }
 
-/* Modal */
+/* Modal generic */
 .modalOverlay{ position:fixed; inset:0; display:grid; place-items:center; padding:16px; background:rgba(0,0,0,.6); backdrop-filter:blur(5px); z-index:3000; }
 .modal{ background:#0f172a; color:#fff; width:100%; max-width:640px; border-radius:16px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,.35); }
 .modalHeader{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
@@ -190,7 +205,7 @@
   border-radius:10px; border:1px solid rgba(255,255,255,.18);
   background:rgba(255,255,255,.08); color:#fff; padding:10px 12px;
 }
-.modalFooter{ padding:0 16px 16px; display:flex; justify-content:flex-end; gap:10px; }
+.modalFooter{ padding:0 16px 16px; display:flex; justify-content:space-between; gap:10px; }
 .btnGhost{
   padding:10px 14px; border-radius:10px; border:1px solid var(--border);
   background:rgba(255,255,255,.08); color:#e5e7eb; font-weight:800; cursor:pointer;
@@ -203,22 +218,43 @@
 /* Loading */
 .loading{ display:grid; place-items:center; min-height:60vh; color:#fff; font-size:1.25rem; }
 
-/* === Photo modal (upload/cameră) – NOU === */
-.photoActions{ display:flex; gap:10px; flex-wrap:wrap; }
-.cameraBox{ display:flex; flex-direction:column; gap:10px; align-items:center; }
+/* Photo modal – choice cards */
+.choiceGrid{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+}
+@media (max-width:520px){
+  .choiceGrid{ grid-template-columns:1fr; }
+}
+.choiceCard{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:16px; border-radius:14px;
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+  border:1px solid var(--border);
+  cursor:pointer; color:#fff;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.choiceCard:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(0,0,0,.35);
+  border-color: rgba(255,255,255,.25);
+}
+.choiceIcon{ font-size:1.8rem; }
+.choiceTitle{ font-weight:800; }
+.choiceText{ font-size:.9rem; color:#cbd5e1; text-align:center; }
+
+/* Camera step */
+.cameraStep{ display:flex; flex-direction:column; gap:10px; align-items:center; }
 .video{
   width:100%; max-width:360px; aspect-ratio: 3/4;
   border-radius:16px; border:1px solid var(--border); background:#000;
 }
-.previewWrap{
-  margin-top:10px; width:180px; height:180px; border-radius:50%;
+
+/* Preview rotund XL */
+.previewWrapXL{
+  margin-top:6px; width:200px; height:200px; border-radius:50%;
   border:1px solid var(--border); overflow:hidden; position:relative;
   align-self:center; display:flex; align-items:center; justify-content:center;
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  box-shadow: 0 10px 36px rgba(0,0,0,.35);
 }
-.previewImg{
-  width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;
-}
-.previewPlaceholder{
-  color:#cbd5e1; font-size:.9rem; text-align:center; padding:12px;
-}
+.previewImg{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.previewPlaceholder{ color:#cbd5e1; font-size:.9rem; text-align:center; padding:12px; }
