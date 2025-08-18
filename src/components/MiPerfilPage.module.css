@@ -8,7 +8,7 @@
   --neon:#67e8f9;
 }
 
-/* Pagina */
+/* ===== Página ===== */
 .page{
   color:var(--text);
   padding:88px 24px 24px;
@@ -18,9 +18,9 @@
 }
 @media (min-width:768px){ .page{ padding:96px 32px 32px; } }
 
-/* Header modern */
-.header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
-.headerLeft{ display:flex; align-items:center; gap:14px; }
+/* ===== Header ===== */
+.header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.headerLeft{ display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
 .pageTitleGlow{
   margin:0; font-size:2rem; font-weight:800; letter-spacing:.2px;
   background: linear-gradient(90deg,#fff,#ffd7b1,#ff8c3a);
@@ -28,6 +28,7 @@
   text-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
+/* Botones header */
 .editBtn{
   display:inline-flex; align-items:center; gap:8px;
   padding:10px 14px; border-radius:12px; border:1px solid var(--border);
@@ -38,9 +39,22 @@
 }
 .editBtn:hover{ transform:translateY(-1px); box-shadow:0 16px 40px -20px rgba(59,130,246,.45); border-color: rgba(59,130,246,.45); }
 
-/* ===== AVATAR XXL + CERC + INEL ===== */
+.ghostBtn{
+  padding:10px 14px; border-radius:12px; border:1px solid var(--border);
+  background:rgba(255,255,255,.08); color:#fff; font-weight:700; cursor:pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display:inline-flex; align-items:center; gap:8px;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+.ghostBtn:hover{
+  transform: translateY(-1px);
+  background: rgba(59,130,246,.9);
+  border-color: rgba(59,130,246,.4);
+}
+
+/* ===== Avatar XXL + anillo ===== */
 .avatarXxl{
-  --size: 112px;                 /* > mărește avatarul aici (ex. 96/112/120) */
+  --size: 112px;
   width:var(--size); height:var(--size);
   position:relative; border-radius:50%; overflow:hidden;
   border:1px solid var(--border);
@@ -55,8 +69,6 @@
   border-color: rgba(255,140,58,.45);
   box-shadow: 0 22px 54px -24px rgba(255,106,0,.45);
 }
-
-/* inel gradient + halo, fără 'content:' (valid CSS) */
 .avatarRing{
   position:absolute; inset:-2px; border-radius:50%;
   pointer-events:none; z-index:0;
@@ -67,8 +79,6 @@
   filter: blur(14px) saturate(1.15);
   opacity:.35;
 }
-
-/* imaginea / fallback */
 .avatarImg{ width:100%; height:100%; object-fit:cover; display:block; border-radius:50%; position:relative; z-index:0; }
 .avatarFallbackXl{
   width:100%; height:100%; display:grid; place-items:center;
@@ -78,8 +88,7 @@
     radial-gradient(120% 100% at 0% 0%, rgba(59,130,246,.22) 0%, rgba(2,6,23,.6) 60%),
     radial-gradient(100% 100% at 100% 100%, rgba(255,140,58,.20), transparent 60%);
 }
-
-/* pelicula anti-copy; lăsăm pointer-events pe auto DAR sub buton (z-index) */
+/* Película anti-copy */
 .avatarOverlay{
   position:absolute; inset:0; border-radius:50%; z-index:1;
   background:
@@ -87,13 +96,12 @@
     repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 10px, rgba(255,255,255,.08) 10px 20px);
   mix-blend-mode: soft-light;
 }
-
-/* Buton cameră — CERC rotund, stilizat, deasupra overlay-ului */
+/* Botón cámara redondo (en el avatar) */
 .avatarCamBtn{
   position:absolute; right:-4px; bottom:-4px;
   width:40px; height:40px; border-radius:50%;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
-  z-index:2; /* peste overlay */
+  z-index:2;
   border:2px solid rgba(255,255,255,.95);
   background: radial-gradient(120% 120% at 30% 20%, rgba(255,140,58,.95), rgba(255,106,0,.9));
   color:#fff;
@@ -103,11 +111,10 @@
 .avatarCamBtn:hover{ transform: scale(1.06); filter: saturate(1.05) brightness(1.05); }
 .avatarCamBtn svg{ width:18px; height:18px; stroke: currentColor; }
 
-/* Grid carduri */
+/* ===== Cards ===== */
 .cardsGrid{ display:grid; gap:14px; grid-template-columns:1fr; }
 @media (min-width:900px){ .cardsGrid{ grid-template-columns:repeat(3,1fr); } }
 
-/* Card glass */
 .card{
   background: var(--glass);
   backdrop-filter: blur(10px);
@@ -125,19 +132,7 @@
 .k{ display:block; font-size:.84rem; color:#9aa8ba; font-weight:800; letter-spacing:.2px; }
 .v{ display:block; font-weight:800; font-size:1.05rem; color:#fff; word-break:break-word; }
 
-.ghostBtn{
-  padding:8px 12px; border-radius:10px; border:1px solid var(--border);
-  background:rgba(255,255,255,.08); color:#fff; font-weight:700; cursor:pointer;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
-}
-.ghostBtn:hover{
-  transform: translateY(-1px);
-  background: rgba(59,130,246,.9);
-  border-color: rgba(59,130,246,.4);
-}
-
-/* Widgets */
+/* ===== Widgets ===== */
 .widgetsGrid{ display:grid; gap:14px; margin-top:16px; grid-template-columns:1fr; }
 @media (min-width:1000px){ .widgetsGrid{ grid-template-columns:1fr 1fr; } }
 .widget{ overflow:hidden; }
@@ -166,7 +161,7 @@
 }
 .cta:hover{ transform:translateY(-2px); box-shadow:0 14px 30px rgba(37,99,235,.35); }
 
-/* Mini Calendar */
+/* ===== Mini Calendario ===== */
 .miniCalTitle{ font-weight:800; margin-bottom:6px; color:#e6faff; }
 .miniCalHead{
   display:grid; grid-template-columns:repeat(7,1fr); gap:6px; font-size:.75rem;
@@ -182,7 +177,7 @@
 .miniBlank{ background:transparent; border-style:dashed; opacity:.35; }
 .miniHasData{ outline:2px solid #38bdf8; box-shadow: inset 0 0 0 1px rgba(56,189,248,.25); }
 
-/* Donut Vacaciones */
+/* ===== Donut Vacaciones ===== */
 .donutWrap{ display:flex; flex-direction:column; gap:8px; align-items:center; }
 .donutRing{
   width:180px; height:180px; border-radius:50%;
@@ -200,7 +195,7 @@
   background: rgba(0,0,0,.45); border:1px solid var(--border);
 }
 .donutBig{ font-size:2rem; font-weight:800; }
-.donutSub{ font-size:.8rem; color:#var(--muted); text-align:center; line-height:1.1; }
+.donutSub{ font-size:.8rem; color: var(--muted); text-align:center; line-height:1.1; }
 .donutLegend{ display:grid; gap:4px; font-size:.9rem; color:#e2e8f0; text-align:center; }
 .dotLeft,.dotUsed,.dotPend,.dotTotal{
   display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle;
@@ -208,7 +203,7 @@
 .dotLeft{ background:#22c55e; } .dotUsed{ background:#f97316; }
 .dotPend{ background:#eab308; } .dotTotal{ background:#60a5fa; }
 
-/* Modal generic */
+/* ===== Modal genérico ===== */
 .modalOverlay{
   position:fixed; inset:0; display:grid; place-items:center; padding:16px;
   background: radial-gradient(1200px 800px at 50% 30%, rgba(0,0,0,0.55), rgba(0,0,0,0.82));
@@ -242,7 +237,7 @@
   outline:none; border-color: rgba(255,140,58,0.72); box-shadow: 0 0 0 3px rgba(255,140,58,0.25);
 }
 
-.modalFooter{ padding:0 1.2rem 1.2rem; display:flex; justify-content:space-between; gap:10px; }
+.modalFooter{ padding:0 1.2rem 1.2rem; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
 .btnGhost{
   padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.26);
   background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
@@ -255,10 +250,10 @@
   box-shadow: 0 10px 28px -12px rgba(255,106,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
 }
 
-/* Loading */
+/* ===== Loading ===== */
 .loading{ display:grid; place-items:center; min-height:60vh; color:#fff; font-size:1.25rem; }
 
-/* Photo modal – choice cards */
+/* ===== Modal elección (selfie/galería) ===== */
 .choiceGrid{
   display:grid; grid-template-columns:1fr 1fr; gap:12px;
 }
@@ -280,14 +275,7 @@
 .choiceTitle{ font-weight:800; }
 .choiceText{ font-size:.9rem; color:#cbd5e1; text-align:center; }
 
-/* Camera step */
-.cameraStep{ display:flex; flex-direction:column; gap:10px; align-items:center; }
-.video{
-  width:100%; max-width:360px; aspect-ratio: 3/4;
-  border-radius:16px; border:1px solid var(--border); background:#000;
-}
-
-/* Preview rotund XL */
+/* ===== Preview redondo XL ===== */
 .previewWrapXL{
   margin-top:6px; width:200px; height:200px; border-radius:50%;
   border:1px solid var(--border); overflow:hidden; position:relative;
