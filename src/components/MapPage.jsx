@@ -179,9 +179,7 @@ export default function MiPerfilPage() {
 
   const uploadAvatarToImgbb = async (file) => {
     const IMGBB_KEY =
-      import.meta.env.VITE_IMGBB_KEY ||
-      import.meta.env.VITE_IMGBB_API_KEY ||
-      import.meta.env.VITE_IMGBB;
+      import.meta.env.VITE_IMGBB_API_KEY;
 
     if (!IMGBB_KEY) throw new Error('Falta la clave de ImgBB (VITE_IMGBB_KEY).');
 
