@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import Layout from './Layout';
 import styles from './MiPerfilPage.module.css';
 
-/* ===== Iconos minimal ===== */
+/* ===== Icons ===== */
 const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M17 3a2.828 2.828 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -18,12 +18,6 @@ const CloseIcon = () => (
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
-const CameraIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h8l2 3h3a2 2 0 0 1 2 2z"/>
-    <circle cx="12" cy="13" r="4"/>
-  </svg>
-);
 
 /* ===== Helpers ===== */
 const monthLabelES = (d) =>
@@ -31,11 +25,11 @@ const monthLabelES = (d) =>
     .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
     .replace(/^\p{L}/u, (c) => c.toUpperCase());
 
-/* Mini Calendar (widget) */
+/* Mini Calendar */
 function MiniCalendar({ date, marks }) {
   const y = date.getFullYear(), m = date.getMonth();
   const first = new Date(y, m, 1);
-  const startDay = (first.getDay() + 6) % 7; // L(0)..D(6)
+  const startDay = (first.getDay() + 6) % 7;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const cells = [];
   for (let i = 0; i < startDay; i++) cells.push({ blank: true, key: `b-${i}` });
@@ -94,7 +88,7 @@ export default function MiPerfilPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editableProfile, setEditableProfile] = useState(null);
 
-  // === Avatar + upload/camera modal state (ImgBB) ===
+  // === Avatar + ImgBB modal state ===
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'camera' | 'preview'
   const [uploading, setUploading] = useState(false);
@@ -115,7 +109,7 @@ export default function MiPerfilPage() {
     return { total: v?.total ?? 23, usadas: v?.usadas ?? 0, pendientes: v?.pendientes ?? 0 };
   }, [authProfile]);
 
-  /* === Nómina (boceto) === */
+  /* === Cargar nómina (boceto) === */
   useEffect(() => {
     const run = async () => {
       if (!user) return;
@@ -156,6 +150,7 @@ export default function MiPerfilPage() {
     run();
   }, [user, currentDate]);
 
+  /* === Editar perfil === */
   const openEdit = () => {
     if (!authProfile) return;
     setEditableProfile({
@@ -166,7 +161,7 @@ export default function MiPerfilPage() {
     setIsEditOpen(true);
   };
 
-  // === Photo modal open/close
+  /* === Photo modal open/close === */
   const openPhoto = () => {
     setIsPhotoOpen(true);
     setPhotoStep('choice');
@@ -178,13 +173,12 @@ export default function MiPerfilPage() {
     stopCamera();
   };
 
-  // === ImgBB upload
+  /* === ImgBB upload === */
   const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || process.env.REACT_APP_IMGBB_API_KEY;
 
   async function uploadToImgBB(blob) {
     if (!IMGBB_API_KEY) throw new Error('Setează VITE_IMGBB_API_KEY în .env');
     const form = new FormData();
-    // ImgBB acceptă fie base64, fie fișier multipart — folosim multipart pentru simplitate
     form.append('image', blob, 'avatar.jpg');
     const res = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(IMGBB_API_KEY)}`, {
       method: 'POST',
@@ -192,21 +186,20 @@ export default function MiPerfilPage() {
     });
     const json = await res.json();
     if (!json?.success) throw new Error(json?.error?.message || 'Upload ImgBB a eșuat.');
-    // Prefer url (direct), dar poți folosi și display_url
     return json.data?.url || json.data?.display_url;
   }
 
-  // === File upload flow
+  /* === File upload === */
   const onPickFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const blob = await resizeSquare(file, 1024); // crop/resize pătrat pt. avatar
+    const blob = await resizeSquare(file, 1024);
     setTempBlob(blob);
     setPreviewURL(URL.createObjectURL(blob));
     setPhotoStep('preview');
   };
 
-  // === Camera flow
+  /* === Camera flow === */
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
@@ -240,12 +233,12 @@ export default function MiPerfilPage() {
     }, 'image/jpeg', 0.9);
   };
 
-  // === Save to Supabase (profiles.avatar_url)
+  /* === Save avatar URL to Supabase === */
   const savePhoto = async () => {
     if (!tempBlob) return closePhoto();
     setUploading(true);
     try {
-      const link = await uploadToImgBB(tempBlob); // 1) upload la ImgBB
+      const link = await uploadToImgBB(tempBlob);
       const { error } = await supabase.from('profiles').update({ avatar_url: link }).eq('id', user.id);
       if (error) throw error;
 
@@ -266,7 +259,7 @@ export default function MiPerfilPage() {
     }
   };
 
-  // === Image helpers
+  /* === Image helpers === */
   async function resizeSquare(fileOrBlob, size = 1024) {
     const img = await blobToImage(fileOrBlob);
     const canvas = document.createElement('canvas');
@@ -290,12 +283,13 @@ export default function MiPerfilPage() {
     });
   }
 
-  // Navigații
+  /* === Navigații === */
   const goNomina = () => navigate('/calculadora-nomina');
   const goVacaciones = () => navigate('/vacaciones-standalone');
   const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
   const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
 
+  /* === Save profile (restul câmpurilor) === */
   const saveProfile = async (e) => {
     e.preventDefault();
     try {
@@ -356,30 +350,36 @@ export default function MiPerfilPage() {
     );
   }
 
-  const initials = (authProfile?.nombre_completo || '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || 'USR';
+  const initials =
+    (authProfile?.nombre_completo || '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join('') || 'USR';
 
   return (
     <Layout backgroundClassName="profile-background">
       <div className={styles.page}>
-        {/* Header */}
+        {/* Header modern */}
         <div className={styles.header}>
-          <h1>Mi Perfil</h1>
-          <div className={styles.headerRight}>
-            {/* Avatar modern – click => modal */}
+          <div className={styles.headerLeft}>
+            {/* Avatar XXL cu inel gradient */}
             <div
-              className={styles.avatarWrap}
+              className={styles.avatarXxl}
               onContextMenu={(e) => e.preventDefault()}
               onClick={openPhoto}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' ? openPhoto() : null)}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width) * 100}%`);
+                e.currentTarget.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height) * 100}%`);
+              }}
               draggable={false}
             >
+              <div className={styles.avatarRing}/>
               {authProfile?.avatar_url ? (
                 <img
                   src={authProfile.avatar_url}
@@ -390,18 +390,23 @@ export default function MiPerfilPage() {
                   draggable={false}
                 />
               ) : (
-                <div className={styles.avatarFallback}>{initials}</div>
+                <div className={styles.avatarFallbackXl}>{initials}</div>
               )}
               <div className={styles.avatarOverlay} aria-hidden />
-              <button className={styles.avatarEditBtn} type="button" title="Schimbă fotografia" onClick={openPhoto}>
-                <CameraIcon />
+              <button className={styles.avatarCamBtn} type="button" title="Schimbă fotografia" onClick={openPhoto}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h8l2 3h3a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
               </button>
             </div>
 
-            <button className={styles.editBtn} onClick={openEdit}>
-              <EditIcon /> Editar perfil
-            </button>
+            <h1 className={styles.pageTitleGlow}>Mi Perfil</h1>
           </div>
+
+          <button className={styles.editBtn} onClick={openEdit}>
+            <EditIcon /> Editar perfil
+          </button>
         </div>
 
         {/* Cards: Conductor / Camión / Remolque */}
@@ -670,7 +675,7 @@ export default function MiPerfilPage() {
                   </div>
                 )}
 
-                {/* STEP 3: Preview rotund */}
+                {/* STEP 3: Preview */}
                 {photoStep === 'preview' && (
                   <div className={styles.previewWrapXL}>
                     {previewURL ? (
