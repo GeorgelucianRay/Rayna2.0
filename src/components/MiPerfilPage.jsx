@@ -63,7 +63,7 @@ function MiniCalendar({ date, marks }) {
 
 /* Donut (Vacaciones) */
 function Donut({ total = 23, usadas = 0, pendientes = 0 }) {
-  const done = usadas + pendientes; // tomadas o aprobadas
+  const done = usadas + pendientes;
   const left = Math.max(total - done, 0);
   const pct = total > 0 ? done / total : 0;
   const angle = Math.min(360 * pct, 360);
@@ -94,15 +94,14 @@ export default function MiPerfilPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editableProfile, setEditableProfile] = useState(null);
 
-  // === NEW: avatar + upload/camera modal state ===
+  // === Avatar + upload/camera modal state (ImgBB) ===
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+  const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'camera' | 'preview'
   const [uploading, setUploading] = useState(false);
   const [previewURL, setPreviewURL] = useState(null);
   const [tempBlob, setTempBlob] = useState(null);
-  const fileInputRef = useRef(null);
 
-  // Camera
-  const [useCamera, setUseCamera] = useState(false);
+  const fileInputUploadRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -167,40 +166,107 @@ export default function MiPerfilPage() {
     setIsEditOpen(true);
   };
 
-  // === NEW: open photo modal
+  // === Photo modal open/close
   const openPhoto = () => {
+    setIsPhotoOpen(true);
+    setPhotoStep('choice');
     setPreviewURL(authProfile?.avatar_url || null);
     setTempBlob(null);
-    setUseCamera(false);
-    setIsPhotoOpen(true);
+  };
+  const closePhoto = () => {
+    setIsPhotoOpen(false);
+    stopCamera();
   };
 
-  // === NEW: IMGuR upload helper
-  const IMGUR_CLIENT_ID = import.meta.env.VITE_IMGUR_CLIENT_ID || process.env.REACT_APP_IMGUR_CLIENT_ID;
-  async function uploadToImgur(blob) {
-    if (!IMGUR_CLIENT_ID) throw new Error('Lipsește IMGUR Client-ID (setează VITE_IMGUR_CLIENT_ID).');
+  // === ImgBB upload
+  const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || process.env.REACT_APP_IMGBB_API_KEY;
+
+  async function uploadToImgBB(blob) {
+    if (!IMGBB_API_KEY) throw new Error('Setează VITE_IMGBB_API_KEY în .env');
     const form = new FormData();
-    form.append('image', blob);
-    const res = await fetch('https://api.imgur.com/3/image', {
+    // ImgBB acceptă fie base64, fie fișier multipart — folosim multipart pentru simplitate
+    form.append('image', blob, 'avatar.jpg');
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(IMGBB_API_KEY)}`, {
       method: 'POST',
-      headers: { Authorization: `Client-ID ${IMGUR_CLIENT_ID}` },
       body: form,
     });
     const json = await res.json();
-    if (!json?.success) throw new Error(json?.data?.error || 'Upload Imgur a eșuat.');
-    return json.data.link; // URL public
+    if (!json?.success) throw new Error(json?.error?.message || 'Upload ImgBB a eșuat.');
+    // Prefer url (direct), dar poți folosi și display_url
+    return json.data?.url || json.data?.display_url;
   }
 
-  // === NEW: file input change
+  // === File upload flow
   const onPickFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const blob = await resizeSquare(file, 1024); // crop/resize pătrat pt. avatar
     setTempBlob(blob);
     setPreviewURL(URL.createObjectURL(blob));
+    setPhotoStep('preview');
   };
 
-  // === NEW: basic square crop/resize to fit circle nicely
+  // === Camera flow
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setPhotoStep('camera');
+    } catch (e) {
+      alert('Camera nu poate fi accesată.');
+    }
+  };
+  const stopCamera = () => {
+    streamRef.current?.getTracks()?.forEach(t => t.stop());
+    streamRef.current = null;
+  };
+  const takePhoto = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    const sx = (video.videoWidth - size) / 2;
+    const sy = (video.videoHeight - size) / 2;
+    const canvas = canvasRef.current;
+    canvas.width = 1024; canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, 1024, 1024);
+    canvas.toBlob((b) => {
+      if (!b) return;
+      setTempBlob(b);
+      setPreviewURL(URL.createObjectURL(b));
+      stopCamera();
+      setPhotoStep('preview');
+    }, 'image/jpeg', 0.9);
+  };
+
+  // === Save to Supabase (profiles.avatar_url)
+  const savePhoto = async () => {
+    if (!tempBlob) return closePhoto();
+    setUploading(true);
+    try {
+      const link = await uploadToImgBB(tempBlob); // 1) upload la ImgBB
+      const { error } = await supabase.from('profiles').update({ avatar_url: link }).eq('id', user.id);
+      if (error) throw error;
+
+      const { data: updated } = await supabase
+        .from('profiles')
+        .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      setAuthProfile(updated);
+      alert('Poză de profil actualizată!');
+      closePhoto();
+    } catch (err) {
+      alert(`Eroare upload: ${err.message}`);
+    } finally {
+      setUploading(false);
+      setTempBlob(null);
+    }
+  };
+
+  // === Image helpers
   async function resizeSquare(fileOrBlob, size = 1024) {
     const img = await blobToImage(fileOrBlob);
     const canvas = document.createElement('canvas');
@@ -224,71 +290,11 @@ export default function MiPerfilPage() {
     });
   }
 
-  // === NEW: camera flow
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-      streamRef.current = stream;
-      setUseCamera(true);
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 0);
-    } catch (e) {
-      alert('Camera nu poate fi accesată.');
-    }
-  };
-  const stopCamera = () => {
-    streamRef.current?.getTracks()?.forEach(t => t.stop());
-    streamRef.current = null;
-    setUseCamera(false);
-  };
-  const takePhoto = () => {
-    if (!videoRef.current) return;
-    const video = videoRef.current;
-    const size = Math.min(video.videoWidth, video.videoHeight);
-    const sx = (video.videoWidth - size) / 2;
-    const sy = (video.videoHeight - size) / 2;
-    const canvas = canvasRef.current;
-    canvas.width = 1024; canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, 1024, 1024);
-    canvas.toBlob((b) => {
-      if (b) {
-        setTempBlob(b);
-        setPreviewURL(URL.createObjectURL(b));
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.9);
-  };
-
-  const savePhoto = async () => {
-    if (!tempBlob) {
-      setIsPhotoOpen(false);
-      return;
-    }
-    setUploading(true);
-    try {
-      const link = await uploadToImgur(tempBlob);               // 1) urcare la Imgur
-      const { error: upErr } = await supabase                   // 2) salvăm link în profiles.avatar_url
-        .from('profiles')
-        .update({ avatar_url: link })
-        .eq('id', user.id);
-      if (upErr) throw upErr;
-
-      const { data: updated } = await supabase                  // 3) re-fetch profil
-        .from('profiles')
-        .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      setAuthProfile(updated);
-      setIsPhotoOpen(false);
-      alert('Poză de profil actualizată!');
-    } catch (err) {
-      alert(`Eroare upload: ${err.message}`);
-    } finally {
-      setUploading(false);
-      setTempBlob(null);
-    }
-  };
+  // Navigații
+  const goNomina = () => navigate('/calculadora-nomina');
+  const goVacaciones = () => navigate('/vacaciones-standalone');
+  const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
+  const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
 
   const saveProfile = async (e) => {
     e.preventDefault();
@@ -324,7 +330,6 @@ export default function MiPerfilPage() {
         adr_caducidad: editableProfile.tiene_adr ? editableProfile.adr_caducidad || null : null,
         camion_id: camionIdToUpdate || null,
         remorca_id: remorcaIdToUpdate || null,
-        // avatar_url NU se schimbă aici (e salvat în savePhoto)
       };
 
       const { error: upErr } = await supabase.from('profiles').update(payload).eq('id', user.id);
@@ -343,12 +348,6 @@ export default function MiPerfilPage() {
     }
   };
 
-  // Navigații
-  const goNomina = () => navigate('/calculadora-nomina');
-  const goVacaciones = () => navigate('/vacaciones-standalone');
-  const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
-  const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
-
   if (loading || !authProfile) {
     return (
       <Layout backgroundClassName="profile-background">
@@ -357,7 +356,6 @@ export default function MiPerfilPage() {
     );
   }
 
-  // Inițiale fallback
   const initials = (authProfile?.nombre_completo || '')
     .split(' ')
     .filter(Boolean)
@@ -372,10 +370,14 @@ export default function MiPerfilPage() {
         <div className={styles.header}>
           <h1>Mi Perfil</h1>
           <div className={styles.headerRight}>
-            {/* === NEW: Avatar === */}
+            {/* Avatar modern – click => modal */}
             <div
               className={styles.avatarWrap}
-              onContextMenu={(e) => e.preventDefault()}       // anti-click-dreapta
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={openPhoto}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' ? openPhoto() : null)}
               draggable={false}
             >
               {authProfile?.avatar_url ? (
@@ -391,7 +393,7 @@ export default function MiPerfilPage() {
                 <div className={styles.avatarFallback}>{initials}</div>
               )}
               <div className={styles.avatarOverlay} aria-hidden />
-              <button className={styles.avatarEditBtn} onClick={openPhoto} title="Schimbă fotografia">
+              <button className={styles.avatarEditBtn} type="button" title="Schimbă fotografia" onClick={openPhoto}>
                 <CameraIcon />
               </button>
             </div>
@@ -615,68 +617,85 @@ export default function MiPerfilPage() {
           </div>
         )}
 
-        {/* === NEW: Photo Modal (upload/camera) === */}
+        {/* === Photo Modal (ImgBB): choice → camera → preview === */}
         {isPhotoOpen && (
-          <div className={styles.modalOverlay} onClick={() => { setIsPhotoOpen(false); stopCamera(); }}>
+          <div className={styles.modalOverlay} onClick={closePhoto}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
                 <h3>Fotografie profil</h3>
-                <button className={styles.iconBtn} onClick={() => { setIsPhotoOpen(false); stopCamera(); }}>
-                  <CloseIcon />
-                </button>
+                <button className={styles.iconBtn} onClick={closePhoto}><CloseIcon /></button>
               </div>
-              <div className={styles.modalBody}>
-                <div className={styles.photoActions}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    style={{ display: 'none' }}
-                    onChange={onPickFile}
-                  />
-                  <button className={styles.btnGhost} onClick={() => fileInputRef.current?.click()}>
-                    Încarcă din telefon
-                  </button>
-                  {!useCamera ? (
-                    <button className={styles.btnGhost} onClick={startCamera}>
-                      Pornește camera
-                    </button>
-                  ) : (
-                    <button className={styles.btnGhost} onClick={stopCamera}>
-                      Oprește camera
-                    </button>
-                  )}
-                </div>
 
-                {/* Camera preview */}
-                {useCamera && (
-                  <div className={styles.cameraBox}>
-                    <video ref={videoRef} autoPlay playsInline className={styles.video} />
-                    <button className={styles.cta} type="button" onClick={takePhoto}>
-                      Fă fotografia
+              <div className={styles.modalBody}>
+                {/* STEP 1: Choice */}
+                {photoStep === 'choice' && (
+                  <div className={styles.choiceGrid}>
+                    <button
+                      type="button"
+                      className={styles.choiceCard}
+                      onClick={() => fileInputUploadRef.current?.click()}
+                    >
+                      <div className={styles.choiceIcon}>🖼️</div>
+                      <div className={styles.choiceTitle}>Încarcă imagine</div>
+                      <div className={styles.choiceText}>Alege o poză din galerie sau fișiere</div>
                     </button>
-                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                    <button
+                      type="button"
+                      className={styles.choiceCard}
+                      onClick={startCamera}
+                    >
+                      <div className={styles.choiceIcon}>🤳</div>
+                      <div className={styles.choiceTitle}>Fă un selfie</div>
+                      <div className={styles.choiceText}>Pornește camera frontală</div>
+                    </button>
+
+                    {/* input real pentru upload (fără capture!) */}
+                    <input
+                      ref={fileInputUploadRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display:'none' }}
+                      onChange={onPickFile}
+                    />
                   </div>
                 )}
 
-                {/* Preview image in circle */}
-                <div className={styles.previewWrap}>
-                  {previewURL ? (
-                    <img src={previewURL} alt="Preview" className={styles.previewImg} />
-                  ) : (
-                    <div className={styles.previewPlaceholder}>Alege o imagine sau fă o poză</div>
-                  )}
-                  <div className={styles.avatarOverlay} />
-                </div>
+                {/* STEP 2: Camera */}
+                {photoStep === 'camera' && (
+                  <div className={styles.cameraStep}>
+                    <video ref={videoRef} autoPlay playsInline className={styles.video}/>
+                    <button className={styles.cta} type="button" onClick={takePhoto}>Fă fotografia</button>
+                    <canvas ref={canvasRef} style={{ display:'none' }}/>
+                  </div>
+                )}
+
+                {/* STEP 3: Preview rotund */}
+                {photoStep === 'preview' && (
+                  <div className={styles.previewWrapXL}>
+                    {previewURL ? (
+                      <img src={previewURL} alt="Preview" className={styles.previewImg}/>
+                    ) : (
+                      <div className={styles.previewPlaceholder}>Alege o imagine sau fă o poză</div>
+                    )}
+                    <div className={styles.avatarOverlay}/>
+                  </div>
+                )}
               </div>
+
               <div className={styles.modalFooter}>
-                <button className={styles.btnGhost} onClick={() => { setIsPhotoOpen(false); stopCamera(); }}>
-                  Renunță
-                </button>
-                <button className={styles.btnPrimary} disabled={!tempBlob || uploading} onClick={savePhoto}>
-                  {uploading ? 'Se încarcă…' : 'Salvează'}
-                </button>
+                {photoStep !== 'choice' ? (
+                  <button className={styles.btnGhost} onClick={() => { stopCamera(); setPhotoStep('choice'); }}>
+                    Înapoi
+                  </button>
+                ) : <span/>}
+                {photoStep === 'preview' ? (
+                  <button className={styles.btnPrimary} onClick={savePhoto} disabled={!tempBlob || uploading}>
+                    {uploading ? 'Se încarcă…' : 'Salvează'}
+                  </button>
+                ) : (
+                  <button className={styles.btnPrimary} onClick={closePhoto}>Închide</button>
+                )}
               </div>
             </div>
           </div>
