@@ -1,3 +1,4 @@
+// src/components/MiPerfilPage.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -30,7 +31,7 @@ const monthLabelES = (d) =>
     .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
     .replace(/^\p{L}/u, (c) => c.toUpperCase());
 
-/* Mini Calendar (widget) */
+/* Mini Calendar */
 function MiniCalendar({ date, marks }) {
   const y = date.getFullYear(), m = date.getMonth();
   const first = new Date(y, m, 1);
@@ -50,7 +51,10 @@ function MiniCalendar({ date, marks }) {
           c.blank ? (
             <div key={c.key} className={styles.miniBlank} />
           ) : (
-            <div key={c.key} className={[styles.miniDay, marks?.has(c.day) ? styles.miniHasData : ''].join(' ')}>
+            <div
+              key={c.key}
+              className={[styles.miniDay, marks?.has(c.day) ? styles.miniHasData : ''].join(' ')}
+            >
               {c.day}
             </div>
           ),
@@ -72,7 +76,11 @@ function Donut({ total = 23, usadas = 0, pendientes = 0 }) {
       <div className={styles.donutRing} style={{ background: bg }}>
         <div className={styles.donutHole}>
           <div className={styles.donutBig}>{left}</div>
-          <div className={styles.donutSub}>días<br/>disponibles</div>
+          <div className={styles.donutSub}>
+            días
+            <br />
+            disponibles
+          </div>
         </div>
       </div>
       <div className={styles.donutLegend}>
@@ -93,28 +101,40 @@ export default function MiPerfilPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editableProfile, setEditableProfile] = useState(null);
 
-  // === Avatar + upload/camera modal state (ImgBB) ===
-  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
-  const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'camera' | 'preview'
-  const [uploading, setUploading] = useState(false);
-  const [previewURL, setPreviewURL] = useState(null);
-  const [tempBlob, setTempBlob] = useState(null);
-
-  const fileInputUploadRef = useRef(null);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-
   // Widgets data
   const [currentDate] = useState(() => new Date());
-  const [nominaSummary, setNominaSummary] = useState({ desayunos: 0, cenas: 0, procenas: 0, km: 0, conts: 0, dias: 0 });
+  const [nominaSummary, setNominaSummary] = useState({
+    desayunos: 0, cenas: 0, procenas: 0, km: 0, conts: 0, dias: 0,
+  });
   const [nominaMarks, setNominaMarks] = useState(new Set());
   const vacacionesInfo = useMemo(() => {
     const v = authProfile?.vacaciones_info || null;
-    return { total: v?.total ?? 23, usadas: v?.usadas ?? 0, pendientes: v?.pendientes ?? 0 };
+    return {
+      total: v?.total ?? 23,
+      usadas: v?.usadas ?? 0,
+      pendientes: v?.pendientes ?? 0,
+    };
   }, [authProfile]);
 
-  /* === Nómina (boceto) === */
+  // ===== Imagen de perfil (ImgBB + inputs nativos) =====
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+  const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'preview'
+  const [previewURL, setPreviewURL] = useState('');
+  const [tempBlob, setTempBlob] = useState(null);
+  const [subiendo, setSubiendo] = useState(false);
+
+  const fileSelfieRef = useRef(null);
+  const fileGalRef = useRef(null);
+
+  const imgbbKey = import.meta.env.VITE_IMGBB_KEY; // <-- pune cheia în .env
+
+  const initials = useMemo(() => {
+    const n = (authProfile?.nombre_completo || '').trim();
+    if (!n) return 'R';
+    return n.split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()).join('') || 'R';
+  }, [authProfile]);
+
+  // Cargar nómina (boceto)
   useEffect(() => {
     const run = async () => {
       if (!user) return;
@@ -127,15 +147,18 @@ export default function MiPerfilPage() {
         .eq('an', y)
         .eq('mes', m)
         .maybeSingle();
+
       if (error) {
         console.warn('No se pudo leer borrador de nómina:', error.message);
         setNominaSummary({ desayunos: 0, cenas: 0, procenas: 0, km: 0, conts: 0, dias: 0 });
         setNominaMarks(new Set());
         return;
       }
+
       const zile = data?.pontaj_complet?.zilePontaj || [];
       let D = 0, C = 0, P = 0, KM = 0, CT = 0;
       const marks = new Set();
+
       zile.forEach((zi, idx) => {
         if (!zi) return;
         const d = idx + 1;
@@ -145,16 +168,21 @@ export default function MiPerfilPage() {
         if (zi.procena) P++;
         if (kmZi > 0) KM += kmZi;
         if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
+
         if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
           marks.add(d);
         }
       });
-      setNominaSummary({ desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size });
+
+      setNominaSummary({
+        desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size,
+      });
       setNominaMarks(marks);
     };
     run();
   }, [user, currentDate]);
 
+  // ===== Editar perfil =====
   const openEdit = () => {
     if (!authProfile) return;
     setEditableProfile({
@@ -164,134 +192,6 @@ export default function MiPerfilPage() {
     });
     setIsEditOpen(true);
   };
-
-  /* === Photo modal open/close === */
-  const openPhoto = () => {
-    setIsPhotoOpen(true);
-    setPhotoStep('choice');
-    setPreviewURL(authProfile?.avatar_url || null);
-    setTempBlob(null);
-  };
-  const closePhoto = () => {
-    setIsPhotoOpen(false);
-    stopCamera();
-  };
-
-  /* === ImgBB upload === */
-  const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || process.env.REACT_APP_IMGBB_API_KEY;
-
-  async function uploadToImgBB(blob) {
-    if (!IMGBB_API_KEY) throw new Error('Setează VITE_IMGBB_API_KEY în .env');
-    const form = new FormData();
-    form.append('image', blob, 'avatar.jpg');
-    const res = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(IMGBB_API_KEY)}`, {
-      method: 'POST',
-      body: form,
-    });
-    const json = await res.json();
-    if (!json?.success) throw new Error(json?.error?.message || 'Upload ImgBB a eșuat.');
-    return json.data?.url || json.data?.display_url;
-  }
-
-  /* === File upload flow === */
-  const onPickFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const blob = await resizeSquare(file, 1024);
-    setTempBlob(blob);
-    setPreviewURL(URL.createObjectURL(blob));
-    setPhotoStep('preview');
-  };
-
-  /* === Camera flow === */
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setPhotoStep('camera');
-    } catch {
-      alert('Camera nu poate fi accesată.');
-    }
-  };
-  const stopCamera = () => {
-    streamRef.current?.getTracks()?.forEach(t => t.stop());
-    streamRef.current = null;
-  };
-  const takePhoto = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    const size = Math.min(video.videoWidth, video.videoHeight);
-    const sx = (video.videoWidth - size) / 2;
-    const sy = (video.videoHeight - size) / 2;
-    const canvas = canvasRef.current;
-    canvas.width = 1024; canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, 1024, 1024);
-    canvas.toBlob((b) => {
-      if (!b) return;
-      setTempBlob(b);
-      setPreviewURL(URL.createObjectURL(b));
-      stopCamera();
-      setPhotoStep('preview');
-    }, 'image/jpeg', 0.9);
-  };
-
-  /* === Save to Supabase (profiles.avatar_url) === */
-  const savePhoto = async () => {
-    if (!tempBlob) return closePhoto();
-    setUploading(true);
-    try {
-      const link = await uploadToImgBB(tempBlob);
-      const { error } = await supabase.from('profiles').update({ avatar_url: link }).eq('id', user.id);
-      if (error) throw error;
-
-      const { data: updated } = await supabase
-        .from('profiles')
-        .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      setAuthProfile(updated);
-      alert('Poză de profil actualizată!');
-      closePhoto();
-    } catch (err) {
-      alert(`Eroare upload: ${err.message}`);
-    } finally {
-      setUploading(false);
-      setTempBlob(null);
-    }
-  };
-
-  /* === Image helpers === */
-  async function resizeSquare(fileOrBlob, size = 1024) {
-    const img = await blobToImage(fileOrBlob);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const side = Math.min(img.width, img.height);
-    const sx = (img.width - side) / 2;
-    const sy = (img.height - side) / 2;
-    canvas.width = size;
-    canvas.height = size;
-    ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.9));
-    return blob;
-  }
-  function blobToImage(file) {
-    return new Promise((ok, err) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); ok(img); };
-      img.onerror = err;
-      img.src = url;
-    });
-  }
-
-  // Navigații
-  const goNomina = () => navigate('/calculadora-nomina');
-  const goVacaciones = () => navigate('/vacaciones-standalone');
-  const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
-  const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
 
   const saveProfile = async (e) => {
     e.preventDefault();
@@ -345,6 +245,128 @@ export default function MiPerfilPage() {
     }
   };
 
+  // ===== Navegación =====
+  const goNomina = () => navigate('/calculadora-nomina');
+  const goVacaciones = () => navigate('/vacaciones-standalone');
+  const goCamion = () => authProfile?.camion_id && navigate(`/camion/${authProfile.camion_id}`);
+  const goRemolque = () => authProfile?.remorca_id && navigate(`/remorca/${authProfile.remorca_id}`);
+
+  // ===== Foto de perfil: helpers =====
+  const openPhoto = () => {
+    setPhotoStep('choice');
+    setIsPhotoOpen(true);
+  };
+  const closePhoto = () => {
+    setIsPhotoOpen(false);
+    setPhotoStep('choice');
+    setPreviewURL('');
+    setTempBlob(null);
+  };
+
+  const openNativeSelfie = () => {
+    if (fileSelfieRef.current) {
+      fileSelfieRef.current.value = '';
+      fileSelfieRef.current.click();
+    }
+  };
+  const openNativeGallery = () => {
+    if (fileGalRef.current) {
+      fileGalRef.current.value = '';
+      fileGalRef.current.click();
+    }
+  };
+
+  const onNativePicked = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (!file.type.startsWith('image/')) {
+        alert('Selecciona un archivo de imagen.');
+        return;
+      }
+      const blob = await resizeSquare(file, 1024);
+      setTempBlob(blob);
+      setPreviewURL(URL.createObjectURL(blob));
+      setPhotoStep('preview');
+    } catch (err) {
+      alert(`No se pudo procesar la imagen: ${err.message}`);
+    }
+  };
+
+  function imgToBlob(img, size = 1024) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    return new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', 0.9));
+  }
+
+  async function resizeSquare(file, size = 1024) {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - side) / 2;
+    const sy = (bitmap.height - side) / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+    return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9));
+  }
+
+  const blobToBase64 = (blob) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = String(reader.result || '');
+        // rez: "data:image/jpeg;base64,...."
+        resolve(res.split(',')[1] || '');
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const savePhoto = async () => {
+    if (!tempBlob) return;
+    if (!imgbbKey) {
+      alert('Falta la clave de ImgBB (VITE_IMGBB_KEY).');
+      return;
+    }
+    try {
+      setSubiendo(true);
+      const b64 = await blobToBase64(tempBlob);
+      const fd = new FormData();
+      fd.append('image', b64);
+
+      const resp = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(imgbbKey)}`, {
+        method: 'POST',
+        body: fd,
+      });
+      const json = await resp.json();
+      if (!json?.success) throw new Error('Error subiendo imagen a ImgBB.');
+      const url = json?.data?.display_url || json?.data?.url;
+      if (!url) throw new Error('Respuesta inválida de ImgBB.');
+
+      // Guarda link en profiles
+      const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+      if (error) throw error;
+
+      // refrescar perfil
+      const { data: updated } = await supabase
+        .from('profiles')
+        .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
+        .eq('id', user.id)
+        .maybeSingle();
+      setAuthProfile(updated);
+
+      setSubiendo(false);
+      closePhoto();
+      alert('Foto de perfil actualizada.');
+    } catch (err) {
+      setSubiendo(false);
+      alert(`No se pudo guardar la foto: ${err.message}`);
+    }
+  };
+
   if (loading || !authProfile) {
     return (
       <Layout backgroundClassName="profile-background">
@@ -353,48 +375,33 @@ export default function MiPerfilPage() {
     );
   }
 
-  const initials = (authProfile?.nombre_completo || 'U S R')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || 'USR';
-
   return (
     <Layout backgroundClassName="profile-background">
       <div className={styles.page}>
-        {/* Header modern */}
+        {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
+            {/* AVATAR + botón cámara accesible */}
             <div
               className={styles.avatarXxl}
-              onContextMenu={(e) => e.preventDefault()}
               onClick={openPhoto}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' ? openPhoto() : null)}
+              onContextMenu={(e) => e.preventDefault()}
               onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                e.currentTarget.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width) * 100}%`);
-                e.currentTarget.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height) * 100}%`);
+                const r = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+                e.currentTarget.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
               }}
-              draggable={false}
             >
-              <div className={styles.avatarRing}/>
+              <div className={styles.avatarRing}></div>
               {authProfile?.avatar_url ? (
-                <img
-                  src={authProfile.avatar_url}
-                  alt="Avatar"
-                  className={styles.avatarImg}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  draggable={false}
-                />
+                <img src={authProfile.avatar_url} alt="Avatar" className={styles.avatarImg} />
               ) : (
                 <div className={styles.avatarFallbackXl}>{initials}</div>
               )}
-              <div className={styles.avatarOverlay} aria-hidden />
-              <button className={styles.avatarCamBtn} type="button" title="Schimbă fotografia" onClick={openPhoto}>
+              <div className={styles.avatarOverlay}></div>
+
+              {/* Botón cámara pequeño en el avatar */}
+              <button className={styles.avatarCamBtn} type="button" title="Cambiar foto" onClick={(e)=>{e.stopPropagation(); openPhoto();}}>
                 <CameraIcon />
               </button>
             </div>
@@ -402,9 +409,15 @@ export default function MiPerfilPage() {
             <h1 className={styles.pageTitleGlow}>Mi Perfil</h1>
           </div>
 
-          <button className={styles.editBtn} onClick={openEdit}>
-            <EditIcon /> Editar perfil
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* Botón visible adicional para accesibilidad */}
+            <button className={styles.ghostBtn} onClick={openPhoto}>
+              <CameraIcon /> Cambiar foto
+            </button>
+            <button className={styles.editBtn} onClick={openEdit}>
+              <EditIcon /> Editar perfil
+            </button>
+          </div>
         </div>
 
         {/* Cards: Conductor / Camión / Remolque */}
@@ -436,7 +449,9 @@ export default function MiPerfilPage() {
           <section className={styles.card}>
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Camión</div>
-              <button className={styles.ghostBtn} onClick={goCamion}>Ver ficha</button>
+              <button className={styles.ghostBtn} onClick={goCamion}>
+                Ver ficha
+              </button>
             </div>
             <div className={styles.rows2}>
               <div>
@@ -453,7 +468,9 @@ export default function MiPerfilPage() {
           <section className={styles.card}>
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Remolque</div>
-              <button className={styles.ghostBtn} onClick={goRemolque}>Ver ficha</button>
+              <button className={styles.ghostBtn} onClick={goRemolque}>
+                Ver ficha
+              </button>
             </div>
             <div className={styles.rows2}>
               <div>
@@ -468,7 +485,7 @@ export default function MiPerfilPage() {
           </section>
         </div>
 
-        {/* Widgets */}
+        {/* Widgets: Nómina + Vacaciones */}
         <div className={styles.widgetsGrid}>
           <section className={`${styles.card} ${styles.widget}`}>
             <div className={styles.widgetHeader}>
@@ -484,9 +501,12 @@ export default function MiPerfilPage() {
                   <strong className={styles.dotSep}>Procenas:</strong> {nominaSummary.procenas}
                 </div>
                 <div className={styles.statLine2}>
-                  Este mes: <b>{nominaSummary.km}</b> km • <b>{nominaSummary.conts}</b> contenedores • <b>{nominaSummary.dias}</b> días trabajados
+                  Este mes: <b>{nominaSummary.km}</b> km • <b>{nominaSummary.conts}</b> contenedores •{' '}
+                  <b>{nominaSummary.dias}</b> días trabajados
                 </div>
-                <button className={styles.cta} onClick={goNomina}>Abrir calculadora</button>
+                <button className={styles.cta} onClick={goNomina}>
+                  Abrir calculadora
+                </button>
               </div>
 
               <div className={styles.widgetColMiniCal}>
@@ -503,14 +523,20 @@ export default function MiPerfilPage() {
 
             <div className={styles.widgetBody}>
               <div className={styles.widgetColMini}>
-                <Donut total={vacacionesInfo.total} usadas={vacacionesInfo.usadas} pendientes={vacacionesInfo.pendientes} />
+                <Donut
+                  total={vacacionesInfo.total}
+                  usadas={vacacionesInfo.usadas}
+                  pendientes={vacacionesInfo.pendientes}
+                />
               </div>
               <div className={styles.widgetCol}>
                 <p className={styles.vacHint}>
                   Solicita días, ve aprobaciones y pendientes. <br />
                   Hoy: {new Date().toLocaleDateString('es-ES')}
                 </p>
-                <button className={styles.cta} onClick={goVacaciones}>Abrir vacaciones</button>
+                <button className={styles.cta} onClick={goVacaciones}>
+                  Abrir vacaciones
+                </button>
               </div>
             </div>
           </section>
@@ -522,16 +548,20 @@ export default function MiPerfilPage() {
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
                 <h3>Editar perfil</h3>
-                <button className={styles.iconBtn} onClick={() => setIsEditOpen(false)}><CloseIcon /></button>
+                <button className={styles.iconBtn} onClick={() => setIsEditOpen(false)}>
+                  <CloseIcon />
+                </button>
               </div>
 
               <form className={styles.modalBody} onSubmit={saveProfile}>
                 <div className={styles.inputGroup}>
-                  <label>Nombre Completo</label>
+                  <label>Nombre completo</label>
                   <input
                     type="text"
                     value={editableProfile.nombre_completo || ''}
-                    onChange={(e) => setEditableProfile((p) => ({ ...p, nombre_completo: e.target.value }))}
+                    onChange={(e) =>
+                      setEditableProfile((p) => ({ ...p, nombre_completo: e.target.value }))
+                    }
                   />
                 </div>
                 <div className={styles.grid2}>
@@ -540,15 +570,19 @@ export default function MiPerfilPage() {
                     <input
                       type="date"
                       value={editableProfile.cap_expirare || ''}
-                      onChange={(e) => setEditableProfile((p) => ({ ...p, cap_expirare: e.target.value }))}
+                      onChange={(e) =>
+                        setEditableProfile((p) => ({ ...p, cap_expirare: e.target.value }))
+                      }
                     />
                   </div>
                   <div className={styles.inputGroup}>
-                    <label>Caducidad Carnet</label>
+                    <label>Caducidad carnet</label>
                     <input
                       type="date"
                       value={editableProfile.carnet_caducidad || ''}
-                      onChange={(e) => setEditableProfile((p) => ({ ...p, carnet_caducidad: e.target.value }))}
+                      onChange={(e) =>
+                        setEditableProfile((p) => ({ ...p, carnet_caducidad: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -558,7 +592,9 @@ export default function MiPerfilPage() {
                     <label>¿Tiene ADR?</label>
                     <select
                       value={String(!!editableProfile.tiene_adr)}
-                      onChange={(e) => setEditableProfile((p) => ({ ...p, tiene_adr: e.target.value === 'true' }))}
+                      onChange={(e) =>
+                        setEditableProfile((p) => ({ ...p, tiene_adr: e.target.value === 'true' }))
+                      }
                     >
                       <option value="false">No</option>
                       <option value="true">Sí</option>
@@ -570,7 +606,9 @@ export default function MiPerfilPage() {
                       <input
                         type="date"
                         value={editableProfile.adr_caducidad || ''}
-                        onChange={(e) => setEditableProfile((p) => ({ ...p, adr_caducidad: e.target.value }))}
+                        onChange={(e) =>
+                          setEditableProfile((p) => ({ ...p, adr_caducidad: e.target.value }))
+                        }
                       />
                     </div>
                   )}
@@ -579,12 +617,17 @@ export default function MiPerfilPage() {
                 {/* Nuevos vehículos si faltan */}
                 {!authProfile.camion_id ? (
                   <div className={styles.inputGroup}>
-                    <label>Matrícula Camión</label>
+                    <label>Matrícula camión</label>
                     <input
                       type="text"
                       placeholder="Introduce la matrícula…"
                       value={editableProfile.new_camion_matricula}
-                      onChange={(e) => setEditableProfile((p) => ({ ...p, new_camion_matricula: e.target.value.toUpperCase() }))}
+                      onChange={(e) =>
+                        setEditableProfile((p) => ({
+                          ...p,
+                          new_camion_matricula: e.target.value.toUpperCase(),
+                        }))
+                      }
                     />
                   </div>
                 ) : (
@@ -596,12 +639,17 @@ export default function MiPerfilPage() {
 
                 {!authProfile.remorca_id ? (
                   <div className={styles.inputGroup}>
-                    <label>Matrícula Remolque</label>
+                    <label>Matrícula remolque</label>
                     <input
                       type="text"
                       placeholder="Introduce la matrícula…"
                       value={editableProfile.new_remorca_matricula}
-                      onChange={(e) => setEditableProfile((p) => ({ ...p, new_remorca_matricula: e.target.value.toUpperCase() }))}
+                      onChange={(e) =>
+                        setEditableProfile((p) => ({
+                          ...p,
+                          new_remorca_matricula: e.target.value.toUpperCase(),
+                        }))
+                      }
                     />
                   </div>
                 ) : (
@@ -612,98 +660,90 @@ export default function MiPerfilPage() {
                 )}
 
                 <div className={styles.modalFooter}>
-                  <button type="button" className={styles.btnGhost} onClick={() => setIsEditOpen(false)}>Cancelar</button>
-                  <button type="submit" className={styles.btnPrimary}>Guardar cambios</button>
+                  <button type="button" className={styles.btnGhost} onClick={() => setIsEditOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className={styles.btnPrimary}>
+                    Guardar cambios
+                  </button>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        {/* === Photo Modal (ImgBB): choice → camera → preview === */}
+        {/* Modal Foto de perfil (nativo) */}
         {isPhotoOpen && (
           <div className={styles.modalOverlay} onClick={closePhoto}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
               <div className={styles.modalHeader}>
-                <h3>Fotografie profil</h3>
+                <h3>Fotografía de perfil</h3>
                 <button className={styles.iconBtn} onClick={closePhoto}><CloseIcon /></button>
               </div>
 
               <div className={styles.modalBody}>
-                {/* STEP 1: Choice */}
                 {photoStep === 'choice' && (
                   <div className={styles.choiceGrid}>
-                    <button
-                      type="button"
-                      className={styles.choiceCard}
-                      onClick={() => fileInputUploadRef.current?.click()}
-                    >
-                      <div className={styles.choiceIcon}>🖼️</div>
-                      <div className={styles.choiceTitle}>Încarcă imagine</div>
-                      <div className={styles.choiceText}>Alege o poză din galerie sau fișiere</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={styles.choiceCard}
-                      onClick={startCamera}
-                    >
+                    <button type="button" className={styles.choiceCard} onClick={openNativeSelfie}>
                       <div className={styles.choiceIcon}>🤳</div>
-                      <div className={styles.choiceTitle}>Fă un selfie</div>
-                      <div className={styles.choiceText}>Pornește camera frontală</div>
+                      <div className={styles.choiceTitle}>Hacer un selfie</div>
+                      <div className={styles.choiceText}>Abrir la cámara frontal</div>
+                    </button>
+                    <button type="button" className={styles.choiceCard} onClick={openNativeGallery}>
+                      <div className={styles.choiceIcon}>🖼️</div>
+                      <div className={styles.choiceTitle}>Subir desde galería</div>
+                      <div className={styles.choiceText}>Seleccionar una imagen existente</div>
                     </button>
 
-                    {/* input real pentru upload (fără capture!) */}
+                    {/* Inputs nativos ocultos */}
                     <input
-                      ref={fileInputUploadRef}
+                      ref={fileSelfieRef}
                       type="file"
                       accept="image/*"
-                      style={{ display:'none' }}
-                      onChange={onPickFile}
+                      capture="user"
+                      style={{ display: 'none' }}
+                      onChange={onNativePicked}
+                    />
+                    <input
+                      ref={fileGalRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={onNativePicked}
                     />
                   </div>
                 )}
 
-                {/* STEP 2: Camera */}
-                {photoStep === 'camera' && (
-                  <div className={styles.cameraStep}>
-                    <video ref={videoRef} autoPlay playsInline className={styles.video}/>
-                    <button className={styles.cta} type="button" onClick={takePhoto}>Fă fotografia</button>
-                    <canvas ref={canvasRef} style={{ display:'none' }}/>
-                  </div>
-                )}
-
-                {/* STEP 3: Preview rotund */}
                 {photoStep === 'preview' && (
-                  <div className={styles.previewWrapXL}>
-                    {previewURL ? (
-                      <img src={previewURL} alt="Preview" className={styles.previewImg}/>
-                    ) : (
-                      <div className={styles.previewPlaceholder}>Alege o imagine sau fă o poză</div>
-                    )}
-                    <div className={styles.avatarOverlay}/>
-                  </div>
+                  <>
+                    <div className={styles.previewWrapXL}>
+                      {previewURL ? <img src={previewURL} alt="Vista previa" className={styles.previewImg} /> : (
+                        <div className={styles.previewPlaceholder}>Vista previa</div>
+                      )}
+                      <div className={styles.avatarOverlay}></div>
+                    </div>
+                  </>
                 )}
               </div>
 
               <div className={styles.modalFooter}>
-                {photoStep !== 'choice' ? (
-                  <button className={styles.btnGhost} onClick={() => { stopCamera(); setPhotoStep('choice'); }}>
-                    Înapoi
-                  </button>
-                ) : <span/>}
                 {photoStep === 'preview' ? (
-                  <button className={styles.btnPrimary} onClick={savePhoto} disabled={!tempBlob || uploading}>
-                    {uploading ? 'Se încarcă…' : 'Salvează'}
-                  </button>
+                  <>
+                    <button className={styles.btnGhost} onClick={()=>setPhotoStep('choice')}>Volver</button>
+                    <button className={styles.btnPrimary} onClick={savePhoto} disabled={!tempBlob || subiendo}>
+                      {subiendo ? 'Subiendo…' : 'Guardar foto'}
+                    </button>
+                  </>
                 ) : (
-                  <button className={styles.btnPrimary} onClick={closePhoto}>Închide</button>
+                  <>
+                    <span />
+                    <button className={styles.btnPrimary} onClick={closePhoto}>Cerrar</button>
+                  </>
                 )}
               </div>
             </div>
           </div>
         )}
-
       </div>
     </Layout>
   );
