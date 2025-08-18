@@ -1,157 +1,186 @@
-/* src/components/MiPerfilPage.module.css */
+/* Păstrează toate stilurile originale de la :root până la .loading */
+:root{ --glass: rgba(17,24,39,.50); --border: rgba(255,255,255,.16); --text: #e5e7eb; --muted:#9ca3af; --accent:#22c55e; --cta1:#2563eb; --cta2:#3b82f6; --neon:#67e8f9; }
+.page{ color:var(--text); padding:88px 24px 24px; min-height:100dvh; background: transparent; overflow-x:hidden; }
+@media (min-width:768px){ .page{ padding:96px 32px 32px; } }
+.header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.header h1{ margin:0; font-size:2rem; font-weight:800; letter-spacing:.2px; color:#fff; text-shadow: 0 0 24px rgba(103,232,249,.25), 0 0 2px rgba(103,232,249,.5); }
+.editBtn{ display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.06)); color:#fff; font-weight:700; cursor:pointer; backdrop-filter: blur(6px); transition:transform .15s, box-shadow .15s; }
+.editBtn:hover{ transform:translateY(-1px); box-shadow:0 8px 24px rgba(59,130,246,.35); }
+.cardsGrid{ display:grid; gap:14px; grid-template-columns:1fr; }
+@media (min-width:900px){ .cardsGrid{ grid-template-columns:repeat(3,1fr); } }
+.card{ background: var(--glass); backdrop-filter: blur(10px); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+.cardTitle{ font-size:1.15rem; font-weight:800; margin-bottom:12px; color:#e6faff; text-shadow: 0 0 16px rgba(103,232,249,.25); }
+.cardTitleRow{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.rows2{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; }
+.k{ display:block; font-size:.8rem; color:var(--muted); }
+.v{ display:block; font-weight:700; font-size:1.05rem; color:#fff; word-break:break-word; }
+.ghostBtn{ padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.08); color:#fff; font-weight:700; cursor:pointer; backdrop-filter: blur(6px); }
+.ghostBtn:hover{ background:rgba(255,255,255,.14); }
+.widgetsGrid{ display:grid; gap:14px; margin-top:16px; grid-template-columns:1fr; }
+@media (min-width:1000px){ .widgetsGrid{ grid-template-columns:1fr 1fr; } }
+.widget{ overflow:hidden; }
+.widgetHeader{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.badge{ background: rgba(105,131,255,.22); border:1px solid rgba(105,131,255,.35); color:#c7d2fe; padding:4px 10px; border-radius:999px; font-weight:800; font-size:.75rem; backdrop-filter: blur(6px); }
+.widgetBody{ display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; }
+.widgetCol{ flex:1 1 260px; display:flex; flex-direction:column; gap:10px; }
+.widgetColMini{ flex:0 0 220px; display:flex; align-items:center; justify-content:center; }
+.widgetColMiniCal{ flex:0 0 260px; }
+.statLine{ font-size:.95rem; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.dotSep{ margin-left:8px; }
+.statLine2{ color:#dbeafe; text-shadow: 0 0 10px rgba(0,0,0,.25); }
+.cta{ margin-top:6px; width:100%; padding:12px 16px; border:none; border-radius:12px; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; font-weight:800; cursor:pointer; transition:transform .12s, box-shadow .12s; box-shadow: 0 10px 24px rgba(37,99,235,.25); }
+.cta:hover{ transform:translateY(-2px); box-shadow:0 14px 30px rgba(37,99,235,.35); }
+.miniCalTitle{ font-weight:800; margin-bottom:6px; color:#e6faff; }
+.miniCalHead{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; font-size:.75rem; color:#c7d2fe; text-align:center; margin-bottom:6px; text-shadow: 0 0 12px rgba(99,102,241,.35); }
+.miniCalGrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.miniDay,.miniBlank{ aspect-ratio:1/1; border-radius:10px; display:grid; place-items:center; font-weight:700; font-size:.9rem; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); backdrop-filter: blur(6px); }
+.miniBlank{ background:transparent; border-style:dashed; opacity:.35; }
+.miniHasData{ outline:2px solid #38bdf8; box-shadow: inset 0 0 0 1px rgba(56,189,248,.25); }
+.donutWrap{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+.donutRing{ width:180px; height:180px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--border); background: conic-gradient(var(--accent) 0deg, rgba(255,255,255,.08) 0deg); backdrop-filter: blur(6px); }
+@media (max-width:420px){ .donutRing{ width:160px; height:160px; } .donutHole{ width:116px; height:116px; } }
+.donutHole{ width:130px; height:130px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; background: rgba(0,0,0,.45); border:1px solid var(--border); }
+.donutBig{ font-size:2rem; font-weight:800; }
+.donutSub{ font-size:.8rem; color:var(--muted); text-align:center; line-height:1.1; }
+.donutLegend{ display:grid; gap:4px; font-size:.9rem; color:#e2e8f0; text-align:center; }
+.dotLeft,.dotUsed,.dotPend,.dotTotal{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+.dotLeft{ background:#22c55e; } .dotUsed{ background:#f97316; } .dotPend{ background:#eab308; } .dotTotal{ background:#60a5fa; }
+.modalOverlay{ position:fixed; inset:0; display:grid; place-items:center; padding:16px; background:rgba(0,0,0,.6); backdrop-filter:blur(5px); z-index:3000; }
+.modal{ background:#0f172a; color:#fff; width:100%; max-width:640px; border-radius:16px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,.35); }
+.modalHeader{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
+.iconBtn{ background:transparent; border:none; color:#cbd5e1; cursor:pointer; }
+.modalBody{ padding:16px; display:grid; gap:12px; }
+.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:640px){ .grid2{ grid-template-columns:1fr; } }
+.inputGroup{ display:flex; flex-direction:column; gap:6px; }
+.inputGroup label{ font-weight:800; color:#d1d5db; }
+.inputGroup input,.inputGroup select{ border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; padding:10px 12px; }
+.modalFooter{ padding:0 16px 16px; display:flex; justify-content:flex-end; gap:10px; }
+.btnGhost{ padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.08); color:#e5e7eb; font-weight:800; cursor:pointer; }
+.btnPrimary{ padding:10px 14px; border:none; border-radius:10px; background:linear-gradient(90deg,var(--cta1),var(--cta2)); color:#fff; font-weight:800; cursor:pointer; }
+.loading{ display:grid; place-items:center; min-height:60vh; color:#fff; font-size:1.25rem; }
 
-/* === Stiluri NOI și REVIZUITE pentru Poza de Profil === */
 
-/* Aliniere header */
-.headerMain {
+/* ================================================================= */
+/* === STILURI NOI ȘI REVIZUITE PENTRU AVATAR, BUTOANE ȘI CAMERĂ === */
+/* ================================================================= */
+
+.headerProfileInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Stilul de bază pentru avatar - cerc perfect cu umbră */
+.avatarDisplay {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden; /* Crucial pentru a menține forma rotundă */
+  flex-shrink: 0;
+}
+.avatarDisplay img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Asigură încadrarea corectă a oricărei poze */
+}
+/* Pelicula transparentă anti-copiere */
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* Secțiunea de editare poză în modal */
+.profilePictureSection {
   display: flex;
   align-items: center;
   gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
 }
-
-/* Container avatar în header - Stil WhatsApp Modern */
-.avatarContainer {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  padding: 4px; /* Spațiu pentru "inelul" de status */
-  background: linear-gradient(45deg, var(--neon), var(--cta2));
-  flex-shrink: 0;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, .4);
+/* Mărime mai mare pentru avatarul din modal */
+.avatarDisplayModal {
+  width: 100px;
+  height: 100px;
 }
-.avatarContainer img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 3px solid #0f172a; /* Culoarea de fundal a modalului */
-}
-.avatarOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: transparent;
-  z-index: 1;
-}
-
-/* Secțiune editare avatar în modal */
-.avatarEditSection {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 8px 0;
-  flex-wrap: wrap;
-}
-
-/* Container previzualizare avatar în modal - CORECȚIE MĂRIME */
-.avatarContainerModal {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  overflow: hidden;
-  position: relative;
-  background-color: rgba(255, 255, 255, .05);
-  flex-shrink: 0;
-  box-shadow: 0 0 15px rgba(0,0,0,0.2);
-}
-.avatarContainerModal img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* Asigură încadrarea perfectă */
-}
-
-/* Butoane acțiune - STIL CORECTAT */
-.avatarActions {
+.pictureActions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  flex-grow: 1;
+  gap: 10px;
 }
-
-/* Stil NOU pentru butoane secundare, în ton cu design-ul */
-.btnSecondary {
+/* Stilul NOU și CORECT pentru butoanele de acțiune */
+.actionButton {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
-  padding: 12px 16px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, .08);
-  color: #e5e7eb;
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+  color: #fff;
   font-weight: 700;
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  transition: background .2s, transform .2s;
+  backdrop-filter: blur(6px);
+  transition: background .2s, transform .1s;
 }
-.btnSecondary:hover {
-  background: rgba(255, 255, 255, .15);
+.actionButton:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,.10));
   transform: translateY(-1px);
 }
 
-/* Linie de separare */
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
-}
-
-/* === Stiluri NOI pentru Camera Foto === */
+/* Stiluri pentru interfața camerei */
 .cameraOverlay {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, .8);
-  backdrop-filter: blur(8px);
-  z-index: 4000; /* Peste modalul de editare */
+  background: rgba(0, 0, 0, .85);
+  backdrop-filter: blur(10px);
+  z-index: 4000;
 }
 .cameraModal {
-  width: 100%;
+  position: relative;
+  width: 90vw;
   max-width: 800px;
-  background: #0f172a;
+  aspect-ratio: 16/9;
   border-radius: 16px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
   border: 1px solid var(--border);
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  box-shadow: 0 0 50px rgba(0,0,0,.5);
 }
 .cameraFeed {
   width: 100%;
-  max-height: 70vh;
+  height: 100%;
   object-fit: cover;
-  transform: scaleX(-1); /* Oglindire pentru efect de selfie */
+  transform: scaleX(-1); /* Efect de oglindă */
 }
 .cameraControls {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 20px;
-  background: rgba(0,0,0,.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
 }
 .captureBtn {
-  width: 70px;
-  height: 70px;
+  width: 65px;
+  height: 65px;
   border-radius: 50%;
-  background-color: #fff;
-  border: none;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 4px solid rgba(0,0,0,0.3);
+  box-shadow: 0 0 0 4px white;
   cursor: pointer;
-  padding: 5px;
   transition: transform .15s ease;
 }
 .captureBtn:active {
-  transform: scale(0.92);
-}
-.captureBtnInner {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 3px solid #0f172a;
-  background-color: #fff;
+  transform: scale(0.9);
 }
