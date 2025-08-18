@@ -40,7 +40,7 @@
 
 /* ===== AVATAR XXL + CERC + INEL ===== */
 .avatarXxl{
-  --size: 112px;                 /* poți schimba la 96/120 dacă vrei */
+  --size: 112px;                 /* > mărește avatarul aici (ex. 96/112/120) */
   width:var(--size); height:var(--size);
   position:relative; border-radius:50%; overflow:hidden;
   border:1px solid var(--border);
@@ -56,7 +56,7 @@
   box-shadow: 0 22px 54px -24px rgba(255,106,0,.45);
 }
 
-/* inel gradient + halo */
+/* inel gradient + halo, fără 'content:' (valid CSS) */
 .avatarRing{
   position:absolute; inset:-2px; border-radius:50%;
   pointer-events:none; z-index:0;
@@ -79,7 +79,7 @@
     radial-gradient(100% 100% at 100% 100%, rgba(255,140,58,.20), transparent 60%);
 }
 
-/* pelicula anti-copy */
+/* pelicula anti-copy; lăsăm pointer-events pe auto DAR sub buton (z-index) */
 .avatarOverlay{
   position:absolute; inset:0; border-radius:50%; z-index:1;
   background:
@@ -88,7 +88,7 @@
   mix-blend-mode: soft-light;
 }
 
-/* Buton cameră — CERC rotund, stilizat */
+/* Buton cameră — CERC rotund, stilizat, deasupra overlay-ului */
 .avatarCamBtn{
   position:absolute; right:-4px; bottom:-4px;
   width:40px; height:40px; border-radius:50%;
@@ -200,7 +200,7 @@
   background: rgba(0,0,0,.45); border:1px solid var(--border);
 }
 .donutBig{ font-size:2rem; font-weight:800; }
-.donutSub{ font-size:.8rem; color: var(--muted); text-align:center; line-height:1.1; }
+.donutSub{ font-size:.8rem; color:#var(--muted); text-align:center; line-height:1.1; }
 .donutLegend{ display:grid; gap:4px; font-size:.9rem; color:#e2e8f0; text-align:center; }
 .dotLeft,.dotUsed,.dotPend,.dotTotal{
   display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle;
