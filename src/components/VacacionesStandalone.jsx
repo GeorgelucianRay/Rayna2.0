@@ -356,4 +356,8 @@ export default function VacacionesStandalone() {
               ))}
             </ul>
           )}
- 
+        </div>
+      </div>
+    </div>
+  );
+}
