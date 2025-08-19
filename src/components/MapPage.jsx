@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from './Layout';
-import styles from './MapPage.module.css';
+import styles from './MapStandalone.module.css';
 
 // O iconiță simplă pentru buton
 const BackIcon = () => (
