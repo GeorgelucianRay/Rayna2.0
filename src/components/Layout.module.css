@@ -1,3 +1,18 @@
+/* src/components/Layout.module.css */
+
+:root {
+  --glass: rgba(17, 24, 39, .65);
+  --border: rgba(148, 163, 184, .22);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #22c55e;
+  --cta1: #2563eb;
+  --cta2: #3b82f6;
+  --gold-start: #fff;
+  --gold-mid: #ffd7b1;
+  --gold-end: #ff8c3a;
+}
+
 /* =========================
    LAYOUT & BACKGROUND
    ========================= */
