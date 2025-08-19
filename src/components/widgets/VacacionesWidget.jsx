@@ -1,9 +1,11 @@
 import React from 'react';
-import styles from '../MiPerfilPage.module.css'; // Stilurile rămân deocamdată partajate
-import Donut from '../ui/Donut'; // Importăm componenta Donut!
+// import Donut from '../ui/Donut'; // Asigură-te că și calea asta e corectă
+import Donut from '../../components/ui/Donut'; // Calea corectă din widgets -> ui
 
-// Funcția `useNavigate` va fi pasată ca prop dacă este necesară, sau gestionată de părinte.
-// Aici, o vom pasa ca `onNavigate`.
+// --- AICI ESTE MODIFICAREA ---
+import styles from './VacacionesWidget.module.css';
+// -----------------------------
+
 export default function VacacionesWidget({ info, onNavigate }) {
   return (
     <section className={`${styles.card} ${styles.widget}`}>
