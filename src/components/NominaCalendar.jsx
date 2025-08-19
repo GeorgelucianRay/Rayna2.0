@@ -1,4 +1,4 @@
-// src/components/nomina/NominaCalendar.jsx
+// src/components/NominaCalendar.jsx
 import React, { useMemo } from 'react';
 import styles from './Nominas.module.css';
 
