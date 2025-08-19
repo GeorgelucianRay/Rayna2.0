@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EditProfileModal.module.css';
-
 import { CloseIcon } from '../ui/Icons';
 
 export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
   const [editableProfile, setEditableProfile] = useState(null);
 
   useEffect(() => {
-    if (profile) {
+    if (profile && isOpen) {
       setEditableProfile({
         ...profile,
         new_camion_matricula: '',
@@ -17,7 +16,7 @@ export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
   }, [profile, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     let finalValue = value;
 
     if (name === 'tiene_adr') {
