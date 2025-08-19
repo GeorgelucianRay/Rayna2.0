@@ -3,12 +3,10 @@ import './index.css';
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
-// --- Paginile refactorizate sau analizate ---
+// --- Pagina mutată ---
 import MiPerfilPage from './pages/MiPerfilPage.jsx';
-import CalculadoraNomina from './components/CalculadoraNomina.jsx';
-import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 
-// --- Restul paginilor (rămân momentan în dosarul original) ---
+// --- Toate celelalte componente/pagini rămân în dosarul original 'components' ---
 import RaynaHub from './components/RaynaHub.jsx';
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
@@ -22,8 +20,10 @@ import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
+import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './components/SchedulerPage.jsx';
+import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
