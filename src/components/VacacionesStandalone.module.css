@@ -1,182 +1,472 @@
-.container {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 1rem;
-  font-family: Arial, sans-serif;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+/* --- VARIABLE GLOBALE & SETUP --- */
+.vacWrap {
+  --bg-main: #0D1117;
+  --bg-card: #161B22;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #E6EDF3;
+  --text-secondary: #8B949E;
+  --accent-primary: #238636; /* Verde principal */
+  --accent-primary-glow: #2CC04A; /* Verde mai deschis pentru hover/glow */
+  --accent-pending: #DBAB09;
+  --accent-warn: #D85507;
+
+  /* Culori pentru buline (dots) */
+  --dot-vacacion: #30A46C;
+  --dot-personal: #2F81F7;
+  --dot-empresa: #A371F7;
+  --dot-carry: #D2A8FF;
+
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: auto;
 }
 
-.header {
+/* --- STILURI GENERALE CARD --- */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+/* --- SECTIUNI PRINCIPALE --- */
+.headerRow, .statsRow, .requestRow, .bottom {
+  width: 100%;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stat {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat span {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.stat strong {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-primary-glow);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.5rem;
+}
+
+/* Responsive pentru grid-ul principal */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- STILURI DONUT & LEGENDA --- */
+.donutBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.donut {
+  transform: rotate(-90deg);
+  width: 180px;
+  height: 180px;
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 12;
+}
+
+.donutValue {
+  fill: none;
+  stroke: var(--accent-primary-glow);
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease-in-out;
+}
+
+.donutCenter {
+  transform: rotate(90deg) translate(0, -120px); /* Ajustare pentru a anula rotația părinte */
+}
+.donutBig { font-size: 36px; font-weight: 700; fill: var(--text-primary); }
+.donutSmall { font-size: 12px; fill: var(--text-secondary); }
+.donutSmall2 { font-size: 14px; fill: var(--text-primary); }
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.legend span {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+/* --- STILURI CALENDAR --- */
+.calHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
 }
 
-.title {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: bold;
-  color: #333;
+.monthTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
-/* Container cu Donut + Legendă */
-.stats {
+.weekRow, .daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+}
+
+.weekRow {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dayCell {
+  padding: 0.5rem 0;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 2rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+.dayCell:hover {
+  background-color: var(--border-color);
+}
+
+.dayNum {
+  font-size: 0.9rem;
+}
+
+.dayDots {
+  position: absolute;
+  bottom: 8px;
+  display: flex;
+  gap: 3px;
+}
+
+.dayBlank {
+  pointer-events: none;
+}
+
+.sel {
+  background-color: rgba(35, 134, 54, 0.3); /* Verde accent cu transparență */
+  border-color: var(--accent-primary);
+}
+
+.rangeBar {
+  text-align: center;
+  margin-bottom: 1rem;
+  background-color: var(--bg-main);
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.banner {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: rgba(216, 85, 7, 0.1);
+  border: 1px solid var(--accent-warn);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--accent-warn);
+}
+
+/* --- FORMULAR DE CERERE --- */
+.requestRow {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
-.donut {
-  width: 180px;
-  height: 180px;
-}
-
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.legendItem {
+.tabs {
   display: flex;
   align-items: center;
-  font-size: 0.9rem;
-  color: #333;
+  gap: 0.5rem;
 }
 
-.legendColor {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  margin-right: 6px;
-  border: 1px solid #ccc;
-}
-
-/* Calendar grid */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.dayName {
-  font-weight: bold;
-  text-align: center;
-  padding: 6px;
-  background: #f1f1f1;
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
-.cell {
-  min-height: 80px;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fafafa;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s, border 0.2s;
-}
-
-.cell:hover {
-  background: #f0f9ff;
-  border-color: #0099ff;
-}
-
-.date {
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: #555;
-  margin-bottom: 4px;
-}
-
-/* Celule selectate pentru concediu */
-.selected {
-  background: #cce7ff;
-  border: 2px solid #007bff;
-}
-
-.range {
-  background: #99d0ff;
-  border: 2px solid #0056b3;
-}
-
-/* Butoane */
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
-  gap: 12px;
-}
-
-.button {
+.tab {
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
   font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
-.submit {
-  background: #007bff;
+.tab:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+.tabOn {
+  background-color: var(--accent-primary);
   color: #fff;
-  border: none;
+}
+.tabOn:hover {
+  background-color: var(--accent-primary-glow);
+  color: #fff;
 }
 
-.submit:hover {
-  background: #0056b3;
+.reqInputs {
+  display: flex;
+  gap: 1rem;
+  flex-grow: 1;
+  align-items: center;
 }
 
-.cancel {
-  background: #eee;
-  border: 1px solid #ccc;
-  color: #333;
-}
-
-.cancel:hover {
-  background: #ddd;
-}
-
-/* Mesaje */
-.message {
-  margin-top: 1rem;
+.reqInputs label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.9rem;
-  text-align: center;
+  color: var(--text-secondary);
+}
+
+.reqInputs input {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   padding: 0.5rem;
-  border-radius: 4px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.reqInputs input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
 }
 
-.success {
-  background: #d4edda;
-  color: #155724;
+.note {
+  flex-grow: 1;
+}
+.note input {
+  width: 100%;
 }
 
-.error {
-  background: #f8d7da;
-  color: #721c24;
+/* Butoane principale și secundare */
+.primary, .todayBtn, .iconBtn, .smallOk, .smallGhost {
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .stats {
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .donut {
-    width: 140px;
-    height: 140px;
-  }
-
-  .cell {
-    min-height: 60px;
-    font-size: 0.7rem;
-  }
+.primary {
+  background-color: var(--accent-primary);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-color: var(--accent-primary-glow);
 }
+.primary:hover {
+  background-color: var(--accent-primary-glow);
+  box-shadow: 0 0 10px rgba(44, 192, 74, 0.5);
+}
+.primary:disabled {
+  background-color: var(--text-secondary);
+  cursor: not-allowed;
+  border-color: var(--text-secondary);
+}
+
+.todayBtn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+}
+.todayBtn:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.iconBtn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+.iconBtn:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+
+/* --- LISTA DE ACTIVITATE --- */
+.activity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activityItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: var(--bg-main);
+  transition: background-color 0.2s ease;
+}
+.activityItem:hover {
+  background-color: #21262d; /* O nuanță puțin mai deschisă */
+}
+
+.activityLeft, .activityRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stateDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.ok {
+  background-color: rgba(35, 134, 54, 0.2);
+  color: var(--accent-primary-glow);
+}
+
+.pending {
+  background-color: rgba(219, 171, 9, 0.2);
+  color: var(--accent-pending);
+}
+
+.kind {
+  font-weight: 600;
+  display: block;
+}
+
+.range {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  text-transform: uppercase;
+}
+.badgeOk {
+  background-color: rgba(35, 134, 54, 0.3);
+  color: var(--accent-primary-glow);
+}
+.badgePend {
+  background-color: rgba(219, 171, 9, 0.3);
+  color: var(--accent-pending);
+}
+
+.mod {
+  display: flex;
+  gap: 0.5rem;
+}
+.smallOk {
+  background-color: var(--accent-primary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+.smallGhost {
+  background: none;
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+.smallGhost:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+
+/* --- CLASE SPECIFICE PENTRU DOTS --- */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.vac { background-color: var(--dot-vacacion); }
+.per { background-color: var(--dot-personal); }
+.emp { background-color: var(--dot-empresa); }
+.car { background-color: var(--dot-carry); }
