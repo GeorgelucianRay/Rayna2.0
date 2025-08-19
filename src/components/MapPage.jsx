@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from './Layout';
-import styles from './MapStandalone.module.css';
+// --- AICI ESTE MODIFICAREA ---
+import styles from './mapstandaloen.module.css';
+// -----------------------------
 
 // O iconiță simplă pentru buton
 const BackIcon = () => (
@@ -13,8 +15,6 @@ const BackIcon = () => (
 export default function MapPage() {
   const navigate = useNavigate();
 
-  // Presupunem că ruta către homepage este '/sofer-homepage' sau '/dispecer-homepage'
-  // O vom lăsa generic '/rayna-hub' pentru a funcționa pentru toți
   const handleBackToHomepage = () => {
     navigate('/rayna-hub'); 
   };
