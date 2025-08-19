@@ -48,8 +48,12 @@ function App() {
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
       {/* Vacaciones */}
-      <Route path="/vacaciones" element={<VacacionesStandalone />} />
+      <Route path="/VacacionesStandalone" element={<VacacionesStandalone />} />
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
+
+      {/* Alias-uri (ca să nu dea 404 dacă se folosește varianta veche) */}
+      <Route path="/vacaciones" element={<Navigate to="/VacacionesStandalone" replace />} />
+      <Route path="/vacaciones-standalone" element={<Navigate to="/VacacionesStandalone" replace />} />
 
       {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
