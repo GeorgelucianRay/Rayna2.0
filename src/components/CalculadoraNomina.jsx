@@ -1,13 +1,17 @@
 // src/components/CalculadoraNomina.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Layout from './Layout';
 import styles from './Nominas.module.css';
 import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
 import ParteDiarioModal from './ParteDiarioModal';
 import NominaResultCard from './NominaResultCard';
+import { supabase } from '../supabaseClient';
+import { useAuth } from '../AuthContext';
 
 export default function CalculadoraNomina() {
+  const { profile } = useAuth();
+  
   const monthNames = useMemo(
     () => ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
     []
@@ -51,20 +55,135 @@ export default function CalculadoraNomina() {
   const [isParteOpen, setIsParteOpen] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
-  const openParte = (idx) => { setSelectedDayIndex(idx); setIsParteOpen(true); };
-  const closeParte = () => { setSelectedDayIndex(null); setIsParteOpen(false); };
+  // Load config from Supabase on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      if (!profile?.id) return;
+      
+      const { data, error } = await supabase
+        .from('config_nomina')
+        .select('*')
+        .eq('user_id', profile.id)
+        .single();
+      
+      if (data && !error) {
+        setConfig({
+          salario_base: data.salario_base || defaultConfig.salario_base,
+          antiguedad: data.antiguedad || defaultConfig.antiguedad,
+          precio_dia_trabajado: data.precio_dia_trabajado || defaultConfig.precio_dia_trabajado,
+          precio_desayuno: data.precio_desayuno || defaultConfig.precio_desayuno,
+          precio_cena: data.precio_cena || defaultConfig.precio_cena,
+          precio_procena: data.precio_procena || defaultConfig.precio_procena,
+          precio_km: data.precio_km || defaultConfig.precio_km,
+          precio_contenedor: data.precio_contenedor || defaultConfig.precio_contenedor,
+        });
+      }
+    };
+    
+    loadConfig();
+  }, [profile?.id, defaultConfig]);
+
+  // Load pontaj data from Supabase when month changes
+  useEffect(() => {
+    const loadPontaj = async () => {
+      if (!profile?.id) return;
+      
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1; // Supabase uses 1-based months
+      
+      const { data, error } = await supabase
+        .from('pontaj_diario')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('year', year)
+        .eq('month', month)
+        .order('day', { ascending: true });
+      
+      if (data && !error) {
+        const newPontaj = makePontajForMonth(currentDate);
+        data.forEach(item => {
+          if (item.day >= 1 && item.day <= newPontaj.length) {
+            newPontaj[item.day - 1] = {
+              desayuno: item.desayuno || false,
+              cena: item.cena || false,
+              procena: item.procena || false,
+              km_iniciar: item.km_iniciar || '',
+              km_final: item.km_final || '',
+              contenedores: item.contenedores || 0,
+              suma_festivo: item.suma_festivo || 0
+            };
+          }
+        });
+        setZilePontaj(newPontaj);
+      } else {
+        setZilePontaj(makePontajForMonth(currentDate));
+      }
+    };
+    
+    loadPontaj();
+  }, [currentDate, profile?.id]);
+
+  const openParte = (idx) => { 
+    setSelectedDayIndex(idx); 
+    setIsParteOpen(true); 
+  };
+  
+  const closeParte = () => { 
+    setSelectedDayIndex(null); 
+    setIsParteOpen(false); 
+  };
+
+  const savePontajDay = async (dayIndex, dayData) => {
+    if (!profile?.id) return;
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+    const day = dayIndex + 1;
+    
+    const { error } = await supabase
+      .from('pontaj_diario')
+      .upsert({
+        user_id: profile.id,
+        year: year,
+        month: month,
+        day: day,
+        desayuno: dayData.desayuno || false,
+        cena: dayData.cena || false,
+        procena: dayData.procena || false,
+        km_iniciar: dayData.km_iniciar || 0,
+        km_final: dayData.km_final || 0,
+        contenedores: dayData.contenedores || 0,
+        suma_festivo: dayData.suma_festivo || 0,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,year,month,day'
+      });
+    
+    if (error) {
+      console.error('Error saving pontaj:', error);
+    }
+  };
 
   const onParteValue = (name, value) => {
     setZilePontaj(prev => {
       const arr = [...prev];
       arr[selectedDayIndex] = { ...arr[selectedDayIndex], [name]: value };
+      
+      // Save to Supabase
+      savePontajDay(selectedDayIndex, arr[selectedDayIndex]);
+      
       return arr;
     });
   };
+  
   const onParteToggle = (field) => {
     setZilePontaj(prev => {
       const arr = [...prev];
       arr[selectedDayIndex] = { ...arr[selectedDayIndex], [field]: !arr[selectedDayIndex][field] };
+      
+      // Save to Supabase
+      savePontajDay(selectedDayIndex, arr[selectedDayIndex]);
+      
       return arr;
     });
   };
@@ -72,17 +191,17 @@ export default function CalculadoraNomina() {
   const goPrevMonth = () => {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     setCurrentDate(d);
-    setZilePontaj(makePontajForMonth(d));
   };
+  
   const goNextMonth = () => {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     setCurrentDate(d);
-    setZilePontaj(makePontajForMonth(d));
   };
 
   const [result, setResult] = useState(null);
+  
   const calc = () => {
-    let d=0,c=0,p=0, km=0, cont=0, plus=0;
+    let d=0, c=0, p=0, km=0, cont=0, plus=0;
     const worked = new Set();
 
     zilePontaj.forEach((z, i) => {
@@ -161,6 +280,7 @@ export default function CalculadoraNomina() {
               config={config}
               onChange={setConfig}
               onSave={() => setShowConfig(false)}
+              userId={profile?.id}
             />
           )}
 
