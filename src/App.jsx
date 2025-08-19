@@ -51,10 +51,6 @@ function App() {
       <Route path="/vacaciones" element={<VacacionesStandalone />} />
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
-      {/* 🔥 Alias-uri pentru a evita 404 */}
-      <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
-      <Route path="/VacacionesStandalone" element={<VacacionesStandalone />} />
-
       {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
       <Route path="/remorca/:id" element={<RemorcaPage />} />
