@@ -1,8 +1,10 @@
 import React from 'react';
-import styles from '../MiPerfilPage.module.css';
-import MiniCalendar from '../ui/MiniCalendar'; // Importăm componenta MiniCalendar!
+import MiniCalendar from '../ui/MiniCalendar'; // Asigură-te că și calea asta e corectă
 
-// Funcție helper pentru a formata titlul lunii, pe care o putem aduce aici sau într-un fișier de utilități
+// --- AICI ESTE MODIFICAREA ---
+import styles from './NominaWidget.module.css';
+// -----------------------------
+
 const monthLabelES = (d) =>
   d
     .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
