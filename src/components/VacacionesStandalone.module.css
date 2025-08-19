@@ -1,378 +1,795 @@
-/* ===== Dark Futuristic Theme ===== */
-
-/* Paletă & variabile */
+/* --- Culori și Variabile Globale --- */
 :root {
-  /* Background & surfaces */
-  --bg-page: #0b0f17;                /* fundal scenă */
-  --bg-page-grad1: #0b0f17;
-  --bg-page-grad2: #0a1322;
-  --bg-card: rgba(19, 26, 39, 0.6);  /* sticlă */
-  --bg-card-strong: rgba(19, 26, 39, 0.9);
-  --panel: rgba(19, 26, 39, 0.65);
-
-  /* Borde & linii */
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.12);
-
-  /* Text */
-  --text-primary: #e8eef8;
-  --text-secondary: #9aa6b2;
-  --text-muted: #6b7785;
-
-  /* Accente „neon” */
-  --accent-blue: #20b8ff;
-  --accent-blue-hover: #46c8ff;
-  --accent-cyan: #17e6c3;
-  --accent-cyan-20: rgba(23, 230, 195, 0.2);
-
-  /* Status */
-  --status-green: #17e6c3;
-  --status-yellow: #ffc857;
-  --status-orange: #ff9d3c;
-  --status-red: #ff5c7c;
-
-  /* Dots */
-  --dot-vacacion: #20b8ff;   /* vacación (dacă apare) */
-  --dot-personal: #17e6c3;
-  --dot-empresa: #ffc857;
-  --dot-carry: #93a1ad;
-
-  /* Umbre / glow */
-  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --glow: 0 0 0 1px rgba(32, 184, 255, 0.15), 0 0 24px rgba(32, 184, 255, 0.12);
+  --bg-page: #f8f9fa;
+  --bg-card: #ffffff;
+  --border-color: #dee2e6;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --accent-blue: #0d6efd;
+  --accent-blue-hover: #0b5ed7;
+  --status-green: #198754;
+  --status-yellow: #ffc107;
+  --status-orange: #fd7e14;
+  --status-red: #dc3545;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  
+  /* Culori pentru dots */
+  --dot-vacacion: #0d6efd;
+  --dot-personal: #198754;
+  --dot-empresa: #ffc107;
+  --dot-carry: #6c757d;
 }
 
-/* fundal scenă */
+/* --- Layout Principal --- */
 .vacWrap {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(32,184,255,0.08), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(23,230,195,0.07), transparent 60%),
-    linear-gradient(180deg, var(--bg-page-grad1), var(--bg-page-grad2));
-  border-radius: 18px;
 }
 
-/* header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 .headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  padding-bottom: 1.25rem;
+  padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
 }
+
 .title {
-  font-size: 2.2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.3px;
+  margin: 0;
 }
-.todayBtn, .backButton {
+
+.todayBtn {
   padding: 0.5rem 1rem;
-  background: var(--panel);
+  background-color: white;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
-  transition: all .2s ease;
-  backdrop-filter: blur(6px);
-}
-.todayBtn:hover, .backButton:hover {
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-  box-shadow: var(--glow);
+  transition: all 0.2s ease;
 }
 
-/* stats */
+.todayBtn:hover {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.gridTop, .grid2, .grid3, .grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.gridTop { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.grid2 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.grid3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.grid { grid-template-columns: 1fr 2fr; }
+
+/* --- Stats Row --- */
 .statsRow {
   display: flex;
   gap: 2rem;
   margin-bottom: 2rem;
 }
-.stat span { color: var(--text-muted); }
-.stat strong { color: var(--text-primary); }
 
-/* grid layout */
-.grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr 2fr; }
-
-/* card sticlă + contur subțire + glow discret */
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 1.25rem;
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(10px) saturate(120%);
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
-.cardTitle { color: var(--text-primary); }
 
-/* Donut */
-.donutBox { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-.donut { width: 200px; height: 200px; }
-.donutTrack { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 12; }
+.stat span {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.stat strong {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Stiluri pentru Carduri --- */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.cardTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+/* --- Donut Chart --- */
+.donutBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.donut {
+  width: 180px;
+  height: 180px;
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 10;
+}
+
 .donutValue {
   fill: none;
-  stroke: var(--accent-cyan);
-  stroke-width: 12;
+  stroke: var(--status-green);
+  stroke-width: 10;
   stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: center;
-  transition: stroke-dasharray .6s ease;
-  filter: drop-shadow(0 0 10px rgba(23,230,195,0.45));
+  transition: stroke-dasharray 0.5s ease;
 }
-.donutBig { font-size: 2.3rem; font-weight: 800; fill: var(--text-primary); }
-.donutSmall, .donutSmall2 { fill: var(--text-secondary); }
-.legend { gap: 1.25rem; }
-.legend li { color: var(--text-secondary); }
-.legend span { color: var(--text-primary); }
 
-/* Calendar */
-.calHeader {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
+.donutCenter {
+  dominant-baseline: middle;
 }
-.monthTitle { color: var(--text-primary); font-weight: 700; }
-.iconBtn {
-  width: 36px; height: 36px; display: grid; place-items: center;
-  background: var(--panel);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
+
+.donutBig {
+  font-size: 2rem;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.donutSmall {
+  font-size: 0.875rem;
+  fill: var(--text-secondary);
+}
+
+.donutSmall2 {
+  font-size: 0.75rem;
+  fill: var(--text-secondary);
+}
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
-  cursor: pointer; transition: all .2s ease; backdrop-filter: blur(6px);
 }
-.iconBtn:hover { color: var(--text-primary); border-color: var(--border-strong); box-shadow: var(--glow); }
+
+.legend span {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --- Calendar --- */
+.calHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.monthTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
 
 .rangeBar {
-  padding: .75rem; border-radius: 10px; text-align: center; font-weight: 600;
-  background: linear-gradient(180deg, rgba(32,184,255,0.10), rgba(23,230,195,0.08));
-  color: var(--text-primary); border: 1px solid rgba(255,255,255,0.08);
+  padding: 0.75rem;
+  background-color: var(--bg-page);
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
 }
 
-.weekRow { display: grid; grid-template-columns: repeat(7, 1fr); gap: .5rem; margin-bottom: .5rem; }
-.weekRow span { text-align: center; font-size: .75rem; font-weight: 700; color: var(--text-muted); letter-spacing: .6px; }
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
 
-.daysGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .5rem; }
-.dayBlank { aspect-ratio: 1; }
+.weekRow span {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.dayBlank {
+  aspect-ratio: 1;
+}
 
 .dayCell {
   aspect-ratio: 1;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: .5rem;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; transition: all .16s ease; user-select: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border-radius: 6px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
 }
+
 .dayCell:hover {
-  border-color: var(--border-strong);
-  box-shadow: inset 0 0 0 1px rgba(32,184,255,0.2), 0 0 0 1px rgba(32,184,255,0.06);
+  background-color: var(--bg-page);
+  border-color: var(--accent-blue);
 }
+
 .dayCell.sel {
-  background: linear-gradient(180deg, rgba(32,184,255,0.12), rgba(23,230,195,0.10));
-  border-color: rgba(32,184,255,0.35);
-  box-shadow: 0 0 0 1px rgba(32,184,255,0.18), 0 0 24px rgba(32,184,255,0.12);
+  background-color: rgba(13, 110, 253, 0.1);
+  border-color: var(--accent-blue);
 }
 
-.dayNum { color: var(--text-primary); font-weight: 600; }
-.dayDots { display: flex; gap: .25rem; margin-top: .25rem; }
-
-/* Banner overlap */
-.banner {
-  margin-top: 1rem; padding: .8rem 1rem; border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,200,87,0.12), rgba(255,200,87,0.07));
-  border: 1px solid rgba(255,200,87,0.35);
-  color: #ffd995; font-size: .9rem; font-weight: 600;
-}
-
-/* Request row */
-.requestRow {
-  display: flex; align-items: center; gap: 1rem;
-  padding: 1.25rem; border-radius: 14px; margin: 2rem 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  backdrop-filter: blur(10px);
-}
-.tabs { display: flex; gap: .5rem; }
-.tab {
-  padding: .55rem 1rem; background: var(--panel);
-  border: 1px solid var(--border-color); border-radius: 10px;
-  color: var(--text-secondary); font-weight: 700; cursor: pointer; transition: all .16s ease;
-  backdrop-filter: blur(6px);
-}
-.tab:hover { color: var(--text-primary); border-color: var(--border-strong); }
-.tabOn {
-  background: linear-gradient(180deg, rgba(32,184,255,0.18), rgba(23,230,195,0.14));
-  color: #e9fbff; border-color: rgba(32,184,255,0.45);
-  box-shadow: var(--glow);
-}
-.tabOn:hover { background: linear-gradient(180deg, rgba(32,184,255,0.24), rgba(23,230,195,0.2)); }
-
-.reqInputs { display: flex; gap: 1rem; flex: 1; }
-.reqInputs label { color: var(--text-secondary); font-weight: 600; }
-.reqInputs input {
-  padding: .6rem .8rem; border: 1px solid var(--border-color); border-radius: 10px;
-  background: rgba(0,0,0,0.25); color: var(--text-primary);
-}
-.reqInputs input:focus {
-  outline: none; border-color: rgba(32,184,255,0.5);
-  box-shadow: 0 0 0 3px rgba(32,184,255,0.18);
-}
-.note { flex: 2; }
-
-/* Butoane */
-.primary, .ghost, .backBtn, .backButton, .smallOk, .smallGhost {
-  padding: .7rem 1.2rem; font-size: .95rem; font-weight: 700;
-  border-radius: 12px; cursor: pointer; transition: all .16s ease; border: 1px solid transparent;
-}
-.primary {
-  background: linear-gradient(180deg, #28d3ff, #17a9ff);
-  color: #07121c; border-color: rgba(32,184,255,0.6);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
-}
-.primary:hover { filter: brightness(1.07); box-shadow: var(--glow); }
-.primary:disabled { opacity: .6; cursor: not-allowed; }
-.ghost {
-  background: var(--panel); color: var(--text-secondary); border-color: var(--border-color);
-}
-.ghost:hover { color: var(--text-primary); border-color: var(--border-strong); box-shadow: var(--glow); }
-
-/* Activitate */
-.bottom { margin-top: 2rem; }
-.activityItem {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 1rem; border-bottom: 1px solid var(--border-color);
-  transition: background .16s ease;
-}
-.activityItem:hover { background: rgba(255,255,255,0.02); }
-.stateDot {
-  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-  background: rgba(255,255,255,0.08); color: #061017;
-}
-.stateDot.ok { background: var(--status-green); color: #041214; }
-.stateDot.pending { background: #a07f2b; }
-.kind { color: var(--text-primary); }
-.range { color: var(--text-secondary); }
-
-/* Badges */
-.badge { padding: .35rem .7rem; font-size: .7rem; font-weight: 800; border-radius: 999px; }
-.badgeOk { background: rgba(23,230,195,0.18); color: var(--status-green); }
-.badgeWarn { background: rgba(255,200,87,0.18); color: #ffd995; }
-.badgePend { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
-.badgeGrey { background: rgba(255,255,255,0.08); color: var(--text-muted); text-decoration: line-through; }
-
-/* Dots */
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px rgba(255,255,255,0.08) inset; }
-.vac { background: var(--dot-vacacion); }
-.per { background: var(--dot-personal); }
-.emp { background: var(--dot-empresa); }
-.car { background: var(--dot-carry); }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .vacWrap { padding: 1rem; }
-  .grid { grid-template-columns: 1fr; }
-  .statsRow { flex-direction: column; gap: 1rem; }
-  .requestRow { flex-direction: column; align-items: stretch; gap: 1rem; }
-  .reqInputs { flex-direction: column; width: 100%; }
-  .headerRow { flex-direction: column; align-items: flex-start; gap: 1rem; }
-  .title { font-size: 2rem; }
-  .tabs { width: 100%; }
-  .tab { flex: 1; text-align: center; }
-  .daysGrid { gap: .3rem; }
-  .dayCell { padding: .3rem; }
-  .donut { width: 170px; height: 170px; }
-}
-
-/* ==== FIX PACK: force dark, override light CSS from global libs ==== */
-
-/* 1) Bază dark pentru întreaga pagină (peste Bootstrap etc.) */
-:global(html), :global(body), :global(#root) {
-  background: #0b0f17 !important;
-  color: #e8eef8 !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark;
-}
-
-/* 2) Containerul componentei – „scene” gradient + padding mobil corect */
-.vacWrap {
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(32,184,255,0.08), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(23,230,195,0.07), transparent 60%),
-    linear-gradient(180deg, var(--bg-page-grad1), var(--bg-page-grad2)) !important;
-  border-radius: 18px;
-}
-
-/* 3) Carduri: forțăm sticlă întunecată chiar dacă există .card din Bootstrap */
-.vacWrap :where(.card) {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-primary) !important;
-  box-shadow: var(--shadow-sm) !important;
-  backdrop-filter: blur(10px) saturate(120%) !important;
-}
-
-/* 4) Butoane generice din componentă – închise + accente neon */
-.vacWrap :where(.todayBtn, .backButton, .iconBtn, .tab, .primary, .ghost) {
-  background: var(--panel) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-secondary) !important;
-}
-.vacWrap :where(.primary) {
-  background: linear-gradient(180deg, #28d3ff, #17a9ff) !important;
-  color: #07121c !important;
-  border-color: rgba(32,184,255,0.6) !important;
-}
-
-/* 5) Texturi & titluri */
-.title,
-.cardTitle,
-.monthTitle,
-.stat strong,
 .dayNum {
-  color: var(--text-primary) !important;
-}
-.stat span,
-.range,
-.weekRow span {
-  color: var(--text-secondary) !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
-/* 6) Donut: culori corecte pe dark */
-.donutTrack { stroke: rgba(255,255,255,0.08) !important; }
-.donutValue {
-  stroke: var(--accent-cyan) !important;
-  filter: drop-shadow(0 0 10px rgba(23,230,195,0.45)) !important;
-}
-.donutBig, .donutSmall, .donutSmall2 { fill: var(--text-primary) !important; }
-.donutSmall, .donutSmall2 { fill: var(--text-secondary) !important; }
-
-/* 7) Calendar – selecții/hover pe întunecat */
-.dayCell { background: rgba(255,255,255,0.03) !important; }
-.dayCell:hover {
-  border-color: var(--border-strong) !important;
-  box-shadow: inset 0 0 0 1px rgba(32,184,255,0.2), 0 0 0 1px rgba(32,184,255,0.06) !important;
-}
-.dayCell.sel {
-  background: linear-gradient(180deg, rgba(32,184,255,0.12), rgba(23,230,195,0.10)) !important;
-  border-color: rgba(32,184,255,0.35) !important;
+.dayDots {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
 }
 
-/* 8) Banner overlap & badges mai vizibile pe dark */
 .banner {
-  background: linear-gradient(180deg, rgba(255,200,87,0.12), rgba(255,200,87,0.07)) !important;
-  border: 1px solid rgba(255,200,87,0.35) !important;
-  color: #ffd995 !important;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid var(--status-yellow);
+  border-radius: 6px;
+  color: #664d03;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
-.badgePend { background: rgba(255,255,255,0.08) !important; color: var(--text-secondary) !important; }
 
-/* 9) Dots */
-.dot { box-shadow: 0 0 8px rgba(255,255,255,0.08) inset !important; }
+/* --- Formulare și Intrări --- */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
-/* 10) Mobile tweaks – spacing corect pe iOS Safari */
+.inputGroup label, .row label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.inputGroup input, .row input, .row select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputGroup input:focus, .row input:focus, .row select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+/* --- Request Row --- */
+.requestRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background-color: var(--bg-page);
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab {
+  padding: 0.5rem 1rem;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background-color: var(--bg-page);
+}
+
+.tabOn {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.tabOn:hover {
+  background-color: var(--accent-blue-hover);
+}
+
+.reqInputs {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+}
+
+.reqInputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.reqInputs input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.note {
+  flex: 2;
+}
+
+.note input {
+  width: 100%;
+}
+
+/* --- Butoane --- */
+.primary, .ghost, .backBtn, .backButton, .smallOk, .smallGhost {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.primary:disabled, .ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.primary:hover {
+  background-color: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  margin-top: 1rem;
+}
+
+.ghost:hover {
+  background-color: #f8f9fa;
+  color: var(--text-primary);
+  border-color: #ced4da;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+}
+
+.backBtn:hover {
+  color: var(--text-primary);
+  background-color: #e9ecef;
+}
+
+/* --- MODIFICARE: Adăugăm stil pentru butonul de revenire --- */
+.backButton {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* --- Activity Section --- */
+.bottom {
+  margin-top: 2rem;
+}
+
+.activity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activityItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease;
+}
+
+.activityItem:hover {
+  background-color: var(--bg-page);
+}
+
+.activityItem:last-child {
+  border-bottom: none;
+}
+
+.activityLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.activityRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stateDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--border-color);
+}
+
+.stateDot.ok {
+  background-color: var(--status-green);
+  color: white;
+}
+
+.stateDot.pending {
+  background-color: var(--status-yellow);
+}
+
+.kind {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.range {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* --- Tabel de Evenimente --- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th, .table td {
+  padding: 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.table thead {
+  background-color: #f8f9fa;
+}
+
+.table th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* --- Badge-uri de Stare --- */
+.badge {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.badgeOk { 
+  background-color: rgba(25, 135, 84, 0.2); 
+  color: var(--status-green); 
+}
+
+.badgeWarn { 
+  background-color: rgba(255, 193, 7, 0.2); 
+  color: #664d03; 
+}
+
+.badgePend { 
+  background-color: #e9ecef; 
+  color: var(--text-secondary); 
+}
+
+.badgeGrey { 
+  background-color: #e9ecef; 
+  color: var(--text-secondary); 
+  text-decoration: line-through; 
+}
+
+/* --- Butoane de Acțiune în Tabel --- */
+.rowBtns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.smallOk, .smallGhost {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.smallOk { 
+  background-color: var(--status-green); 
+  color: white; 
+  border-color: var(--status-green); 
+}
+
+.smallOk:hover { 
+  opacity: 0.8; 
+}
+
+.smallGhost { 
+  background-color: white; 
+  color: var(--text-secondary); 
+  border-color: var(--border-color); 
+}
+
+.smallGhost:hover { 
+  background-color: #f8f9fa; 
+}
+
+/* --- Componente Specifice --- */
+.saldoRow {
+  padding: 1.25rem;
+  background-color: #f8f9fa;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.left {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--status-green);
+}
+
+.metaLine {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.errorLine {
+  color: var(--status-red);
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid var(--status-red);
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* --- CLASE SPECIFICE PENTRU DOTS --- */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.vac { 
+  background-color: var(--dot-vacacion); 
+}
+
+.per { 
+  background-color: var(--dot-personal); 
+}
+
+.emp { 
+  background-color: var(--dot-empresa); 
+}
+
+.car { 
+  background-color: var(--dot-carry); 
+}
+
+/* --- MODIFICARE: Corecții pentru ecrane mici (Responsive) --- */
 @media (max-width: 768px) {
-  .headerRow { padding-top: .25rem; }
-  .donut { width: 170px !important; height: 170px !important; }
+  .vacWrap {
+    padding: 1rem;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .statsRow {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .requestRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .reqInputs {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  
+  .note input {
+    width: 100%;
+  }
+  
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .tabs {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .tab {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .daysGrid {
+    gap: 0.25rem;
+  }
+  
+  .dayCell {
+    padding: 0.25rem;
+  }
+  
+  .dayNum {
+    font-size: 0.75rem;
+  }
+  
+  .donut {
+    width: 150px;
+    height: 150px;
+  }
 }
