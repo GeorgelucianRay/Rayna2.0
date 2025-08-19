@@ -1,24 +1,15 @@
 /* src/components/modales/UploadAvatarModal.module.css */
 
-/* Generic Modal Styles */
 .modalOverlay {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 16px;
+  position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
   background: radial-gradient(1200px 800px at 50% 30%, rgba(0,0,0,0.55), rgba(0,0,0,0.82));
-  backdrop-filter: blur(6px);
-  z-index: 3000;
+  backdrop-filter: blur(6px); z-index: 3000;
   animation: fadeIn .18s ease-out;
 }
 
 .modal {
   background: linear-gradient(180deg, rgba(10,12,20,0.86), rgba(17,24,39,0.9));
-  color: #fff;
-  width: 100%;
-  max-width: 500px; /* Adjusted for this modal */
-  border-radius: 1rem;
+  color: #fff; width: 100%; max-width: 500px; border-radius: 1rem;
   border: 1px solid var(--border);
   box-shadow: 0 40px 90px -20px rgba(0,0,0,0.72);
   overflow: hidden;
@@ -26,107 +17,60 @@
 }
 
 .modalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.1rem 1.2rem 1rem;
-  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.2rem 1rem; border-bottom: 1px solid var(--border);
 }
 
 .modalBody {
-  padding: 1.1rem 1.2rem 1.2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;
 }
 
 .modalFooter {
-  padding: 0 1.2rem 1.2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  padding: 0 1.2rem 1.2rem; display: flex; justify-content: space-between; align-items: center; gap: 10px;
 }
 
-/* Specific Styles for Upload Modal */
+/* Stiluri specifice */
 .choiceGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%;
 }
 
 .choiceCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 1.5rem 1rem; border-radius: 14px;
   background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
-  border: 1px solid var(--border);
-  cursor: pointer;
-  color: #fff;
+  border: 1px solid var(--border); cursor: pointer; color: #fff;
   transition: all .12s ease;
 }
-
 .choiceCard:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 30px rgba(0,0,0,.35);
   border-color: rgba(255,255,255,.25);
 }
-
-.choiceIcon { font-size: 1.8rem; }
+.choiceIcon { font-size: 2.5rem; }
 .choiceTitle { font-weight: 800; }
 
 .previewWrapXL {
-  margin-top: 6px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  position: relative;
+  margin-top: 6px; width: 200px; height: 200px; border-radius: 50%;
+  border: 1px solid var(--border); overflow: hidden; position: relative;
   box-shadow: 0 10px 36px rgba(0,0,0,.35);
 }
+.previewImg { width: 100%; height: 100%; object-fit: cover; }
 
-.previewImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Buttons and Animations */
+/* Butoane */
 .iconBtn {
-  background: transparent;
-  border: 1px solid rgba(148,163,184,0.28);
-  color: #cbd5e1;
-  cursor: pointer;
-  border-radius: .55rem;
-  padding: .45rem;
+  background: transparent; border: 1px solid rgba(148,163,184,0.28); color: #cbd5e1;
+  cursor: pointer; border-radius: .55rem; padding: .45rem;
 }
-
 .btnGhost {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.26);
+  padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.26);
   background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
-  color: #f3f4f6;
-  font-weight: 800;
-  cursor: pointer;
+  color: #f3f4f6; font-weight: 800; cursor: pointer;
 }
-
 .btnPrimary {
-  padding: 10px 14px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ff8c3a, #ff6a00);
-  color: #0b0f1a;
-  font-weight: 800;
-  cursor: pointer;
+  padding: 10px 14px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #ff8c3a, #ff6a00); color: #0b0f1a; font-weight: 800; cursor: pointer;
 }
 
+/* Animații */
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
