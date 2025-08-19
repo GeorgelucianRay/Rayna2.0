@@ -1,5 +1,6 @@
 // src/App.jsx
 import './index.css';
+
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // --- Pagini existente ---
@@ -43,14 +44,16 @@ function App() {
 
       <Route path="/depot" element={<DepotPage />} />
       <Route path="/gps" element={<GpsPage />} />
+
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
       {/* Vacaciones */}
       <Route path="/vacaciones" element={<VacacionesStandalone />} />
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
-      {/* 🔥 Aliasuri pentru a evita 404 */}
+
+      {/* 🔥 Alias-uri pentru a evita 404 */}
+      <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
       <Route path="/VacacionesStandalone" element={<VacacionesStandalone />} />
-      <Route path="/VacacionesAdminStandalone/:id" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
       <Route path="/camion/:id" element={<CamionPage />} />
