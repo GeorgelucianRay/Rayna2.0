@@ -13,7 +13,7 @@ import HomepageDispecer from './components/HomepageDispecer.jsx';
 import HomepageSofer from './components/HomepageSofer.jsx';
 import DepotPage from './components/DepotPage.jsx';
 import GpsPage from './components/GpsPage.jsx';
-import MiPerfilPage from './components/MiPerfilPage.jsx';
+import MiPerfilPage from './pages/MiPerfilPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
 import TallerPage from './components/TallerPage.jsx';
