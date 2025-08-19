@@ -1,93 +1,21 @@
-/* src/components/widgets/NominaWidget.module.css */
-
 .card {
-  background: var(--glass);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 16px;
-  box-shadow: 0 16px 40px -20px rgba(0, 0, 0, .6);
+  background: var(--glass); border: 1px solid var(--border); border-radius: 1rem; padding: 16px;
 }
-
-.widget {
-  overflow: hidden;
-}
-
-.widgetHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.cardTitle {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: .2px;
-  color: #e6faff;
-}
-
+.widget { overflow: hidden; }
+.widgetHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cardTitle { margin: 0; font-size: 1.05rem; font-weight: 800; }
 .badge {
-  background: rgba(105, 131, 255, .22);
-  border: 1px solid rgba(105, 131, 255, .35);
-  color: #c7d2fe;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: .75rem;
+  background: rgba(105,131,255,.22); border: 1px solid rgba(105,131,255,.35);
+  color: #c7d2fe; padding: 4px 10px; border-radius: 999px; font-weight: 800; font-size: .75rem;
 }
-
-.widgetBody {
-  display: flex;
-  gap: 16px;
-  align-items: stretch;
-  flex-wrap: wrap;
-}
-
-.widgetCol {
-  flex: 1 1 260px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.widgetColMiniCal {
-  flex: 0 0 260px;
-}
-
-.statLine {
-  font-size: .95rem;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.dotSep {
-  margin-left: 8px;
-}
-
-.statLine2 {
-  color: #dbeafe;
-  text-shadow: 0 0 10px rgba(0, 0, 0, .25);
-}
-
+.widgetBody { display: flex; gap: 16px; align-items: stretch; flex-wrap: wrap; }
+.widgetCol { flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; }
+.widgetColMiniCal { flex: 0 0 260px; }
+.statLine { font-size: .95rem; }
+.statLine2 { color: #dbeafe; }
 .cta {
-  margin-top: auto;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 12px;
+  margin-top: auto; padding: 12px; border: none; border-radius: 12px;
   background: linear-gradient(90deg, var(--cta1), var(--cta2));
-  color: #fff;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform .12s, box-shadow .12s;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, .25);
+  color: #fff; font-weight: 800; cursor: pointer;
 }
-
-.cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(37, 99, 235, .35);
-}
+.miniCalTitle { font-weight: 800; margin-bottom: 6px; }
