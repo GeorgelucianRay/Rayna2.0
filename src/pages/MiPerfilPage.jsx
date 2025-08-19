@@ -7,68 +7,116 @@ import { supabase } from '../supabaseClient';
 import Layout from '../components/Layout';
 import styles from './MiPerfilPage.module.css';
 
-// Componente UI & Widget-uri
+// Componente UI & Widget-uri (cu căile corecte conform structurii tale)
 import { EditIcon, CameraIcon } from '../components/ui/Icons';
 import VacacionesWidget from '../components/widgets/VacacionesWidget';
 import NominaWidget from '../components/widgets/NominaWidget';
 
-// Componente Modale
-import EditProfileModal from '../components/modals/EditProfileModal';
-import UploadAvatarModal from '../components/modals/UploadAvatarModal';
-
-// (Vom crea acest hook în pasul următor, dar îl includem acum pentru a vedea scopul final)
-// import { useAvatarUpload } from '../hooks/useAvatarUpload'; 
+// Componente Modale (cu căile corecte conform structurii tale)
+import EditProfileModal from '../components/modales/EditProfileModal';
+import UploadAvatarModal from '../components/modales/UploadAvatarModal';
 
 export default function MiPerfilPage() {
   const { user, profile, loading, setProfile } = useAuth();
   const navigate = useNavigate();
 
-  // --- Starea paginii este acum mult mai simplă ---
+  // Starea paginii
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   
-  // --- Aici vom folosi hook-uri pentru logica complexă (momentan inline) ---
-  const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0 });
+  // Starea pentru widget-uri
+  const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
   const [nominaMarks, setNominaMarks] = useState(new Set());
-  const currentDate = new Date(); // Simplificat
+  const currentDate = new Date();
 
-  // Logic to fetch nomina summary (ar putea fi mutat într-un hook `useNominaSummary`)
+  // LOGICA COMPLETĂ PENTRU FETCH NOMINA
   useEffect(() => {
     const fetchNomina = async () => {
       if (!user) return;
-      // ... logica de fetch pentru sumarul de pontaj ...
-      // (am omis-o aici pentru a nu încărca codul, dar e aceeași ca în original)
-      // La final, setează `setNominaSummary` și `setNominaMarks`
+      const y = currentDate.getFullYear();
+      const m = currentDate.getMonth() + 1;
+      const { data } = await supabase
+        .from('pontaje_curente')
+        .select('pontaj_complet')
+        .eq('user_id', user.id)
+        .eq('an', y)
+        .eq('mes', m)
+        .maybeSingle();
+
+      const zile = data?.pontaj_complet?.zilePontaj || [];
+      let D = 0, C = 0, P = 0, KM = 0, CT = 0;
+      const marks = new Set();
+
+      zile.forEach((zi, idx) => {
+        if (!zi) return;
+        const d = idx + 1;
+        const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+        if (zi.desayuno) D++;
+        if (zi.cena) C++;
+        if (zi.procena) P++;
+        if (kmZi > 0) KM += kmZi;
+        if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
+        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
+          marks.add(d);
+        }
+      });
+
+      setNominaSummary({ desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size });
+      setNominaMarks(marks);
     };
     fetchNomina();
-  }, [user]);
+  }, [user, currentDate]);
 
-  // --- Acțiuni și Handlers ---
-  
-  // Logic to save the profile
+  // LOGICA COMPLETĂ PENTRU SALVAREA PROFILULUI
   const handleSaveProfile = async (editableProfile) => {
-    // ... logica de salvare a profilului din original ...
-    // La final, re-încarcă profilul și închide modalul
-    const { data: updatedProfile } = await supabase.from('profiles').select('*, camioane(*), remorci(*)').eq('id', user.id).single();
-    setProfile(updatedProfile);
-    setIsEditOpen(false);
-    alert('Profil actualizat!');
+    try {
+      let camionIdToUpdate = profile.camion_id;
+      let remorcaIdToUpdate = profile.remorca_id;
+
+      if (!camionIdToUpdate && editableProfile.new_camion_matricula) {
+        const { data: newCamion, error } = await supabase.from('camioane').insert({ matricula: editableProfile.new_camion_matricula }).select().single();
+        if (error) throw error;
+        camionIdToUpdate = newCamion.id;
+      }
+
+      if (!remorcaIdToUpdate && editableProfile.new_remorca_matricula) {
+        const { data: newRemorca, error } = await supabase.from('remorci').insert({ matricula: editableProfile.new_remorca_matricula }).select().single();
+        if (error) throw error;
+        remorcaIdToUpdate = newRemorca.id;
+      }
+
+      const payload = {
+        nombre_completo: editableProfile.nombre_completo,
+        cap_expirare: editableProfile.cap_expirare || null,
+        carnet_caducidad: editableProfile.carnet_caducidad || null,
+        tiene_adr: editableProfile.tiene_adr,
+        adr_caducidad: editableProfile.tiene_adr ? editableProfile.adr_caducidad || null : null,
+        camion_id: camionIdToUpdate || null,
+        remorca_id: remorcaIdToUpdate || null,
+      };
+
+      const { error: upErr } = await supabase.from('profiles').update(payload).eq('id', user.id);
+      if (upErr) throw upErr;
+
+      const { data: updated } = await supabase.from('profiles').select('*, camioane:camion_id(*), remorci:remorca_id(*)') .eq('id', user.id).maybeSingle();
+      setProfile(updated);
+      setIsEditOpen(false);
+      alert('Perfil actualizado con éxito.');
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
   };
 
-  // Logic to handle avatar upload
+  // Aici poți adăuga logica de upload (momentan goală, dar funcția există)
   const handleAvatarUpload = async (imageBlob) => {
-    // Aici ar interveni hook-ul `useAvatarUpload`
-    // ... logica de upload pe Supabase Storage ...
-    const { data: updatedProfile } = await supabase.from('profiles').select('*, camioane(*), remorci(*)').eq('id', user.id).single();
-    setProfile(updatedProfile);
+    alert('Funcționalitatea de upload va fi implementată aici.');
     setIsPhotoOpen(false);
-    alert('Avatar actualizat!');
   };
 
   const initials = useMemo(() => {
     const n = (profile?.nombre_completo || '').trim();
-    if (!n) return 'R';
-    return n.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || 'R';
+    if (!n) return '...';
+    return n.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '...';
   }, [profile]);
   
   if (loading || !profile) {
@@ -78,12 +126,15 @@ export default function MiPerfilPage() {
   return (
     <Layout backgroundClassName="profile-background">
       <div className={styles.page}>
-        {/* --- Header-ul paginii --- */}
+        {/* Header-ul paginii */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.avatarXxl} onClick={() => setIsPhotoOpen(true)}>
-              {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" /> : <div>{initials}</div>}
-              <button className={styles.avatarCamBtn}><CameraIcon /></button>
+              {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" className={styles.avatarImg} /> : <div className={styles.avatarFallbackXl}>{initials}</div>}
+              <div className={styles.avatarOverlay}></div>
+              <button className={styles.avatarCamBtn} type="button" title="Cambiar foto" onClick={(e)=>{e.stopPropagation(); setIsPhotoOpen(true);}}>
+                <CameraIcon />
+              </button>
             </div>
             <h1>Mi Perfil</h1>
           </div>
@@ -92,17 +143,40 @@ export default function MiPerfilPage() {
           </div>
         </div>
 
-        {/* --- Cardurile de informații (puteau fi și ele extrase) --- */}
+        {/* --- CARDURILE CU CONȚINUT COMPLET --- */}
         <div className={styles.cardsGrid}>
-            {/* Card Conductor */}
-            <section className={styles.card}> {/* ... conținut ... */} </section>
-            {/* Card Camion */}
-            <section className={styles.card}> {/* ... conținut ... */} </section>
-            {/* Card Remolque */}
-            <section className={styles.card}> {/* ... conținut ... */} </section>
+          <section className={styles.card}>
+            <div className={styles.cardTitle}>Conductor</div>
+            <div className={styles.rows2}>
+              <div><span className={styles.k}>Nombre completo</span><span className={styles.v}>{profile.nombre_completo || '—'}</span></div>
+              <div><span className={styles.k}>CAP</span><span className={styles.v}>{profile.cap_expirare || '—'}</span></div>
+              <div><span className={styles.k}>Carnet conducir</span><span className={styles.v}>{profile.carnet_caducidad || '—'}</span></div>
+              <div><span className={styles.k}>ADR</span><span className={styles.v}>{profile.tiene_adr ? profile.adr_caducidad || 'Sí' : 'No'}</span></div>
+            </div>
+          </section>
+          <section className={styles.card}>
+            <div className={styles.cardTitleRow}>
+              <div className={styles.cardTitle}>Camión</div>
+              <button className={styles.ghostBtn} onClick={() => profile?.camion_id && navigate(`/camion/${profile.camion_id}`)}>Ver ficha</button>
+            </div>
+            <div className={styles.rows2}>
+              <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span></div>
+              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span></div>
+            </div>
+          </section>
+          <section className={styles.card}>
+            <div className={styles.cardTitleRow}>
+              <div className={styles.cardTitle}>Remolque</div>
+              <button className={styles.ghostBtn} onClick={() => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`)}>Ver ficha</button>
+            </div>
+            <div className={styles.rows2}>
+              <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || 'No asignado'}</span></div>
+              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.remorci?.fecha_itv || '—'}</span></div>
+            </div>
+          </section>
         </div>
 
-        {/* --- Widget-urile (acum sunt componente curate) --- */}
+        {/* Widget-urile */}
         <div className={styles.widgetsGrid}>
           <NominaWidget 
             summary={nominaSummary} 
@@ -116,7 +190,7 @@ export default function MiPerfilPage() {
           />
         </div>
 
-        {/* --- Modalurile (logica lor este acum încapsulată) --- */}
+        {/* Modalurile */}
         <EditProfileModal
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
