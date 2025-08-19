@@ -1,20 +1,17 @@
 import React from 'react';
-import styles from '../MiPerfilPage.module.css'; // Momentan folosim stilurile din pagina principală
+import styles from './MiniCalendar.module.css';
 
 export default function MiniCalendar({ date, marks }) {
-  // Logica pentru a calcula zilele din lună și poziția de start
   const y = date.getFullYear();
   const m = date.getMonth();
   const first = new Date(y, m, 1);
-  const startDay = (first.getDay() + 6) % 7; // Luni=0, Duminică=6
+  const startDay = (first.getDay() + 6) % 7;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const cells = [];
-  // Adaugă celule goale la începutul calendarului
   for (let i = 0; i < startDay; i++) {
     cells.push({ blank: true, key: `b-${i}` });
   }
-  // Adaugă zilele lunii
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ day: d, key: `d-${d}` });
   }
