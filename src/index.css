@@ -1,41 +1,22 @@
-/* src/index.css */
-
-/* --- 1. Variabilele Globale pentru Tema Vizuală --- */
-:root {
-  --glass: rgba(17, 24, 39, .65);
-  --border: rgba(148, 163, 184, .22);
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #22c55e;
-  --cta1: #2563eb;
-  --cta2: #3b82f6;
-  --gold-start: #fff;
-  --gold-mid: #ffd7b1;
-  --gold-end: #ff8c3a;
-}
-
-/* --- 2. Stiluri de Bază pentru Toată Pagina --- */
+/* src/index.css - Stiluri globale de bază și font */
 html, body, #root {
-  height: 100%;
+  height: 100%; /* Asigură că HTML, body și div-ul root ocupă toată înălțimea */
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  background-color: #020617; /* Fundal de bază întunecat */
-  color: var(--text); /* Culoarea textului implicită pentru toată aplicația */
+  font-family: 'Inter', sans-serif; /* Aplică fontul Inter global */
 }
 
-/* --- 3. Stiluri Utilitare Globale (pentru App.jsx, etc.) --- */
+/* Stiluri utilitare globale (pentru App.jsx) */
 .container-center {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: 16px;
-  background-color: #f3f4f6;
+  background-color: #f3f4f6; /* Gri deschis */
 }
 
-/* Clasa .card globală, folosită în pagina 404 */
-.container-center .card {
+.card {
   background-color: #fff;
   padding: 32px;
   border-radius: 12px;
@@ -56,16 +37,3 @@ html, body, #root {
 .mt-4 { margin-top: 16px; }
 .block { display: block; }
 .hover-underline:hover { text-decoration: underline; }
-
-/* O clasă ajutătoare pentru titluri cu gradient auriu */
-.pageTitleGlow {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: .2px;
-  background: linear-gradient(90deg, var(--gold-start), var(--gold-mid), var(--gold-end));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .25);
-}
