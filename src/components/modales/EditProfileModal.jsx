@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EditProfileModal.module.css';
+
 import { CloseIcon } from '../ui/Icons';
 
 export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
