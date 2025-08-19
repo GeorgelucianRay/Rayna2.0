@@ -1,4 +1,3 @@
-// src/components/VacacionesStandalone.jsx
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import styles from './VacacionesStandalone.module.css';
 import { supabase } from '../supabaseClient';
@@ -112,7 +111,7 @@ export default function VacacionesStandalone() {
   /* ——— calcule ——— */
   const monthDate = useMemo(() => new Date(year, month, 1), [year, month]);
   const monthTitle = useMemo(
-    () => monthDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\p{L}/u, c => c.toUpperCase()),
+    () => monthDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\p{L}/u, c => c.toUpperCase()),
     [monthDate]
   );
 
@@ -207,13 +206,12 @@ export default function VacacionesStandalone() {
 
     const payload = {
       user_id: profile.id,
-      tipo: reqType,                       // 'vacacion' | 'personal'
+      tipo: reqType,
       state: 'pendiente',
       start_date: dateStart,
       end_date: dateEnd,
       notas: note || null,
       created_by: profile.id
-      // 'dias' se calculează automat în DB
     };
 
     const { data, error } = await supabase
@@ -227,7 +225,6 @@ export default function VacacionesStandalone() {
       return alert('No se pudo crear la solicitud.');
     }
 
-    // verifică conflictul după insert
     await supabase.rpc('check_vacation_conflicts', { p_event_id: data.id }).catch(() => {});
 
     setNote('');
@@ -236,8 +233,39 @@ export default function VacacionesStandalone() {
     alert('Solicitud enviada.');
   }
 
-  function approveLocal(id) { if (!canModerate) return; setEvents(prev => prev.map(e => e.id === id ? { ...e, state: 'aprobado' } : e)); }
-  function denyLocal(id) { if (!canModerate) return; setEvents(prev => prev.filter(e => e.id !== id)); }
+  // 👇 --- FUNCȚIILE MODIFICATE --- 👇
+  async function approveRequest(id) {
+    if (!canModerate) return;
+    
+    const { error } = await supabase
+      .from('vacaciones_eventos')
+      .update({ state: 'aprobado' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error al aprobar la solicitud:', error);
+      alert('No se pudo aprobar la solicitud.');
+    } else {
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, state: 'aprobado' } : e));
+    }
+  }
+
+  async function rejectRequest(id) {
+    if (!canModerate) return;
+
+    const { error } = await supabase
+      .from('vacaciones_eventos')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error al rechazar la solicitud:', error);
+      alert('No se pudo rechazar la solicitud.');
+    } else {
+      setEvents(prev => prev.filter(e => e.id !== id));
+    }
+  }
+  // 👆 --- SFÂRȘITUL MODIFICĂRILOR --- 👆
 
   return (
     <div className={styles.vacWrap}>
@@ -368,8 +396,10 @@ export default function VacacionesStandalone() {
                     }`}>{ev.state.toUpperCase()}</span>
                     {canModerate && ev.state === 'pendiente' && (
                       <div className={styles.mod}>
-                        <button onClick={() => approveLocal(ev.id)} className={styles.smallOk}>Aprobar</button>
-                        <button onClick={() => denyLocal(ev.id)} className={styles.smallGhost}>Rechazar</button>
+                        {/* 👇 --- BUTOANELE MODIFICATE --- 👇 */}
+                        <button onClick={() => approveRequest(ev.id)} className={styles.smallOk}>Aprobar</button>
+                        <button onClick={() => rejectRequest(ev.id)} className={styles.smallGhost}>Rechazar</button>
+                        {/* 👆 --- SFÂRȘITUL MODIFICĂRILOR --- 👆 */}
                       </div>
                     )}
                   </div>
