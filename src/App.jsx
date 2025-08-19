@@ -48,7 +48,7 @@ function App() {
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
       {/* Vacaciones */}
-      <Route path="/vacaciones" element={<VacacionesStandalone />} />
+      <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} /> {/* ✅ MODIFICAT AICI */}
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
