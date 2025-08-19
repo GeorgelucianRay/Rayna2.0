@@ -1,34 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../MiPerfilPage.module.css';
+import styles from './EditProfileModal.module.css';
 import { CloseIcon } from '../ui/Icons';
 
 export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
   const [editableProfile, setEditableProfile] = useState(null);
 
-  // Când modalul se deschide, inițializăm starea formularului cu datele primite
   useEffect(() => {
     if (profile) {
       setEditableProfile({
         ...profile,
-        // Adăugăm câmpurile pentru noile vehicule direct aici
         new_camion_matricula: '',
         new_remorca_matricula: '',
       });
     }
-  }, [profile]);
+  }, [profile, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
+    const { name, value, type } = e.target;
     let finalValue = value;
-    if (type === 'checkbox') {
-        finalValue = checked;
-    } else if (name === 'tiene_adr') {
-        finalValue = value === 'true';
-    } else if (name.includes('matricula')) {
-        finalValue = value.toUpperCase();
-    }
 
+    if (name === 'tiene_adr') {
+      finalValue = value === 'true';
+    } else if (name.includes('matricula')) {
+      finalValue = value.toUpperCase();
+    }
+    
     setEditableProfile(p => ({ ...p, [name]: finalValue }));
   };
 
@@ -37,7 +33,6 @@ export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
     onSave(editableProfile);
   };
   
-  // Dacă nu este deschis sau nu avem date, nu randăm nimic
   if (!isOpen || !editableProfile) return null;
 
   return (
@@ -102,8 +97,6 @@ export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
             )}
           </div>
 
-          {/* ... restul câmpurilor de formular (camion, remorca) ... */}
-          {/* Aici am simplificat, dar logica e aceeași ca în original */}
           {!profile.camion_id ? (
             <div className={styles.inputGroup}>
               <label>Matrícula camión</label>
@@ -115,7 +108,12 @@ export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
                 onChange={handleChange}
               />
             </div>
-          ) : ( <div className={styles.inputGroup}><label>Camión asignado</label><input type="text" value={profile.camioane?.matricula || ''} disabled /></div> )}
+          ) : ( 
+            <div className={styles.inputGroup}>
+              <label>Camión asignado</label>
+              <input type="text" value={profile.camioane?.matricula || ''} disabled />
+            </div> 
+          )}
           
           {!profile.remorca_id ? (
             <div className={styles.inputGroup}>
@@ -128,7 +126,12 @@ export default function EditProfileModal({ isOpen, onClose, profile, onSave }) {
                 onChange={handleChange}
               />
             </div>
-          ) : ( <div className={styles.inputGroup}><label>Remolque asignado</label><input type="text" value={profile.remorci?.matricula || ''} disabled /></div> )}
+          ) : ( 
+            <div className={styles.inputGroup}>
+              <label>Remolque asignado</label>
+              <input type="text" value={profile.remorci?.matricula || ''} disabled />
+            </div> 
+          )}
 
           <div className={styles.modalFooter}>
             <button type="button" className={styles.btnGhost} onClick={onClose}>
