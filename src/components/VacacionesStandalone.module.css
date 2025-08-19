@@ -284,3 +284,95 @@
   .dayCell { padding: .3rem; }
   .donut { width: 170px; height: 170px; }
 }
+
+/* ==== FIX PACK: force dark, override light CSS from global libs ==== */
+
+/* 1) Bază dark pentru întreaga pagină (peste Bootstrap etc.) */
+:global(html), :global(body), :global(#root) {
+  background: #0b0f17 !important;
+  color: #e8eef8 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+}
+
+/* 2) Containerul componentei – „scene” gradient + padding mobil corect */
+.vacWrap {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(32,184,255,0.08), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(23,230,195,0.07), transparent 60%),
+    linear-gradient(180deg, var(--bg-page-grad1), var(--bg-page-grad2)) !important;
+  border-radius: 18px;
+}
+
+/* 3) Carduri: forțăm sticlă întunecată chiar dacă există .card din Bootstrap */
+.vacWrap :where(.card) {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: blur(10px) saturate(120%) !important;
+}
+
+/* 4) Butoane generice din componentă – închise + accente neon */
+.vacWrap :where(.todayBtn, .backButton, .iconBtn, .tab, .primary, .ghost) {
+  background: var(--panel) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+.vacWrap :where(.primary) {
+  background: linear-gradient(180deg, #28d3ff, #17a9ff) !important;
+  color: #07121c !important;
+  border-color: rgba(32,184,255,0.6) !important;
+}
+
+/* 5) Texturi & titluri */
+.title,
+.cardTitle,
+.monthTitle,
+.stat strong,
+.dayNum {
+  color: var(--text-primary) !important;
+}
+.stat span,
+.range,
+.weekRow span {
+  color: var(--text-secondary) !important;
+}
+
+/* 6) Donut: culori corecte pe dark */
+.donutTrack { stroke: rgba(255,255,255,0.08) !important; }
+.donutValue {
+  stroke: var(--accent-cyan) !important;
+  filter: drop-shadow(0 0 10px rgba(23,230,195,0.45)) !important;
+}
+.donutBig, .donutSmall, .donutSmall2 { fill: var(--text-primary) !important; }
+.donutSmall, .donutSmall2 { fill: var(--text-secondary) !important; }
+
+/* 7) Calendar – selecții/hover pe întunecat */
+.dayCell { background: rgba(255,255,255,0.03) !important; }
+.dayCell:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: inset 0 0 0 1px rgba(32,184,255,0.2), 0 0 0 1px rgba(32,184,255,0.06) !important;
+}
+.dayCell.sel {
+  background: linear-gradient(180deg, rgba(32,184,255,0.12), rgba(23,230,195,0.10)) !important;
+  border-color: rgba(32,184,255,0.35) !important;
+}
+
+/* 8) Banner overlap & badges mai vizibile pe dark */
+.banner {
+  background: linear-gradient(180deg, rgba(255,200,87,0.12), rgba(255,200,87,0.07)) !important;
+  border: 1px solid rgba(255,200,87,0.35) !important;
+  color: #ffd995 !important;
+}
+.badgePend { background: rgba(255,255,255,0.08) !important; color: var(--text-secondary) !important; }
+
+/* 9) Dots */
+.dot { box-shadow: 0 0 8px rgba(255,255,255,0.08) inset !important; }
+
+/* 10) Mobile tweaks – spacing corect pe iOS Safari */
+@media (max-width: 768px) {
+  .headerRow { padding-top: .25rem; }
+  .donut { width: 170px !important; height: 170px !important; }
+}
