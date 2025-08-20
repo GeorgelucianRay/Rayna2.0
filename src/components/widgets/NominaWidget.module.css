@@ -13,7 +13,6 @@
   justify-content: space-between;
   margin-bottom: 10px;
 }
-/* MODIFICAT: Titlul cardului are acum efectul de gradient */
 .cardTitle {
   margin: 0;
   font-size: 1.05rem;
@@ -50,8 +49,13 @@
 .statLine {
   font-size: .95rem;
 }
+/* MODIFICAT: Linia de text importantă are acum efectul de gradient */
 .statLine2 {
-  color: #dbeafe;
+  font-weight: 800; /* Am adăugat font-weight pentru un impact mai mare */
+  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .cta {
   margin-top: auto;
@@ -63,7 +67,6 @@
   font-weight: 800;
   cursor: pointer;
 }
-/* MODIFICAT: Titlul calendarului are acum efectul de gradient */
 .miniCalTitle {
   font-weight: 800;
   margin-bottom: 6px;
