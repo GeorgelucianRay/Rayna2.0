@@ -63,36 +63,39 @@
   border-radius: 1rem;
   padding: 16px;
 }
+
+/* MODIFICAT: Titlul cardului are acum efectul de gradient */
 .cardTitle {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 800;
-  color: #e6faff; /* ADĂUGAT: Culoare pentru titlurile cardurilor */
+  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .cardTitleRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .rows2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .k {
   display: block;
   font-size: .84rem;
-  color: var(--muted); /* MODIFICAT: Folosește variabila pentru consistență */
+  color: var(--muted);
 }
 .v {
   display: block;
   font-weight: 800;
   font-size: 1.05rem;
-  color: var(--text); /* ADĂUGAT: Culoare pentru valorile din Supabase */
+  color: var(--text);
 }
 .loading { display: grid; place-items: center; min-height: 60vh; color: #fff; font-size: 1.25rem; }
 
-/* Adaugă la sfârșitul MiPerfilPage.module.css */
-
+/* MODIFICAT: Titlul principal al paginii are acum efectul de gradient */
 .pageTitle {
   margin: 0;
   font-size: 2rem;
   font-weight: 800;
-  background: linear-gradient(90deg, var(--gold-start), var(--gold-mid), var(--gold-end));
+  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
