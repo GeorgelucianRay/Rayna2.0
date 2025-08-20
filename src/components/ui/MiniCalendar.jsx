@@ -5,13 +5,17 @@ export default function MiniCalendar({ date, marks }) {
   const y = date.getFullYear();
   const m = date.getMonth();
   const first = new Date(y, m, 1);
-  const startDay = (first.getDay() + 6) % 7;
+  const startDay = (first.getDay() + 6) % 7; // Luni = 0
   const daysInMonth = new Date(y, m + 1, 0).getDate();
 
   const cells = [];
+  
+  // Adaugă celule goale pentru zilele înainte de prima zi a lunii
   for (let i = 0; i < startDay; i++) {
     cells.push({ blank: true, key: `b-${i}` });
   }
+  
+  // Adaugă zilele lunii
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ day: d, key: `d-${d}` });
   }
@@ -19,7 +23,8 @@ export default function MiniCalendar({ date, marks }) {
   return (
     <div className={styles.miniCal}>
       <div className={styles.miniCalHead}>
-        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span>
+        <span>Vi</span><span>Sá</span><span>Do</span>
       </div>
       <div className={styles.miniCalGrid}>
         {cells.map((c) =>
@@ -28,7 +33,9 @@ export default function MiniCalendar({ date, marks }) {
           ) : (
             <div
               key={c.key}
-              className={`${styles.miniDay} ${marks?.has(c.day) ? styles.miniHasData : ''}`}
+              className={`${styles.miniDay} ${
+                marks?.has(c.day) ? styles.miniHasData : ''
+              }`}
             >
               {c.day}
             </div>
