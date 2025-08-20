@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import MiniCalendar from '../ui/MiniCalendar';
+import MiniCalendar from '../../ui/MiniCalendar';
 import styles from './NominaWidget.module.css';
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
+import { supabase } from '../../supabaseClient'; // Corect - urcă 2 nivele până la src/
+import { useAuth } from '../../AuthContext'; // Corect - urcă 2 nivele până la src/
 import { useNavigate } from 'react-router-dom';
 
 // Funcție ajutătoare pentru a formata data în spaniolă
@@ -20,7 +20,10 @@ export default function NominaWidget() {
   // Încarcă datele din Supabase
   useEffect(() => {
     const loadPontajData = async () => {
-      if (!profile?.id) return;
+      if (!profile?.id) {
+        setLoading(false);
+        return;
+      }
 
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
@@ -34,8 +37,11 @@ export default function NominaWidget() {
           .eq('month', month)
           .order('day', { ascending: true });
 
-        if (error) throw error;
-        setPontajData(data || []);
+        if (error) {
+          console.error('Error loading pontaj data:', error);
+        } else {
+          setPontajData(data || []);
+        }
       } catch (error) {
         console.error('Error loading pontaj data:', error);
       } finally {
@@ -46,25 +52,27 @@ export default function NominaWidget() {
     loadPontajData();
 
     // Subscription pentru actualizări în timp real
-    const subscription = supabase
-      .channel('pontaj_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'pontaj_diario',
-          filter: `user_id=eq.${profile?.id}`,
-        },
-        () => {
-          loadPontajData(); // Reîncarcă datele când se schimbă ceva
-        }
-      )
-      .subscribe();
+    if (profile?.id) {
+      const subscription = supabase
+        .channel(`pontaj_changes_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'pontaj_diario',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            loadPontajData(); // Reîncarcă datele când se schimbă ceva
+          }
+        )
+        .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
-    };
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, [profile?.id, currentDate]);
 
   // Calculează summary și marks din datele încărcate
@@ -80,9 +88,9 @@ export default function NominaWidget() {
         item.desayuno || 
         item.cena || 
         item.procena ||
-        (item.km_final - item.km_iniciar > 0) ||
-        item.contenedores > 0 ||
-        item.suma_festivo > 0;
+        ((item.km_final || 0) - (item.km_iniciar || 0) > 0) ||
+        (item.contenedores || 0) > 0 ||
+        (item.suma_festivo || 0) > 0;
 
       if (hasActivity) {
         workedDays.add(item.day);
@@ -100,7 +108,7 @@ export default function NominaWidget() {
     return {
       summary: {
         desayunos: desayunos,
-        km: totalKm,
+        km: Math.round(totalKm),
         conts: totalContenedores,
         dias: workedDays.size
       },
@@ -112,6 +120,11 @@ export default function NominaWidget() {
     navigate('/calculadora-nomina');
   };
 
+  // Dacă nu există profil, nu afișa widget-ul
+  if (!profile?.id) {
+    return null;
+  }
+
   if (loading) {
     return (
       <section className={`${styles.card} ${styles.widget}`}>
@@ -120,7 +133,7 @@ export default function NominaWidget() {
           <span className={styles.badge}>Beta</span>
         </div>
         <div className={styles.widgetBody}>
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             Cargando datos...
           </div>
         </div>
