@@ -261,10 +261,20 @@ export default function CalculadoraNomina() {
     };
   }, [zilePontaj]);
 
-  const marks = useMemo(() => 
-    zilePontaj.map(zi => zi.desayuno || zi.cena || zi.procena || (+zi.km_final > 0)),
-    [zilePontaj]
-  );
+  // ADAUGĂ ACEST BLOC CORECT ÎN ACELAȘI LOC
+const marks = useMemo(() => {
+  const markedDays = new Set();
+  zilePontaj.forEach((zi, index) => {
+    // Verificăm dacă există orice fel de activitate în ziua respectivă
+    const hasData = zi.desayuno || zi.cena || zi.procena || (+zi.km_final > 0) || zi.contenedores > 0 || zi.suma_festivo > 0;
+    if (hasData) {
+      // Adăugăm numărul zilei (1, 2, 3 etc.) în Set
+      markedDays.add(index + 1);
+    }
+  });
+  return markedDays;
+}, [zilePontaj]);
+
 
   return (
     <Layout backgroundClassName="calculadora-background">
