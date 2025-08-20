@@ -5,7 +5,8 @@ import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
 import ParteDiarioModal from './ParteDiarioModal';
 import NominaResultCard from './NominaResultCard';
-import NominaWidget from './NominaWidget'; // <-- IMPORT ADĂUGAT
+import NominaWidget from './widgets/NominaWidget.jsx';
+ // <-- IMPORT ADĂUGAT
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 
