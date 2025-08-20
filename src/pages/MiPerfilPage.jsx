@@ -98,9 +98,12 @@ export default function MiPerfilPage() {
               <button className={styles.avatarCamBtn} type="button" onClick={(e)=>{e.stopPropagation(); setIsPhotoOpen(true);}}>
                 <CameraIcon />
               </button>
-          <div>
-            <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}><EditIcon /> Editar perfil</button>
-          </div>
+            </div> {/* <<< TAG DE ÎNCHIDERE 1/3 (pentru avatarXxl) */}
+            <div>
+              <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}><EditIcon /> Editar perfil</button>
+            </div>
+          </div> {/* <<< TAG DE ÎNCHIDERE 2/3 (pentru headerLeft) */}
+        </div> {/* <<< TAG DE ÎNCHIDERE 3/3 (pentru header) */}
 
         <div className={styles.cardsGrid}>
           <section className={styles.card}>
@@ -119,7 +122,7 @@ export default function MiPerfilPage() {
             </div>
             <div className={styles.rows2}>
               <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span></div>
-              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span></div>
+              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}'}</span></div>
             </div>
           </section>
           <section className={styles.card}>
