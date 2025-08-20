@@ -2,12 +2,7 @@
 import React, { useState, useRef } from 'react';
 import styles from './UploadAvatarModal.module.css';
 import { CloseIcon } from '../ui/Icons';
-import { supabase } from '../supabaseClient';
-// Inițializează Supabase client cu variabilele Vite
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { supabase } from '../supabaseClient'; // Importă instanța existentă!
 
 export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, userId }) {
   const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'preview'
@@ -259,3 +254,79 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
     </div>
   );
 }
+
+// ===== .env (pentru development local) =====
+/*
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key  
+VITE_IMGBB_API_KEY=your_imgbb_api_key
+*/
+
+// ===== Utilizare în componenta părinte =====
+/*
+import UploadAvatarModal from './components/UploadAvatarModal';
+import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient'; // sau de unde ai tu supabase
+
+function ProfilePage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [user, setUser] = useState(null);
+  
+  useEffect(() => {
+    // Obține user-ul curent
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      // Obține avatar-ul curent din profiles
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) {
+          setAvatarUrl(data.avatar_url);
+        }
+      }
+    };
+    
+    getUser();
+  }, []);
+  
+  const handleUploadComplete = (url) => {
+    setAvatarUrl(url);
+    // Avatar-ul a fost actualizat cu succes
+    console.log('Noul avatar:', url);
+  };
+  
+  return (
+    <div>
+      <div>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Avatar" style={{ width: 100, height: 100, borderRadius: '50%' }} />
+        ) : (
+          <div>No avatar</div>
+        )}
+      </div>
+      
+      <button onClick={() => setIsModalOpen(true)}>
+        Schimbă Avatar
+      </button>
+      
+      {user && (
+        <UploadAvatarModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onUploadComplete={handleUploadComplete}
+          userId={user.id}
+        />
+      )}
+    </div>
+  );
+}
+
+export default ProfilePage;
+*/
