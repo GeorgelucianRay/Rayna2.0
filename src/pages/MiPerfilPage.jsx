@@ -98,9 +98,6 @@ export default function MiPerfilPage() {
               <button className={styles.avatarCamBtn} type="button" onClick={(e)=>{e.stopPropagation(); setIsPhotoOpen(true);}}>
                 <CameraIcon />
               </button>
-            </div>
-            <h1>Mi Perfil</h1>
-          </div>
           <div>
             <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}><EditIcon /> Editar perfil</button>
           </div>
