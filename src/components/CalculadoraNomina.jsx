@@ -1,3 +1,4 @@
+// src/components/CalculadoraNomina.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 import Layout from './Layout';
 import styles from './Nominas.module.css';
@@ -5,8 +6,6 @@ import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
 import ParteDiarioModal from './ParteDiarioModal';
 import NominaResultCard from './NominaResultCard';
-import NominaWidget from './widgets/NominaWidget.jsx';
- // <-- IMPORT ADĂUGAT
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 
@@ -49,10 +48,14 @@ export default function CalculadoraNomina() {
   const [config, setConfig] = useState(defaultConfig);
   const [zilePontaj, setZilePontaj] = useState(makePontajForMonth(currentDate));
 
+  // pentru NominaConfigCard
   const [showConfig, setShowConfig] = useState(false);
+
+  // modal parte-diario
   const [isParteOpen, setIsParteOpen] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
+  // Load config from Supabase on mount
   useEffect(() => {
     const loadConfig = async () => {
       if (!profile?.id) return;
@@ -80,12 +83,13 @@ export default function CalculadoraNomina() {
     loadConfig();
   }, [profile?.id, defaultConfig]);
 
+  // Load pontaj data from Supabase when month changes
   useEffect(() => {
     const loadPontaj = async () => {
       if (!profile?.id) return;
       
       const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
+      const month = currentDate.getMonth() + 1; // Supabase uses 1-based months
       
       const { data, error } = await supabase
         .from('pontaj_diario')
@@ -164,7 +168,10 @@ export default function CalculadoraNomina() {
     setZilePontaj(prev => {
       const arr = [...prev];
       arr[selectedDayIndex] = { ...arr[selectedDayIndex], [name]: value };
+      
+      // Save to Supabase
       savePontajDay(selectedDayIndex, arr[selectedDayIndex]);
+      
       return arr;
     });
   };
@@ -173,7 +180,10 @@ export default function CalculadoraNomina() {
     setZilePontaj(prev => {
       const arr = [...prev];
       arr[selectedDayIndex] = { ...arr[selectedDayIndex], [field]: !arr[selectedDayIndex][field] };
+      
+      // Save to Supabase
       savePontajDay(selectedDayIndex, arr[selectedDayIndex]);
+      
       return arr;
     });
   };
@@ -198,25 +208,32 @@ export default function CalculadoraNomina() {
       if (z.desayuno) d++;
       if (z.cena) c++;
       if (z.procena) p++;
+
       const ki = +z.km_iniciar || 0;
       const kf = +z.km_final || 0;
       const k = kf - ki;
       if (k > 0) km += k;
+
       cont += (z.contenedores || 0);
       plus += (z.suma_festivo || 0);
+
       if (z.desayuno || z.cena || z.procena || k>0 || (z.contenedores||0)>0 || (z.suma_festivo||0)>0) {
         worked.add(i);
       }
     });
 
     const dz = worked.size;
+
     const sDes = d * (Number(config.precio_desayuno) || 0);
     const sCen = c * (Number(config.precio_cena) || 0);
     const sPro = p * (Number(config.precio_procena) || 0);
     const sKm  = km * (Number(config.precio_km) || 0);
     const sCon = cont * (Number(config.precio_contenedor) || 0);
     const sDia = dz * (Number(config.precio_dia_trabajado) || 0);
-    const total = (Number(config.salario_base) || 0) + (Number(config.antiguedad) || 0) + sDes + sCen + sPro + sKm + sCon + sDia + plus;
+
+    const total = (Number(config.salario_base) || 0)
+      + (Number(config.antiguedad) || 0)
+      + sDes + sCen + sPro + sKm + sCon + sDia + plus;
 
     setResult({
       totalBruto: total.toFixed(2),
@@ -232,49 +249,16 @@ export default function CalculadoraNomina() {
         'Total Festivos/Plus': `${plus.toFixed(2)}€`,
       },
       sumar_activitate: {
-        'Días Trabajados': dz, 'Total Desayunos': d, 'Total Cenas': c, 'Total Procenas': p, 'Kilómetros Recorridos': km, 'Contenedores Barridos': cont, 'Suma Festivos/Plus (€)': plus,
+        'Días Trabajados': dz,
+        'Total Desayunos': d,
+        'Total Cenas': c,
+        'Total Procenas': p,
+        'Kilómetros Recorridos': km,
+        'Contenedores Barridos': cont,
+        'Suma Festivos/Plus (€)': plus,
       }
     });
   };
-
-  // <-- LOGICA PENTRU WIDGET ADĂUGATĂ AICI -->
-  const summary = useMemo(() => {
-    let desayunos = 0;
-    let km = 0;
-    let conts = 0;
-    const workedDays = new Set();
-
-    zilePontaj.forEach((zi, index) => {
-      const isWorked = zi.desayuno || zi.cena || zi.procena || (+zi.km_final - +zi.km_iniciar > 0) || zi.contenedores > 0 || zi.suma_festivo > 0;
-      if (isWorked) workedDays.add(index);
-      if (zi.desayuno) desayunos++;
-      const kmZi = (+zi.km_final || 0) - (+zi.km_iniciar || 0);
-      if (kmZi > 0) km += kmZi;
-      conts += (zi.contenedores || 0);
-    });
-
-    return {
-      desayunos,
-      km: Math.round(km),
-      conts,
-      dias: workedDays.size,
-    };
-  }, [zilePontaj]);
-
-  // ADAUGĂ ACEST BLOC CORECT ÎN ACELAȘI LOC
-const marks = useMemo(() => {
-  const markedDays = new Set();
-  zilePontaj.forEach((zi, index) => {
-    // Verificăm dacă există orice fel de activitate în ziua respectivă
-    const hasData = zi.desayuno || zi.cena || zi.procena || (+zi.km_final > 0) || zi.contenedores > 0 || zi.suma_festivo > 0;
-    if (hasData) {
-      // Adăugăm numărul zilei (1, 2, 3 etc.) în Set
-      markedDays.add(index + 1);
-    }
-  });
-  return markedDays;
-}, [zilePontaj]);
-
 
   return (
     <Layout backgroundClassName="calculadora-background">
@@ -306,14 +290,6 @@ const marks = useMemo(() => {
         </div>
 
         <div className={styles.column}>
-          {/* <-- WIDGET-UL ESTE ACUM AFIȘAT AICI --> */}
-          <NominaWidget 
-            summary={summary}
-            marks={marks}
-            date={currentDate}
-            onNavigate={() => {}}
-          />
-
           <div className={styles.card}>
             <div className={styles.calendarHeader}>
               <button onClick={goPrevMonth}>&lt;</button>
