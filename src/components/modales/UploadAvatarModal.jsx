@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import styles from './UploadAvatarModal.module.css';
 import { CloseIcon } from '../ui/Icons';
-import { supabase } from '../supabaseClient'; // Importă instanța existentă!
+import { supabase } from '../../supabaseClient';
 
 export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, userId }) {
   const [photoStep, setPhotoStep] = useState('choice'); // 'choice' | 'preview'
