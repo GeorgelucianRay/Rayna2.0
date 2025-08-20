@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import MiniCalendar from '../../ui/MiniCalendar';
+// Calea NOUĂ și CORECTĂ
+import MiniCalendar from '../ui/MiniCalendar';
 import styles from './NominaWidget.module.css';
 import { supabase } from '../../supabaseClient'; // Corect - urcă 2 nivele până la src/
 import { useAuth } from '../../AuthContext'; // Corect - urcă 2 nivele până la src/
