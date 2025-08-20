@@ -63,9 +63,23 @@
   border-radius: 1rem;
   padding: 16px;
 }
-.cardTitle { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.cardTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #e6faff; /* ADĂUGAT: Culoare pentru titlurile cardurilor */
+}
 .cardTitleRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .rows2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-.k { display: block; font-size: .84rem; color: #9aa8ba; }
-.v { display: block; font-weight: 800; font-size: 1.05rem; }
+.k {
+  display: block;
+  font-size: .84rem;
+  color: var(--muted); /* MODIFICAT: Folosește variabila pentru consistență */
+}
+.v {
+  display: block;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text); /* ADĂUGAT: Culoare pentru valorile din Supabase */
+}
 .loading { display: grid; place-items: center; min-height: 60vh; color: #fff; font-size: 1.25rem; }
