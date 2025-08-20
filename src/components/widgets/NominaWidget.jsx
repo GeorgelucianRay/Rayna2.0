@@ -151,7 +151,7 @@ export default function NominaWidget() {
       <div className={styles.widgetBody}>
         {/* Coloana principală cu datele dinamice */}
         <div className={styles.widgetCol}>
-          <div className={styles.statLine}>
+          <div className={styles.statLine2}>
             <strong>Desayunos:</strong> {summary.desayunos}
           </div>
           <div className={styles.statLine2}>
