@@ -83,3 +83,16 @@
   color: var(--text); /* ADĂUGAT: Culoare pentru valorile din Supabase */
 }
 .loading { display: grid; place-items: center; min-height: 60vh; color: #fff; font-size: 1.25rem; }
+
+/* Adaugă la sfârșitul MiPerfilPage.module.css */
+
+.pageTitle {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--gold-start), var(--gold-mid), var(--gold-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
