@@ -101,7 +101,6 @@ export default function MiPerfilPage() {
           <div>
             <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}><EditIcon /> Editar perfil</button>
           </div>
-        </div>
 
         <div className={styles.cardsGrid}>
           <section className={styles.card}>
