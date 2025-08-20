@@ -2,8 +2,7 @@
 import React, { useState, useRef } from 'react';
 import styles from './UploadAvatarModal.module.css';
 import { CloseIcon } from '../ui/Icons';
-import { createClient } from '@supabase/supabase-js';
-
+import { supabase } from '../supabaseClient';
 // Inițializează Supabase client cu variabilele Vite
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
