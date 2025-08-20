@@ -1,14 +1,20 @@
+// Acesta este codul final și corect pentru src/components/NominaWidget.jsx
+
 import React from 'react';
 import MiniCalendar from '../ui/MiniCalendar';
 import styles from './NominaWidget.module.css';
 
-// Funcție ajutătoare pentru a formata data în spaniolă (ex: "August 2025")
+// Funcție ajutătoare pentru a formata data în spaniolă (ex: "Agosto 2025")
 const monthLabelES = (d) =>
   d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\p{L}/u, (c) => c.toUpperCase());
 
 export default function NominaWidget({ summary, marks, date, onNavigate }) {
+  // Verificăm dacă summary există, pentru a evita erori la încărcare
+  if (!summary) {
+    return null; // Sau poți afișa un mesaj de încărcare
+  }
+  
   return (
-    // Se aplică clasele pentru card și widget
     <section className={`${styles.card} ${styles.widget}`}>
       <div className={styles.widgetHeader}>
         <div className={styles.cardTitle}>Nómina</div>
