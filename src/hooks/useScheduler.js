@@ -1,4 +1,3 @@
-// src/hooks/useScheduler.js
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -10,7 +9,7 @@ export function useScheduler() {
   const [doneItems, setDoneItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // fetch programados + contenedores
+  // Programados + Contenedores
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -37,7 +36,7 @@ export function useScheduler() {
     return () => { cancelled = true; };
   }, [tab]);
 
-  // fetch completados (día)
+  // Completados (după zi)
   useEffect(() => {
     let cancelled = false;
     const loadDone = async () => {
@@ -65,7 +64,7 @@ export function useScheduler() {
     return () => { cancelled = true; };
   }, [tab, date]);
 
-  // filtrare
+  // Filtru
   const filtered = useMemo(() => {
     if (tab === 'completado') return doneItems;
     let list = items;
@@ -80,22 +79,22 @@ export function useScheduler() {
     return list;
   }, [tab, items, doneItems, query]);
 
-  // === a) ELIMINAR: din programados -> înapoi în contenedores ===
+  /* === ACȚIUNI === */
+
+  // A) Eliminar (din programados -> revine în contenedores)
   const eliminarProgramado = useCallback(async (row) => {
     if (row?.source !== 'programados') return;
 
-    // 1) Optimizare locală
+    // optimist: scoatem din listă
     setItems(prev => prev.filter(x => x.programado_id !== row.programado_id));
 
     try {
-      // ștergem din programados
       const { error: delErr } = await supabase
         .from('contenedores_programados')
         .delete()
         .eq('id', row.programado_id);
       if (delErr) throw delErr;
 
-      // adăugăm/actualizăm în contenedores (minim: matricula_contenedor)
       const insertObj = {
         matricula_contenedor: row.matricula_contenedor,
         empresa_descarga: row.empresa_descarga ?? null,
@@ -106,39 +105,33 @@ export function useScheduler() {
       if (insErr) throw insErr;
     } catch (err) {
       console.error('Eliminar fallida:', err);
-      // rollback simplu: re-adăugăm în listă
-      setItems(prev => [...prev, { ...row }]);
-      alert('Nu s-a putut elimina. Reîncearcă.');
+      setItems(prev => [...prev, { ...row }]); // rollback
+      alert('Nu s-a putut elimina.');
     }
   }, []);
 
-  // === b) HECHO: programado -> salidos (folosești RPC-ul tău existent) ===
+  // B) Hecho (programado -> salidos) – RPC-ul tău
   const marcarHecho = useCallback(async (row) => {
     if (row?.source !== 'programados' || (row.estado || 'programado') === 'pendiente') return;
 
-    // optimist: scoatem din listă imediat
-    setItems(prev => prev.filter(x => x.programado_id !== row.programado_id));
-
+    setItems(prev => prev.filter(x => x.programado_id !== row.programado_id)); // optimist
     try {
       const { data, error } = await supabase.rpc('finalizar_contenedor', {
         p_matricula: row.matricula_contenedor,
         p_programado_id: row.programado_id || row.id,
         p_matricula_camion: row.matricula_camion || null,
       });
-
       if (error || !data?.ok) throw new Error(data?.error || 'RPC finalizar_contenedor falló');
     } catch (err) {
       console.error('Hecho fallida:', err);
-      // rollback
-      setItems(prev => [...prev, { ...row }]);
+      setItems(prev => [...prev, { ...row }]); // rollback
       alert('Nu s-a putut marca ca Hecho.');
     }
   }, []);
 
-  // === c) EDITAR: doar poziția în programados ===
+  // C) Editar doar poziția (când e Programado)
   const editarPosicion = useCallback(async (row, nuevaPosicion) => {
     if (row?.source !== 'programados') return;
-    // optimist
     setItems(prev => prev.map(x =>
       x.programado_id === row.programado_id ? { ...x, posicion: nuevaPosicion } : x
     ));
@@ -150,8 +143,25 @@ export function useScheduler() {
       if (error) throw error;
     } catch (err) {
       console.error('Editar posición fallida:', err);
-      // rollback: n-avem vechea poziție; dacă vrei, ține-o înainte separat
       alert('Nu s-a putut edita poziția.');
+    }
+  }, []);
+
+  // D) Editar COMPLET (când e Pendiente)
+  const actualizarProgramado = useCallback(async (row, payload) => {
+    if (row?.source !== 'programados') return;
+    setItems(prev => prev.map(x =>
+      x.programado_id === row.programado_id ? { ...x, ...payload } : x
+    ));
+    try {
+      const { error } = await supabase
+        .from('contenedores_programados')
+        .update(payload)
+        .eq('id', row.programado_id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Actualizar programado fallida:', err);
+      alert('Nu s-a putut salva.');
     }
   }, []);
 
@@ -162,9 +172,9 @@ export function useScheduler() {
     filtered,
     loading,
 
-    // acțiuni:
     eliminarProgramado,
     marcarHecho,
     editarPosicion,
+    actualizarProgramado,
   };
 }
