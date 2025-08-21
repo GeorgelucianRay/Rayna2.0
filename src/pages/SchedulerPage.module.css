@@ -1,5 +1,3 @@
-/* src/pages/SchedulerPage.module.css */
-
 /* ============ LAYOUT ============ */
 .pageWrap {
   position: relative;
@@ -7,7 +5,7 @@
   color: #fff;
   min-height: 100dvh;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: hidden; /* previne scroll orizontal */
 }
 
 .bg {
@@ -52,14 +50,27 @@
 
 .backBtn { background: rgba(255,255,255,.08); color: #e5e7eb; }
 .backBtn:hover { opacity: .95; }
-.title { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; }
-.newBtn { background: linear-gradient(90deg, #2563eb, #3b82f6); color: #fff; }
-.newBtn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
 
-/* ============ GRID LISTĂ + CALENDAR ============ */
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.newBtn {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: #fff;
+}
+.newBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(37,99,235,.35);
+}
+
+/* ============ GRID LISTĂ + (CALENDAR) ============ */
 .grid {
   display: grid;
-  grid-template-columns: 1.4fr .9fr;
+  grid-template-columns: 1.4fr .9fr; /* lista + (calendar) */
   gap: 16px;
   max-width: 100%;
 }
@@ -67,8 +78,136 @@
   .grid { grid-template-columns: 1fr; }
 }
 
-/* ============ MEDIA QUERIES MOBILE (pentru Pagină) ============ */
+/* ============ CARD WRAPPER (pentru listă) ============ */
+.card {
+  background: rgba(17,24,39,.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0; /* anti-overflow */
+}
+
+/* ============ LISTA ============ */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0; /* anti-overflow */
+}
+
+/* ============ ITEM ============ */
+.item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.itemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex: 0 0 auto;
+}
+
+.cid {
+  font-weight: 800;
+  letter-spacing: .2px;
+  word-break: break-word;
+}
+
+/* ============ META ============ */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: .9rem;
+  color: #cbd5e1;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.fecha {}
+
+.time {}
+
+.cliente {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+/* ============ BADGES ============ */
+.badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+  flex: 0 0 auto;
+}
+
+.badgeInfo { background: #60a5fa; color: #0b1220; }
+.badgeWarn { background: #f59e0b; color: #111827; }
+
+/* ============ ACTIONS ============ */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0; /* anti-overflow */
+}
+
+.actionOk {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+  color: #fff;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+
+.actionOk:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(34,197,94,.35);
+}
+
+/* ============ MEDIA QUERIES MOBILE ============ */
 @media (max-width: 480px) {
   .pageWrap { padding: 16px; }
   .title   { font-size: 1.1rem; }
+  .grid    { gap: 12px; }
+
+  .item    { padding: 10px; gap: 10px; }
+  .meta    { font-size: .85rem; }
+  .actions { gap: 4px; }
 }
+
+/* asigurări anti-overflow */
+.list, .card, .actions { min-width: 0; }
+.cid, .cliente { word-break: break-word; }
