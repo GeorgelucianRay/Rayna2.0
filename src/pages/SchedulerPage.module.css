@@ -1,0 +1,74 @@
+/* src/pages/SchedulerPage.module.css */
+
+/* ============ LAYOUT ============ */
+.pageWrap {
+  position: relative;
+  padding: 24px;
+  color: #fff;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
+    radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+    linear-gradient(180deg, #0b1220, #0e172a);
+  z-index: -2;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 150px rgba(0,0,0,.45);
+  z-index: -1;
+}
+
+/* ============ TOP BAR ============ */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.backBtn,
+.newBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s;
+  max-width: 100%;
+}
+
+.backBtn { background: rgba(255,255,255,.08); color: #e5e7eb; }
+.backBtn:hover { opacity: .95; }
+.title { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: .2px; }
+.newBtn { background: linear-gradient(90deg, #2563eb, #3b82f6); color: #fff; }
+.newBtn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
+
+/* ============ GRID LISTĂ + CALENDAR ============ */
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr .9fr;
+  gap: 16px;
+  max-width: 100%;
+}
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ============ MEDIA QUERIES MOBILE (pentru Pagină) ============ */
+@media (max-width: 480px) {
+  .pageWrap { padding: 16px; }
+  .title   { font-size: 1.1rem; }
+}
