@@ -1,10 +1,10 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { supabase } from './supabaseClient'; // Asigură-te că importul este corect
-import FeedbackModal from './components/modales/FeedbackModal'; // NOU: Importă modal-ul
+import { supabase } from './supabaseClient';
+import FeedbackModal from './components/modales/FeedbackModal';
 
 const AuthContext = createContext(null);
 
-// --- Funcția existentă pentru alarmele de expirare (NESCHIMBATĂ) ---
+// --- Funcția pentru alarme expirări ---
 const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
     const alarms = [];
     const today = new Date();
@@ -16,19 +16,18 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
     const checkDate = (dateString, ownerName, docType) => {
         if (!dateString) return;
         const docDate = new Date(dateString);
-        
+
         if (docDate < today) {
             const daysAgo = Math.floor((today - docDate) / (1000 * 60 * 60 * 24));
             alarms.push({ type: 'expirare', message: `El ${docType} pentru ${ownerName} a expirat de ${daysAgo} zile.`, days: -daysAgo, expired: true });
-        } 
-        else if (docDate <= thirtyDaysFromNow) {
+        } else if (docDate <= thirtyDaysFromNow) {
             const daysLeft = Math.ceil((docDate - today) / (1000 * 60 * 60 * 24));
             alarms.push({ type: 'expirare', message: `El ${docType} pentru ${ownerName} expiră în ${daysLeft} zile.`, days: daysLeft, expired: false });
         }
     };
 
     profiles.forEach(driver => {
-        if(driver.role === 'sofer') {
+        if (driver.role === 'sofer') {
             checkDate(driver.cap_expirare, driver.nombre_completo, 'Certificado CAP');
             checkDate(driver.carnet_caducidad, driver.nombre_completo, 'Permis de Conducere');
             if (driver.tiene_adr) {
@@ -36,11 +35,11 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
             }
         }
     });
-    
+
     camioane.forEach(camion => {
         checkDate(camion.fecha_itv, camion.matricula, 'ITV al Camionului');
     });
-    
+
     remorci.forEach(remorca => {
         checkDate(remorca.fecha_itv, remorca.matricula, 'ITV al Remorcii');
     });
@@ -48,12 +47,12 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
     return alarms.sort((a, b) => a.days - b.days);
 };
 
-// --- FUNCȚIE NOUĂ: Pentru calculul alarmelor de mentenanță (NESCHIMBATĂ) ---
+// --- Funcția pentru alarme mentenanță ---
 const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
     const alarms = [];
     if (!camioane || !mantenimientoAlerts) return alarms;
 
-    const umbralKm = 5000; // Pragul de la care afișăm alerta (5.000 km)
+    const umbralKm = 5000; // prag 5000km
 
     mantenimientoAlerts.forEach(alerta => {
         const camion = camioane.find(c => c.id === alerta.camion_id);
@@ -61,11 +60,11 @@ const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
             const kmRestantes = alerta.km_proximo_mantenimiento - camion.kilometros;
 
             if (kmRestantes <= umbralKm) {
-                const message = kmRestantes > 0 
+                const message = kmRestantes > 0
                     ? `Pentru camionul ${alerta.matricula}, mai sunt ~${Math.round(kmRestantes / 100) * 100} km până la următorul schimb de ulei.`
                     : `Pentru camionul ${alerta.matricula}, schimbul de ulei este întârziat cu ~${Math.abs(Math.round(kmRestantes / 100) * 100)} km.`;
-                
-                const daysEquivalent = Math.round(kmRestantes / 150); 
+
+                const daysEquivalent = Math.round(kmRestantes / 150);
                 alarms.push({
                     type: 'mentenanta',
                     message,
@@ -75,6 +74,7 @@ const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
             }
         }
     });
+
     return alarms;
 };
 
@@ -83,8 +83,6 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [alarms, setAlarms] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // NOU: State pentru controlul modal-ului de feedback
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
     const fetchAndProcessData = useCallback(async (currentSession) => {
@@ -107,7 +105,7 @@ export const AuthProvider = ({ children }) => {
             if (profileError) throw profileError;
             setProfile(userProfile);
 
-            // NOU: Logica pentru a decide dacă afișăm pop-up-ul de feedback
+            // Pop-up feedback dacă a trecut o săptămână
             if (userProfile) {
                 const lastPromptDate = userProfile.ultima_aparitie_feedback;
                 let shouldShowPrompt = false;
@@ -136,21 +134,26 @@ export const AuthProvider = ({ children }) => {
                 const { data: allCamioane } = await supabase.from('camioane').select('*');
                 const { data: allRemorci } = await supabase.from('remorci').select('*');
                 const { data: allMantenimiento } = await supabase.from('mantenimiento_alertas').select('*').eq('activa', true);
-                
-                profilesToProcess = allProfiles;
-                camioaneToProcess = allCamioane;
-                remorciToProcess = allRemorci;
-                mantenimientoAlertsToProcess = allMantenimiento;
+
+                profilesToProcess = allProfiles || [];
+                camioaneToProcess = allCamioane || [];
+                remorciToProcess = allRemorci || [];
+                mantenimientoAlertsToProcess = allMantenimiento || [];
 
             } else if (userProfile?.role === 'sofer') {
                 profilesToProcess = [userProfile];
-                camioaneToProcess = userProfile.camioane ? [user_profile.camioane].flat() : [];
-                remorciToProcess = userProfile.remorci ? [user_profile.remorci].flat() : [];
-                
+                camioaneToProcess = userProfile.camioane ? [userProfile.camioane].flat() : [];
+                remorciToProcess = userProfile.remorci ? [userProfile.remorci].flat() : [];
+
                 if (camioaneToProcess.length > 0) {
                     const camionIds = camioaneToProcess.map(c => c.id);
-                    const { data: soferMantenimiento } = await supabase.from('mantenimiento_alertas').select('*').eq('activa', true).in('camion_id', camionIds);
-                    mantenimientoAlertsToProcess = soferMantenimiento;
+                    const { data: soferMantenimiento } = await supabase
+                        .from('mantenimiento_alertas')
+                        .select('*')
+                        .eq('activa', true)
+                        .in('camion_id', camionIds);
+
+                    mantenimientoAlertsToProcess = soferMantenimiento || [];
                 }
             }
 
@@ -202,7 +205,7 @@ export const AuthProvider = ({ children }) => {
         if (!camionId || !matricula || !kmActual) {
             return console.error("Lipsesc date pentru a crea alerta de mentenanță.");
         }
-        
+
         try {
             const { error: updateError } = await supabase
                 .from('mantenimiento_alertas')
@@ -220,12 +223,12 @@ export const AuthProvider = ({ children }) => {
                 km_proximo_mantenimiento: kmProximo,
                 activa: true
             };
-            
+
             const { error: insertError } = await supabase.from('mantenimiento_alertas').insert(newAlertData);
             if (insertError) throw insertError;
 
-            console.log(`Alerta de mentenanță pentru ${matricula} a fost creată/actualizată cu succes. Următorul schimb la ${kmProximo} km.`);
-            
+            console.log(`Alerta de mentenanță pentru ${matricula} creată. Următorul schimb la ${kmProximo} km.`);
+
             const { data: { session } } = await supabase.auth.getSession();
             fetchAndProcessData(session);
 
@@ -235,7 +238,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // NOU: Funcție pentru a închide modal-ul (când se apasă X)
     const handleFeedbackClose = async () => {
         setIsFeedbackModalOpen(false);
         if (user) {
@@ -245,11 +247,10 @@ export const AuthProvider = ({ children }) => {
                 .eq('id', user.id);
         }
     };
-    
-    // NOU: Funcție pentru a trimite feedback-ul
+
     const handleFeedbackSubmit = async (feedbackText) => {
         if (!user || !feedbackText) return;
-        
+
         await supabase.from('feedback_utilizatori').insert({
             user_id: user.id,
             continut: feedbackText
@@ -259,15 +260,14 @@ export const AuthProvider = ({ children }) => {
         alert('Mulțumim pentru sugestie!');
     };
 
-    const value = { 
-        user, 
-        profile, 
-        alarms, 
-        loading, 
-        setLoading, 
-        setProfile, 
+    const value = {
+        user,
+        profile,
+        alarms,
+        loading,
+        setLoading,
+        setProfile,
         addMantenimientoAlert,
-        // NOU: Adaugă acestea la context
         isFeedbackModalOpen,
         handleFeedbackSubmit,
         handleFeedbackClose
@@ -275,9 +275,8 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
-            {/* NOU: Modal-ul va fi randat aici, dar vizibil doar când isFeedbackModalOpen este true */}
-            <FeedbackModal 
+            {children}
+            <FeedbackModal
                 isOpen={isFeedbackModalOpen}
                 onClose={handleFeedbackClose}
                 onSubmit={handleFeedbackSubmit}
