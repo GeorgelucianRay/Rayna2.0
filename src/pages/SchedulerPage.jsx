@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+// src/pages/SchedulerPage.jsx
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScheduler } from '../hooks/useScheduler';
-import { supabase } from '../supabaseClient';
 import styles from './SchedulerPage.module.css';
 
-import SchedulerToolbar from '../components/scheduler/SchedulerToolbar';
-import SchedulerList from '../components/scheduler/SchedulerList';
+import SchedulerToolbar from '../components/scheduler/SchedulerToolbar.jsx';
+import SchedulerList from '../components/scheduler/SchedulerList.jsx';
+import SchedulerDetailModal from '../components/scheduler/SchedulerDetailModal.jsx';
 
 export default function SchedulerPage() {
   const navigate = useNavigate();
@@ -18,26 +19,23 @@ export default function SchedulerPage() {
     query, setQuery,
     date, setDate,
     filtered, loading,
-    setItems
+    eliminarProgramado,
+    marcarHecho,
+    editarPosicion,
   } = useScheduler();
 
-  const [isProgramarOpen, setIsProgramarOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
 
-  const handleHecho = async (row) => {
-    if (!(role === 'mecanic' || role === 'dispecer' || role === 'admin')) return;
+  // Tabs permise per rol
+  const allowedTabs = useMemo(() => {
+    if (role === 'mecanic') return ['programado', 'completado'];
+    return ['todos', 'programado', 'pendiente', 'completado'];
+  }, [role]);
 
-    const { data, error } = await supabase.rpc('finalizar_contenedor', {
-      p_matricula: row.matricula_contenedor,
-      p_programado_id: row.programado_id || row.id,
-      p_matricula_camion: row.matricula_camion || null,
-    });
-
-    if (error || !data?.ok) {
-      alert(data?.error || 'Nu s-a putut finaliza.');
-    } else {
-      setItems(prev => prev.filter(x => x.programado_id !== row.programado_id));
-    }
-  };
+  // Dacă tab curent nu e permis, mutăm la primul permis
+  React.useEffect(() => {
+    if (!allowedTabs.includes(tab)) setTab(allowedTabs[0]);
+  }, [allowedTabs, tab, setTab]);
 
   return (
     <div className={styles.schedulerRoot}>
@@ -45,15 +43,12 @@ export default function SchedulerPage() {
         <div className={styles.bg} />
         <div className={styles.vignette} />
 
+        {/* TopBar simplu */}
         <div className={styles.topBar}>
-          <button className={styles.backBtn} onClick={() => navigate('/depot')}>
-            Depot
-          </button>
+          <button className={styles.backBtn} onClick={() => navigate('/depot')}>Depot</button>
           <h1 className={styles.title}>Programar Contenedor</h1>
           {(role === 'dispecer' || role === 'admin') && (
-            <button className={styles.newBtn} onClick={() => setIsProgramarOpen(true)}>
-              Programar
-            </button>
+            <button className={styles.newBtn} onClick={() => alert('TODO: Programar (formular)')}>Programar</button>
           )}
         </div>
 
@@ -61,6 +56,7 @@ export default function SchedulerPage() {
           tab={tab} setTab={setTab}
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
+          allowedTabs={allowedTabs}
         />
 
         <div className={styles.grid}>
@@ -69,9 +65,28 @@ export default function SchedulerPage() {
             tab={tab}
             loading={loading}
             role={role}
-            onHecho={handleHecho}
+            onSelect={setSelected}     // ← click pe item deschide popup
           />
         </div>
+
+        <SchedulerDetailModal
+          open={!!selected}
+          row={selected}
+          role={role}
+          onClose={() => setSelected(null)}
+          onEliminar={async (row) => {
+            await eliminarProgramado(row);
+            setSelected(null);
+          }}
+          onHecho={async (row) => {
+            await marcarHecho(row);
+            setSelected(null);
+          }}
+          onEditar={async (row, nuevaPos) => {
+            await editarPosicion(row, nuevaPos);
+            setSelected(null);
+          }}
+        />
       </div>
     </div>
   );
