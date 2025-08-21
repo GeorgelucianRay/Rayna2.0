@@ -1,6 +1,6 @@
 // src/components/scheduler/SchedulerList.jsx
 import React from 'react';
-import styles from './SchedulerList.module.css';
+import styles from './SchedulerStandalone.module.css';
 import { supabase } from '../../supabaseClient'; // Calea corectă
 
 function SchedulerItem({ row, role, onHecho }) {
