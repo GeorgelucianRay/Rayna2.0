@@ -1,0 +1,186 @@
+/* FeedbackModal.module.css — stil modern/futurist, aliniat la GpsPage.module.css */
+
+/* Best practice */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ===== OVERLAY ===== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: radial-gradient(1200px 800px at 50% 30%, rgba(0,0,0,0.55), rgba(0,0,0,0.86));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fm-fadeIn 0.18s ease-out;
+  height: 100dvh; /* iOS/Android friendly */
+}
+
+@keyframes fm-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ===== MODAL CONTAINER ===== */
+.modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.15rem 1.15rem 1.2rem;
+  background: linear-gradient(180deg, rgba(10,12,20,0.86), rgba(17,24,39,0.9));
+  border: 1px solid rgba(148,163,184,0.25);
+  border-radius: 1rem;
+  box-shadow: 0 40px 90px -20px rgba(0,0,0,0.72);
+  animation: fm-slideUp 0.25s ease-out;
+  overflow: hidden;          /* nu „taie” scroll-ul intern */
+}
+
+@keyframes fm-slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ===== HEADER TEXT ===== */
+.modal h3 {
+  margin: 0;
+  font-size: 1.22rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.modal p {
+  margin: -0.25rem 0 0.25rem 0;
+  color: #dbe4ef;
+  line-height: 1.55;
+}
+
+/* ===== CLOSE BUTTON (X) ===== */
+.closeButton {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  background: transparent;
+  border: 1px solid rgba(148,163,184,0.28);
+  color: #cbd5e1;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 1.05rem;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+.closeButton:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.32);
+}
+
+/* ===== TEXTAREA ===== */
+.modal textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  padding: 0.8rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  color: #f1f5f9;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+.modal textarea::placeholder { color: #7c899a; }
+.modal textarea:focus {
+  border-color: rgba(255,140,58,0.72);
+  box-shadow: 0 0 0 3px rgba(255,140,58,0.25);
+}
+
+/* „shine” subtil pe hover */
+.modal textarea:hover {
+  border-color: rgba(255,255,255,0.28);
+}
+
+/* ===== SUBMIT BUTTON ===== */
+.submitButton {
+  align-self: flex-end;
+  padding: 0.68rem 1.25rem;
+  border-radius: 0.65rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: 1px solid rgba(255,140,58,0.55);
+  background: linear-gradient(135deg, #ff8c3a, #ff6a00);
+  color: #0b0f1a;
+  box-shadow: 0 10px 28px -12px rgba(255,106,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+.submitButton:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.06);
+}
+.submitButton:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 16px -10px rgba(255,106,0,0.4);
+}
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .modal,
+  .closeButton,
+  .submitButton,
+  .modal textarea {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .modal {
+    max-width: 100%;
+    margin: 1rem;
+    max-height: 96dvh;
+    padding: 1rem;
+  }
+  .submitButton { width: 100%; }
+}
+
+/* ===== FINE TUNING / UTIL ===== */
+/* Mic contur intern subtil al containerului */
+.modal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* Glow radial discret pe hover-ul întregului modal */
+.modal {
+  position: relative;
+}
+.modal:hover::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  background: radial-gradient(700px 500px at 50% 0%, rgba(255,140,58,0.08), transparent 45%);
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
