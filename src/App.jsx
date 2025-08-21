@@ -1,4 +1,4 @@
-Eu nu văd linia veche // src/App.jsx
+// src/App.jsx
 import './index.css';
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
