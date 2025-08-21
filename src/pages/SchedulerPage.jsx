@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScheduler } from '../hooks/useScheduler'; // Noul nostru hook
 import { supabase } from '../supabaseClient';
-import styles from './SchedulerStandalone.module.css';
+import styles from './SchedulerPage.module.css';
 
 // Componentele noastre noi
 import SchedulerToolbar from '../components/scheduler/SchedulerToolbar';
