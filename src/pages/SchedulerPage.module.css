@@ -1,5 +1,14 @@
+/* =========================
+   SCHEDULER – izolat complet
+   ========================= */
+.schedulerRoot {
+  position: relative;
+  isolation: isolate;        /* creează stacking context separat => nimic nu iese peste navbar */
+  min-height: 100dvh;
+}
+
 /* ============ LAYOUT ============ */
-.pageWrap {
+.schedulerRoot .pageWrap {
   position: relative;
   padding: 24px;
   color: #fff;
@@ -8,25 +17,25 @@
   overflow-x: hidden; /* previne scroll orizontal */
 }
 
-.bg {
-  position: fixed;
+/* fundaluri – ABSOLUTE, în interiorul schedulerRoot */
+.schedulerRoot .bg {
+  position: absolute;        /* ← nu mai e fixed la viewport */
   inset: 0;
   background:
     radial-gradient(1200px 600px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
     radial-gradient(800px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
     linear-gradient(180deg, #0b1220, #0e172a);
-  z-index: -2;
+  z-index: -1;               /* sub conținut, dar în același stacking context izolat */
 }
-
-.vignette {
-  position: fixed;
+.schedulerRoot .vignette {
+  position: absolute;        /* ← nu mai e fixed la viewport */
   inset: 0;
   box-shadow: inset 0 0 150px rgba(0,0,0,.45);
-  z-index: -1;
+  z-index: 0;                /* sub conținutul afișat */
 }
 
 /* ============ TOP BAR ============ */
-.topBar {
+.schedulerRoot .topBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -34,8 +43,8 @@
   margin-bottom: 18px;
 }
 
-.backBtn,
-.newBtn {
+.schedulerRoot .backBtn,
+.schedulerRoot .newBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -48,38 +57,38 @@
   max-width: 100%;
 }
 
-.backBtn { background: rgba(255,255,255,.08); color: #e5e7eb; }
-.backBtn:hover { opacity: .95; }
+.schedulerRoot .backBtn { background: rgba(255,255,255,.08); color: #e5e7eb; }
+.schedulerRoot .backBtn:hover { opacity: .95; }
 
-.title {
+.schedulerRoot .title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: .2px;
 }
 
-.newBtn {
+.schedulerRoot .newBtn {
   background: linear-gradient(90deg, #2563eb, #3b82f6);
   color: #fff;
 }
-.newBtn:hover {
+.schedulerRoot .newBtn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 22px rgba(37,99,235,.35);
 }
 
 /* ============ GRID LISTĂ + (CALENDAR) ============ */
-.grid {
+.schedulerRoot .grid {
   display: grid;
   grid-template-columns: 1.4fr .9fr; /* lista + (calendar) */
   gap: 16px;
   max-width: 100%;
 }
 @media (max-width: 980px) {
-  .grid { grid-template-columns: 1fr; }
+  .schedulerRoot .grid { grid-template-columns: 1fr; }
 }
 
 /* ============ CARD WRAPPER (pentru listă) ============ */
-.card {
+.schedulerRoot .card {
   background: rgba(17,24,39,.55);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,.15);
@@ -91,7 +100,7 @@
 }
 
 /* ============ LISTA ============ */
-.list {
+.schedulerRoot .list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -102,7 +111,7 @@
 }
 
 /* ============ ITEM ============ */
-.item {
+.schedulerRoot .item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -114,51 +123,40 @@
   max-width: 100%;
   box-sizing: border-box;
 }
-
-.itemTop {
+.schedulerRoot .itemTop {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
   flex-wrap: wrap;
 }
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.schedulerRoot .dot {
+  width: 8px; height: 8px; border-radius: 50%;
   background: #22c55e;
   flex: 0 0 auto;
 }
-
-.cid {
+.schedulerRoot .cid {
   font-weight: 800;
   letter-spacing: .2px;
   word-break: break-word;
 }
 
 /* ============ META ============ */
-.meta {
+.schedulerRoot .meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 10px;
   font-size: .9rem;
   color: #cbd5e1;
   max-width: 100%;
-  word-break: break-word;
+  word-break: word-break;
 }
-
-.fecha {}
-
-.time {}
-
-.cliente {
-  font-weight: 700;
-  color: #f8fafc;
-}
+.schedulerRoot .fecha {}
+.schedulerRoot .time {}
+.schedulerRoot .cliente { font-weight: 700; color: #f8fafc; }
 
 /* ============ BADGES ============ */
-.badge {
+.schedulerRoot .badge {
   margin-left: 6px;
   padding: 2px 8px;
   border-radius: 999px;
@@ -167,20 +165,18 @@
   letter-spacing: .2px;
   flex: 0 0 auto;
 }
-
-.badgeInfo { background: #60a5fa; color: #0b1220; }
-.badgeWarn { background: #f59e0b; color: #111827; }
+.schedulerRoot .badgeInfo { background: #60a5fa; color: #0b1220; }
+.schedulerRoot .badgeWarn { background: #f59e0b; color: #111827; }
 
 /* ============ ACTIONS ============ */
-.actions {
+.schedulerRoot .actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   min-width: 0; /* anti-overflow */
 }
-
-.actionOk {
+.schedulerRoot .actionOk {
   padding: 6px 10px;
   border-radius: 8px;
   font-weight: 800;
@@ -191,23 +187,25 @@
   color: #fff;
   transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
 }
-
-.actionOk:hover {
+.schedulerRoot .actionOk:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(34,197,94,.35);
 }
 
 /* ============ MEDIA QUERIES MOBILE ============ */
 @media (max-width: 480px) {
-  .pageWrap { padding: 16px; }
-  .title   { font-size: 1.1rem; }
-  .grid    { gap: 12px; }
+  .schedulerRoot .pageWrap { padding: 16px; }
+  .schedulerRoot .title   { font-size: 1.1rem; }
+  .schedulerRoot .grid    { gap: 12px; }
 
-  .item    { padding: 10px; gap: 10px; }
-  .meta    { font-size: .85rem; }
-  .actions { gap: 4px; }
+  .schedulerRoot .item    { padding: 10px; gap: 10px; }
+  .schedulerRoot .meta    { font-size: .85rem; }
+  .schedulerRoot .actions { gap: 4px; }
 }
 
 /* asigurări anti-overflow */
-.list, .card, .actions { min-width: 0; }
-.cid, .cliente { word-break: break-word; }
+.schedulerRoot .list,
+.schedulerRoot .card,
+.schedulerRoot .actions { min-width: 0; }
+.schedulerRoot .cid,
+.schedulerRoot .cliente { word-break: break-word; }
