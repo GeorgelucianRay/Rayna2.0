@@ -1,194 +1,156 @@
 /* =========================
-   SCHEDULER (Toolbar + List)
+   SCHEDULER DETAILS MODAL
    ========================= */
 
-/* ---------- CARD WRAPPER (folosit și la toolbar ca container) ---------- */
-.card {
-  background: rgba(17,24,39,.55);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 16px;
-  padding: 16px;
-  max-width: 100%;
-  box-sizing: border-box;
-  min-width: 0; /* anti-overflow */
+/* Fundalul semi-transparent */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 
-/* ---------- TOOLBAR ---------- */
-.toolbar {
+/* Containerul modalului */
+.modalContent {
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 20px;
+  width: 520px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #f8fafc;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: modalFadeIn 0.25s ease forwards;
+  position: relative;
+}
+
+/* Titlu */
+.modalHeader {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-/* Tabs (chips) */
-.chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  max-width: 100%;
-}
-
-.chip {
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.15);
-  background: rgba(255,255,255,.06);
-  color: #e5e7eb;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .15s ease;
-}
-.chip:hover { background: rgba(255,255,255,.12); }
-.chipActive {
-  background: linear-gradient(90deg, #fb923c, #f97316);
-  border-color: transparent;
-  color: #111827;
-}
-
-/* Search + inputs */
-.inputs {
-  display: flex;
-  gap: 10px;
   align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
+  margin-bottom: 16px;
 }
-.search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.15);
-  padding: 8px 12px;
-  border-radius: 10px;
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
+.modalTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
 }
-.searchIcon { opacity: .8; flex: 0 0 auto; }
-.search input {
+.modalClose {
   background: transparent;
   border: none;
   color: #fff;
-  outline: none;
-  width: 100%;
-  min-width: 0;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
-.search input::placeholder { color: #9ca3af; }
-
-.date {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.15);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 10px;
-  flex: 0 0 auto;
-  max-width: 100%;
+.modalClose:hover {
+  transform: scale(1.15);
 }
 
-/* ---------- LISTA ---------- */
-.list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 10px;
-  max-width: 100%;
-  min-width: 0; /* anti-overflow */
-}
-
-.item {
+/* Conținutul principal */
+.modalBody {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.12);
-  max-width: 100%;
-  box-sizing: border-box;
+  font-size: 0.95rem;
+  color: #e5e7eb;
 }
-.itemTop {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-.dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #22c55e;
-  flex: 0 0 auto;
-}
-.cid { font-weight: 800; letter-spacing: .2px; word-break: break-word; }
 
-/* Meta */
-.meta {
+/* Secțiuni individuale de detalii */
+.detailRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  font-size: .9rem;
-  color: #cbd5e1;
-  max-width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255,255,255,.1);
+}
+.detailLabel {
+  font-weight: 700;
+  color: #f97316; /* portocaliu accent */
+}
+.detailValue {
+  color: #f8fafc;
+  text-align: right;
   word-break: break-word;
 }
-.fecha {}
-.time {}
-.cliente { font-weight: 700; color: #f8fafc; }
 
-/* Badges */
-.badge {
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: .75rem;
-  font-weight: 800;
-  letter-spacing: .2px;
-  flex: 0 0 auto;
-}
-.badgeInfo { background: #60a5fa; color: #0b1220; }
-.badgeWarn { background: #f59e0b; color: #111827; }
-
-/* Actions */
-.actions {
+/* Butoane acțiuni */
+.modalActions {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  gap: 10px;
+  margin-top: 18px;
   flex-wrap: wrap;
-  min-width: 0; /* anti-overflow */
 }
-.actionOk {
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-weight: 800;
+
+.btn {
+  flex: 1 1 auto;
+  padding: 10px 14px;
+  border-radius: 10px;
   border: none;
+  font-weight: 800;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-align: center;
   white-space: nowrap;
+}
+
+/* Verde pentru Hecho */
+.btnHecho {
   background: linear-gradient(90deg, #16a34a, #22c55e);
   color: #fff;
-  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
 }
-.actionOk:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(34,197,94,.35);
+.btnHecho:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(34, 197, 94, 0.4);
 }
 
-/* ---------- MOBILE ---------- */
+/* Portocaliu pentru Editar */
+.btnEditar {
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  color: #111827;
+}
+.btnEditar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(251, 146, 60, 0.4);
+}
+
+/* Roșu pentru Eliminar */
+.btnEliminar {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  color: #fff;
+}
+.btnEliminar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Animația de intrare */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsivitate */
 @media (max-width: 480px) {
-  .toolbar { gap: 8px; }
-  .inputs  { width: 100%; }
-  .date    { padding: 8px 10px; }
-
-  .item    { padding: 10px; gap: 10px; }
-  .meta    { font-size: .85rem; }
-  .actions { gap: 4px; }
+  .modalContent {
+    width: 90%;
+    padding: 16px;
+  }
+  .modalTitle {
+    font-size: 1.1rem;
+  }
+  .modalActions {
+    flex-direction: column;
+  }
+  .btn {
+    width: 100%;
+  }
 }
-
-/* ---------- Anti-overflow extra ---------- */
-.cid, .cliente { word-break: break-word; }
