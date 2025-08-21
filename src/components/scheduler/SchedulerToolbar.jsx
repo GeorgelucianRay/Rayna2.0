@@ -1,13 +1,10 @@
 // src/components/scheduler/SchedulerToolbar.jsx
 import React from 'react';
-import styles from './SchedulerStandalone.module.css'; // Refolosim stilurile
+import styles from './SchedulerStandalone.module.css';
 
-// Presupunem că SearchIcon este într-un fișier separat de iconițe
-// import { SearchIcon } from '../ui/Icons'; 
-
-export default function SchedulerToolbar({ tab, setTab, query, setQuery, date, setDate }) {
-  const tabs = ['todos', 'programado', 'pendiente', 'completado'];
-  const tabLabels = { todos: 'Todos', programado: 'Programado', pendiente: 'Pendiente', completado: 'Completado' };
+export default function SchedulerToolbar({ tab, setTab, query, setQuery, date, setDate, allowedTabs }) {
+  const labels = { todos: 'Todos', programado: 'Programado', pendiente: 'Pendiente', completado: 'Completado' };
+  const tabs = allowedTabs ?? ['todos','programado','pendiente','completado'];
 
   return (
     <div className={`${styles.card} ${styles.toolbar}`}>
@@ -18,13 +15,12 @@ export default function SchedulerToolbar({ tab, setTab, query, setQuery, date, s
             className={`${styles.chip} ${tab === k ? styles.chipActive : ''}`}
             onClick={() => setTab(k)}
           >
-            {tabLabels[k]}
+            {labels[k]}
           </button>
         ))}
       </div>
       <div className={styles.inputs}>
         <div className={styles.search}>
-          {/* <span className={styles.searchIcon}><SearchIcon/></span> */}
           <input placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         {tab === 'completado' && (
