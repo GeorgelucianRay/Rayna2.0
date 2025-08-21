@@ -1,4 +1,4 @@
-// src/App.jsx
+Eu nu văd linia veche // src/App.jsx
 import './index.css';
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
@@ -22,8 +22,7 @@ import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 import MapPage from './components/MapPage.jsx';
-// Aceasta este noua linie corectă
-import SchedulerPage from './pages/SchedulerPage.jsx';
+import SchedulerPage from './components/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
