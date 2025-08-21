@@ -80,6 +80,7 @@ const Layout = ({ children }) => {
     '/vacaciones': styles.miPerfilBackground,
     '/vacaciones-admin': styles.miPerfilBackground,
     '/chofer': styles.miPerfilBackground,
+    '/programacion': styles.depotBackground,
   };
   const getBackgroundClass = () => {
     const matchingPath = Object.keys(backgroundMap)
