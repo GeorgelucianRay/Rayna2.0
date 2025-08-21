@@ -122,7 +122,7 @@ export default function MiPerfilPage() {
             </div>
             <div className={styles.rows2}>
               <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span></div>
-              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}'}</span></div>
+              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span></div>
             </div>
           </section>
           <section className={styles.card}>
