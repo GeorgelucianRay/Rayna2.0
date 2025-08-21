@@ -10,16 +10,18 @@ export function useScheduler() {
   const [doneItems, setDoneItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Încarcă itemele programate și din depozit
+  // fetch programados + contenedores
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       if (tab === 'completado') return;
       setLoading(true);
       try {
-        const { data: prog } = await supabase.from('contenedores_programados').select('*');
-        const { data: depo } = await supabase.from('contenedores').select('*');
-        
+        const { data: prog, error: e1 } = await supabase.from('contenedores_programados').select('*');
+        if (e1) throw e1;
+        const { data: depo, error: e2 } = await supabase.from('contenedores').select('*');
+        if (e2) throw e2;
+
         if (!cancelled) {
           const mappedProg = (prog || []).map(r => ({ ...r, programado_id: r.id, source: 'programados' }));
           const mappedDepot = (depo || []).map(r => ({ ...r, programado_id: null, source: 'contenedores' }));
@@ -35,7 +37,7 @@ export function useScheduler() {
     return () => { cancelled = true; };
   }, [tab]);
 
-  // Încarcă itemele completate
+  // fetch completados (día)
   useEffect(() => {
     let cancelled = false;
     const loadDone = async () => {
@@ -45,12 +47,13 @@ export function useScheduler() {
         const start = new Date(date); start.setHours(0,0,0,0);
         const end = new Date(start); end.setDate(end.getDate() + 1);
 
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('contenedores_salidos')
           .select('*')
           .gte('fecha_salida', start.toISOString())
           .lt('fecha_salida', end.toISOString());
-          
+
+        if (error) throw error;
         if (!cancelled) setDoneItems(data || []);
       } catch (err) {
         console.error('Carga completados fallida:', err);
@@ -62,7 +65,7 @@ export function useScheduler() {
     return () => { cancelled = true; };
   }, [tab, date]);
 
-  // Filtrarea listelor
+  // filtrare
   const filtered = useMemo(() => {
     if (tab === 'completado') return doneItems;
     let list = items;
@@ -71,27 +74,97 @@ export function useScheduler() {
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(x =>
-        `${x.matricula_contenedor} ${x.naviera} ${x.empresa_descarga}`.toLowerCase().includes(q)
+        `${x.matricula_contenedor ?? ''} ${x.naviera ?? ''} ${x.empresa_descarga ?? ''}`.toLowerCase().includes(q)
       );
     }
     return list;
   }, [tab, items, doneItems, query]);
-  
-  // Funcția de reîncărcare, utilă după o salvare
-  const refreshData = useCallback(() => {
-     // Forțăm un re-fetch prin schimbarea tab-ului și revenire
-     const currentTab = tab;
-     setTab(''); // O valoare invalidă pentru a declanșa re-fetch
-     setTimeout(() => setTab(currentTab), 0);
-  }, [tab]);
 
-  return { 
-    tab, setTab, 
-    query, setQuery, 
+  // === a) ELIMINAR: din programados -> înapoi în contenedores ===
+  const eliminarProgramado = useCallback(async (row) => {
+    if (row?.source !== 'programados') return;
+
+    // 1) Optimizare locală
+    setItems(prev => prev.filter(x => x.programado_id !== row.programado_id));
+
+    try {
+      // ștergem din programados
+      const { error: delErr } = await supabase
+        .from('contenedores_programados')
+        .delete()
+        .eq('id', row.programado_id);
+      if (delErr) throw delErr;
+
+      // adăugăm/actualizăm în contenedores (minim: matricula_contenedor)
+      const insertObj = {
+        matricula_contenedor: row.matricula_contenedor,
+        empresa_descarga: row.empresa_descarga ?? null,
+        naviera: row.naviera ?? null,
+        posicion: row.posicion ?? null
+      };
+      const { error: insErr } = await supabase.from('contenedores').insert(insertObj);
+      if (insErr) throw insErr;
+    } catch (err) {
+      console.error('Eliminar fallida:', err);
+      // rollback simplu: re-adăugăm în listă
+      setItems(prev => [...prev, { ...row }]);
+      alert('Nu s-a putut elimina. Reîncearcă.');
+    }
+  }, []);
+
+  // === b) HECHO: programado -> salidos (folosești RPC-ul tău existent) ===
+  const marcarHecho = useCallback(async (row) => {
+    if (row?.source !== 'programados' || (row.estado || 'programado') === 'pendiente') return;
+
+    // optimist: scoatem din listă imediat
+    setItems(prev => prev.filter(x => x.programado_id !== row.programado_id));
+
+    try {
+      const { data, error } = await supabase.rpc('finalizar_contenedor', {
+        p_matricula: row.matricula_contenedor,
+        p_programado_id: row.programado_id || row.id,
+        p_matricula_camion: row.matricula_camion || null,
+      });
+
+      if (error || !data?.ok) throw new Error(data?.error || 'RPC finalizar_contenedor falló');
+    } catch (err) {
+      console.error('Hecho fallida:', err);
+      // rollback
+      setItems(prev => [...prev, { ...row }]);
+      alert('Nu s-a putut marca ca Hecho.');
+    }
+  }, []);
+
+  // === c) EDITAR: doar poziția în programados ===
+  const editarPosicion = useCallback(async (row, nuevaPosicion) => {
+    if (row?.source !== 'programados') return;
+    // optimist
+    setItems(prev => prev.map(x =>
+      x.programado_id === row.programado_id ? { ...x, posicion: nuevaPosicion } : x
+    ));
+    try {
+      const { error } = await supabase
+        .from('contenedores_programados')
+        .update({ posicion: nuevaPosicion })
+        .eq('id', row.programado_id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Editar posición fallida:', err);
+      // rollback: n-avem vechea poziție; dacă vrei, ține-o înainte separat
+      alert('Nu s-a putut edita poziția.');
+    }
+  }, []);
+
+  return {
+    tab, setTab,
+    query, setQuery,
     date, setDate,
-    items, setItems, // setItems va fi util pentru ProgramarModal
-    filtered, 
+    filtered,
     loading,
-    refreshData 
+
+    // acțiuni:
+    eliminarProgramado,
+    marcarHecho,
+    editarPosicion,
   };
 }
