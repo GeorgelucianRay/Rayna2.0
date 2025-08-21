@@ -1,156 +1,114 @@
-/* =========================
-   SCHEDULER DETAILS MODAL
-   ========================= */
-
-/* Fundalul semi-transparent */
+/* ============ MODAL (DETALII PROGRAMARE) ============ */
 .modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
   backdrop-filter: blur(6px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+  display: grid; place-items: center;
+  z-index: 3000;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 
-/* Containerul modalului */
-.modalContent {
-  background: rgba(17, 24, 39, 0.95);
+.modal {
+  background: rgba(17,24,39,.95);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  padding: 20px;
-  width: 520px;
-  max-width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  color: #f8fafc;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  animation: modalFadeIn 0.25s ease forwards;
-  position: relative;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(90vh, 720px);
+  padding: 16px;
+  color: #fff;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  overflow: auto;
+  animation: modalFadeIn .22s ease-out;
+  box-sizing: border-box;
 }
 
-/* Titlu */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.modalTitle {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: #fff;
-}
-.modalClose {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 1.4rem;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-.modalClose:hover {
-  transform: scale(1.15);
-}
-
-/* Conținutul principal */
-.modalBody {
-  display: flex;
-  flex-direction: column;
+  display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
-  font-size: 0.95rem;
-  color: #e5e7eb;
+  border-bottom: 1px solid rgba(255,255,255,.15);
+  padding-bottom: 10px; margin-bottom: 12px;
 }
 
-/* Secțiuni individuale de detalii */
-.detailRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px dashed rgba(255,255,255,.1);
+.modalTitle {
+  margin: 0;
+  font-size: clamp(1.05rem, 1rem + 0.5vw, 1.25rem);
+  line-height: 1.2;
+  white-space: normal;
 }
-.detailLabel {
-  font-weight: 700;
-  color: #f97316; /* portocaliu accent */
+
+.closeIcon {
+  appearance: none; border: none; background: transparent; color: #cbd5e1;
+  cursor: pointer; font-size: 18px; line-height: 1;
 }
-.detailValue {
-  color: #f8fafc;
-  text-align: right;
+.closeIcon:hover { color: #fff; }
+
+.modalBody {
+  display: grid; gap: 12px;
   word-break: break-word;
 }
 
-/* Butoane acțiuni */
-.modalActions {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-  flex-wrap: wrap;
+.inputGroup { display: flex; flex-direction: column; gap: 6px; }
+.inputGroup label {
+  font-weight: 800; color: #e5e7eb; font-size: .95rem;
+  white-space: normal;
 }
 
-.btn {
-  flex: 1 1 auto;
+.inputGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 768px) {
+  .inputGrid { grid-template-columns: 1fr; }
+}
+
+.modalBody input {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  min-width: 0;
+}
+.modalBody input::placeholder { color: #9ca3af; }
+
+/* Footer + butoane */
+.modalFooter {
+  position: sticky;
+  bottom: 0;
+  margin-top: 10px;
+  padding-top: 10px;
+  background: linear-gradient(180deg, transparent, rgba(17,24,39,0.85) 30%);
+  backdrop-filter: blur(2px);
+  border-top: 1px solid rgba(255,255,255,.15);
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+
+/* Refolosim stilurile tale de acțiuni, le completăm aici ca să existe în modul */
+.actionMini,
+.actionGhost,
+.actionOk {
   padding: 10px 14px;
   border-radius: 10px;
-  border: none;
   font-weight: 800;
+  border: none;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  text-align: center;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s;
   white-space: nowrap;
 }
 
-/* Verde pentru Hecho */
-.btnHecho {
-  background: linear-gradient(90deg, #16a34a, #22c55e);
-  color: #fff;
-}
-.btnHecho:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(34, 197, 94, 0.4);
-}
+.actionMini { background: linear-gradient(90deg, #fb923c, #f97316); color: #111827; }
+.actionMini:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(249,115,22,.35); }
 
-/* Portocaliu pentru Editar */
-.btnEditar {
-  background: linear-gradient(90deg, #fb923c, #f97316);
-  color: #111827;
-}
-.btnEditar:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(251, 146, 60, 0.4);
-}
+.actionGhost { background: rgba(255,255,255,.08); color: #e5e7eb; border: 1px solid rgba(255,255,255,.18); }
+.actionGhost:hover { opacity: .95; }
 
-/* Roșu pentru Eliminar */
-.btnEliminar {
-  background: linear-gradient(90deg, #ef4444, #dc2626);
-  color: #fff;
-}
-.btnEliminar:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.4);
-}
-
-/* Animația de intrare */
-@keyframes modalFadeIn {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Responsivitate */
-@media (max-width: 480px) {
-  .modalContent {
-    width: 90%;
-    padding: 16px;
-  }
-  .modalTitle {
-    font-size: 1.1rem;
-  }
-  .modalActions {
-    flex-direction: column;
-  }
-  .btn {
-    width: 100%;
-  }
-}
+.actionOk { background: linear-gradient(90deg, #16a34a, #22c55e); color: #fff; }
+.actionOk:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(34,197,94,.35); }
