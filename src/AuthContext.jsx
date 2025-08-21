@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from './supabaseClient'; // Asigură-te că importul este corect
+import FeedbackModal from './components/modales/FeedbackModal'; // NOU: Importă modal-ul
 
 const AuthContext = createContext(null);
 
@@ -47,7 +48,7 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
     return alarms.sort((a, b) => a.days - b.days);
 };
 
-// --- FUNCȚIE NOUĂ: Pentru calculul alarmelor de mentenanță ---
+// --- FUNCȚIE NOUĂ: Pentru calculul alarmelor de mentenanță (NESCHIMBATĂ) ---
 const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
     const alarms = [];
     if (!camioane || !mantenimientoAlerts) return alarms;
@@ -64,9 +65,7 @@ const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
                     ? `Pentru camionul ${alerta.matricula}, mai sunt ~${Math.round(kmRestantes / 100) * 100} km până la următorul schimb de ulei.`
                     : `Pentru camionul ${alerta.matricula}, schimbul de ulei este întârziat cu ~${Math.abs(Math.round(kmRestantes / 100) * 100)} km.`;
                 
-                // Folosim 'days' ca o cheie de sortare comună. Convertim km în 'zile' estimative.
-                const daysEquivalent = Math.round(kmRestantes / 150); // Presupunem o medie de 150km/zi pentru sortare
-
+                const daysEquivalent = Math.round(kmRestantes / 150); 
                 alarms.push({
                     type: 'mentenanta',
                     message,
@@ -79,26 +78,26 @@ const calculateMantenimientoAlarms = (camioane, mantenimientoAlerts) => {
     return alarms;
 };
 
-
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [alarms, setAlarms] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    // NOU: State pentru controlul modal-ului de feedback
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
-    // MODIFICARE: Am mutat logica de fetch într-o funcție `useCallback` pentru a o putea refolosi în `setInterval`.
     const fetchAndProcessData = useCallback(async (currentSession) => {
         if (!currentSession?.user) {
             setProfile(null);
             setAlarms([]);
             setUser(null);
-            return; // Oprim execuția dacă nu există sesiune
+            return;
         }
 
         setUser(currentSession.user);
 
         try {
-            // Pas 1: Preluăm profilul utilizatorului curent
             const { data: userProfile, error: profileError } = await supabase
                 .from('profiles')
                 .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
@@ -108,13 +107,30 @@ export const AuthProvider = ({ children }) => {
             if (profileError) throw profileError;
             setProfile(userProfile);
 
-            // Pas 2: Inițializăm listele de date și alarme
+            // NOU: Logica pentru a decide dacă afișăm pop-up-ul de feedback
+            if (userProfile) {
+                const lastPromptDate = userProfile.ultima_aparitie_feedback;
+                let shouldShowPrompt = false;
+
+                if (!lastPromptDate) {
+                    shouldShowPrompt = true;
+                } else {
+                    const daysSinceLastPrompt = (new Date() - new Date(lastPromptDate)) / (1000 * 60 * 60 * 24);
+                    if (daysSinceLastPrompt > 7) {
+                        shouldShowPrompt = true;
+                    }
+                }
+
+                if (shouldShowPrompt) {
+                    setIsFeedbackModalOpen(true);
+                }
+            }
+
             let profilesToProcess = [];
             let camioaneToProcess = [];
             let remorciToProcess = [];
             let mantenimientoAlertsToProcess = [];
 
-            // Pas 3: Preluăm datele în funcție de rol
             if (userProfile?.role === 'dispecer') {
                 const { data: allProfiles } = await supabase.from('profiles').select('*');
                 const { data: allCamioane } = await supabase.from('camioane').select('*');
@@ -128,8 +144,8 @@ export const AuthProvider = ({ children }) => {
 
             } else if (userProfile?.role === 'sofer') {
                 profilesToProcess = [userProfile];
-                camioaneToProcess = userProfile.camioane ? [userProfile.camioane].flat() : [];
-                remorciToProcess = userProfile.remorci ? [userProfile.remorci].flat() : [];
+                camioaneToProcess = userProfile.camioane ? [user_profile.camioane].flat() : [];
+                remorciToProcess = userProfile.remorci ? [user_profile.remorci].flat() : [];
                 
                 if (camioaneToProcess.length > 0) {
                     const camionIds = camioaneToProcess.map(c => c.id);
@@ -138,11 +154,9 @@ export const AuthProvider = ({ children }) => {
                 }
             }
 
-            // Pas 4: Calculăm ambele tipuri de alarme
             const expirationAlarms = calculateExpirations(profilesToProcess, camioaneToProcess, remorciToProcess);
             const mantenimientoAlarms = calculateMantenimientoAlarms(camioaneToProcess, mantenimientoAlertsToProcess);
 
-            // Pas 5: Combinăm și sortăm alarmele
             const combinedAlarms = [...expirationAlarms, ...mantenimientoAlarms].sort((a, b) => a.days - b.days);
             setAlarms(combinedAlarms);
 
@@ -151,53 +165,45 @@ export const AuthProvider = ({ children }) => {
             setProfile(null);
             setAlarms([]);
         }
-    }, []); // useCallback fără dependențe, deoarece primește sesiunea ca argument
+    }, []);
 
-    // MODIFICARE: Am refăcut useEffect pentru a include setInterval
     useEffect(() => {
         setLoading(true);
         let intervalId = null;
 
-        // Funcția care pornește totul
         const initialize = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            await fetchAndProcessData(session); // Rulăm o dată la început
+            await fetchAndProcessData(session);
             setLoading(false);
 
-            // Pornim un interval care să verifice datele la fiecare 5 minute
             if (session) {
                 intervalId = setInterval(() => {
                     console.log("Verificare periodică a alarmelor...");
                     fetchAndProcessData(session);
-                }, 300000); // 300000 ms = 5 minute
+                }, 300000);
             }
         };
 
         initialize();
 
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            // La login/logout, oprim intervalul vechi și repornim procesul
             if (intervalId) clearInterval(intervalId);
             setLoading(true);
             initialize();
         });
 
-        // Curățăm intervalul la demontarea componentei
         return () => {
             if (intervalId) clearInterval(intervalId);
             authListener.subscription.unsubscribe();
         };
-    }, [fetchAndProcessData]); // Adăugăm fetchAndProcessData ca dependență
+    }, [fetchAndProcessData]);
 
-
-    // --- FUNCȚIE NOUĂ: Pentru a adăuga/actualiza o alertă de mentenanță ---
     const addMantenimientoAlert = async (camionId, matricula, kmActual) => {
         if (!camionId || !matricula || !kmActual) {
             return console.error("Lipsesc date pentru a crea alerta de mentenanță.");
         }
         
         try {
-            // Pas 1: Dezactivăm orice alertă veche pentru acest camion
             const { error: updateError } = await supabase
                 .from('mantenimiento_alertas')
                 .update({ activa: false })
@@ -206,7 +212,6 @@ export const AuthProvider = ({ children }) => {
 
             if (updateError) throw updateError;
 
-            // Pas 2: Creăm noua alertă cu ținta calculată
             const kmProximo = kmActual + 80000;
             const newAlertData = {
                 camion_id: camionId,
@@ -221,7 +226,6 @@ export const AuthProvider = ({ children }) => {
 
             console.log(`Alerta de mentenanță pentru ${matricula} a fost creată/actualizată cu succes. Următorul schimb la ${kmProximo} km.`);
             
-            // Reîmprospătăm manual alarmele pentru a reflecta schimbarea instantaneu
             const { data: { session } } = await supabase.auth.getSession();
             fetchAndProcessData(session);
 
@@ -231,12 +235,53 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // MODIFICARE: Adăugăm noua funcție la valoarea contextului
-    const value = { user, profile, alarms, loading, setLoading, setProfile, addMantenimientoAlert };
+    // NOU: Funcție pentru a închide modal-ul (când se apasă X)
+    const handleFeedbackClose = async () => {
+        setIsFeedbackModalOpen(false);
+        if (user) {
+            await supabase
+                .from('profiles')
+                .update({ ultima_aparitie_feedback: new Date().toISOString() })
+                .eq('id', user.id);
+        }
+    };
+    
+    // NOU: Funcție pentru a trimite feedback-ul
+    const handleFeedbackSubmit = async (feedbackText) => {
+        if (!user || !feedbackText) return;
+        
+        await supabase.from('feedback_utilizatori').insert({
+            user_id: user.id,
+            continut: feedbackText
+        });
+
+        await handleFeedbackClose();
+        alert('Mulțumim pentru sugestie!');
+    };
+
+    const value = { 
+        user, 
+        profile, 
+        alarms, 
+        loading, 
+        setLoading, 
+        setProfile, 
+        addMantenimientoAlert,
+        // NOU: Adaugă acestea la context
+        isFeedbackModalOpen,
+        handleFeedbackSubmit,
+        handleFeedbackClose
+    };
 
     return (
         <AuthContext.Provider value={value}>
             {!loading && children}
+            {/* NOU: Modal-ul va fi randat aici, dar vizibil doar când isFeedbackModalOpen este true */}
+            <FeedbackModal 
+                isOpen={isFeedbackModalOpen}
+                onClose={handleFeedbackClose}
+                onSubmit={handleFeedbackSubmit}
+            />
         </AuthContext.Provider>
     );
 };
