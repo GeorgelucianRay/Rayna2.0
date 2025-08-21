@@ -22,7 +22,8 @@ import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/CalculadoraNomina.jsx';
 import MapPage from './components/MapPage.jsx';
-import SchedulerPage from './components/SchedulerPage.jsx';
+// Aceasta este noua linie corectă
+import SchedulerPage from './pages/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
