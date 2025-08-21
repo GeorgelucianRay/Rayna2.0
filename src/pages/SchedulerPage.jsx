@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScheduler } from '../hooks/useScheduler';
 import styles from './SchedulerPage.module.css';
+import page from './SchedulerPage.module.css';
+import styles from '../components/scheduler/SchedulerStandalone.module.css';
 
 import SchedulerToolbar from '../components/scheduler/SchedulerToolbar.jsx';
 import SchedulerList from '../components/scheduler/SchedulerList.jsx';
