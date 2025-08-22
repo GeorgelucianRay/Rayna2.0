@@ -1,5 +1,5 @@
-// UploadAvatarModal.jsx
-import React, { useState, useRef } from 'react';
+// UploadAvatarModal.jsx - VERSIUNE CORECTATĂ
+import React, { useState, useRef, useEffect } from 'react';
 import styles from './UploadAvatarModal.module.css';
 import { CloseIcon } from '../ui/Icons';
 import { supabase } from '../../supabaseClient';
@@ -14,7 +14,28 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
   const fileSelfieRef = useRef(null);
   const fileGalRef = useRef(null);
 
+  // Cleanup pentru URL.createObjectURL
+  useEffect(() => {
+    return () => {
+      if (previewURL) {
+        URL.revokeObjectURL(previewURL);
+      }
+    };
+  }, [previewURL]);
+
   const handleClose = () => {
+    // Confirmă dacă există imagine nesalvată
+    if (photoStep === 'preview' && !isUploading) {
+      if (!window.confirm('¿Estás seguro? La imagen no se ha guardado.')) {
+        return;
+      }
+    }
+    
+    // Cleanup
+    if (previewURL) {
+      URL.revokeObjectURL(previewURL);
+    }
+    
     setPhotoStep('choice');
     setPreviewURL('');
     setTempBlob(null);
@@ -29,25 +50,39 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Verifică dimensiunea fișierului (max 32MB pentru imgbb free)
-    if (file.size > 32 * 1024 * 1024) {
-      setError('Imaginea este prea mare. Maxim 32MB.');
+    // Validare tip fișier
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Tipo de archivo no permitido. Usa JPEG, PNG, GIF o WebP.');
       return;
     }
 
+    // Verifică dimensiunea (max 32MB pentru imgbb free)
+    if (file.size > 32 * 1024 * 1024) {
+      setError('La imagen es demasiado grande. Máximo 32MB.');
+      return;
+    }
+
+    // Cleanup URL vechi
+    if (previewURL) {
+      URL.revokeObjectURL(previewURL);
+    }
+
     setTempBlob(file); 
-    setPreviewURL(URL.createObjectURL(file));
+    const newPreviewURL = URL.createObjectURL(file);
+    setPreviewURL(newPreviewURL);
     setPhotoStep('preview');
     setError('');
   };
   
   const uploadToImgBB = async (file) => {
     try {
-      // Convertește fișierul în base64
+      console.log('Starting imgBB upload...');
+      
+      // Convertește în base64
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
-          // Elimină prefixul "data:image/...;base64,"
           const base64String = reader.result.split(',')[1];
           resolve(base64String);
         };
@@ -55,12 +90,17 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
         reader.readAsDataURL(file);
       });
 
-      // Trimite direct către imgbb API (CORS permis)
+      // Verifică API key
+      const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
+      if (!apiKey) {
+        throw new Error('ImgBB API key no configurada');
+      }
+
       const formData = new FormData();
       formData.append('image', base64);
       
       const response = await fetch(
-        `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+        `https://api.imgbb.com/1/upload?key=${apiKey}`,
         {
           method: 'POST',
           body: formData
@@ -68,30 +108,102 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
       );
       
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
       
+      // Debug logging
+      console.log('ImgBB Response:', data);
+      
       if (data.success) {
-        return data.data.url; // URL-ul imaginii de pe imgbb
+        // ImgBB returnează mai multe URL-uri, folosește display_url care e cel mai stabil
+        const imageUrl = data.data.display_url || data.data.url || data.data.image.url;
+        console.log('Image URL obtained:', imageUrl);
+        
+        if (!imageUrl) {
+          throw new Error('No se recibió URL de imgBB');
+        }
+        
+        return imageUrl;
       } else {
         throw new Error(data.error?.message || 'Upload failed');
       }
     } catch (err) {
-      console.error('Error uploading to imgbb:', err);
+      console.error('Error uploading to imgBB:', err);
       throw err;
     }
   };
   
   const updateSupabaseProfile = async (avatarUrl) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', userId);
+      console.log('Updating Supabase profile...');
+      console.log('User ID:', userId);
+      console.log('Avatar URL:', avatarUrl);
       
-      if (error) throw error;
+      if (!userId) {
+        throw new Error('User ID no disponible');
+      }
+      
+      if (!avatarUrl) {
+        throw new Error('Avatar URL no disponible');
+      }
+      
+      // Primero verifica si existe el perfil
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .eq('id', userId)
+        .maybeSingle(); // Usa maybeSingle en lugar de single para evitar errores si no existe
+      
+      console.log('Existing profile:', existingProfile);
+      
+      let result;
+      
+      if (!existingProfile) {
+        // El perfil no existe, créalo
+        console.log('Creating new profile...');
+        result = await supabase
+          .from('profiles')
+          .insert({ 
+            id: userId, 
+            avatar_url: avatarUrl,
+            updated_at: new Date().toISOString()
+          })
+          .select();
+      } else {
+        // El perfil existe, actualízalo
+        console.log('Updating existing profile...');
+        result = await supabase
+          .from('profiles')
+          .update({ 
+            avatar_url: avatarUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId)
+          .select();
+      }
+      
+      if (result.error) {
+        console.error('Supabase error:', result.error);
+        throw result.error;
+      }
+      
+      console.log('Profile updated successfully:', result.data);
+      
+      // Verifica que se guardó correctamente
+      const { data: verification, error: verifyError } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+      
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
+      } else {
+        console.log('Verified avatar URL in database:', verification.avatar_url);
+      }
+      
       return true;
     } catch (err) {
       console.error('Error updating profile:', err);
@@ -100,32 +212,71 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
   };
   
   const handleSave = async () => {
-    if (!tempBlob) return;
+    if (!tempBlob) {
+      setError('No hay imagen para guardar');
+      return;
+    }
+    
+    if (!userId) {
+      setError('Error: Usuario no identificado');
+      console.error('No userId provided to component');
+      return;
+    }
     
     setIsUploading(true);
     setError('');
     
     try {
-      // 1. Upload către imgbb direct din browser
-      console.log('Uploading to imgbb...');
+      // 1. Upload a imgBB
+      console.log('Step 1: Uploading to imgBB...');
       const imageUrl = await uploadToImgBB(tempBlob);
-      console.log('Image uploaded:', imageUrl);
       
-      // 2. Actualizează Supabase
-      console.log('Updating Supabase profile...');
+      if (!imageUrl) {
+        throw new Error('No se obtuvo URL de la imagen');
+      }
+      
+      console.log('Step 2: Image uploaded successfully:', imageUrl);
+      
+      // 2. Actualiza Supabase
+      console.log('Step 3: Updating Supabase profile...');
       await updateSupabaseProfile(imageUrl);
-      console.log('Profile updated successfully');
       
-      // 3. Notifică componenta părinte
+      console.log('Step 4: Profile updated successfully');
+      
+      // 3. Notifica al componente padre
       if (onUploadComplete) {
+        console.log('Step 5: Calling onUploadComplete with URL:', imageUrl);
         onUploadComplete(imageUrl);
       }
       
-      // 4. Închide modalul
-      handleClose();
+      // 4. Cierra el modal
+      console.log('Step 6: Upload complete, closing modal');
+      
+      // Reset states antes de cerrar
+      if (previewURL) {
+        URL.revokeObjectURL(previewURL);
+      }
+      setPhotoStep('choice');
+      setPreviewURL('');
+      setTempBlob(null);
+      setError('');
+      onClose();
+      
     } catch (err) {
-      setError('Eroare la încărcarea imaginii. Te rog încearcă din nou.');
       console.error('Upload error:', err);
+      
+      // Mensajes de error más específicos
+      if (err.message.includes('network') || err.message.includes('fetch')) {
+        setError('Error de conexión. Verifica tu internet.');
+      } else if (err.message.includes('User ID')) {
+        setError('Error de autenticación. Por favor, vuelve a iniciar sesión.');
+      } else if (err.message.includes('imgBB')) {
+        setError('Error al subir la imagen. Intenta con otra imagen.');
+      } else if (err.message.includes('Supabase')) {
+        setError('Error al guardar en la base de datos.');
+      } else {
+        setError('Error al cargar la imagen. Por favor intenta de nuevo.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -138,32 +289,40 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3>Fotografía de perfil</h3>
-          <button className={styles.iconBtn} onClick={handleClose} disabled={isUploading}>
+          <button 
+            className={styles.iconBtn} 
+            onClick={handleClose} 
+            disabled={isUploading}
+            aria-label="Cerrar modal"
+          >
             <CloseIcon />
           </button>
         </div>
 
         <div className={styles.modalBody}>
           {error && (
-            <div style={{
-              backgroundColor: '#fee',
-              color: '#c00',
-              padding: '10px',
-              borderRadius: '4px',
-              marginBottom: '15px',
-              textAlign: 'center'
-            }}>
+            <div className={styles.errorMessage} role="alert">
               {error}
             </div>
           )}
           
           {photoStep === 'choice' && (
             <div className={styles.choiceGrid}>
-              <button type="button" className={styles.choiceCard} onClick={openNativeSelfie}>
-                <div className={styles.choiceIcon}>🤳</div>
+              <button 
+                type="button" 
+                className={styles.choiceCard} 
+                onClick={openNativeSelfie}
+                aria-label="Tomar selfie con la cámara"
+              >
+                <div className={styles.choiceIcon}>📸</div>
                 <div className={styles.choiceTitle}>Hacer un selfie</div>
               </button>
-              <button type="button" className={styles.choiceCard} onClick={openNativeGallery}>
+              <button 
+                type="button" 
+                className={styles.choiceCard} 
+                onClick={openNativeGallery}
+                aria-label="Seleccionar imagen de la galería"
+              >
                 <div className={styles.choiceIcon}>🖼️</div>
                 <div className={styles.choiceTitle}>Subir desde galería</div>
               </button>
@@ -173,45 +332,33 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
                 accept="image/*" 
                 capture="user" 
                 style={{ display: 'none' }} 
-                onChange={onNativePicked} 
+                onChange={onNativePicked}
+                aria-hidden="true"
               />
               <input 
                 ref={fileGalRef} 
                 type="file" 
                 accept="image/*" 
                 style={{ display: 'none' }} 
-                onChange={onNativePicked} 
+                onChange={onNativePicked}
+                aria-hidden="true"
               />
             </div>
           )}
 
           {photoStep === 'preview' && (
-            <div className={styles.previewWrapXL} style={{ position: 'relative' }}>
+            <div className={styles.previewWrapXL}>
               {previewURL && (
-                <img src={previewURL} alt="Vista previa" className={styles.previewImg} />
+                <img 
+                  src={previewURL} 
+                  alt="Vista previa de la imagen" 
+                  className={styles.previewImg} 
+                />
               )}
               {isUploading && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <div style={{
-                    border: '3px solid #f3f3f3',
-                    borderTop: '3px solid #3498db',
-                    borderRadius: '50%',
-                    width: '40px',
-                    height: '40px',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>
-                  <p style={{ marginTop: '10px' }}>Se încarcă...</p>
+                <div className={styles.loadingOverlay}>
+                  <div className={styles.spinner}></div>
+                  <p>Cargando...</p>
                 </div>
               )}
             </div>
@@ -223,7 +370,10 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
             <>
               <button 
                 className={styles.btnGhost} 
-                onClick={() => setPhotoStep('choice')}
+                onClick={() => {
+                  setPhotoStep('choice');
+                  setError('');
+                }}
                 disabled={isUploading}
               >
                 Volver
@@ -233,100 +383,19 @@ export default function UploadAvatarModal({ isOpen, onClose, onUploadComplete, u
                 onClick={handleSave}
                 disabled={isUploading}
               >
-                {isUploading ? 'Se încarcă...' : 'Guardar foto'}
+                {isUploading ? 'Cargando...' : 'Guardar foto'}
               </button>
             </>
           ) : (
-            <button className={styles.btnPrimary} onClick={handleClose}>
+            <button 
+              className={styles.btnPrimary} 
+              onClick={handleClose}
+            >
               Cerrar
             </button>
           )}
         </div>
-        
-        {/* Adaugă animația pentru spinner */}
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     </div>
   );
 }
-
-// ===== .env (pentru development local) =====
-/*
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key  
-VITE_IMGBB_API_KEY=your_imgbb_api_key
-*/
-
-// ===== Utilizare în componenta părinte =====
-/*
-import UploadAvatarModal from './components/UploadAvatarModal';
-import { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient'; // sau de unde ai tu supabase
-
-function ProfilePage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [user, setUser] = useState(null);
-  
-  useEffect(() => {
-    // Obține user-ul curent
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // Obține avatar-ul curent din profiles
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
-        
-        if (data) {
-          setAvatarUrl(data.avatar_url);
-        }
-      }
-    };
-    
-    getUser();
-  }, []);
-  
-  const handleUploadComplete = (url) => {
-    setAvatarUrl(url);
-    // Avatar-ul a fost actualizat cu succes
-    console.log('Noul avatar:', url);
-  };
-  
-  return (
-    <div>
-      <div>
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" style={{ width: 100, height: 100, borderRadius: '50%' }} />
-        ) : (
-          <div>No avatar</div>
-        )}
-      </div>
-      
-      <button onClick={() => setIsModalOpen(true)}>
-        Schimbă Avatar
-      </button>
-      
-      {user && (
-        <UploadAvatarModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onUploadComplete={handleUploadComplete}
-          userId={user.id}
-        />
-      )}
-    </div>
-  );
-}
-
-export default ProfilePage;
-*/
