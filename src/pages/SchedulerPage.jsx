@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScheduler } from '../hooks/useScheduler';
 
-// ✅ un singur CSS module, cel al paginii
+// doar CSS-ul acestei pagini
 import styles from './SchedulerPage.module.css';
 
-// Componente (își importă singure CSS-ul lor)
+// componentele își importă CSS-urile proprii
 import SchedulerToolbar from '../components/scheduler/SchedulerToolbar.jsx';
 import SchedulerList from '../components/scheduler/SchedulerList.jsx';
 import SchedulerDetailModal from '../components/scheduler/SchedulerDetailModal.jsx';
+import SchedulerCalendar from '../components/scheduler/SchedulerCalendar.jsx';
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -27,11 +28,19 @@ export default function SchedulerPage() {
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
+  const calRef = useRef(null);
 
   // mecanicii nu văd "Todos"
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
+
+  const handleProgramarClick = () => {
+    // pe mobil: scroll la calendar (care e sub listă)
+    if (window.innerWidth <= 980 && calRef.current) {
+      calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className={styles.schedulerRoot}>
@@ -43,10 +52,7 @@ export default function SchedulerPage() {
           <Link to="/depot" className={styles.backBtn}>Depot</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
           {(role === 'dispecer' || role === 'admin') && (
-            <button
-              className={styles.newBtn}
-              onClick={() => alert('Calendar vine în pasul următor 🙂')}
-            >
+            <button className={styles.newBtn} onClick={handleProgramarClick}>
               Programar
             </button>
           )}
@@ -59,14 +65,20 @@ export default function SchedulerPage() {
         />
 
         <div className={styles.grid}>
+          {/* stânga: LISTA */}
           <SchedulerList
             items={filtered}
             tab={tab}
             loading={loading}
             role={role}
             onHecho={async (row) => { await marcarHecho(row); }}
-            onSelect={setSelected} // dacă lista îl folosește, se va deschide modalul
+            onSelect={setSelected}
           />
+
+          {/* dreapta (sau jos pe mobil): CALENDAR */}
+          <div ref={calRef}>
+            <SchedulerCalendar date={date} setDate={setDate} />
+          </div>
         </div>
 
         <SchedulerDetailModal
