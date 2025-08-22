@@ -7,12 +7,12 @@ import { supabase } from '../supabaseClient';
 import Layout from '../components/Layout';
 import styles from './MiPerfilPage.module.css';
 
-// Componente UI & Widget-uri (cu căile corecte)
+// Componente UI & Widget-uri
 import { EditIcon, CameraIcon } from '../components/ui/Icons';
 import VacacionesWidget from '../components/widgets/VacacionesWidget';
 import NominaWidget from '../components/widgets/NominaWidget';
 
-// Componente Modale (cu căile corecte)
+// Componente Modale
 import EditProfileModal from '../components/modales/EditProfileModal';
 import UploadAvatarModal from '../components/modales/UploadAvatarModal';
 
@@ -66,14 +66,52 @@ export default function MiPerfilPage() {
 
   // Save Profile Logic
   const handleSaveProfile = async (editableProfile) => {
-    // ... (Your original save logic here)
-    alert('Profilul a fost salvat!');
-    setIsEditOpen(false);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(editableProfile)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Actualizează profile în context
+      setProfile({ ...profile, ...editableProfile });
+      alert('Perfil actualizado correctamente!');
+      setIsEditOpen(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Error al guardar el perfil');
+    }
   };
 
-  // Upload Avatar Logic
-  const handleAvatarUpload = async (imageBlob) => {
-    alert('Funcționalitatea de upload va fi implementată aici.');
+  // IMPORTANT: Funcția corectată pentru upload avatar
+  const handleAvatarUpload = async (newAvatarUrl) => {
+    console.log('Avatar uploaded successfully:', newAvatarUrl);
+    
+    // Actualizează profilul în state local pentru a reflecta schimbarea imediat
+    if (setProfile) {
+      setProfile(prevProfile => ({
+        ...prevProfile,
+        avatar_url: newAvatarUrl
+      }));
+    }
+    
+    // Opțional: Re-fetch profilul pentru a fi sigur că e sincronizat
+    try {
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+    
+    // Închide modalul
     setIsPhotoOpen(false);
   };
 
@@ -83,8 +121,36 @@ export default function MiPerfilPage() {
     return n.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '...';
   }, [profile]);
   
+  // Debug logging
+  useEffect(() => {
+    if (user) {
+      console.log('Current user in MiPerfilPage:', {
+        id: user.id,
+        email: user.email
+      });
+    }
+    if (profile) {
+      console.log('Current profile:', {
+        avatar_url: profile.avatar_url,
+        nombre_completo: profile.nombre_completo
+      });
+    }
+  }, [user, profile]);
+  
   if (loading || !profile) {
     return <Layout><div className={styles.loading}>Cargando…</div></Layout>;
+  }
+
+  // VERIFICARE IMPORTANTĂ: Asigură-te că user există înainte de render
+  if (!user) {
+    return (
+      <Layout>
+        <div className={styles.loading}>
+          <p>No has iniciado sesión</p>
+          <button onClick={() => navigate('/login')}>Iniciar sesión</button>
+        </div>
+      </Layout>
+    );
   }
 
   return (
@@ -93,46 +159,104 @@ export default function MiPerfilPage() {
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.avatarXxl} onClick={() => setIsPhotoOpen(true)}>
-              {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" className={styles.avatarImg} /> : <div className={styles.avatarFallbackXl}>{initials}</div>}
+              {profile.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt="Avatar" 
+                  className={styles.avatarImg}
+                  onError={(e) => {
+                    console.error('Error loading avatar:', profile.avatar_url);
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className={styles.avatarFallbackXl}>{initials}</div>
+              )}
               <div className={styles.avatarOverlay}></div>
-              <button className={styles.avatarCamBtn} type="button" onClick={(e)=>{e.stopPropagation(); setIsPhotoOpen(true);}}>
+              <button 
+                className={styles.avatarCamBtn} 
+                type="button" 
+                onClick={(e) => {
+                  e.stopPropagation(); 
+                  console.log('Opening photo modal with userId:', user.id);
+                  setIsPhotoOpen(true);
+                }}
+              >
                 <CameraIcon />
               </button>
-            </div> {/* <<< TAG DE ÎNCHIDERE 1/3 (pentru avatarXxl) */}
-            <div>
-              <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}><EditIcon /> Editar perfil</button>
             </div>
-          </div> {/* <<< TAG DE ÎNCHIDERE 2/3 (pentru headerLeft) */}
-        </div> {/* <<< TAG DE ÎNCHIDERE 3/3 (pentru header) */}
+            <div>
+              <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}>
+                <EditIcon /> Editar perfil
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className={styles.cardsGrid}>
           <section className={styles.card}>
             <div className={styles.cardTitle}>Conductor</div>
             <div className={styles.rows2}>
-              <div><span className={styles.k}>Nombre completo</span><span className={styles.v}>{profile.nombre_completo || '—'}</span></div>
-              <div><span className={styles.k}>CAP</span><span className={styles.v}>{profile.cap_expirare || '—'}</span></div>
-              <div><span className={styles.k}>Carnet conducir</span><span className={styles.v}>{profile.carnet_caducidad || '—'}</span></div>
-              <div><span className={styles.k}>ADR</span><span className={styles.v}>{profile.tiene_adr ? profile.adr_caducidad || 'Sí' : 'No'}</span></div>
+              <div>
+                <span className={styles.k}>Nombre completo</span>
+                <span className={styles.v}>{profile.nombre_completo || '—'}</span>
+              </div>
+              <div>
+                <span className={styles.k}>CAP</span>
+                <span className={styles.v}>{profile.cap_expirare || '—'}</span>
+              </div>
+              <div>
+                <span className={styles.k}>Carnet conducir</span>
+                <span className={styles.v}>{profile.carnet_caducidad || '—'}</span>
+              </div>
+              <div>
+                <span className={styles.k}>ADR</span>
+                <span className={styles.v}>{profile.tiene_adr ? profile.adr_caducidad || 'Sí' : 'No'}</span>
+              </div>
             </div>
           </section>
+          
           <section className={styles.card}>
-             <div className={styles.cardTitleRow}>
+            <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Camión</div>
-              <button className={styles.ghostBtn} onClick={() => profile?.camion_id && navigate(`/camion/${profile.camion_id}`)}>Ver ficha</button>
+              <button 
+                className={styles.ghostBtn} 
+                onClick={() => profile?.camion_id && navigate(`/camion/${profile.camion_id}`)}
+              >
+                Ver ficha
+              </button>
             </div>
             <div className={styles.rows2}>
-              <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span></div>
-              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span></div>
+              <div>
+                <span className={styles.k}>Matrícula</span>
+                <span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span>
+              </div>
+              <div>
+                <span className={styles.k}>ITV</span>
+                <span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span>
+              </div>
             </div>
           </section>
+          
           <section className={styles.card}>
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Remolque</div>
-              <button className={styles.ghostBtn} onClick={() => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`)}>Ver ficha</button>
+              <button 
+                className={styles.ghostBtn} 
+                onClick={() => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`)}
+              >
+                Ver ficha
+              </button>
             </div>
             <div className={styles.rows2}>
-              <div><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || 'No asignado'}</span></div>
-              <div><span className={styles.k}>ITV</span><span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span></div>
+              <div>
+                <span className={styles.k}>Matrícula</span>
+                <span className={styles.v}>{profile.remorci?.matricula || 'No asignado'}</span>
+              </div>
+              <div>
+                <span className={styles.k}>ITV</span>
+                <span className={styles.v}>{profile.remorci?.fecha_itv || '—'}</span>
+              </div>
             </div>
           </section>
         </div>
@@ -156,10 +280,13 @@ export default function MiPerfilPage() {
           profile={profile}
           onSave={handleSaveProfile}
         />
+        
+        {/* IMPORTANT: Transmite userId ca prop la UploadAvatarModal */}
         <UploadAvatarModal
           isOpen={isPhotoOpen}
           onClose={() => setIsPhotoOpen(false)}
           onUploadComplete={handleAvatarUpload}
+          userId={user.id}  // <<< AICI E CHEIA! Transmite user.id
         />
       </div>
     </Layout>
