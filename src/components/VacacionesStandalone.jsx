@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import styles from './VacacionesStandaloneCyber.module.css';
+import styles from './VacacionesStandalone.module.css';
 
 /* ---------- helpers fecha ---------- */
 function toLocalISO(date = new Date()) {
