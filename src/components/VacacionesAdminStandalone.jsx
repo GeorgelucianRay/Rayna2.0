@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import styles from './VacacionesAdminGlobal.module.css';
+import styles from './VacacionesAdminStandalone.module.css';
 
 const PALETTE = [
   '#00E5FF','#FF3CAC','#50FA7B','#FFD166','#C792EA',
