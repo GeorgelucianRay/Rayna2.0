@@ -314,7 +314,7 @@ export default function ChoferFinderProfile() {
             <button className={styles.btn} onClick={goNominaGlobal}>
               <CalcIcon /> Nómina
             </button>
-            <button className={styles.btnAccent} onClick={goVacacionesGlobal}>
+            <button className={styles.btnAccent} onClick={goVacacionesAdminStandalone}>
               <CalendarIcon /> Vacaciones (admin)
             </button>
           </div>
