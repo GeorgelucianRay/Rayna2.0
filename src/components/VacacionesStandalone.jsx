@@ -1,8 +1,9 @@
 // VacacionesStandaloneCyber.jsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import styles from './VacacionesStandalone.module.css';
+import styles from './VacacionesStandaloneCyber.module.css';
 
 /* ---------- helpers fecha ---------- */
 function toLocalISO(date = new Date()) {
@@ -18,9 +19,6 @@ function daysBetween(a, b) {
   const A = new Date(fmt(a)), B = new Date(fmt(b));
   return Math.floor((B - A) / 86400000) + 1;
 }
-function overlaps(a1, a2, b1, b2) {
-  return new Date(a1) <= new Date(b2) && new Date(b1) <= new Date(a2);
-}
 function* iterateDates(isoStart, isoEnd) {
   let d = new Date(fmt(isoStart));
   const end = new Date(fmt(isoEnd));
@@ -33,7 +31,30 @@ function monthLabel(date) {
   return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
              .replace(/^\p{L}/u, c => c.toUpperCase());
 }
+function uniqueSorted(arr) {
+  return Array.from(new Set(arr)).sort((a,b) => new Date(a) - new Date(b));
+}
+function datesToRanges(dateList) {
+  const dates = uniqueSorted(dateList);
+  if (dates.length === 0) return [];
+  const ranges = [];
+  let start = dates[0];
+  let prev = dates[0];
+  for (let i=1;i<dates.length;i++){
+    const cur = dates[i];
+    const prevNext = new Date(prev); prevNext.setDate(prevNext.getDate()+1);
+    const curD = new Date(cur);
+    if (fmt(prevNext) !== fmt(curD)) {
+      ranges.push({ start_date: start, end_date: prev });
+      start = cur;
+    }
+    prev = cur;
+  }
+  ranges.push({ start_date: start, end_date: prev });
+  return ranges;
+}
 
+/* ---------- iconos ---------- */
 const Chevron = ({ left }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
     {left ? <polyline points="15 18 9 12 15 6"></polyline> : <polyline points="9 18 15 12 9 6"></polyline>}
@@ -46,6 +67,7 @@ const Check = () => (
 );
 
 export default function VacacionesStandaloneCyber() {
+  const navigate = useNavigate();
   const { profile } = useAuth() || {};
   const userId = profile?.id || null;
 
@@ -53,15 +75,13 @@ export default function VacacionesStandaloneCyber() {
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
 
-  // parámetros año
-  const [params, setParams] = useState({
-    dias_base: 23, dias_personales: 2, dias_pueblo: 0, max_simultaneous: 3
-  });
+  // parámetros del año
+  const [params, setParams] = useState({ dias_base: 23, dias_personales: 2, dias_pueblo: 0, max_simultaneous: 3 });
   const [diasExtra, setDiasExtra] = useState(0);
 
   // eventos
   const [myEvents, setMyEvents] = useState([]);
-  const [eventsAll, setEventsAll] = useState([]); // pt. avertizare (număr, nu nume)
+  const [eventsAll, setEventsAll] = useState([]); // pentru avertizare (număr, nu nume)
   const [loading, setLoading] = useState(true);
   const [errorDb, setErrorDb] = useState('');
 
@@ -71,17 +91,18 @@ export default function VacacionesStandaloneCyber() {
   const [dateEnd, setDateEnd] = useState(toLocalISO(new Date(Date.now() + 86400000)));
   const [note, setNote] = useState('');
 
-  // selecție drag
+  // selectare calendar
+  const [mode, setMode] = useState('rango'); // 'rango' | 'multi'
   const [selStart, setSelStart] = useState(null);
   const [selEnd, setSelEnd] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [multiSet, setMultiSet] = useState(new Set()); // set de ISO (YYYY-MM-DD)
 
-  /* ---------- load principal ---------- */
+  /* ---------- load ---------- */
   const load = useCallback(async () => {
     setLoading(true);
     setErrorDb('');
     try {
-      // parámetros del año
       const { data: cfg } = await supabase
         .from('vacaciones_parametros_anio')
         .select('*')
@@ -96,7 +117,6 @@ export default function VacacionesStandaloneCyber() {
       });
 
       if (userId) {
-        // extra per user
         const { data: ex } = await supabase
           .from('vacaciones_asignaciones_extra')
           .select('dias_extra')
@@ -104,7 +124,6 @@ export default function VacacionesStandaloneCyber() {
           .maybeSingle();
         setDiasExtra(ex?.dias_extra ?? 0);
 
-        // evenimentele mele (care ating anul)
         const yearStart = `${anio}-01-01`;
         const yearEnd = `${anio}-12-31`;
         const { data: evMe } = await supabase
@@ -116,12 +135,11 @@ export default function VacacionesStandaloneCyber() {
         setMyEvents(evMe || []);
       }
 
-      // toate evenimentele pentru avertizare (fără nume, doar numărare)
       const yearStart = `${anio}-01-01`;
       const yearEnd = `${anio}-12-31`;
       const { data: evAll } = await supabase
         .from('vacaciones_eventos')
-        .select('user_id,state,start_date,end_date') // minimul necesar
+        .select('user_id,state,start_date,end_date')
         .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
       setEventsAll(evAll || []);
     } catch (e) {
@@ -133,7 +151,7 @@ export default function VacacionesStandaloneCyber() {
 
   useEffect(() => { load(); }, [load]);
 
-  // mouseup global pt. drag-select
+  // mouseup global pt drag
   useEffect(() => {
     if (!isSelecting) return;
     const onUp = () => {
@@ -161,20 +179,18 @@ export default function VacacionesStandaloneCyber() {
   }
 
   const usadas = useMemo(() =>
-    (myEvents || [])
-      .filter(e => e.state === 'aprobado')
+    (myEvents || []).filter(e => e.state === 'aprobado')
       .reduce((sum, e) => sum + overlapDaysWithinYear(e, anio), 0),
   [myEvents, anio]);
 
   const pendientes = useMemo(() =>
-    (myEvents || [])
-      .filter(e => e.state === 'pendiente' || e.state === 'conflicto')
+    (myEvents || []).filter(e => e.state === 'pendiente' || e.state === 'conflicto')
       .reduce((sum, e) => sum + overlapDaysWithinYear(e, anio), 0),
   [myEvents, anio]);
 
   const disponibles = Math.max(totalAsignado - usadas - pendientes, 0);
 
-  // Harta pentru punctele din calendar (evenimentele mele)
+  // hărți evenimente
   const eventByDate = useMemo(() => {
     const map = new Map();
     (myEvents || []).forEach(ev => {
@@ -186,7 +202,6 @@ export default function VacacionesStandaloneCyber() {
     return map;
   }, [myEvents]);
 
-  // Harta pentru avertizare: zi -> numărul de șoferi (toți)
   const dayMapAll = useMemo(() => {
     const map = new Map();
     (eventsAll || []).forEach(ev => {
@@ -201,25 +216,36 @@ export default function VacacionesStandaloneCyber() {
     return map;
   }, [eventsAll, anio]);
 
-  // Avertizare pentru intervalul selectat
   const crowdWarning = useMemo(() => {
-    if (!dateStart || !dateEnd) return null;
     const limit = Math.max(1, Number(params.max_simultaneous)||1);
-    let peak = 0, peakDay = null;
-    for (const iso of iterateDates(dateStart, dateEnd)) {
-      const n = dayMapAll.get(iso) || 0;
-      if (n >= limit && n > peak) { peak = n; peakDay = iso; }
+    if (mode === 'multi') {
+      const dates = Array.from(multiSet);
+      let peak = 0, day = null;
+      dates.forEach(iso => {
+        const n = dayMapAll.get(iso) || 0;
+        if (n >= limit && n > peak) { peak = n; day = iso; }
+      });
+      if (!day) return null;
+      const d = new Date(day).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+      return `⚠️ En ${d} hay ${peak} chóferes con vacaciones (límite ${limit}).`;
+    } else {
+      if (!dateStart || !dateEnd) return null;
+      let peak = 0, day = null;
+      for (const iso of iterateDates(dateStart, dateEnd)) {
+        const n = dayMapAll.get(iso) || 0;
+        if (n >= limit && n > peak) { peak = n; day = iso; }
+      }
+      if (!day) return null;
+      const d = new Date(day).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+      return `⚠️ En ${d} hay ${peak} chóferes con vacaciones (límite ${limit}).`;
     }
-    if (!peakDay) return null;
-    const d = new Date(peakDay).toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
-    return `⚠️ En ${d} hay ${peak} chóferes con vacaciones (límite ${limit}).`;
-  }, [dateStart, dateEnd, params.max_simultaneous, dayMapAll]);
+  }, [mode, multiSet, dateStart, dateEnd, params.max_simultaneous, dayMapAll]);
 
   /* ---------- calendar ---------- */
   const monthDate = useMemo(() => new Date(anio, month, 1), [anio, month]);
   const monthTitle = useMemo(() => monthLabel(monthDate), [monthDate]);
-
   const weekLabels = ['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
+
   const monthCells = useMemo(() => {
     const firstIdx = (new Date(anio, month, 1).getDay() + 6) % 7; // luni=0
     const count = new Date(anio, month + 1, 0).getDate();
@@ -233,85 +259,128 @@ export default function VacacionesStandaloneCyber() {
     return cells;
   }, [anio, month, eventByDate]);
 
-  const donut = useMemo(() => {
-    const total = Math.max(totalAsignado || 0, 1);
-    const left = Math.max(disponibles, 0);
-    const used = Math.max(total - left, 0);
-    const arc = 314 * (left / total); // 2πr, r≈50
-    return { total, left, used, arc: Math.max(0, arc) };
-  }, [totalAsignado, disponibles]);
-
   function onPrev() {
-    setMonth(prev => (prev === 0 ? 11 : prev - 1));
+    setMonth(prev => prev === 0 ? 11 : prev - 1);
     if (month === 0) setAnio(y => y - 1);
   }
   function onNext() {
-    setMonth(prev => (prev === 11 ? 0 : prev + 1));
+    setMonth(prev => prev === 11 ? 0 : prev + 1);
     if (month === 11) setAnio(y => y + 1);
   }
+
+  // click / drag în funcție de mod
   function onDayMouseDown(iso) {
+    if (mode === 'multi') {
+      setMultiSet(prev => {
+        const n = new Set(prev);
+        if (n.has(iso)) n.delete(iso); else n.add(iso);
+        return n;
+      });
+      return;
+    }
     setSelStart(iso); setSelEnd(iso); setIsSelecting(true);
   }
   function onDayMouseEnter(iso) {
+    if (mode === 'multi') return;
     if (!isSelecting || !selStart) return;
     if (new Date(iso) < new Date(selStart)) { setSelEnd(selStart); setSelStart(iso); }
     else { setSelEnd(iso); }
   }
 
-  /* ---------- acțiuni ---------- */
+  const isSelected = (iso) => {
+    if (mode === 'multi') return multiSet.has(iso);
+    return selStart && selEnd && iso >= selStart && iso <= selEnd;
+  };
+
+  function clearSelection() {
+    setSelStart(null); setSelEnd(null); setMultiSet(new Set());
+  }
+
+  /* ---------- submit ---------- */
   async function submitRequest() {
     if (!userId) return alert('Necesitas iniciar sesión.');
-    const d1 = new Date(dateStart), d2 = new Date(dateEnd);
-    if (isNaN(d1) || isNaN(d2) || d2 < d1) return alert('La fecha fin no puede ser anterior al inicio.');
 
+    // determinăm intervalele din selecție
+    let ranges = [];
+    if (mode === 'multi') {
+      if (multiSet.size === 0) return alert('Selecciona al menos un día.');
+      ranges = datesToRanges(Array.from(multiSet));
+    } else {
+      const d1 = new Date(dateStart), d2 = new Date(dateEnd);
+      if (isNaN(d1) || isNaN(d2) || d2 < d1) return alert('La fecha fin no puede ser anterior al inicio.');
+      ranges = [{ start_date: fmt(dateStart), end_date: fmt(dateEnd) }];
+    }
+
+    // validare zile disponibile doar pentru personal
     if (reqType === 'personal') {
-      const reqDays = daysBetween(dateStart, dateEnd);
-      if (reqDays > disponibles) {
-        const ok = confirm(`Solicitas ${reqDays} días pero te quedan ${disponibles}. ¿Continuar?`);
+      const totalRequested = ranges.reduce((s,r) => s + daysBetween(r.start_date, r.end_date), 0);
+      if (totalRequested > disponibles) {
+        const ok = confirm(`Solicitas ${totalRequested} días pero te quedan ${disponibles}. ¿Continuar?`);
         if (!ok) return;
       }
     }
 
-    const payload = {
+    const payloads = ranges.map(r => ({
       user_id: userId,
       tipo: reqType,
-      state: reqType === 'empresa' ? 'aprobado' : 'pendiente', // empresa: se registra como aprobado (evidencia)
-      start_date: dateStart,
-      end_date: dateEnd,
+      state: reqType === 'empresa' ? 'aprobado' : 'pendiente',
+      start_date: r.start_date,
+      end_date: r.end_date,
       notas: note || null,
       created_by: userId
-    };
+    }));
 
     const { data, error } = await supabase
       .from('vacaciones_eventos')
-      .insert(payload)
-      .select('id')
-      .maybeSingle();
+      .insert(payloads)
+      .select('id');
 
     if (error) {
       console.warn('insert error:', error);
       return alert('No se pudo crear la solicitud.');
     }
 
-    // opțional: verificare conflict server-side pentru personal
-    if (payload.state === 'pendiente') {
-      await supabase.rpc('check_vacation_conflicts', { p_event_id: data.id }).catch(() => {});
+    // verificare server-side pentru personal
+    if (reqType === 'personal' && data?.length) {
+      // rulează pe fiecare nou event (dacă vrei)
+      // await Promise.all(data.map(row => supabase.rpc('check_vacation_conflicts', { p_event_id: row.id }))).catch(()=>{});
+      await supabase.rpc('check_vacation_conflicts_batch', { p_event_ids: data.map(d => d.id) }).catch(()=>{});
     }
 
     setNote('');
-    setSelStart(null); setSelEnd(null);
+    clearSelection();
     await load();
     alert(reqType === 'empresa' ? 'Vacaciones de empresa registradas.' : 'Solicitud enviada.');
   }
+
+  const donut = useMemo(() => {
+    const total = Math.max(totalAsignado || 0, 1);
+    const left = Math.max(disponibles, 0);
+    const used = Math.max(total - left, 0);
+    const arc = 314 * (left / total);
+    return { total, left, used, arc: Math.max(0, arc) };
+  }, [totalAsignado, disponibles]);
 
   return (
     <div className={styles.wrap}>
       <header className={styles.header}>
         <div className={styles.hLeft}>
+          <button type="button" className={styles.btnBack} onClick={() => navigate(-1)}>◀ Volver</button>
           <h2 className={styles.title}>Mis vacaciones</h2>
           <span className={styles.sub}>Gestiona tus días y registra vacaciones de empresa</span>
         </div>
         <div className={styles.hRight}>
+          <div className={styles.toggleWrap}>
+            <span className={styles.toggleLabel}>Modo</span>
+            <div className={styles.toggleGrp}>
+              <button type="button"
+                      className={`${styles.toggleBtn} ${mode==='rango'?styles.toggleOn:''}`}
+                      onClick={() => setMode('rango')}>Rango</button>
+              <button type="button"
+                      className={`${styles.toggleBtn} ${mode==='multi'?styles.toggleOn:''}`}
+                      onClick={() => setMode('multi')}>Selección múltiple</button>
+            </div>
+          </div>
           <button type="button" className={styles.btnGhost}
                   onClick={() => { setAnio(new Date().getFullYear()); setMonth(new Date().getMonth()); }}>
             Hoy
@@ -347,22 +416,37 @@ export default function VacacionesStandaloneCyber() {
           </div>
         </div>
 
-        <div className={styles.card} onMouseUp={() => { /* mouseup global deja setat */ }}>
+        <div className={styles.card}>
           <div className={styles.calHeader}>
             <button type="button" className={styles.navBtn} onClick={onPrev} aria-label="Mes anterior"><Chevron left/></button>
             <h3 className={styles.monthTitle}>{monthTitle}</h3>
             <button type="button" className={styles.navBtn} onClick={onNext} aria-label="Mes siguiente"><Chevron/></button>
           </div>
 
-          {(dateStart && dateEnd) && (
-            <div className={styles.rangeBar}>
-              {new Date(dateStart).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })}
-              {' – '}
-              {new Date(dateEnd).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })}
-            </div>
-          )}
+          {/* bară status selecție */}
+          <div className={styles.selBar}>
+            {mode === 'multi' ? (
+              <>
+                <span className={styles.muted}>
+                  {multiSet.size === 0 ? 'Selecciona días en el calendario.' :
+                   `${multiSet.size} día(s) seleccionados.`}
+                </span>
+                <div className={styles.selActions}>
+                  <button type="button" className={styles.btnTag} onClick={clearSelection}>Limpiar selección</button>
+                </div>
+              </>
+            ) : (
+              (dateStart && dateEnd) ? (
+                <span className={styles.muted}>
+                  {new Date(dateStart).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}
+                  {' – '}
+                  {new Date(dateEnd).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}
+                </span>
+              ) : <span className={styles.muted}>Arrastra para seleccionar un rango.</span>
+            )}
+          </div>
 
-          <div className={styles.weekRow}>{weekLabels.map(d => <span key={d}>{d}</span>)}</div>
+          <div className={styles.weekRow}>{['Lu','Ma','Mi','Ju','Vi','Sa','Do'].map(d => <span key={d}>{d}</span>)}</div>
           <div className={styles.daysGrid}>
             {monthCells.map(c => c.blank ? (
               <div key={c.key} className={styles.dayBlank}/>
@@ -370,11 +454,12 @@ export default function VacacionesStandaloneCyber() {
               <div
                 key={c.key}
                 role="button"
-                aria-pressed={selStart && selEnd && c.iso >= selStart && c.iso <= selEnd}
+                aria-pressed={isSelected(c.iso)}
                 tabIndex={0}
-                className={`${styles.dayCell} ${(selStart && selEnd && c.iso >= selStart && c.iso <= selEnd) ? styles.sel : ''}`}
+                className={`${styles.dayCell} ${isSelected(c.iso) ? styles.sel : ''} ${mode==='multi' ? styles.multiCursor : ''}`}
                 onMouseDown={() => onDayMouseDown(c.iso)}
                 onMouseEnter={() => onDayMouseEnter(c.iso)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDayMouseDown(c.iso); }}
               >
                 <span className={styles.dayNum}>{c.d}</span>
                 <div className={styles.dayDots}>
@@ -396,14 +481,26 @@ export default function VacacionesStandaloneCyber() {
           <button type="button" className={`${styles.tab} ${reqType === 'personal' ? styles.tabOn : ''}`} onClick={() => setReqType('personal')}>Personal</button>
           <button type="button" className={`${styles.tab} ${reqType === 'empresa' ? styles.tabOn : ''}`} onClick={() => setReqType('empresa')}>Empresa</button>
         </div>
-        <div className={styles.reqInputs}>
-          <label>Inicio<input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} /></label>
-          <label>Fin<input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} /></label>
-          <label className={styles.note}><input type="text" placeholder="Nota (opcional)" value={note} onChange={e => setNote(e.target.value)} /></label>
+        {/* în modul 'multi' ascund datepicker-ele, păstrăm notele */}
+        {mode === 'multi' ? (
+          <div className={styles.reqInputsSingle}>
+            <label className={styles.note}><input type="text" placeholder="Nota (opcional)" value={note} onChange={e => setNote(e.target.value)} /></label>
+          </div>
+        ) : (
+          <div className={styles.reqInputs}>
+            <label>Inicio<input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} /></label>
+            <label>Fin<input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} /></label>
+            <label className={styles.note}><input type="text" placeholder="Nota (opcional)" value={note} onChange={e => setNote(e.target.value)} /></label>
+          </div>
+        )}
+        <div className={styles.reqActions}>
+          <button type="button" className={styles.btnGhost} onClick={clearSelection}>Limpiar</button>
+          <button type="button" className={styles.btnPrimary} onClick={submitRequest} disabled={loading}>
+            {reqType === 'empresa'
+              ? (mode==='multi' ? 'Registrar empresa (múltiples días)' : 'Registrar empresa')
+              : (mode==='multi' ? 'Solicitar (múltiples días)' : 'Solicitar')}
+          </button>
         </div>
-        <button type="button" className={styles.btnPrimary} onClick={submitRequest} disabled={loading}>
-          {reqType === 'empresa' ? 'Registrar empresa' : 'Solicitar'}
-        </button>
       </section>
 
       <section className={styles.card}>
