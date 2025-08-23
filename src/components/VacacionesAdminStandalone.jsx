@@ -2,12 +2,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
-import styles from './VacacionesAdmin.module.css'; // poți refolosi același CSS
-// Dacă vrei separat, creează un fișier CSS nou și ajustează numele claselor.
+import styles from './VacacionesAdminGlobal.module.css';
 
 const PALETTE = [
-  '#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd',
-  '#8c564b','#e377c2','#7f7f7f','#bcbd22','#17becf'
+  '#00E5FF','#FF3CAC','#50FA7B','#FFD166','#C792EA',
+  '#7FDBFF','#FF6E6E','#FAD000','#80CBC4','#A5FF90'
 ];
 
 /* ---------- helpers fecha ---------- */
@@ -15,14 +14,10 @@ function toLocalISO(date = new Date()) {
   const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return d.toISOString().slice(0, 10);
 }
-function fmt(d) { // YYYY-MM-DD
+function fmt(d) {
   const x = new Date(d);
   const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
   return z.toISOString().slice(0, 10);
-}
-function daysBetween(a, b) {
-  const A = new Date(fmt(a)), B = new Date(fmt(b));
-  return Math.floor((B - A) / 86400000) + 1;
 }
 function overlaps(a1, a2, b1, b2) {
   return new Date(a1) <= new Date(b2) && new Date(b1) <= new Date(a2);
@@ -31,7 +26,8 @@ function* iterateDates(isoStart, isoEnd) {
   let d = new Date(fmt(isoStart));
   const end = new Date(fmt(isoEnd));
   while (d <= end) {
-    yield fmt(d);
+    const iso = fmt(d);
+    yield iso;
     d = new Date(d.getTime() + 86400000);
   }
 }
@@ -44,42 +40,39 @@ export default function VacacionesAdminGlobal() {
   const { profile } = useAuth();
   const canEdit = ['admin','dispecer','dispatcher'].includes(String(profile?.role||'').toLowerCase());
 
-  /* ----- estado principal ----- */
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [params, setParams] = useState({
     dias_base: 23,
     dias_personales: 2,
     dias_pueblo: 0,
-    max_simultaneous: 3,           // limită simultană pentru avertizare
-    dias_totales_por_defecto: 25,  // nou: total global (rapid)
+    max_simultaneous: 3,
+    dias_totales_por_defecto: 25,
   });
 
   const [loading, setLoading] = useState(true);
   const [errorDb, setErrorDb] = useState('');
 
-  /* ----- datos globales ----- */
   const [drivers, setDrivers] = useState([]); // {id, nombre_completo}
-  const [eventsAll, setEventsAll] = useState([]); // evenimente pt toți userii afectați în anul curent
+  const [eventsAll, setEventsAll] = useState([]);
 
-  /* ----- panel verificación/colores ----- */
+  // Verificación/colores
   const [verifOpen, setVerifOpen] = useState(false);
   const [verifMonth, setVerifMonth] = useState(new Date().getMonth());
-  const [verifColors, setVerifColors] = useState({}); // user_id -> color
-  const [verifDriverIds, setVerifDriverIds] = useState([]); // driv. implicați pe luna curentă
+  const [verifColors, setVerifColors] = useState({});     // user_id -> color
+  const [verifDriverIds, setVerifDriverIds] = useState([]); // involucrați în luna curentă
 
-  /* ----- empresa rápido ----- */
+  // Empresa rápido
   const [empresaFrom, setEmpresaFrom] = useState(toLocalISO());
   const [empresaTo, setEmpresaTo] = useState(toLocalISO());
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]); // results din search
-  const [selectedDrivers, setSelectedDrivers] = useState([]); // [{id,nombre_completo}]
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedDrivers, setSelectedDrivers] = useState([]);
 
-  /* ---------- cargar parámetros + chóferes + eventos ---------- */
+  /* ---------- load ---------- */
   const load = useCallback(async () => {
     setLoading(true);
     setErrorDb('');
     try {
-      // 1) parámetros del año
       const { data: cfg } = await supabase
         .from('vacaciones_parametros_anio')
         .select('*')
@@ -92,10 +85,10 @@ export default function VacacionesAdminGlobal() {
         dias_personales: cfg?.dias_personales ?? 2,
         dias_pueblo: cfg?.dias_pueblo ?? 0,
         max_simultaneous: cfg?.max_simultaneous ?? 3,
-        dias_totales_por_defecto: (cfg?.dias_totales_por_defecto ?? (cfg ? (cfg.dias_base||0)+(cfg.dias_personales||0)+(cfg.dias_pueblo||0) : 25))
+        dias_totales_por_defecto: cfg?.dias_totales_por_defecto ??
+          ((cfg ? (cfg.dias_base||0)+(cfg.dias_personales||0)+(cfg.dias_pueblo||0) : 25))
       }));
 
-      // 2) chóferes
       const { data: profs } = await supabase
         .from('profiles')
         .select('id, nombre_completo')
@@ -103,7 +96,6 @@ export default function VacacionesAdminGlobal() {
 
       setDrivers(profs || []);
 
-      // 3) eventos del año (todos los usuarios)
       const yearStart = `${anio}-01-01`;
       const yearEnd = `${anio}-12-31`;
       const { data: ev } = await supabase
@@ -114,7 +106,6 @@ export default function VacacionesAdminGlobal() {
 
       setEventsAll(ev || []);
     } catch (e) {
-      console.warn('[VacacionesAdminGlobal] load:', e);
       setErrorDb(e.message || 'Error al cargar datos.');
     } finally {
       setLoading(false);
@@ -131,8 +122,8 @@ export default function VacacionesAdminGlobal() {
       dias_base: Number(params.dias_base)||0,
       dias_personales: Number(params.dias_personales)||0,
       dias_pueblo: Number(params.dias_pueblo)||0,
-      max_simultaneous: Number(params.max_simultaneous)||1,
-      dias_totales_por_defecto: Number(params.dias_totales_por_defecto)||0
+      max_simultaneous: Math.max(1, Math.min(10, Number(params.max_simultaneous)||1)),
+      dias_totales_por_defecto: Math.max(0, Number(params.dias_totales_por_defecto)||0)
     };
     const { error } = await supabase.from('vacaciones_parametros_anio').upsert(payload, { onConflict: 'anio' });
     if (error) return alert('No se pudo guardar parámetros.');
@@ -140,19 +131,18 @@ export default function VacacionesAdminGlobal() {
     await load();
   };
 
-  /* ---------- aplicar total global rapid (ex: 25) ---------- */
-  // Asta setează baza astfel încât totalul (base+personales+pueblo) == dias_totales_por_defecto
+  // Aplicar total global rápido (ex: 25) — setează base = total, restul 0
   const aplicarTotalGlobal = async () => {
     if (!canEdit) return;
-    const total = Number(params.dias_totales_por_defecto)||0;
-    if (total <= 0) return alert('Introduce un total válido.');
-    // Strategie simplă: setăm base=total, personales=0, pueblo=0
+    const total = Math.max(0, Number(params.dias_totales_por_defecto)||0);
+    if (!Number.isFinite(total) || total <= 0) return alert('Introduce un total válido (>0).');
+
     const payload = {
       anio,
       dias_base: total,
       dias_personales: 0,
       dias_pueblo: 0,
-      max_simultaneous: Number(params.max_simultaneous)||1,
+      max_simultaneous: Math.max(1, Math.min(10, Number(params.max_simultaneous)||1)),
       dias_totales_por_defecto: total
     };
     const { error } = await supabase.from('vacaciones_parametros_anio').upsert(payload, { onConflict: 'anio' });
@@ -161,7 +151,7 @@ export default function VacacionesAdminGlobal() {
     await load();
   };
 
-  /* ---------- búsqueda chóferes (empresa rápido) ---------- */
+  /* ---------- búsqueda chóferes (empresa) ---------- */
   const searchDrivers = useCallback(async (term) => {
     setSearchTerm(term);
     if (!term || term.trim().length < 2) { setSearchResults([]); return; }
@@ -170,7 +160,7 @@ export default function VacacionesAdminGlobal() {
       .select('id,nombre_completo')
       .ilike('nombre_completo', `%${term.trim()}%`)
       .limit(20);
-    // elimină pe cei deja selectați
+
     const selectedIds = new Set(selectedDrivers.map(d => d.id));
     setSearchResults((data || []).filter(d => !selectedIds.has(d.id)));
   }, [selectedDrivers]);
@@ -191,6 +181,7 @@ export default function VacacionesAdminGlobal() {
     const d1 = new Date(empresaFrom), d2 = new Date(empresaTo);
     if (isNaN(d1) || isNaN(d2) || d2 < d1) return alert('Rango de fechas inválido.');
     if (selectedDrivers.length === 0) return alert('Selecciona al menos un chófer.');
+
     const payloads = selectedDrivers.map(drv => ({
       user_id: drv.id,
       tipo: 'empresa',
@@ -200,6 +191,7 @@ export default function VacacionesAdminGlobal() {
       notas: 'Vacaciones de empresa',
       created_by: profile?.id || null
     }));
+
     const { error } = await supabase.from('vacaciones_eventos').insert(payloads);
     if (error) return alert('No se pudieron crear los eventos.');
     alert(`Vacaciones de empresa creadas para ${selectedDrivers.length} chófer(es).`);
@@ -207,8 +199,7 @@ export default function VacacionesAdminGlobal() {
     await load();
   };
 
-  /* ---------- verificación de solapamientos (global) ---------- */
-  // Construim o hartă zi -> set de user_id care au evenimente (pendiente/aprobado) în ziua respectivă
+  /* ---------- verificación de solapamientos ---------- */
   const dayMap = useMemo(() => {
     const map = new Map(); // ISO -> Set<user_id>
     (eventsAll || []).forEach(ev => {
@@ -224,37 +215,31 @@ export default function VacacionesAdminGlobal() {
   }, [eventsAll, anio]);
 
   const conflictDays = useMemo(() => {
-    const limit = Number(params.max_simultaneous)||1;
+    const limit = Math.max(1, Number(params.max_simultaneous)||1);
     const arr = [];
     for (const [iso, setIds] of dayMap.entries()) {
       if (setIds.size >= limit) {
         arr.push({ iso, count: setIds.size, userIds: [...setIds] });
       }
     }
-    // sort by date asc
     return arr.sort((a,b) => new Date(a.iso) - new Date(b.iso));
   }, [dayMap, params.max_simultaneous]);
 
-  // Deschide panelul cu calendar colorat pentru luna curentă (verifMonth)
   const openVerif = () => {
-    // găsește toți userii implicați în luna curentă
     const yearMonth = `${anio}-${String(verifMonth+1).padStart(2,'0')}`;
     const ids = new Set();
     for (const [iso, setIds] of dayMap.entries()) {
       if (iso.startsWith(yearMonth)) setIds.forEach(id => ids.add(id));
     }
-    const involved = [...ids].slice(0, PALETTE.length); // max 10
-    // atribuie culori stabile
+    const involved = [...ids].slice(0, PALETTE.length);
     const mapColors = {};
     involved.forEach((uid, idx) => { mapColors[uid] = PALETTE[idx]; });
     setVerifColors(mapColors);
     setVerifDriverIds(involved);
     setVerifOpen(true);
   };
-
   const closeVerif = () => setVerifOpen(false);
 
-  /* ---------- calendarul de verificare (o lună) ---------- */
   const verifMonthDate = useMemo(() => new Date(anio, verifMonth, 1), [anio, verifMonth]);
   const verifCells = useMemo(() => {
     const y = anio, m = verifMonth;
@@ -272,160 +257,150 @@ export default function VacacionesAdminGlobal() {
   }, [anio, verifMonth, dayMap, verifDriverIds]);
 
   const monthTitle = useMemo(() => monthLabel(verifMonthDate), [verifMonthDate]);
-
   const nextMonth = () => setVerifMonth(m => (m===11?0:m+1));
   const prevMonth = () => setVerifMonth(m => (m===0?11:m-1));
 
-  /* ---------- util: nume drivere ---------- */
   const nameOf = (uid) => drivers.find(d => d.id === uid)?.nombre_completo || '—';
 
-  /* ---------- UI ---------- */
   return (
-    <div className={styles.card} style={{ padding: 20 }}>
-      <h1 style={{ marginTop: 0 }}>Vacaciones — Administración Global</h1>
-
-      {errorDb && <p className={styles.errorLine}>⚠️ {errorDb}</p>}
-
-      <div className={styles.grid3} style={{ marginTop: 16 }}>
-        <div className={styles.inputGroup}>
-          <label>Año</label>
-          <select
-            value={anio}
-            onChange={e => setAnio(Number(e.target.value))}
-          >
-            {[anio-1, anio, anio+1].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+    <div className={styles.wrap}>
+      <header className={styles.header}>
+        <div className={styles.hLeft}>
+          <h1 className={styles.title}>Vacaciones — Panel Global</h1>
+          <span className={styles.sub}>Gestión centralizada de parámetros y solapamientos</span>
         </div>
+        <div className={styles.hRight}>
+          <span className={styles.pill}>{anio}</span>
+        </div>
+      </header>
 
-        <div className={styles.inputGroup}>
-          <label>Máx. simultáneos por día</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={params.max_simultaneous}
-            onChange={e => setParams(p => ({ ...p, max_simultaneous: +e.target.value || 1 }))}
-          />
-        </div>
+      {errorDb && <div className={styles.alert}>{errorDb}</div>}
 
-        <div className={styles.inputGroup}>
-          <label>Días totales por defecto</label>
-          <input
-            type="number"
-            min={0}
-            value={params.dias_totales_por_defecto}
-            onChange={e => setParams(p => ({ ...p, dias_totales_por_defecto: +e.target.value || 0 }))}
-          />
-        </div>
-      </div>
+      <section className={styles.gridTop}>
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Parámetros del año</h3>
 
-      <div className={styles.grid3} style={{ marginTop: 10 }}>
-        <div className={styles.inputGroup}>
-          <label>Días base</label>
-          <input
-            type="number"
-            value={params.dias_base}
-            onChange={e => setParams(p => ({ ...p, dias_base: +e.target.value || 0 }))}
-          />
-        </div>
-        <div className={styles.inputGroup}>
-          <label>Personales</label>
-          <input
-            type="number"
-            value={params.dias_personales}
-            onChange={e => setParams(p => ({ ...p, dias_personales: +e.target.value || 0 }))}
-          />
-        </div>
-        <div className={styles.inputGroup}>
-          <label>Fiesta de pueblo</label>
-          <input
-            type="number"
-            value={params.dias_pueblo}
-            onChange={e => setParams(p => ({ ...p, dias_pueblo: +e.target.value || 0 }))}
-          />
-        </div>
-      </div>
-
-      {canEdit && (
-        <div className={styles.row} style={{ gap: 10, marginTop: 10 }}>
-          <button type="button" className={styles.primary} onClick={saveParams} disabled={loading}>
-            Guardar parámetros
-          </button>
-          <button type="button" className={styles.ghost} onClick={aplicarTotalGlobal} disabled={loading}>
-            Aplicar total global (rápido)
-          </button>
-        </div>
-      )}
-
-      {/* ---- Verificación de solapamientos ---- */}
-      <div className={styles.card} style={{ marginTop: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Verificación de solapamientos ({anio})</h3>
-        <p className={styles.hint}>
-          Si en un mismo día hay <b>{params.max_simultaneous}</b> o más chóferes con vacaciones,
-          aparecerá en la lista. Abre el calendario para ver colores por chófer (máx. 10).
-        </p>
-        {loading ? <p>Cargando…</p> : (
-          <>
-            {conflictDays.length === 0 ? (
-              <p>No hay días con el límite alcanzado.</p>
-            ) : (
-              <ul className={styles.activity} style={{ maxHeight: 220, overflow: 'auto' }}>
-                {conflictDays.map(d => (
-                  <li key={d.iso} className={styles.activityItem}>
-                    <div>
-                      <strong>{new Date(d.iso).toLocaleDateString('es-ES', { day:'2-digit', month:'short' })}</strong>
-                      <span style={{ marginLeft: 8 }}>
-                        — {d.count} chóferes: {d.userIds.slice(0,5).map(nameOf).join(', ')}{d.userIds.length>5?'…':''}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className={styles.row} style={{ gap: 10, marginTop: 10 }}>
-              <label>Mes</label>
-              <select value={verifMonth} onChange={e => setVerifMonth(+e.target.value)}>
-                {Array.from({length:12},(_,i)=>i).map(i => (
-                  <option value={i} key={i}>
-                    {new Date(2000,i,1).toLocaleDateString('es-ES',{month:'long'}).replace(/^\p{L}/u,c=>c.toUpperCase())}
-                  </option>
-                ))}
+          <div className={styles.formRow}>
+            <div className={styles.inputGroup}>
+              <label>Año</label>
+              <select value={anio} onChange={e => setAnio(Number(e.target.value))} className={styles.select}>
+                {[anio-1, anio, anio+1].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
-              <button type="button" className={styles.primary} onClick={openVerif}>Verificar solapamientos</button>
             </div>
-          </>
-        )}
-      </div>
+            <div className={styles.inputGroup}>
+              <label>Máx. simultáneos/día</label>
+              <input type="number" min={1} max={10}
+                     value={params.max_simultaneous}
+                     onChange={e => setParams(p => ({ ...p, max_simultaneous: +e.target.value || 1 }))}
+                     className={styles.input}/>
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Días totales por defecto</label>
+              <input type="number" min={1}
+                     value={params.dias_totales_por_defecto}
+                     onChange={e => setParams(p => ({ ...p, dias_totales_por_defecto: +e.target.value || 0 }))}
+                     className={styles.input}/>
+            </div>
+          </div>
 
-      {/* ---- Vacaciones de empresa (rápido) ---- */}
-      <div className={styles.card} style={{ marginTop: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Vacaciones de empresa — Asignación rápida</h3>
-        <div className={styles.grid3}>
+          <div className={styles.formRow}>
+            <div className={styles.inputGroup}>
+              <label>Días base</label>
+              <input type="number" value={params.dias_base}
+                     onChange={e => setParams(p => ({ ...p, dias_base: +e.target.value || 0 }))}
+                     className={styles.input}/>
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Personales</label>
+              <input type="number" value={params.dias_personales}
+                     onChange={e => setParams(p => ({ ...p, dias_personales: +e.target.value || 0 }))}
+                     className={styles.input}/>
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Fiesta de pueblo</label>
+              <input type="number" value={params.dias_pueblo}
+                     onChange={e => setParams(p => ({ ...p, dias_pueblo: +e.target.value || 0 }))}
+                     className={styles.input}/>
+            </div>
+          </div>
+
+          {canEdit && (
+            <div className={styles.actionsRow}>
+              <button type="button" className={styles.btnPrimary} onClick={saveParams} disabled={loading}>
+                Guardar parámetros
+              </button>
+              <button type="button" className={styles.btnGhost} onClick={aplicarTotalGlobal} disabled={loading}>
+                Aplicar total global (rápido)
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Verificación de solapamientos</h3>
+          <p className={styles.muted}>
+            Si en un día hay <b>{params.max_simultaneous}</b> o más chóferes con vacaciones, aparecerá aquí.
+          </p>
+
+          {loading ? <p className={styles.muted}>Cargando…</p> : (
+            <>
+              {conflictDays.length === 0 ? (
+                <p className={styles.okLine}>No hay días que alcancen el límite.</p>
+              ) : (
+                <ul className={styles.conflictList}>
+                  {conflictDays.map(d => (
+                    <li key={d.iso}>
+                      <span className={styles.dateChip}>
+                        {new Date(d.iso).toLocaleDateString('es-ES', { day:'2-digit', month:'short' })}
+                      </span>
+                      <span className={styles.miniSep}>•</span>
+                      <span className={styles.muted}>{d.count} chóferes</span>
+                      <span className={styles.dotSep}/>
+                      <span className={styles.names}>
+                        {d.userIds.slice(0,5).map(nameOf).join(', ')}{d.userIds.length>5?'…':''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className={styles.inlineControls}>
+                <label>Mes</label>
+                <select value={verifMonth} onChange={e => setVerifMonth(+e.target.value)} className={styles.select}>
+                  {Array.from({length:12},(_,i)=>i).map(i => (
+                    <option value={i} key={i}>
+                      {new Date(2000,i,1).toLocaleDateString('es-ES',{month:'long'})
+                        .replace(/^\p{L}/u,c=>c.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className={styles.btnPrimary} onClick={openVerif}>
+                  Verificar solapamientos
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <h3 className={styles.cardTitle}>Vacaciones de empresa — Asignación rápida</h3>
+        <div className={styles.formRow}>
           <div className={styles.inputGroup}>
             <label>Inicio</label>
-            <input type="date" value={empresaFrom} onChange={e => setEmpresaFrom(e.target.value)} />
+            <input type="date" value={empresaFrom} onChange={e => setEmpresaFrom(e.target.value)} className={styles.input}/>
           </div>
           <div className={styles.inputGroup}>
             <label>Fin</label>
-            <input type="date" value={empresaTo} onChange={e => setEmpresaTo(e.target.value)} />
+            <input type="date" value={empresaTo} onChange={e => setEmpresaTo(e.target.value)} className={styles.input}/>
           </div>
           <div className={styles.inputGroup}>
             <label>Buscar chófer</label>
-            <input
-              type="text"
-              placeholder="Nombre…"
-              value={searchTerm}
-              onChange={e => searchDrivers(e.target.value)}
-            />
+            <input type="text" placeholder="Nombre…" value={searchTerm}
+                   onChange={e => searchDrivers(e.target.value)} className={styles.input}/>
             {searchResults.length > 0 && (
               <div className={styles.dropdown}>
                 {searchResults.map(d => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    className={styles.dropdownItem}
-                    onClick={() => addSelected(d)}
-                  >
+                  <button key={d.id} type="button" className={styles.dropdownItem} onClick={() => addSelected(d)}>
                     {d.nombre_completo}
                   </button>
                 ))}
@@ -436,34 +411,32 @@ export default function VacacionesAdminGlobal() {
 
         {selectedDrivers.length > 0 && (
           <>
-            <div className={styles.legend} style={{ marginTop: 8 }}>
+            <div className={styles.legend}>
               <b>Seleccionados:</b>
               <ul>
                 {selectedDrivers.map(d => (
                   <li key={d.id}>
                     {d.nombre_completo}
-                    <button type="button" className={styles.smallGhost} onClick={() => removeSelected(d.id)} style={{ marginLeft: 8 }}>
-                      Quitar
-                    </button>
+                    <button type="button" className={styles.btnTag} onClick={() => removeSelected(d.id)}>Quitar</button>
                   </li>
                 ))}
               </ul>
             </div>
-            <button type="button" className={styles.primary} onClick={crearEmpresaMasivo} disabled={loading}>
+            <button type="button" className={styles.btnPrimary} onClick={crearEmpresaMasivo} disabled={loading}>
               Crear vacaciones de empresa
             </button>
           </>
         )}
-      </div>
+      </section>
 
       {/* ---- Overlay verificare calendar colorat ---- */}
       {verifOpen && (
         <div className={styles.modalOverlay} onClick={closeVerif}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <button type="button" onClick={prevMonth} aria-label="Mes anterior">◀</button>
-              <h3>{monthTitle}</h3>
-              <button type="button" onClick={nextMonth} aria-label="Mes siguiente">▶</button>
+              <button type="button" className={styles.navBtn} onClick={() => setVerifMonth(m => (m===0?11:m-1))}>◀</button>
+              <h3 className={styles.modalTitle}>{monthTitle}</h3>
+              <button type="button" className={styles.navBtn} onClick={() => setVerifMonth(m => (m===11?0:m+1))}>▶</button>
             </div>
 
             <div className={styles.weekRow}>
@@ -478,16 +451,13 @@ export default function VacacionesAdminGlobal() {
                   <span className={styles.dayNum}>{c.d}</span>
                   <div className={styles.dayDots}>
                     {c.ids.map(uid => {
-                      const color = verifColors[uid] || '#999';
+                      const color = verifColors[uid] || '#888';
                       return (
                         <span
                           key={`${c.key}-${uid}`}
                           title={nameOf(uid)}
-                          style={{
-                            display:'inline-block',
-                            width:8,height:8,borderRadius:'50%',
-                            marginRight:3, backgroundColor: color
-                          }}
+                          style={{ backgroundColor: color }}
+                          className={styles.dot}
                         />
                       );
                     })}
@@ -496,12 +466,12 @@ export default function VacacionesAdminGlobal() {
               ))}
             </div>
 
-            <div className={styles.legend} style={{ marginTop: 10 }}>
+            <div className={styles.legendRow}>
               <b>Leyenda (máx. 10):</b>
               <ul>
                 {verifDriverIds.map((uid, idx) => (
-                  <li key={uid} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ width:10, height:10, borderRadius:'50%', backgroundColor: PALETTE[idx] }} />
+                  <li key={uid}>
+                    <span className={styles.legendDot} style={{ backgroundColor: PALETTE[idx] }}/>
                     <span>{nameOf(uid)}</span>
                   </li>
                 ))}
@@ -510,7 +480,7 @@ export default function VacacionesAdminGlobal() {
             </div>
 
             <div className={styles.modalFooter}>
-              <button type="button" className={styles.ghost} onClick={closeVerif}>Cerrar</button>
+              <button type="button" className={styles.btnGhost} onClick={closeVerif}>Cerrar</button>
             </div>
           </div>
         </div>
