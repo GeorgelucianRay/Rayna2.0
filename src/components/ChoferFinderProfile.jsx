@@ -1,4 +1,4 @@
-// ChoferFinderProfile.jsx
+// ChoferFinderProfile.jsx (fix crash .or -> lte/gte + profile complet + butoane globale)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -241,14 +241,15 @@ export default function ChoferFinderProfile() {
 
       const total = (base||0)+(pers||0)+(pueblo||0)+(ex?.dias_extra||0);
 
-      // evenimente care ating anul
+      // evenimente care ating anul – folosim AND sigur (fără .or)
       const yearStart = `${year}-01-01`;
       const yearEnd   = `${year}-12-31`;
       const { data: evs } = await supabase
         .from('vacaciones_eventos')
         .select('id,tipo,state,start_date,end_date')
         .eq('user_id', selectedId)
-        .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
+        .lte('start_date', yearEnd)
+        .gte('end_date', yearStart);
 
       const usadas = (evs||[])
         .filter(e => e.state === 'aprobado')
@@ -338,9 +339,9 @@ export default function ChoferFinderProfile() {
 
           {open && (
             <div className={styles.dropdown} onMouseDown={(e)=>e.preventDefault()}>
-              {rows.length === 0 ? (
+              {(rows || []).length === 0 ? (
                 <div className={styles.empty}>No hay resultados</div>
-              ) : rows.map((r, idx) => (
+              ) : (rows || []).map((r, idx) => (
                 <button
                   key={r.id}
                   className={`${styles.item} ${idx===hi ? styles.active : ''}`}
