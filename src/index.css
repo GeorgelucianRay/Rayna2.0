@@ -25,6 +25,14 @@ html, body, #root {
   max-width: 384px;
   border: 1px solid #e5e7eb;
 }
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+* {
+  box-sizing: border-box;
+}
 
 .text-center { text-align: center; }
 .text-blue-600 { color: #2563eb; }
