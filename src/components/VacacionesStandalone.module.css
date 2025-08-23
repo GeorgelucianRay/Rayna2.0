@@ -224,3 +224,61 @@
   .reqInputs { grid-template-columns: 1fr; }
   .dayBlank, .dayCell { height: 64px; }
 }
+/* --- FIX: header responsiv, pastila an vizibilă --- */
+
+/* Bara din dreapta poate împacheta pe 2 rânduri fără overflow */
+.header { flex-wrap: wrap; row-gap: 8px; }
+
+/* Grupul din dreapta nu forțează lățimea */
+.hRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;          /* important */
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+/* Pastila anului are lățime minimă și nu se strânge la 0 */
+.pill {
+  flex: 0 0 auto;           /* nu se micșorează */
+  min-width: 60px;          /* suficient pentru „2025” */
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0,229,255,0.16), rgba(124,77,255,0.16));
+  border: 1px solid rgba(119,167,255,.25);
+  color: #00e5ff;
+  /* scoate orice limită veche care o tăia: */
+  max-width: none;
+}
+
+/* Toggle/Buton „Hoy” nu împing pastila în afara ecranului */
+.toggleGrp, .btnGhost, .navBtn, .tab, .toggleBtn { max-width: 100%; }
+
+/* Pe ecrane înguste reordonăm ca să încapă frumos */
+@media (max-width: 480px) {
+  .header { align-items: flex-start; }
+
+  .hRight {
+    width: 100%;
+    justify-content: space-between;  /* Hoy | [toggle] | 2025 pe rând propriu */
+  }
+
+  .toggleWrap { order: 2; flex: 1 1 auto; min-width: 0; } /* permite micșorare */
+  .btnGhost   { order: 1; }
+  .pill       { order: 3; margin-left: auto; }            /* pastila rămâne vizibilă */
+}
+
+/* Grid pentru tabletă/desktop – două coloane solide */
+@media (min-width: 768px) {
+  .grid { grid-template-columns: 1fr 1.4fr; }
+}
+
+/* Pe mobil, o singură coloană (evită overflow) */
+@media (max-width: 767px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* Fix general overflow pe orizontală în carduri/dropdown */
+.card, .dropdown { max-width: 100%; }
