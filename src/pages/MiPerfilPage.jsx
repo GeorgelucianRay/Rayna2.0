@@ -27,6 +27,9 @@ export default function MiPerfilPage() {
   const [nominaMarks, setNominaMarks] = useState(new Set());
   const currentDate = new Date();
 
+  // 🔹 Vacaciones widget info (TOTAL / USADAS / PENDIENTES / DISPONIBLES)
+  const [vacInfo, setVacInfo] = useState({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
+
   // Fetch Nomina Summary
   useEffect(() => {
     const fetchNomina = async () => {
@@ -64,6 +67,79 @@ export default function MiPerfilPage() {
     fetchNomina();
   }, [user, currentDate]);
 
+  // 🔹 Fetch Vacaciones info pentru widget (fără a umbla la altă logică existentă)
+  useEffect(() => {
+    async function loadVacacionesInfo() {
+      if (!user) return;
+      const year = currentDate.getFullYear();
+
+      // Helpers locale
+      const fmt = (d) => {
+        const x = new Date(d);
+        const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
+        return z.toISOString().slice(0, 10);
+      };
+      const daysBetween = (a, b) => {
+        const A = new Date(fmt(a)), B = new Date(fmt(b));
+        return Math.floor((B - A) / 86400000) + 1;
+      };
+      const overlapDaysWithinYear = (ev) => {
+        const yStart = new Date(`${year}-01-01T00:00:00`);
+        const yEnd   = new Date(`${year}-12-31T23:59:59`);
+        const s0 = new Date(ev.start_date);
+        const e0 = new Date(ev.end_date);
+        const s = s0 < yStart ? yStart : s0;
+        const e = e0 > yEnd   ? yEnd   : e0;
+        if (e < s) return 0;
+        return daysBetween(s, e);
+      };
+
+      // 1) Parametrii an
+      const { data: cfg } = await supabase
+        .from('vacaciones_parametros_anio')
+        .select('*')
+        .eq('anio', year)
+        .maybeSingle();
+
+      const dias_base = cfg?.dias_base ?? 23;
+      const dias_personales = cfg?.dias_personales ?? 2;
+      const dias_pueblo = cfg?.dias_pueblo ?? 0;
+
+      // 2) Extra user/an
+      const { data: ex } = await supabase
+        .from('vacaciones_asignaciones_extra')
+        .select('dias_extra')
+        .eq('user_id', user.id)
+        .eq('anio', year)
+        .maybeSingle();
+      const dias_extra = ex?.dias_extra ?? 0;
+
+      const total = (dias_base || 0) + (dias_personales || 0) + (dias_pueblo || 0) + (dias_extra || 0);
+
+      // 3) Evenimente user care ating anul
+      const yearStart = `${year}-01-01`;
+      const yearEnd   = `${year}-12-31`;
+      const { data: evs } = await supabase
+        .from('vacaciones_eventos')
+        .select('id,tipo,state,start_date,end_date')
+        .eq('user_id', user.id)
+        .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
+
+      const usadas = (evs || [])
+        .filter(e => e.state === 'aprobado')
+        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+
+      const pendientes = (evs || [])
+        .filter(e => e.state === 'pendiente' || e.state === 'conflicto')
+        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+
+      const disponibles = Math.max(total - usadas - pendientes, 0);
+
+      setVacInfo({ total, usadas, pendientes, disponibles });
+    }
+    loadVacacionesInfo();
+  }, [user, currentDate]);
+
   // Save Profile Logic
   const handleSaveProfile = async (editableProfile) => {
     try {
@@ -88,7 +164,6 @@ export default function MiPerfilPage() {
   const handleAvatarUpload = async (newAvatarUrl) => {
     console.log('Avatar uploaded successfully:', newAvatarUrl);
     
-    // Actualizează profilul în state local pentru a reflecta schimbarea imediat
     if (setProfile) {
       setProfile(prevProfile => ({
         ...prevProfile,
@@ -96,7 +171,6 @@ export default function MiPerfilPage() {
       }));
     }
     
-    // Opțional: Re-fetch profilul pentru a fi sigur că e sincronizat
     try {
       const { data: updatedProfile } = await supabase
         .from('profiles')
@@ -111,7 +185,6 @@ export default function MiPerfilPage() {
       console.error('Error refreshing profile:', error);
     }
     
-    // Închide modalul
     setIsPhotoOpen(false);
   };
 
@@ -124,16 +197,10 @@ export default function MiPerfilPage() {
   // Debug logging
   useEffect(() => {
     if (user) {
-      console.log('Current user in MiPerfilPage:', {
-        id: user.id,
-        email: user.email
-      });
+      console.log('Current user in MiPerfilPage:', { id: user.id, email: user.email });
     }
     if (profile) {
-      console.log('Current profile:', {
-        avatar_url: profile.avatar_url,
-        nombre_completo: profile.nombre_completo
-      });
+      console.log('Current profile:', { avatar_url: profile.avatar_url, nombre_completo: profile.nombre_completo });
     }
   }, [user, profile]);
   
@@ -141,7 +208,6 @@ export default function MiPerfilPage() {
     return <Layout><div className={styles.loading}>Cargando…</div></Layout>;
   }
 
-  // VERIFICARE IMPORTANTĂ: Asigură-te că user există înainte de render
   if (!user) {
     return (
       <Layout>
@@ -268,9 +334,11 @@ export default function MiPerfilPage() {
             date={currentDate} 
             onNavigate={() => navigate('/calculadora-nomina')} 
           />
-          <VacacionesWidget 
-            info={profile.vacaciones_info || {}} 
-            onNavigate={() => navigate('/vacaciones-standalone')} 
+
+          {/* 🔹 Widget Vacaciones alimentat din DB, nu din profile */}
+          <VacacionesWidget
+            info={vacInfo}
+            onNavigate={() => navigate('/vacaciones-standalone')}
           />
         </div>
 
@@ -286,7 +354,7 @@ export default function MiPerfilPage() {
           isOpen={isPhotoOpen}
           onClose={() => setIsPhotoOpen(false)}
           onUploadComplete={handleAvatarUpload}
-          userId={user.id}  // <<< AICI E CHEIA! Transmite user.id
+          userId={user.id}
         />
       </div>
     </Layout>
