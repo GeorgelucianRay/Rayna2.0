@@ -1,4 +1,4 @@
-// ChoferFinderProfile.jsx (fix: buton header -> goVacacionesGlobal; păstrate toate funcțiile)
+// ChoferFinderProfile.jsx (butone globale active mereu + navigate inline + păstrat restul logicii)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -72,7 +72,7 @@ export default function ChoferFinderProfile() {
   const [vacInfo, setVacInfo] = useState({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
   const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
   const [nominaMarks, setNominaMarks] = useState(new Set());
-  const currentDate = new Date();
+  const currentDate = useMemo(() => new Date(), []);
 
   /* căutare tolerantă la ordine */
   useEffect(() => {
@@ -96,9 +96,11 @@ export default function ChoferFinderProfile() {
           `)
           .eq('role', 'sofer');
 
-        if (words.length) {
+        if (words.length === 1) {
+          query = query.ilike('nombre_completo', `%${words[0]}%`);
+        } else if (words.length > 1) {
           const orFilter = words.map(w => `nombre_completo.ilike.%${w}%`).join(',');
-          query = query.or(orFilter);
+          query = query.or(`(${orFilter})`);
         }
 
         const { data, error } = await query
@@ -205,10 +207,6 @@ export default function ChoferFinderProfile() {
         const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
         return z.toISOString().slice(0, 10);
       };
-      const daysBetween = (a, b) => {
-        const A = new Date(fmt(a)), B = new Date(fmt(b));
-        return Math.floor((B - A) / 86400000) + 1;
-      };
       const overlapDaysWithinYear = (ev) => {
         const yStart = new Date(`${year}-01-01T00:00:00`);
         const yEnd   = new Date(`${year}-12-31T23:59:59`);
@@ -241,7 +239,7 @@ export default function ChoferFinderProfile() {
 
       const total = (base||0)+(pers||0)+(pueblo||0)+(ex?.dias_extra||0);
 
-      // evenimente care ating anul – folosim AND sigur (fără .or)
+      // evenimente care ating anul
       const yearStart = `${year}-01-01`;
       const yearEnd   = `${year}-12-31`;
       const { data: evs } = await supabase
@@ -311,10 +309,10 @@ export default function ChoferFinderProfile() {
           <h1><UsersIcon /> Buscar chófer</h1>
           <div className={styles.actions}>
             {/* butoane globale – mereu active */}
-            <button className={styles.btn} onClick={goNominaGlobal}>
+            <button type="button" className={styles.btn} onClick={() => navigate('/calculadora-nomina')}>
               <CalcIcon /> Nómina
             </button>
-            <button className={styles.btnAccent} onClick={goVacacionesGlobal}>
+            <button type="button" className={styles.btnAccent} onClick={() => navigate('/vacaciones-admin')}>
               <CalendarIcon /> Vacaciones (admin)
             </button>
           </div>
