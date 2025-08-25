@@ -1,4 +1,4 @@
-// ChoferFinderProfile.jsx (fix crash .or -> lte/gte + profile complet + butoane globale)
+// ChoferFinderProfile.jsx (fix: buton header -> goVacacionesGlobal; păstrate toate funcțiile)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -217,7 +217,7 @@ export default function ChoferFinderProfile() {
         const s = s0 < yStart ? yStart : s0;
         const e = e0 > yEnd   ? yEnd   : e0;
         if (e < s) return 0;
-        return daysBetween(s, e);
+        return Math.floor((e - s) / 86400000) + 1;
       };
 
       // parametri an
@@ -314,7 +314,7 @@ export default function ChoferFinderProfile() {
             <button className={styles.btn} onClick={goNominaGlobal}>
               <CalcIcon /> Nómina
             </button>
-            <button className={styles.btnAccent} onClick={goVacacionesAdminStandalone}>
+            <button className={styles.btnAccent} onClick={goVacacionesGlobal}>
               <CalendarIcon /> Vacaciones (admin)
             </button>
           </div>
