@@ -49,6 +49,9 @@ function App() {
 
       {/* Vacaciones */}
       <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
+      {/* ➜ Ruta GLOBALĂ pentru admin (fără id) */}
+      <Route path="/vacaciones-admin" element={<VacacionesAdminStandalone />} />
+      {/* ➜ Ruta per-șofer (cu id) */}
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
