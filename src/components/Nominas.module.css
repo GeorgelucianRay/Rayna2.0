@@ -334,3 +334,70 @@
   padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.1);
 }
 .resultDetails li span:first-child { font-weight: 500; }
+/* ================== MODAL - SEARCH & GPS SELECT (NOU) ================== */
+
+/* Wrapper pentru câmpul de căutare + rezultate */
+.searchableInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Lista de rezultate pentru căutare */
+.searchResults {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1f2937;
+  border: 1px solid rgba(255,255,255,.25);
+  border-top: none;
+  border-radius: 0 0 .5rem .5rem;
+  z-index: 4000; /* Peste alte elemente din modal */
+  max-height: 150px;
+  overflow-y: auto;
+}
+.searchResultItem {
+  padding: .75rem;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: .9rem;
+}
+.searchResultItem:hover {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* Lista de rezultate pentru selecția GPS */
+.gpsResultsList {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.gpsResultsList p {
+  text-align: center;
+  color: #9ca3af;
+  padding: 1rem;
+}
+.gpsResultItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255,255,255,.05);
+  border-radius: .5rem;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+.gpsResultItem:hover {
+  background-color: #3b82f6;
+}
+.gpsResultItem span {
+  font-size: .8rem;
+  color: #9ca3af;
+}
+.gpsResultItem:hover span {
+  color: #fff;
+}
