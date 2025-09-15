@@ -58,7 +58,9 @@ export default function ParteDiarioModal({
       return;
     }
     navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
+      // LINIA NOUĂ (cu care se înlocuiește):
+const [lat, lon] = loc.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
+
       const currentLocation = { lat: latitude, lon: longitude };
       try {
         const tableNames = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
