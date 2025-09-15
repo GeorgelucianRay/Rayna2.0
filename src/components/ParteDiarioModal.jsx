@@ -1,6 +1,8 @@
 // src/components/nomina/ParteDiarioModal.jsx
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient'; // Asigură-te că calea este corectă
+// LINIA CORECTĂ ✅
+import { supabase } from '../supabaseClient';
+
 import styles from './Nominas.module.css';
 
 // --- Icoane ---
