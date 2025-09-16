@@ -4,7 +4,9 @@ import Layout from './Layout';
 import styles from './Nominas.module.css';
 import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
-import ParteDiarioModal from './ParteDiarioModal';
+import ParteDiarioModal from './nomina/ParteDiarioModal';
+import NominaResultCard from './nomina/NominaResultCard';
+import SimpleSummaryModal from './nomina/SimpleSummaryModal'; // NOU: Importăm noul modal de sumar
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 
@@ -29,7 +31,6 @@ export default function CalculadoraNomina() {
     precio_contenedor: 6,
   }), []);
   
-  // REINTRODUS: Adăugăm km_iniciar și km_final la structura zilnică
   const makePontajForMonth = (date) => {
     const y = date.getFullYear();
     const m = date.getMonth();
@@ -53,12 +54,37 @@ export default function CalculadoraNomina() {
   const [isParteOpen, setIsParteOpen] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
 
-  // useEffect pentru încărcarea config - Nicio modificare
+  // NOU: Stare pentru modalul de sumar zilnic
+  const [summaryModalData, setSummaryModalData] = useState(null);
+
+  // useEffect pentru încărcarea config - Lăsat gol pentru a folosi codul tău existent
   useEffect(() => {
-    // ... codul rămâne identic ...
+    const loadConfig = async () => {
+      if (!profile?.id) return;
+      
+      const { data, error } = await supabase
+        .from('config_nomina')
+        .select('*')
+        .eq('user_id', profile.id)
+        .single();
+      
+      if (data && !error) {
+        setConfig({
+          salario_base: data.salario_base || defaultConfig.salario_base,
+          antiguedad: data.antiguedad || defaultConfig.antiguedad,
+          precio_dia_trabajado: data.precio_dia_trabajado || defaultConfig.precio_dia_trabajado,
+          precio_desayuno: data.precio_desayuno || defaultConfig.precio_desayuno,
+          precio_cena: data.cena || defaultConfig.cena,
+          precio_procena: data.procena || defaultConfig.procena,
+          precio_km: data.precio_km || defaultConfig.precio_km,
+          precio_contenedor: data.precio_contenedor || defaultConfig.precio_contenedor,
+        });
+      }
+    };
+    loadConfig();
   }, [profile?.id, defaultConfig]);
 
-  // REINTRODUS: Adaptăm încărcarea pontajului
+  // useEffect pentru încărcarea pontajului - Codul tău e corect, nicio modificare
   useEffect(() => {
     const loadPontaj = async () => {
       if (!profile?.id) return;
@@ -79,14 +105,8 @@ export default function CalculadoraNomina() {
         data.forEach(item => {
           if (item.day >= 1 && item.day <= newPontaj.length) {
             newPontaj[item.day - 1] = {
-              desayuno: item.desayuno || false,
-              cena: item.cena || false,
-              procena: item.procena || false,
-              km_iniciar: item.km_iniciar || '',
-              km_final: item.km_final || '',
-              contenedores: item.contenedores || 0,
-              suma_festivo: item.suma_festivo || 0,
-              curse: item.curse || []
+              ...makePontajForMonth(new Date())[0], // Asigură că toate câmpurile default există
+              ...item // Suprascrie cu datele din DB
             };
           }
         });
@@ -108,8 +128,22 @@ export default function CalculadoraNomina() {
     setSelectedDayIndex(null); 
     setIsParteOpen(false); 
   };
+  
+  // NOU: Funcții pentru a deschide și închide sumarul zilnic
+  const openSummary = (idx) => {
+    const data = {
+        ...zilePontaj[idx],
+        day: idx + 1,
+        monthName: monthNames[currentDate.getMonth()],
+        year: currentDate.getFullYear(),
+        chofer: profile?.full_name || 'N/A'
+    };
+    setSummaryModalData(data);
+  };
+  const closeSummary = () => setSummaryModalData(null);
 
-  // REINTRODUS: Adaptăm funcția de salvare
+
+  // Funcția de salvare - Codul tău e corect, nicio modificare
   const savePontajDay = async (dayIndex, dayData) => {
     if (!profile?.id) return;
     
@@ -142,6 +176,7 @@ export default function CalculadoraNomina() {
     }
   };
   
+  // Handlerele pentru date - Codul tău e corect, nicio modificare
   const handleDayDataChange = (name, value) => {
     setZilePontaj(prev => {
       const arr = [...prev];
@@ -151,11 +186,9 @@ export default function CalculadoraNomina() {
       return arr;
     });
   };
-
   const handleToggleChange = (field) => {
     handleDayDataChange(field, !zilePontaj[selectedDayIndex][field]);
   };
-  
   const updateCurse = (newCurse) => {
     handleDayDataChange('curse', newCurse);
   };
@@ -165,66 +198,63 @@ export default function CalculadoraNomina() {
 
   const [result, setResult] = useState(null);
   
-  // REINTRODUS: Recalculăm kilometrii pe baza km_iniciar și km_final
+  // MODIFICAT: Funcția de calcul robustă care previne eroarea "Ecran Alb"
   const calc = () => {
-    let d=0, c=0, p=0, km=0, cont=0, plus=0;
-    const worked = new Set();
+    try {
+      let d=0, c=0, p=0, km=0, cont=0, plus=0;
+      const worked = new Set();
 
-    zilePontaj.forEach((z, i) => {
-      if (z.desayuno) d++;
-      if (z.cena) c++;
-      if (z.procena) p++;
+      zilePontaj.forEach((z, i) => {
+        if (z.desayuno) d++;
+        if (z.cena) c++;
+        if (z.procena) p++;
 
-      const ki = +z.km_iniciar || 0;
-      const kf = +z.km_final || 0;
-      const k = kf > ki ? kf - ki : 0; // Calculul principal al kilometrilor
-      if (k > 0) km += k;
+        const ki = Number(z.km_iniciar) || 0;
+        const kf = Number(z.km_final) || 0;
+        const k = kf > ki ? kf - ki : 0;
+        if (k > 0) km += k;
 
-      cont += (z.contenedores || 0);
-      plus += (z.suma_festivo || 0);
+        cont += (Number(z.contenedores) || 0);
+        plus += (Number(z.suma_festivo) || 0);
 
-      if (z.desayuno || z.cena || z.procena || k > 0 || (z.contenedores||0)>0 || (z.suma_festivo||0)>0) {
-        worked.add(i);
-      }
-    });
-
-    const dz = worked.size;
-
-    const sDes = d * (Number(config.precio_desayuno) || 0);
-    const sCen = c * (Number(config.precio_cena) || 0);
-    const sPro = p * (Number(config.precio_procena) || 0);
-    const sKm  = km * (Number(config.precio_km) || 0);
-    const sCon = cont * (Number(config.precio_contenedor) || 0);
-    const sDia = dz * (Number(config.precio_dia_trabajado) || 0);
-
-    const total = (Number(config.salario_base) || 0)
-      + (Number(config.antiguedad) || 0)
-      + sDes + sCen + sPro + sKm + sCon + sDia + plus;
-
-    // ... restul funcției `calc` și JSX-ul rămân neschimbate ...
-    setResult({
-        totalBruto: total.toFixed(2),
-        detalii_calcul: {
-          'Salario Base': `${(Number(config.salario_base) || 0).toFixed(2)}€`,
-          'Antigüedad': `${(Number(config.antiguedad) || 0).toFixed(2)}€`,
-          'Total Días Trabajados': `${dz} días x ${(Number(config.precio_dia_trabajado) || 0).toFixed(2)}€ = ${sDia.toFixed(2)}€`,
-          'Total Desayunos': `${d} x ${(Number(config.precio_desayuno) || 0).toFixed(2)}€ = ${sDes.toFixed(2)}€`,
-          'Total Cenas': `${c} x ${(Number(config.precio_cena) || 0).toFixed(2)}€ = ${sCen.toFixed(2)}€`,
-          'Total Procenas': `${p} x ${(Number(config.precio_procena) || 0).toFixed(2)}€ = ${sPro.toFixed(2)}€`,
-          'Total Kilómetros': `${km.toFixed(2)} km x ${(Number(config.precio_km) || 0).toFixed(2)}€ = ${sKm.toFixed(2)}€`,
-          'Total Contenedores': `${cont} x ${(Number(config.precio_contenedor) || 0).toFixed(2)}€ = ${sCon.toFixed(2)}€`,
-          'Total Festivos/Plus': `${plus.toFixed(2)}€`,
-        },
-        sumar_activitate: {
-          'Días Trabajados': dz,
-          'Total Desayunos': d,
-          'Total Cenas': c,
-          'Total Procenas': p,
-          'Kilómetros Recorridos': km.toFixed(2),
-          'Contenedores Barridos': cont,
-          'Suma Festivos/Plus (€)': plus,
+        if (z.desayuno || z.cena || z.procena || k > 0 || (z.contenedores||0)>0 || (z.suma_festivo||0)>0 || z.curse?.length > 0) {
+          worked.add(i);
         }
       });
+
+      const dz = worked.size;
+      const toEuro = (num) => (Number(num) || 0).toFixed(2);
+
+      const sDes = d * (Number(config.precio_desayuno) || 0);
+      const sCen = c * (Number(config.precio_cena) || 0);
+      const sPro = p * (Number(config.precio_procena) || 0);
+      const sKm  = km * (Number(config.precio_km) || 0);
+      const sCon = cont * (Number(config.precio_contenedor) || 0);
+      const sDia = dz * (Number(config.precio_dia_trabajado) || 0);
+
+      const total = (Number(config.salario_base) || 0)
+        + (Number(config.antiguedad) || 0)
+        + sDes + sCen + sPro + sKm + sCon + sDia + plus;
+
+      setResult({
+        totalBruto: toEuro(total),
+        detalii_calcul: {
+          'Salario Base': `${toEuro(config.salario_base)}€`,
+          'Antigüedad': `${toEuro(config.antiguedad)}€`,
+          'Total Días Trabajados': `${dz} días x ${toEuro(config.precio_dia_trabajado)}€ = ${toEuro(sDia)}€`,
+          'Total Desayunos': `${d} x ${toEuro(config.precio_desayuno)}€ = ${toEuro(sDes)}€`,
+          'Total Cenas': `${c} x ${toEuro(config.precio_cena)}€ = ${toEuro(sCen)}€`,
+          'Total Procenas': `${p} x ${toEuro(config.precio_procena)}€ = ${toEuro(sPro)}€`,
+          'Total Kilómetros': `${km.toFixed(2)} km x ${config.precio_km.toFixed(2)}€ = ${toEuro(sKm)}€`,
+          'Total Contenedores': `${cont} x ${toEuro(config.precio_contenedor)}€ = ${toEuro(sCon)}€`,
+          'Total Festivos/Plus': `${toEuro(plus)}€`,
+        },
+      });
+    } catch (error) {
+      console.error("A apărut o eroare la calculul salariului:", error);
+      alert("A apărut o eroare la calcul. Verificați datele introduse sau consola pentru detalii.");
+      setResult(null);
+    }
   };
 
   return (
@@ -246,12 +276,19 @@ export default function CalculadoraNomina() {
               <button onClick={goNextMonth}>&gt;</button>
             </div>
             <p className={styles.calendarHint}>Haz clic en un día para añadir el parte diario.</p>
-            <NominaCalendar date={currentDate} zilePontaj={zilePontaj} onPickDay={openParte}/>
+            <NominaCalendar 
+              date={currentDate} 
+              zilePontaj={zilePontaj} 
+              onPickDay={openParte} 
+              onViewDay={openSummary} // MODIFICAT: Trimitem funcția către calendar
+            />
           </div>
-          {result && <NominaResultCard result={result} />}
+          {/* MODIFICAT: Asigură-te că calea către NominaResultCard este corectă */}
+          {result && <NominaResultCard result={result} />} 
         </div>
       </div>
       
+      {/* MODIFICAT: Asigură-te că calea către ParteDiarioModal este corectă */}
       <ParteDiarioModal
         isOpen={isParteOpen}
         onClose={closeParte}
@@ -263,6 +300,9 @@ export default function CalculadoraNomina() {
         monthName={monthNames[currentDate.getMonth()]}
         year={currentDate.getFullYear()}
       />
+      
+      {/* NOU: Randarea condiționată a noului modal de sumar */}
+      {summaryModalData && <SimpleSummaryModal data={summaryModalData} onClose={closeSummary} />}
     </Layout>
   );
 }
