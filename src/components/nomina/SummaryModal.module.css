@@ -1,25 +1,37 @@
-/* Overlay & sheet */
+/* Overlay (nu blochează scrollul interior) */
 .overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,.7);
   backdrop-filter: blur(5px);
   z-index: 3500;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: flex-start;           /* top align ca să poți derula natural */
+  justify-content: center;
   padding: 1rem;
+  overflow: auto;                    /* permite scroll dacă ecranul e mic */
 }
+
+/* Foaia: scroll intern, cu momentum pe iOS */
 .summarySheet {
   width: 100%;
   max-width: 820px;
-  background: #0b1220; /* albastru foarte închis, cyber */
+  background: #0b1220;
   color: #fff;
   border: 1px solid rgba(34,197,94,.25);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
   overflow: hidden;
+
+  max-height: 92vh;                 /* cheie: foaia nu depășește viewportul */
+  overflow-y: auto;                 /* scroll intern */
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Header + buton PDF */
+/* Header sticky (opțional, util pe mobil) */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex; align-items: center; justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid rgba(255,255,255,.08);
@@ -30,7 +42,7 @@
   color: #a7f3d0; text-shadow: 0 0 8px rgba(34,197,94,.4);
 }
 
-/* buton pdf cyber-tech */
+/* Buton PDF */
 .pdfButton {
   background: linear-gradient(135deg, #0f172a, #1e293b);
   border: 1px solid #22c55e;
@@ -53,7 +65,7 @@
   transform: translateY(-1px) scale(1.01);
 }
 
-/* meta */
+/* Meta */
 .metaInfo {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -63,7 +75,7 @@
 .metaInfo div { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); padding: .65rem .75rem; border-radius: .6rem; }
 .metaInfo span { color: #9ee6bf; font-weight: 700; margin-right: .35rem; }
 
-/* km săptămânali */
+/* KM săptămânali */
 .kmWeekly {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: .75rem;
@@ -106,7 +118,7 @@
 }
 .itineraryBody {
   display: flex; flex-direction: column; gap: .4rem;
-  align-items: center; /* centru pe mijloc */
+  align-items: center;
 }
 .itineraryRow {
   display: flex; gap: .5rem; align-items: center;
