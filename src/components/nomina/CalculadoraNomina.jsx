@@ -1,14 +1,16 @@
-// src/components/CalculadoraNomina.jsx
+// src/components/nomina/CalculadoraNomina.jsx
+
 import React, { useMemo, useState, useEffect } from 'react';
-import Layout from './Layout';
-import styles from './Nominas.module.css';
-import NominaConfigCard from './NominaConfigCard';
-import NominaCalendar from './NominaCalendar';
-import ParteDiarioModal from './nomina/ParteDiarioModal';
-import NominaResultCard from './nomina/NominaResultCard';
-import SimpleSummaryModal from './nomina/SimpleSummaryModal'; // NOU: Importăm noul modal de sumar
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
+import Layout from '../Layout'; // MODIFICAT: Urcăm un nivel pentru a găsi Layout
+import styles from './Nominas.module.css'; // MODIFICAT: Acum este în același folder
+import NominaConfigCard from './NominaConfigCard'; // MODIFICAT: Acum este în același folder
+import NominaCalendar from './NominaCalendar'; // MODIFICAT: Acum este în același folder
+import ParteDiarioModal from './ParteDiarioModal'; // MODIFICAT: Acum este în același folder
+import NominaResultCard from './NominaResultCard'; // MODIFICAT: Acum este în același folder
+import SimpleSummaryModal from './SimpleSummaryModal'; // MODIFICAT: Acum este în același folder
+import { supabase } from '../../supabaseClient'; // MODIFICAT: Urcăm două niveluri pentru a găsi supabaseClient
+import { useAuth } from '../../AuthContext'; // MODIFICAT: Urcăm două niveluri pentru a găsi AuthContext
+
 
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
