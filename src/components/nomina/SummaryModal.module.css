@@ -1,112 +1,91 @@
 /* Overlay scrollabil */
-.overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.72);
-  backdrop-filter: blur(6px);
-  z-index: 3500;
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: 1rem;
-  overflow: auto;
+.overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(6px);
+  z-index:3500;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:1rem; overflow:auto;
 }
 
-/* Foaia principală — scroll intern, stil cyber tech */
-.summarySheet {
-  width: 100%;
-  max-width: 820px;
-  background: #0b1220;
-  color: #e5f7ee;
-  border: 1px solid rgba(34,197,94,.3);
-  border-radius: 18px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
-  max-height: 92vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+/* Foaie principală */
+.sheet{
+  width:100%; max-width:820px;
+  background:#0b1220;
+  color:#e6ffe9;
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+  max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
 }
 
-/* header bar */
-.headerBar {
-  position: sticky; top: 0; z-index: 1;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  border-bottom: 1px solid rgba(255,255,255,.08);
+/* Titlu + close absolut în colț */
+.titleBar{
+  position:relative;
+  padding:1rem 1.25rem .75rem 1.25rem;
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
-.headerBar h2 {
-  margin: 0; letter-spacing: .12rem; font-size: 1.05rem;
-  color: #a7f3d0; text-shadow: 0 0 10px rgba(34,197,94,.5);
+.titleBar h2{
+  margin:0; font-size:1.4rem; letter-spacing:.12rem;
+  color:#b8ffd4; text-shadow:0 0 10px rgba(34,197,94,.45);
 }
-.closeBtn {
-  appearance: none; border: 0; border-radius: 12px;
-  width: 34px; height: 26px;
-  display: grid; place-items: center;
-  background: rgba(255,255,255,.12);
-  color: #fff; cursor: pointer;
+.closeBtn{
+  position:absolute; top:.6rem; right:.6rem;
+  width:36px; height:36px;
+  border:none; border-radius:999px;
+  background:rgba(255,255,255,.15);
+  color:#fff; cursor:pointer;
+  display:grid; place-items:center;
 }
-.closeBtn:hover { background: rgba(255,255,255,.2); }
+.closeBtn:hover{ background:rgba(255,255,255,.25); }
 
-/* panouri meta */
-.metaPanels { padding: 1rem 1.25rem 0 1.25rem; display: grid; gap: .8rem; }
-.metaPanel {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 12px;
-  padding: .85rem 1rem;
-  display: flex; align-items: center; gap: .75rem;
+/* Panouri meta */
+.metaGrid{ padding:1rem 1.25rem 0 1.25rem; display:grid; gap:.8rem; }
+.metaPanel{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; padding:.9rem 1rem;
+  display:flex; gap:.6rem; align-items:center;
 }
-.metaLabel {
-  color: #8ff2c0; font-weight: 800; letter-spacing: .05rem;
-}
-.metaValue { color: #ffffff; font-weight: 600; }
+.metaLabel{ color:#8ff2c0; font-weight:900; }
+.metaValue{ color:#fff; font-weight:700; }
 
-/* itinerario */
-.itineraryBlock { padding: 1rem 1.25rem; }
-.itineraryTitle {
-  text-align: center; font-weight: 900; color: #9ee6bf;
-  margin-bottom: .5rem;
+/* Itinerario */
+.itinBlock{ padding:1rem 1.25rem; }
+.itinTitle{
+  text-align:center; color:#9ee6bf; font-weight:900; margin-bottom:.5rem;
 }
-.itineraryList { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
-.itineraryRow { display: flex; align-items: center; gap: .6rem; font-weight: 700; }
-.arrow { color: #9ee6bf; }
-.itineraryRowMuted { opacity: .7; font-style: italic; }
+.itinList{ display:flex; flex-direction:column; align-items:center; gap:.35rem; }
+.itinRow{ display:flex; gap:.6rem; font-weight:800; text-align:center; }
+.itinTxt{ white-space:pre-wrap; }
+.arrow{ color:#7df0b3; }
+.itinEmpty{ opacity:.7; font-style:italic; }
 
-/* KM */
-.kmGroup { padding: .5rem 1.25rem 1rem 1.25rem; display: grid; gap: .6rem; }
-.kmRow {
-  display: flex; align-items: center; justify-content: space-between;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 10px;
-  padding: .7rem .9rem;
+/* KM — rând egal, label la stânga / valoare la dreapta */
+.kmGroup{ padding:.5rem 1.25rem 1rem 1.25rem; display:grid; gap:.6rem; }
+.kmRow{
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; padding:.7rem .95rem;
 }
-.kmLabel { font-weight: 800; letter-spacing: .02rem; }
-.kmValue { font-weight: 800; color: #22c55e; }
+.kmLabel{ font-weight:900; letter-spacing:.02rem; }
+.kmValue{ font-weight:900; color:#22c55e; }
 
-/* acțiuni jos, centrate */
-.actionsCentered {
-  display: flex; justify-content: center; padding: 1rem 1.25rem 1.25rem;
+/* Buton PDF centrat jos */
+.actions{ display:flex; justify-content:center; padding:1rem 1.25rem 1.25rem; }
+.pdfBtn{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  border:1px solid #22c55e; color:#22c55e;
+  font-weight:900; font-size:.98rem;
+  padding:.7rem 1.4rem; border-radius:12px; cursor:pointer;
+  text-shadow:0 0 6px rgba(34,197,94,.6);
+  box-shadow:0 0 12px rgba(34,197,94,.25);
+  transition:transform .15s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
 }
+.pdfBtn:hover{ transform:translateY(-1px); box-shadow:0 0 20px rgba(74,222,128,.45); color:#4ade80; border-color:#4ade80; }
 
-/* buton PDF – cyber tech verde/albastru */
-.pdfButton {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  border: 1px solid #22c55e;
-  color: #22c55e;
-  font-weight: 800;
-  font-size: .98rem;
-  padding: .65rem 1.3rem;
-  border-radius: 12px;
-  cursor: pointer;
-  text-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
-  transition: transform .15s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
-}
-.pdfButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 20px rgba(74, 222, 128, 0.45);
-  color: #4ade80; border-color: #4ade80;
-}
-
-/* responsive */
-@media (max-width: 680px) {
-  .metaPanels { padding-top: .75rem; }
+/* Responsive */
+@media (max-width:680px){
+  .titleBar h2{ font-size:1.2rem; }
 }
