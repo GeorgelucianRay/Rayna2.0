@@ -2,14 +2,12 @@
 import React, { useMemo } from 'react';
 import styles from './Nominas.module.css';
 
-// MODIFICAT: Componenta CalendarDay a fost actualizată pentru a include butonul "Ver"
-const CalendarDay = ({ day, data, onPick, onView, isPlaceholder }) => {
-  // Logica pentru a determina dacă o zi are date a fost actualizată
+// Componenta internă a fost simplificată
+const CalendarDay = ({ day, data, onPick, isPlaceholder }) => {
   const hasData = !isPlaceholder && data && (
     data.desayuno || data.cena || data.procena ||
-    (Number(data.km_final) > Number(data.km_iniciar)) ||
+    (Number(data.km_final) > 0) ||
     (Number(data.contenedores) > 0) ||
-    (Number(data.suma_festivo) > 0) ||
     (data.curse && data.curse.length > 0)
   );
 
@@ -22,33 +20,17 @@ const CalendarDay = ({ day, data, onPick, onView, isPlaceholder }) => {
   return (
     <div className={cls} onClick={!isPlaceholder ? onPick : undefined}>
       <span className={styles.dayNumber}>{day}</span>
-      
-      {/* NOU: Adăugarea condiționată a butonului "Ver" */}
-      {hasData && (
-        <button 
-          className={styles.viewDayButton} 
-          onClick={(e) => {
-            e.stopPropagation(); // Esențial: Oprește propagarea pentru a nu deschide și modalul de editare
-            onView();
-          }}
-        >
-          Ver
-        </button>
-      )}
     </div>
   );
 };
 
-
-// MODIFICAT: Componenta principală primește acum și proprietatea "onViewDay"
-export default function NominaCalendar({ date, zilePontaj, onPickDay, onViewDay }) {
+// Componenta principală nu mai primește onViewDay
+export default function NominaCalendar({ date, zilePontaj, onPickDay }) {
   const cells = useMemo(() => {
     const y = date.getFullYear();
     const m = date.getMonth();
-    const first = new Date(y, m, 1).getDay(); // Duminica=0, Luni=1...
+    const first = new Date(y, m, 1).getDay();
     const daysIn = new Date(y, m + 1, 0).getDate();
-    
-    // Corectează începutul săptămânii pentru a fi Luni
     const start = first === 0 ? 6 : first - 1; 
 
     const arr = [];
@@ -63,21 +45,17 @@ export default function NominaCalendar({ date, zilePontaj, onPickDay, onViewDay 
           day={d}
           data={zilePontaj[d - 1]}
           onPick={() => onPickDay(d - 1)}
-          onView={() => onViewDay(d - 1)} // NOU: Trimitem funcția către buton
           isPlaceholder={false}
         />
       );
     }
     
-    // Completează restul grilei până la 7 coloane
     while (arr.length % 7 !== 0) {
-      const k = `ph-e-${arr.length}`;
-      arr.push(<CalendarDay key={k} isPlaceholder />);
+      arr.push(<CalendarDay key={`ph-e-${arr.length}`} isPlaceholder />);
     }
     return arr;
     
-  // MODIFICAT: Am adăugat 'onViewDay' în lista de dependențe
-  }, [date, zilePontaj, onPickDay, onViewDay]);
+  }, [date, zilePontaj, onPickDay]);
 
   return (
     <>
