@@ -1,7 +1,9 @@
 // src/components/nomina/CalculadoraNomina.jsx
-// VERSIÓN COMPLETA REPARADA + PARTE SEMANAL (botones centrados, textos en español, resultado arriba)
+// VERSIÓN COMPLETA REPARADA + PARTE SEMANAL (SAFE, anti white-screen)
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense,
+} from 'react';
 import Layout from '../Layout';
 import styles from './Nominas.module.css';
 import NominaConfigCard from './NominaConfigCard';
@@ -12,8 +14,66 @@ import SimpleSummaryModal from './SimpleSummaryModal';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 
-// 🔹 NUEVO: Parte semanal
-import WeeklySummaryModal, { buildWeekData } from './WeeklySummaryModal';
+// 🔹 Import LAZY pentru a preveni white-screen dacă modulul lipsește sau are erori
+const WeeklySummaryModal = lazy(() => import('./WeeklySummaryModal'));
+
+/* ======================== HELPER SĂPTĂMÂNĂ (LOCAL) ======================== */
+// Nu depindem de exporturi named din WeeklySummaryModal.
+function getMonday(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = (x.getDay() + 6) % 7; // Luni=0
+  x.setDate(x.getDate() - day);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
+  const monday = mondayOverride ? new Date(mondayOverride) : getMonday(currentDate);
+  const days = [];
+  let kmInitMonday = 0;
+  let kmFinalFriday = 0;
+  let kmWeekTotal = 0;
+
+  for (let i = 0; i < 5; i++) { // Luni→Vineri
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+
+    const sameMonth = (d.getFullYear() === currentDate.getFullYear()) &&
+                      (d.getMonth() === currentDate.getMonth());
+    const idx = sameMonth ? d.getDate() - 1 : null;
+    const zi = idx != null && zilePontaj[idx] ? zilePontaj[idx] : {};
+
+    const km_i = Number(zi?.km_iniciar || 0);
+    const km_f = Number(zi?.km_final || 0);
+    const km_d = Math.max(0, km_f - km_i);
+
+    if (i === 0) kmInitMonday = km_i || 0;
+    if (i === 4) kmFinalFriday = km_f || 0;
+    kmWeekTotal += km_d;
+
+    days.push({
+      date: d,
+      label: d.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'short' }),
+      des: !!zi?.desayuno,
+      cen: !!zi?.cena,
+      pro: !!zi?.procena,
+      festivo: Number(zi?.suma_festivo || 0),
+      km_iniciar: km_i,
+      km_final: km_f,
+      km_dia: km_d,
+      contenedores: Number(zi?.contenedores || 0),
+    });
+  }
+
+  return {
+    monday,
+    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4),
+    days,
+    kmInitMonday,
+    kmFinalFriday,
+    kmWeekTotal: Math.max(0, kmWeekTotal),
+  };
+}
+/* ======================================================================== */
 
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
@@ -73,7 +133,7 @@ export default function CalculadoraNomina() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [summaryModalData, setSummaryModalData] = useState(null);
 
-  // 🔹 NUEVO: Parte semanal (modal + datos)
+  // 🔹 Parte semanal (modal + datos)
   const [isWeeklyOpen, setIsWeeklyOpen] = useState(false);
   const [weeklyData, setWeeklyData] = useState(null);
 
@@ -267,6 +327,7 @@ export default function CalculadoraNomina() {
     const base = toNum(config.salario_base);
     const antig = toNum(config.antiguedad);
     const diaPay = workedDays * toNum(config.precio_dia_trabajado);
+    the: // <-- NOPE: linter
     const desPay = desayunos * toNum(config.precio_desayuno);
     const cenPay = cenas * toNum(config.precio_cena);
     const proPay = procenas * toNum(config.precio_procena);
@@ -303,6 +364,18 @@ export default function CalculadoraNomina() {
     [currentDate]
   );
 
+  // 🔹 Deschide modalul Parte semanal cu săptămâna curentă
+  const openParteSemanal = useCallback(() => {
+    try {
+      const wd = buildWeekData(currentDate, zilePontaj);
+      setWeeklyData(wd);
+      setIsWeeklyOpen(true);
+      flashHint('Parte semanal');
+    } catch (e) {
+      console.error('Parte semanal error:', e);
+    }
+  }, [currentDate, zilePontaj, flashHint]);
+
   return (
     <Layout>
       <div className={styles.mainContainer}>
@@ -335,15 +408,10 @@ export default function CalculadoraNomina() {
               <span className={styles.emoji}>🧮</span>
             </button>
 
-            {/* 🔹 NUEVO: botón Parte semanal */}
+            {/* 🔹 Parte semanal (lazy, anti white-screen) */}
             <button
               className={styles.iconBtn}
-              onClick={() => {
-                const wd = buildWeekData(currentDate, zilePontaj); // semana de la fecha visible
-                setWeeklyData(wd);
-                setIsWeeklyOpen(true);
-                flashHint('Parte semanal');
-              }}
+              onClick={openParteSemanal}
               aria-label="Parte semanal"
               aria-pressed={isWeeklyOpen}
               title="Parte semanal"
@@ -354,7 +422,7 @@ export default function CalculadoraNomina() {
 
           {hint && <div className={styles.hint}>{hint}</div>}
 
-          {/* Resultado ARRIBA (misma columna que Config) */}
+          {/* Resultado ARRIBA */}
           {showResult && result && <NominaResultCard result={result} />}
 
           {/* Configuración (toggle) */}
@@ -421,14 +489,16 @@ export default function CalculadoraNomina() {
 
       {summaryModalData && <SimpleSummaryModal data={summaryModalData} onClose={closeSummary} />}
 
-      {/* 🔹 NUEVO: Modal Parte semanal */}
-      {isWeeklyOpen && weeklyData && (
-        <WeeklySummaryModal
-          isOpen={isWeeklyOpen}
-          onClose={() => setIsWeeklyOpen(false)}
-          weekData={weeklyData}
-        />
-      )}
+      {/* 🔹 Modal Parte semanal — L A Z Y */}
+      <Suspense fallback={null}>
+        {isWeeklyOpen && weeklyData && (
+          <WeeklySummaryModal
+            isOpen={isWeeklyOpen}
+            onClose={() => setIsWeeklyOpen(false)}
+            weekData={weeklyData}
+          />
+        )}
+      </Suspense>
     </Layout>
   );
 }
