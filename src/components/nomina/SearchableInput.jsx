@@ -1,16 +1,16 @@
 // src/components/nomina/SearchableInput.jsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 
 /**
- * Input cu căutare + listă rezultate.
+ * Input de búsqueda con resultados de Supabase.
  * Props:
  *  - value: string
  *  - onChange: (v:string) => void
  *  - onLocationSelect: (name:string) => void
  *  - placeholder?: string
- *  - closeOnSelect?: boolean  // << nou: închide dropdownul la select
+ *  - closeOnSelect?: boolean  // cierra el dropdown al seleccionar
  */
 export default function SearchableInput({
   value,
@@ -25,10 +25,10 @@ export default function SearchableInput({
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
 
-  // deschide la focus
+  // abrir lista al enfocar
   const onFocus = () => setOpen(true);
 
-  // clic în afara -> închide
+  // cerrar al hacer click fuera
   useEffect(() => {
     const handler = (e) => {
       if (!wrapRef.current) return;
@@ -42,10 +42,11 @@ export default function SearchableInput({
     };
   }, []);
 
-  // căutare debounced
+  // estado de query independiente (para debounce)
   const [q, setQ] = useState(value || '');
   useEffect(() => setQ(value || ''), [value]);
 
+  // buscar (debounce 200ms)
   useEffect(() => {
     const id = setTimeout(async () => {
       const query = q?.trim();
@@ -65,8 +66,7 @@ export default function SearchableInput({
         lookups.forEach(({ data }) => {
           (data || []).forEach(r => { if (r?.nombre) items.push(r.nombre); });
         });
-        // dedupe + sort
-        const uniq = Array.from(new Set(items)).sort((a,b)=>a.localeCompare(b));
+        const uniq = Array.from(new Set(items)).sort((a, b) => a.localeCompare(b));
         setResults(uniq.slice(0, 20));
       } catch (e) {
         console.error('Search error:', e);
@@ -83,8 +83,7 @@ export default function SearchableInput({
     onChange?.(name);
     if (closeOnSelect) {
       setOpen(false);
-      // închide tastatura pe iOS
-      inputRef.current?.blur();
+      inputRef.current?.blur(); // cerrar teclado iOS
     }
   };
 
@@ -96,7 +95,6 @@ export default function SearchableInput({
         onChange={(e) => { setQ(e.target.value); onChange?.(e.target.value); }}
         onFocus={onFocus}
         placeholder={placeholder}
-        className={styles.numericDisplay ? '' : ''}
         style={{
           width: '100%',
           padding: '.75rem',
