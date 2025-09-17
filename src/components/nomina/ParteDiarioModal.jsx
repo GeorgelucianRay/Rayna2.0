@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
+// --- Iconos ---
 const CloseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
 );
@@ -14,18 +15,19 @@ const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
 );
 
-// Km haversine
+// Distancia haversine (km)
 function haversineDistance(a, b) {
   const toRad = (x) => x * Math.PI / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
   const s = Math.sin;
-  const c = 2 * Math.atan2(Math.sqrt(s(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*s(dLon/2)**2), Math.sqrt(1 - (s(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*s(dLon/2)**2)));
+  const term = s(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(term), Math.sqrt(1 - term));
   return R * c;
 }
 
-// Modal selecție GPS
+// Modal selección GPS
 const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
   <div className={styles.modalOverlay} onClick={onClose}>
     <div className={styles.modal} style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
@@ -35,7 +37,9 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
       </div>
       <div className={styles.gpsResultsList}>
         {isLoading && <p>Buscando ubicaciones cercanas…</p>}
-        {!isLoading && locations.length === 0 && <p>No se han encontrado ubicaciones registradas en un radio de 1&nbsp;km.</p>}
+        {!isLoading && locations.length === 0 && (
+          <p>No se han encontrado ubicaciones registradas en un radio de 1&nbsp;km.</p>
+        )}
         {locations.map((loc, index) => (
           <div key={index} className={styles.gpsResultItem} onClick={() => onSelect(loc.name)}>
             <strong>{loc.name}</strong>
@@ -48,7 +52,8 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
 );
 
 export default function ParteDiarioModal({
-  isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange, day, monthName, year
+  isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange,
+  day, monthName, year
 }) {
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
@@ -56,6 +61,7 @@ export default function ParteDiarioModal({
   const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
   const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
 
+  // Cargar coordenadas de todas las tablas (una sola vez por apertura)
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -79,13 +85,17 @@ export default function ParteDiarioModal({
 
   const kmIniciar = data?.km_iniciar ?? '';
   const kmFinal = data?.km_final ?? '';
-  const kmShow = (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0 ? (Number(kmFinal || 0) - Number(kmIniciar || 0)) : 0;
+  const kmShow = (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0
+    ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
+    : 0;
 
+  // Cálculo KM automático por nombre
   const autoKmFor = (startName, endName) => {
     const a = coordsIndex[startName];
     const b = coordsIndex[endName];
     if (!a || !b) return null;
-    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 zecimal
+    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 decimal
+    // NOTĂ: e distanță în linie dreaptă; pentru rută rutieră e nevoie de API rute.
   };
 
   const handleCursaChange = (index, field, value) => {
@@ -174,7 +184,7 @@ export default function ParteDiarioModal({
               </div>
             </div>
 
-            {/* Kilómetros totales del día */}
+            {/* Kilómetros diarios del vehículo */}
             <div className={styles.parteDiarioSection}>
               <h4>Kilómetros</h4>
               <div className={styles.inputGrid}>
@@ -190,7 +200,7 @@ export default function ParteDiarioModal({
               <p className={styles.kmPreview}>Kilómetros del día: <b>{kmShow}</b></p>
             </div>
 
-            {/* Carreras (fără KM manual) */}
+            {/* Carreras — apiladas (una debajo de la otra) */}
             <div className={styles.parteDiarioSection}>
               <h4>Carreras del día (jornal)</h4>
               <div className={styles.curseList}>
@@ -198,7 +208,7 @@ export default function ParteDiarioModal({
                   const kmAuto = autoKmFor(cursa.start, cursa.end);
                   return (
                     <div key={index} className={styles.cursaItem}>
-                      <div className={styles.cursaInputs} style={{ gridTemplateColumns: '1fr 1fr 110px' }}>
+                      <div className={styles.cursaInputs}>
                         <div className={styles.inputGroup}>
                           <label>Salida</label>
                           <div className={styles.inputWithButton}>
@@ -233,7 +243,11 @@ export default function ParteDiarioModal({
                         </div>
                       </div>
 
-                      <button className={styles.removeCursaButton} onClick={() => removeCursa(index)} title="Eliminar carrera">
+                      <button
+                        className={styles.removeCursaButton}
+                        onClick={() => removeCursa(index)}
+                        title="Eliminar carrera"
+                      >
                         <TrashIcon />
                       </button>
                     </div>
