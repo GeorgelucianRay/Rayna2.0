@@ -4,9 +4,9 @@ import Layout from './Layout';
 import styles from './Nominas.module.css';
 import NominaConfigCard from './NominaConfigCard';
 import NominaCalendar from './NominaCalendar';
-import ParteDiarioModal from './ParteDiarioModal';
-import NominaResultCard from './NominaResultCard';
-import SimpleSummaryModal from './SimpleSummaryModal'; // NOU: Importăm noul modal de sumar
+import ParteDiarioModal from './nomina/ParteDiarioModal';
+import NominaResultCard from './nomina/NominaResultCard';
+import SimpleSummaryModal from './nomina/SimpleSummaryModal'; // NOU: Importăm noul modal de sumar
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 
