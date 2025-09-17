@@ -1,6 +1,6 @@
 // src/components/nomina/ParteDiarioModal.jsx
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput'; // Importăm noua componentă
 
