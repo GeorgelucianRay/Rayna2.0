@@ -1,10 +1,9 @@
 // src/components/nomina/ParteDiarioModal.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
-// --- Iconos ---
 const CloseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
 );
@@ -15,20 +14,18 @@ const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
 );
 
-// Distancia haversine (km)
-function haversineDistance(coords1, coords2) {
+// Km haversine
+function haversineDistance(a, b) {
   const toRad = (x) => x * Math.PI / 180;
   const R = 6371;
-  const dLat = toRad(coords2.lat - coords1.lat);
-  const dLon = toRad(coords2.lon - coords1.lon);
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(coords1.lat)) * Math.cos(toRad(coords2.lat)) *
-            Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const s = Math.sin;
+  const c = 2 * Math.atan2(Math.sqrt(s(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*s(dLon/2)**2), Math.sqrt(1 - (s(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*s(dLon/2)**2)));
   return R * c;
 }
 
-// Modal para seleccionar ubicación por GPS
+// Modal selecție GPS
 const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
   <div className={styles.modalOverlay} onClick={onClose}>
     <div className={styles.modal} style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
@@ -38,9 +35,7 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
       </div>
       <div className={styles.gpsResultsList}>
         {isLoading && <p>Buscando ubicaciones cercanas…</p>}
-        {!isLoading && locations.length === 0 && (
-          <p>No se han encontrado ubicaciones registradas en un radio de 1&nbsp;km.</p>
-        )}
+        {!isLoading && locations.length === 0 && <p>No se han encontrado ubicaciones registradas en un radio de 1&nbsp;km.</p>}
         {locations.map((loc, index) => (
           <div key={index} className={styles.gpsResultItem} onClick={() => onSelect(loc.name)}>
             <strong>{loc.name}</strong>
@@ -53,42 +48,28 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
 );
 
 export default function ParteDiarioModal({
-  isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange,
-  day, monthName, year
+  isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange, day, monthName, year
 }) {
-  // modal GPS de "cercanos"
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
-
-  // cache coordenadas (todas las tablas, 1 sola carga)
   const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
-
-  // trigger pentru a remonta SearchableInput după selecție (închide lista)
-  const [inputVersion, setInputVersion] = useState(0);
-  const bumpInputVersion = () => setInputVersion(v => v + 1);
 
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
       try {
         const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
-        const queries = tables.map(t => supabase.from(t).select('nombre, coordenadas'));
-        const results = await Promise.all(queries);
-
+        const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
         const idx = {};
-        results.forEach(({ data }) => {
-          (data || []).forEach(row => {
-            if (!row.coordenadas || !row.nombre) return;
-            const [lat, lon] = row.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
-            if (!isNaN(lat) && !isNaN(lon)) idx[row.nombre] = { lat, lon };
-          });
-        });
+        res.forEach(({ data }) => (data || []).forEach(row => {
+          if (!row?.coordenadas || !row?.nombre) return;
+          const [lat, lon] = row.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
+          if (!isNaN(lat) && !isNaN(lon)) idx[row.nombre] = { lat, lon };
+        }));
         setCoordsIndex(idx);
-      } catch (e) {
-        console.error('Error cargando coordenadas:', e);
-      }
+      } catch (e) { console.error(e); }
     })();
   }, [isOpen]);
 
@@ -98,28 +79,21 @@ export default function ParteDiarioModal({
 
   const kmIniciar = data?.km_iniciar ?? '';
   const kmFinal = data?.km_final ?? '';
-  const kmShow = (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0
-    ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
-    : 0;
+  const kmShow = (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0 ? (Number(kmFinal || 0) - Number(kmIniciar || 0)) : 0;
 
   const autoKmFor = (startName, endName) => {
     const a = coordsIndex[startName];
     const b = coordsIndex[endName];
     if (!a || !b) return null;
-    // km en línea recta (aprox)
-    const km = haversineDistance({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon });
-    return Math.round(km * 10) / 10; // 1 decimal
+    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 zecimal
   };
 
   const handleCursaChange = (index, field, value) => {
     const newCurse = [...(data.curse || [])];
     const prev = newCurse[index] || { start: '', end: '' };
     const updated = { ...prev, [field]: value };
-
-    // calcula KM auto si hay ambos extremos
     const km_auto = autoKmFor(updated.start, updated.end);
     if (km_auto != null) updated.km_auto = km_auto;
-
     newCurse[index] = updated;
     onCurseChange(newCurse);
   };
@@ -138,17 +112,15 @@ export default function ParteDiarioModal({
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      const { latitude, longitude } = coords;
       try {
-        const tableNames = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
-        const promises = tableNames.map(table => supabase.from(table).select('nombre, coordenadas'));
-        const results = await Promise.all(promises);
+        const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
+        const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
+        let all = [];
+        res.forEach(r => { if (r.data) all = all.concat(r.data); });
 
-        let allLocations = [];
-        results.forEach(res => { if (res.data) allLocations = allLocations.concat(res.data); });
-
-        const nearbyLocations = allLocations
+        const near = all
           .map(loc => {
             if (!loc.coordenadas) return null;
             const [lat, lon] = loc.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
@@ -156,18 +128,18 @@ export default function ParteDiarioModal({
             const distance = haversineDistance({ lat: latitude, lon: longitude }, { lat, lon });
             return { name: loc.nombre, distance };
           })
-          .filter(loc => loc && loc.distance <= 1.0); // ★ radio 1 km
+          .filter(v => v && v.distance <= 1.0) // 1 km
+          .sort((a, b) => a.distance - b.distance);
 
-        nearbyLocations.sort((a, b) => a.distance - b.distance);
-        setGpsResults(nearbyLocations);
-      } catch (error) {
-        console.error(error);
+        setGpsResults(near);
+      } catch (e) {
+        console.error(e);
         alert('Se produjo un error al buscar ubicaciones.');
       } finally {
         setGpsLoading(false);
       }
-    }, (error) => {
-      alert(`Error de GPS: ${error.message}`);
+    }, (err) => {
+      alert(`Error de GPS: ${err.message}`);
       setGpsLoading(false);
     });
   };
@@ -176,7 +148,6 @@ export default function ParteDiarioModal({
     if (activeGpsSearch) {
       const { index, field } = activeGpsSearch;
       handleCursaChange(index, field, name);
-      bumpInputVersion(); // remount SearchableInput → cierra dropdown
     }
     setIsGpsModalOpen(false);
     setGpsResults([]);
@@ -203,7 +174,7 @@ export default function ParteDiarioModal({
               </div>
             </div>
 
-            {/* Kilómetros del vehículo (totales del día) */}
+            {/* Kilómetros totales del día */}
             <div className={styles.parteDiarioSection}>
               <h4>Kilómetros</h4>
               <div className={styles.inputGrid}>
@@ -219,7 +190,7 @@ export default function ParteDiarioModal({
               <p className={styles.kmPreview}>Kilómetros del día: <b>{kmShow}</b></p>
             </div>
 
-            {/* Carreras — sin campo KM manual, con KM auto */}
+            {/* Carreras (fără KM manual) */}
             <div className={styles.parteDiarioSection}>
               <h4>Carreras del día (jornal)</h4>
               <div className={styles.curseList}>
@@ -227,16 +198,16 @@ export default function ParteDiarioModal({
                   const kmAuto = autoKmFor(cursa.start, cursa.end);
                   return (
                     <div key={index} className={styles.cursaItem}>
-                      <div className={styles.cursaInputs} style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      <div className={styles.cursaInputs} style={{ gridTemplateColumns: '1fr 1fr 110px' }}>
                         <div className={styles.inputGroup}>
                           <label>Salida</label>
                           <div className={styles.inputWithButton}>
                             <SearchableInput
-                              key={`start-${index}-${inputVersion}`}
                               value={cursa.start || ''}
                               onChange={(val) => handleCursaChange(index, 'start', val)}
-                              onLocationSelect={(name) => { handleCursaChange(index, 'start', name); bumpInputVersion(); }}
+                              onLocationSelect={(name) => handleCursaChange(index, 'start', name)}
                               placeholder="Ej.: Parking"
+                              closeOnSelect
                             />
                             <button onClick={() => openGpsSelection(index, 'start')}><GpsFixedIcon /></button>
                           </div>
@@ -246,20 +217,20 @@ export default function ParteDiarioModal({
                           <label>Llegada</label>
                           <div className={styles.inputWithButton}>
                             <SearchableInput
-                              key={`end-${index}-${inputVersion}`}
                               value={cursa.end || ''}
                               onChange={(val) => handleCursaChange(index, 'end', val)}
-                              onLocationSelect={(name) => { handleCursaChange(index, 'end', name); bumpInputVersion(); }}
+                              onLocationSelect={(name) => handleCursaChange(index, 'end', name)}
                               placeholder="Ej.: TCB"
+                              closeOnSelect
                             />
                             <button onClick={() => openGpsSelection(index, 'end')}><GpsFixedIcon /></button>
                           </div>
                         </div>
-                      </div>
 
-                      {/* KM auto (lectura) */}
-                      <div style={{ marginTop: '.5rem', color: '#9ca3af', fontSize: '.9rem' }}>
-                        KM aprox.: <b style={{ color: '#fff' }}>{kmAuto != null ? kmAuto : '—'}</b>
+                        <div className={styles.inputGroup}>
+                          <label>KM aprox.</label>
+                          <input disabled value={kmAuto != null ? kmAuto : '—'} />
+                        </div>
                       </div>
 
                       <button className={styles.removeCursaButton} onClick={() => removeCursa(index)} title="Eliminar carrera">
