@@ -1,7 +1,7 @@
 // src/components/NominaConfigCard.jsx
 import React, { useState } from 'react';
 import styles from './Nominas.module.css';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 
 export default function NominaConfigCard({ config, onChange, onSave, userId }) {
   const [loading, setLoading] = useState(false);
