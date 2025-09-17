@@ -61,7 +61,7 @@ export default function ParteDiarioModal({
   const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
   const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
 
-  // Cargar coordenadas de todas las tablas (una sola vez por apertura)
+  // Cargar coordenadas (una vez por apertura)
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -95,7 +95,6 @@ export default function ParteDiarioModal({
     const b = coordsIndex[endName];
     if (!a || !b) return null;
     return Math.round(haversineDistance(a, b) * 10) / 10; // 1 decimal
-    // NOTĂ: e distanță în linie dreaptă; pentru rută rutieră e nevoie de API rute.
   };
 
   const handleCursaChange = (index, field, value) => {
@@ -200,7 +199,7 @@ export default function ParteDiarioModal({
               <p className={styles.kmPreview}>Kilómetros del día: <b>{kmShow}</b></p>
             </div>
 
-            {/* Carreras — apiladas (una debajo de la otra) */}
+            {/* Carreras — APILADAS */}
             <div className={styles.parteDiarioSection}>
               <h4>Carreras del día (jornal)</h4>
               <div className={styles.curseList}>
