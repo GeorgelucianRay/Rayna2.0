@@ -1,6 +1,6 @@
 // src/components/nomina/SearchableInput.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 
 // Hook custom pentru a întârzia căutarea (debounce)
