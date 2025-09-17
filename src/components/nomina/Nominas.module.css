@@ -98,6 +98,10 @@
 .calculateButton:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(34,197,94,.4); }
 
 /* ================== TOOLBAR EMOJI (FORȚAT MARE) ================== */
+/* centrează butoanele din toolbar pe rând */
+.toolbarCenter {
+  justify-content: center;
+}
 .toolbar {
   display: flex;
   gap: clamp(12px, 2vw, 22px) !important;
