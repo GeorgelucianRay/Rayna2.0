@@ -1,20 +1,21 @@
 // src/components/nomina/NominaResultCard.jsx
 import React from 'react';
 import styles from './Nominas.module.css';
+import jsPDF from 'jspdf';
 
 const eur = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
 export default function NominaResultCard({ result }) {
-  if (!result || (typeof result !== 'object')) {
+  if (!result || typeof result !== 'object') {
     return (
       <div className={`${styles.card} ${styles.resultCard}`}>
-        <h3>Eroare la calcul</h3>
-        <p>A apărut o eroare la afișarea detaliilor. Verifică datele introduse.</p>
+        <h3>Error en el cálculo</h3>
+        <p>Ha ocurrido un error al mostrar los detalles. Verifica los datos introducidos.</p>
       </div>
     );
   }
 
-  // Normalizează formele posibile ale rezultatului
+  // Normalización de resultados
   const total =
     (typeof result.totalBruto === 'number' ? result.totalBruto : null) ??
     (typeof result.total === 'number' ? result.total : null);
@@ -24,21 +25,55 @@ export default function NominaResultCard({ result }) {
     (result.breakdown && typeof result.breakdown === 'object' ? result.breakdown : null) ??
     {};
 
-  // KPIs opționale
+  // KPIs opcionales
   const kpis = [
-    { label: 'Zile lucrate', value: result.workedDays },
+    { label: 'Días trabajados', value: result.workedDays },
     { label: 'KM', value: result.km },
-    { label: 'Containere', value: result.contenedores },
-    { label: 'Mic dejun', value: result.desayunos },
-    { label: 'Cină', value: result.cenas },
-    { label: 'Procină', value: result.procenas },
+    { label: 'Contenedores', value: result.contenedores },
+    { label: 'Desayunos', value: result.desayunos },
+    { label: 'Cenas', value: result.cenas },
+    { label: 'Pro-cenas', value: result.procenas },
   ].filter(k => typeof k.value === 'number');
+
+  // Generar PDF
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Nómina - Resultado del Cálculo', 20, 20);
+
+    doc.setFontSize(12);
+    doc.text(`Total bruto: ${total != null ? eur.format(total) : '—'}`, 20, 35);
+
+    let y = 50;
+    if (kpis.length > 0) {
+      doc.text('Indicadores clave:', 20, y);
+      y += 8;
+      kpis.forEach(k => {
+        doc.text(`${k.label}: ${k.value}`, 25, y);
+        y += 8;
+      });
+    }
+
+    if (Object.keys(details).length > 0) {
+      y += 5;
+      doc.text('Detalles del cálculo:', 20, y);
+      y += 8;
+      Object.entries(details).forEach(([key, value]) => {
+        doc.text(`${key}: ${typeof value === 'number' ? eur.format(value) : String(value)}`, 25, y);
+        y += 8;
+      });
+    }
+
+    doc.save('nomina.pdf');
+  };
 
   return (
     <div className={`${styles.card} ${styles.resultCard}`}>
       <div className={styles.resultHeader}>
-        <h3 className={styles.resultTitle}>Resultado del Cálculo</h3>
-        <span className={styles.resultBadge}>Resumen</span>
+        <h3 className={styles.resultTitle}>Resultado del cálculo</h3>
+        <button className={styles.pdfButton} onClick={generatePDF}>
+          📄 Generar PDF
+        </button>
       </div>
 
       <p className={styles.totalBig}>
