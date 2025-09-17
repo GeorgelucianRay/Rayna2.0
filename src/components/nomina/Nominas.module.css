@@ -22,9 +22,9 @@
   border-radius: .5rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color .2s;
+  transition: background-color .2s, transform .15s ease, box-shadow .15s ease;
 }
-.archiveButton:hover { background: rgba(255,255,255,.2); }
+.archiveButton:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.2); }
 .archiveButton:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ================== LAYOUT ================== */
@@ -88,6 +88,7 @@
 }
 .saveButton:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(59,130,246,.4); }
 
+/* (deprecated) — nu se mai folosește pentru butoanele mari */
 .calculateButton {
   width: 100%; padding: 1rem; border-radius: .75rem; border: none;
   background-image: linear-gradient(to right, #16a34a, #22c55e);
@@ -96,6 +97,56 @@
 }
 .calculateButton:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(34,197,94,.4); }
 
+/* ================== TOOLBAR EMOJI (NOU) ================== */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  cursor: pointer;
+  font-size: 20px;          /* mărimea emoji-ului */
+  line-height: 40px;
+  text-align: center;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+  will-change: transform, box-shadow, background;
+}
+.iconBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+}
+.iconBtn:active {
+  transform: scale(.96);
+}
+.iconBtn:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+/* stare toggled (aria-pressed="true") */
+.iconBtn[aria-pressed="true"] {
+  outline: 2px solid #30b17333;
+  background: #f3fffb;
+  box-shadow: 0 6px 14px rgba(48,177,115,0.25);
+}
+
+/* mic mesaj sub toolbar */
+.hint {
+  font-size: 12px;
+  color: #e5e7eb;
+  opacity: 0.9;
+  margin-bottom: 10px;
+  transition: opacity .2s ease;
+}
+
 /* ================== CALENDAR ================== */
 .calendarHeader {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
@@ -103,6 +154,7 @@
 .calendarHeader button {
   background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; padding: .5rem;
 }
+.calendarHeader button:focus-visible { outline: 2px solid #fb923c; border-radius: .5rem; }
 .calendarHeader h3 { margin: 0; border-bottom: none; padding-bottom: 0; }
 
 .calendarHint {
@@ -125,6 +177,7 @@
   cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s;
 }
 .calendarDay:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+.calendarDay:focus-visible { outline: 2px solid #3b82f6; }
 .dayNumber { font-size: .875rem; font-weight: 600; color: #e5e7eb; }
 .hasData { border-color: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,.3); }
 .placeholderDay { background: transparent; border: none; cursor: default; }
@@ -170,7 +223,7 @@
   box-shadow: 0 10px 30px rgba(0,0,0,.2);
   display: flex;
   flex-direction: column;
-  max-height: 90vh; /* Limită înălțimea totală a modalului */
+  max-height: 90vh;
 }
 
 .modalHeader {
@@ -186,13 +239,14 @@
   cursor: pointer; padding: 0; line-height: 1;
 }
 .closeIcon:hover { color: #fff; }
+.closeIcon:focus-visible { outline: 2px solid #fb923c; border-radius: .375rem; }
 
 .modalBody { 
   display: flex; 
   flex-direction: column; 
   gap: 1.5rem; 
   padding: 1.5rem;
-  overflow-y: auto; /* Activează scroll-ul */
+  overflow-y: auto;
 }
 
 .modalFooter {
@@ -209,46 +263,28 @@
   width: 100%;
 }
 .actionMini:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37,99,235,.35); }
-
-.parteDiarioSection h4 {
-  font-size: 1rem; font-weight: 700; color: #fb923c;
-  margin: 0 0 .75rem 0;
-}
-.checkboxGroupModal {
-  display: flex; justify-content: space-around; gap: 1rem;
-  background: rgba(255,255,255,.05); padding: .75rem; border-radius: .5rem;
-}
-.checkboxGroupModal label { display: flex; align-items: center; gap: .5rem; font-weight: 500; cursor: pointer; }
-.checkboxGroupModal input { width: 1.15rem; height: 1.15rem; accent-color: #3b82f6; }
-
+.actionMini:focus-visible { outline: 2px solid #3b82f6; }
 
 /* ================== MODAL - SECȚIUNE CURSE (NOU) ================== */
-
 .curseList {
   display: flex; flex-direction: column; gap: 1rem;
   margin-top: 1rem;
 }
-
 .cursaItem {
   display: flex; align-items: flex-end; gap: .5rem;
   background-color: rgba(255, 255, 255, 0.05);
   padding: 1rem;
   border-radius: .75rem;
 }
-
 .cursaInputs {
   flex-grow: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 80px; /* Layout pentru desktop */
+  grid-template-columns: 1fr 1fr 80px;
   gap: .75rem;
 }
-/* Face layout-ul responsiv pe telefoane */
 @media (max-width: 500px) {
-  .cursaInputs {
-    grid-template-columns: 1fr; /* Un singur câmp pe rând */
-  }
+  .cursaInputs { grid-template-columns: 1fr; }
 }
-
 .inputWithButton { display: flex; width: 100%; }
 .inputWithButton input { border-radius: .5rem 0 0 .5rem !important; border-right: none !important; }
 .inputWithButton button {
@@ -259,15 +295,12 @@
 }
 .inputWithButton button:hover { background: rgba(255,255,255,.25); }
 .inputWithButton button:disabled { cursor: not-allowed; opacity: .5; }
-
 .kmField input { text-align: center; }
-
 .removeCursaButton {
   background: transparent; border: none; color: #9ca3af; cursor: pointer;
   padding: .75rem .5rem; margin-bottom: 2px; transition: color .2s;
 }
 .removeCursaButton:hover { color: #ff5c5c; }
-
 .addCursaButton {
   width: 100%; padding: .75rem; margin-top: 1rem;
   background-color: transparent; border: 1px dashed rgba(255,255,255,.3);
@@ -279,7 +312,6 @@
   border-color: rgba(255,255,255,.4);
   color: #fff;
 }
-
 
 /* ================== NUMERIC CUSTOM ================== */
 .customNumberInput {
@@ -296,7 +328,6 @@
 }
 .numericDisplay::-webkit-inner-spin-button,
 .numericDisplay::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-
 .stepperButton {
   background: rgba(255,255,255,.15); border: none; color: #fff;
   font-size: 1.2rem; font-weight: 800; cursor: pointer;
@@ -334,25 +365,16 @@
   padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.1);
 }
 .resultDetails li span:first-child { font-weight: 500; }
+
 /* ================== MODAL - SEARCH & GPS SELECT (NOU) ================== */
-
-/* Wrapper pentru câmpul de căutare + rezultate */
-.searchableInputWrapper {
-  position: relative;
-  width: 100%;
-}
-
-/* Lista de rezultate pentru căutare */
+.searchableInputWrapper { position: relative; width: 100%; }
 .searchResults {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
+  position: absolute; top: 100%; left: 0; right: 0;
   background: #1f2937;
   border: 1px solid rgba(255,255,255,.25);
   border-top: none;
   border-radius: 0 0 .5rem .5rem;
-  z-index: 4000; /* Peste alte elemente din modal */
+  z-index: 4000;
   max-height: 150px;
   overflow-y: auto;
 }
@@ -366,12 +388,8 @@
   background: #3b82f6;
   color: #fff;
 }
-
-/* Lista de rezultate pentru selecția GPS */
 .gpsResultsList {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
+  display: flex; flex-direction: column; gap: .5rem;
   padding: .5rem;
   max-height: 50vh;
   overflow-y: auto;
@@ -389,10 +407,11 @@
   background: rgba(255,255,255,.05);
   border-radius: .5rem;
   cursor: pointer;
-  transition: background-color .2s;
+  transition: background-color .2s, transform .12s ease;
 }
 .gpsResultItem:hover {
   background-color: #3b82f6;
+  transform: translateY(-1px);
 }
 .gpsResultItem span {
   font-size: .8rem;
@@ -402,7 +421,7 @@
   color: #fff;
 }
 
-/* ADAUGĂ ACEST BLOC NOU LA SFÂRȘITUL FIȘIERULUI */
+/* ================== SUMMARY SELECTOR (NOU) ================== */
 .summarySelectorBar {
   display: flex;
   gap: 1rem;
@@ -431,8 +450,13 @@
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  transition: transform .2s;
+  transition: transform .2s, box-shadow .2s;
 }
 .summaryButton:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(59,130,246,.35);
+}
+.summaryButton:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
