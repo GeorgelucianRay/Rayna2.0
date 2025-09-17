@@ -18,7 +18,6 @@ import { useAuth } from '../../AuthContext';
 const WeeklySummaryModal = lazy(() => import('./WeeklySummaryModal'));
 
 /* ======================== HELPER SĂPTĂMÂNĂ (LOCAL) ======================== */
-// Nu depindem de exporturi named din WeeklySummaryModal.
 function getMonday(d) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const day = (x.getDay() + 6) % 7; // Luni=0
@@ -133,7 +132,7 @@ export default function CalculadoraNomina() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [summaryModalData, setSummaryModalData] = useState(null);
 
-  // 🔹 Parte semanal (modal + datos)
+  // Parte semanal (modal + datos)
   const [isWeeklyOpen, setIsWeeklyOpen] = useState(false);
   const [weeklyData, setWeeklyData] = useState(null);
 
@@ -172,13 +171,13 @@ export default function CalculadoraNomina() {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
 
-      const { data, error } = await supabase
-        .from('pontaj_diario')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('year', year)
-        .eq('month', month)
-        .order('day', { ascending: true });
+    const { data, error } = await supabase
+      .from('pontaj_diario')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('year', year)
+      .eq('month', month)
+      .order('day', { ascending: true });
 
       if (data && !error) {
         const newPontaj = makePontajForMonth(currentDate);
@@ -327,7 +326,6 @@ export default function CalculadoraNomina() {
     const base = toNum(config.salario_base);
     const antig = toNum(config.antiguedad);
     const diaPay = workedDays * toNum(config.precio_dia_trabajado);
-    the: // <-- NOPE: linter
     const desPay = desayunos * toNum(config.precio_desayuno);
     const cenPay = cenas * toNum(config.precio_cena);
     const proPay = procenas * toNum(config.precio_procena);
@@ -364,7 +362,7 @@ export default function CalculadoraNomina() {
     [currentDate]
   );
 
-  // 🔹 Deschide modalul Parte semanal cu săptămâna curentă
+  // Deschide modalul Parte semanal cu săptămâna curentă
   const openParteSemanal = useCallback(() => {
     try {
       const wd = buildWeekData(currentDate, zilePontaj);
@@ -408,7 +406,7 @@ export default function CalculadoraNomina() {
               <span className={styles.emoji}>🧮</span>
             </button>
 
-            {/* 🔹 Parte semanal (lazy, anti white-screen) */}
+            {/* Parte semanal (lazy, anti white-screen) */}
             <button
               className={styles.iconBtn}
               onClick={openParteSemanal}
@@ -489,7 +487,7 @@ export default function CalculadoraNomina() {
 
       {summaryModalData && <SimpleSummaryModal data={summaryModalData} onClose={closeSummary} />}
 
-      {/* 🔹 Modal Parte semanal — L A Z Y */}
+      {/* Modal Parte semanal — L A Z Y */}
       <Suspense fallback={null}>
         {isWeeklyOpen && weeklyData && (
           <WeeklySummaryModal
