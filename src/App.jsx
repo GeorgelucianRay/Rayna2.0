@@ -20,7 +20,7 @@ import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
-import CalculadoraNomina from './components/CalculadoraNomina.jsx';
+import CalculadoraNomina from './components/nomina/CalculadoraNomina';
 import MapPage from './components/MapPage.jsx';
 import SchedulerPage from './pages/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
