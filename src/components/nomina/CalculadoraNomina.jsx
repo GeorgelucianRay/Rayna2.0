@@ -1,5 +1,5 @@
 // src/components/nomina/CalculadoraNomina.jsx
-// VERSIUNE COMPLETĂ REPARATĂ (emoji în <span>, toolbar corect închis)
+// VERSIÓN COMPLETA REPARADA (botones centrados, textos en español, resultado arriba)
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../Layout';
@@ -33,7 +33,7 @@ export default function CalculadoraNomina() {
     precio_contenedor: 6,
   }), []);
 
-  // ȘABLON ZI – evită apeluri inutile și bug-uri de merge
+  // Plantilla de día (evita merges incorrectos)
   const DAY_TEMPLATE = useMemo(() => ({
     desayuno: false,
     cena: false,
@@ -55,7 +55,7 @@ export default function CalculadoraNomina() {
   const [config, setConfig] = useState(defaultConfig);
   const [zilePontaj, setZilePontaj] = useState(makePontajForMonth(currentDate));
 
-  // UI: toggle panou configurare + rezultat, plus hint scurt
+  // UI: toggles + hint
   const [showConfig, setShowConfig] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [hint, setHint] = useState('');
@@ -70,10 +70,10 @@ export default function CalculadoraNomina() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [summaryModalData, setSummaryModalData] = useState(null);
 
-  // selector zi pentru sumar simplu
+  // selector para el modal resumen simple
   const [selectedSummaryDay, setSelectedSummaryDay] = useState(new Date().getDate());
 
-  // încarcă CONFIG cu operatorul nullish ?? (0 rămâne 0, nu cade pe default)
+  // Cargar CONFIG con ?? (0 se mantiene 0)
   useEffect(() => {
     const loadConfig = async () => {
       if (!profile?.id) return;
@@ -98,7 +98,7 @@ export default function CalculadoraNomina() {
     loadConfig();
   }, [profile?.id, defaultConfig]);
 
-  // încarcă PONTAJ – merge corect cu DAY_TEMPLATE
+  // Cargar PONTAJE del mes visible
   useEffect(() => {
     const loadPontaj = async () => {
       if (!profile?.id) return;
@@ -128,7 +128,7 @@ export default function CalculadoraNomina() {
     loadPontaj();
   }, [currentDate, profile?.id, makePontajForMonth, DAY_TEMPLATE]);
 
-  // sincronizare la schimbarea lunii
+  // Sincroniza cambios de mes
   useEffect(() => {
     setSelectedSummaryDay(1);
     setIsParteOpen(false);
@@ -179,14 +179,14 @@ export default function CalculadoraNomina() {
       day: dayIndex + 1,
       monthName: monthNames[currentDate.getMonth()],
       year: currentDate.getFullYear(),
-      chofer: profile?.full_name || profile?.username || 'Nume Indisponibil'
+      chofer: profile?.full_name || profile?.username || 'Nombre no disponible'
     };
     setSummaryModalData(data);
   }, [zilePontaj, monthNames, currentDate, profile?.full_name, profile?.username]);
 
   const closeSummary = useCallback(() => setSummaryModalData(null), []);
 
-  // normalizare numerică la input
+  // Normalización numérica
   const numericFields = useMemo(() => new Set(['km_iniciar', 'km_final', 'contenedores', 'suma_festivo']), []);
   const handleDayDataChange = useCallback((name, value) => {
     const v = numericFields.has(name) && value !== '' ? Number(value) : value;
@@ -215,7 +215,7 @@ export default function CalculadoraNomina() {
 
   const [result, setResult] = useState(null);
 
-  // calc robust
+  // Cálculo robusto
   const calc = useCallback(() => {
     if (!zilePontaj?.length) {
       return {
@@ -241,13 +241,13 @@ export default function CalculadoraNomina() {
       const kmf = toNum(d.km_final);
       const km = Math.max(0, kmf - kmi);
 
-      const ziLucrata =
+      const diaTrabajado =
         km > 0 ||
         toNum(d.contenedores) > 0 ||
         (Array.isArray(d.curse) && d.curse.length > 0) ||
         !!d.desayuno || !!d.cena || !!d.procena;
 
-      if (ziLucrata) workedDays += 1;
+      if (diaTrabajado) workedDays += 1;
       if (d.desayuno) desayunos += 1;
       if (d.cena) cenas += 1;
       if (d.procena) procenas += 1;
@@ -259,15 +259,15 @@ export default function CalculadoraNomina() {
 
     const base = toNum(config.salario_base);
     const antig = toNum(config.antiguedad);
-    const ziPay = workedDays * toNum(config.precio_dia_trabajado);
-    const mDes = desayunos * toNum(config.precio_desayuno);
-    const mCen = cenas * toNum(config.precio_cena);
-    const mPro = procenas * toNum(config.precio_procena);
+    const diaPay = workedDays * toNum(config.precio_dia_trabajado);
+    const desPay = desayunos * toNum(config.precio_desayuno);
+    const cenPay = cenas * toNum(config.precio_cena);
+    const proPay = procenas * toNum(config.precio_procena);
     const kmPay = kmTotal * toNum(config.precio_km);
     const contPay = contTotal * toNum(config.precio_contenedor);
-    const festPay = festivoTotal;
+    const festPay = festivoTotal; // suma directa
 
-    const gross = base + antig + ziPay + mDes + mCen + mPro + kmPay + contPay + festPay;
+    const total = base + antig + diaPay + desPay + cenPay + proPay + kmPay + contPay + festPay;
 
     return {
       base,
@@ -277,16 +277,16 @@ export default function CalculadoraNomina() {
       km: kmTotal,
       contenedores: contTotal,
       festivo: festivoTotal,
-      extras: ziPay + mDes + mCen + mPro + kmPay + contPay + festPay,
-      total: gross,
+      extras: diaPay + desPay + cenPay + proPay + kmPay + contPay + festPay,
+      total,
       breakdown: {
-        'Zile lucrate': ziPay,
-        'Mic dejun': mDes,
-        'Cină': mCen,
-        'Procină': mPro,
-        'KM': kmPay,
-        'Containere': contPay,
-        'Sărbători': festPay,
+        'Días trabajados': diaPay,
+        'Desayunos': desPay,
+        'Cenas': cenPay,
+        'Pro-cenas': proPay,
+        'Kilómetros': kmPay,
+        'Contenedores': contPay,
+        'Festivos': festPay,
       }
     };
   }, [zilePontaj, config]);
@@ -299,10 +299,10 @@ export default function CalculadoraNomina() {
   return (
     <Layout>
       <div className={styles.mainContainer}>
-        {/* COL 1 */}
+        {/* COLUMNA 1 */}
         <div className={styles.column}>
-          {/* Toolbar emoji (toggle) */}
-          <div className={styles.toolbar}>
+          {/* Toolbar centrada */}
+          <div className={styles.toolbar + ' ' + styles.toolbarCenter}>
             <button
               className={styles.iconBtn}
               onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
@@ -331,6 +331,10 @@ export default function CalculadoraNomina() {
 
           {hint && <div className={styles.hint}>{hint}</div>}
 
+          {/* Resultado ARRIBA (misma columna que Config) */}
+          {showResult && result && <NominaResultCard result={result} />}
+
+          {/* Configuración (toggle) */}
           {showConfig && (
             <NominaConfigCard
               config={config}
@@ -341,7 +345,7 @@ export default function CalculadoraNomina() {
           )}
         </div>
 
-        {/* COL 2 */}
+        {/* COLUMNA 2 */}
         <div className={styles.column}>
           <div className={styles.card}>
             <div className={styles.calendarHeader}>
@@ -365,7 +369,7 @@ export default function CalculadoraNomina() {
               >
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
                   <option key={day} value={day}>
-                    Ziua {day}
+                    Día {day}
                   </option>
                 ))}
               </select>
@@ -373,12 +377,10 @@ export default function CalculadoraNomina() {
                 className={styles.summaryButton}
                 onClick={() => openSummary(selectedSummaryDay - 1)}
               >
-                Vezi Parte Diario
+                Ver Parte Diario
               </button>
             </div>
           </div>
-
-          {showResult && result && <NominaResultCard result={result} />}
         </div>
       </div>
 
