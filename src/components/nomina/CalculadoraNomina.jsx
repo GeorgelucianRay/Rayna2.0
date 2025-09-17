@@ -1,5 +1,5 @@
 // src/components/nomina/CalculadoraNomina.jsx
-// VERSIUNE COMPLETĂ REPARATĂ
+// VERSIUNE COMPLETĂ REPARATĂ (emoji în <span>, toolbar corect închis)
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../Layout';
@@ -98,7 +98,7 @@ export default function CalculadoraNomina() {
     loadConfig();
   }, [profile?.id, defaultConfig]);
 
-  // încarcă PONTAJ – face merge corect cu DAY_TEMPLATE pentru luna afișată
+  // încarcă PONTAJ – merge corect cu DAY_TEMPLATE
   useEffect(() => {
     const loadPontaj = async () => {
       if (!profile?.id) return;
@@ -128,7 +128,7 @@ export default function CalculadoraNomina() {
     loadPontaj();
   }, [currentDate, profile?.id, makePontajForMonth, DAY_TEMPLATE]);
 
-  // sincronizează ziua selectată la schimbare lună + închide modalele
+  // sincronizare la schimbarea lunii
   useEffect(() => {
     setSelectedSummaryDay(1);
     setIsParteOpen(false);
@@ -166,7 +166,6 @@ export default function CalculadoraNomina() {
 
   const closeParte = useCallback(() => {
     if (selectedDayIndex !== null) {
-      // salvează când închizi modalul
       savePontajDay(selectedDayIndex, zilePontaj[selectedDayIndex]);
     }
     setSelectedDayIndex(null);
@@ -187,7 +186,7 @@ export default function CalculadoraNomina() {
 
   const closeSummary = useCallback(() => setSummaryModalData(null), []);
 
-  // normalizare numerică la input pentru câmpurile deseori numerice
+  // normalizare numerică la input
   const numericFields = useMemo(() => new Set(['km_iniciar', 'km_final', 'contenedores', 'suma_festivo']), []);
   const handleDayDataChange = useCallback((name, value) => {
     const v = numericFields.has(name) && value !== '' ? Number(value) : value;
@@ -196,8 +195,6 @@ export default function CalculadoraNomina() {
       if (selectedDayIndex !== null) {
         const newDayData = { ...arr[selectedDayIndex], [name]: v };
         arr[selectedDayIndex] = newDayData;
-        // dacă vrei debounce la scriere, aici poți înlocui cu o variantă debounced
-        // în această versiune salvăm la închiderea modalului
       }
       return arr;
     });
@@ -218,7 +215,7 @@ export default function CalculadoraNomina() {
 
   const [result, setResult] = useState(null);
 
-  // calc robust – evită NaN și „nu afișează nimic”
+  // calc robust
   const calc = useCallback(() => {
     if (!zilePontaj?.length) {
       return {
@@ -268,7 +265,7 @@ export default function CalculadoraNomina() {
     const mPro = procenas * toNum(config.precio_procena);
     const kmPay = kmTotal * toNum(config.precio_km);
     const contPay = contTotal * toNum(config.precio_contenedor);
-    const festPay = festivoTotal; // tratat ca sumă directă
+    const festPay = festivoTotal;
 
     const gross = base + antig + ziPay + mDes + mCen + mPro + kmPay + contPay + festPay;
 
@@ -302,8 +299,9 @@ export default function CalculadoraNomina() {
   return (
     <Layout>
       <div className={styles.mainContainer}>
+        {/* COL 1 */}
         <div className={styles.column}>
-          {/* Toolbar compactă cu emoji (toggle) */}
+          {/* Toolbar emoji (toggle) */}
           <div className={styles.toolbar}>
             <button
               className={styles.iconBtn}
@@ -312,31 +310,38 @@ export default function CalculadoraNomina() {
               aria-pressed={showConfig}
               title="Configurar contrato"
             >
-              <button
-  className={styles.iconBtn}
-  onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
-  aria-label="Configurar contrato"
-  aria-pressed={showConfig}
-  title="Configurar contrato"
->
-  <span className={styles.emoji}>⚙️</span>
-</button>
+              <span className={styles.emoji}>⚙️</span>
+            </button>
 
-<button
-  className={styles.iconBtn}
-  onClick={() => {
-    const r = calc();
-    setResult(r);
-    setShowResult(v => !v);
-    flashHint('Calcular nómina');
-  }}
-  aria-label="Calcular nómina"
-  aria-pressed={showResult}
-  title="Calcular nómina"
->
-  <span className={styles.emoji}>🧮</span>
-</button>
+            <button
+              className={styles.iconBtn}
+              onClick={() => {
+                const r = calc();
+                setResult(r);
+                setShowResult(v => !v);
+                flashHint('Calcular nómina');
+              }}
+              aria-label="Calcular nómina"
+              aria-pressed={showResult}
+              title="Calcular nómina"
+            >
+              <span className={styles.emoji}>🧮</span>
+            </button>
+          </div>
 
+          {hint && <div className={styles.hint}>{hint}</div>}
+
+          {showConfig && (
+            <NominaConfigCard
+              config={config}
+              onChange={setConfig}
+              onSave={() => setShowConfig(false)}
+              userId={profile?.id}
+            />
+          )}
+        </div>
+
+        {/* COL 2 */}
         <div className={styles.column}>
           <div className={styles.card}>
             <div className={styles.calendarHeader}>
