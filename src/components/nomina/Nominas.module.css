@@ -97,45 +97,62 @@
 }
 .calculateButton:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(34,197,94,.4); }
 
-/* ================== TOOLBAR EMOJI (NOU) ================== */
+/* ================== TOOLBAR EMOJI (RESPONSIVE – UPDATED) ================== */
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
+/* dimensiuni implicite (mobile) */
 .iconBtn {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255,255,255,0.95);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   cursor: pointer;
-  font-size: 20px;          /* mărimea emoji-ului */
-  line-height: 40px;
+  font-size: 22px; /* mărimea emoji-ului */
+  line-height: 46px;
   text-align: center;
   transition: transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
   will-change: transform, box-shadow, background;
 }
-.iconBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
-}
-.iconBtn:active {
-  transform: scale(.96);
-}
-.iconBtn:focus-visible {
-  outline: 2px solid #22c55e;
-  outline-offset: 2px;
-}
+.iconBtn:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.18); }
+.iconBtn:active { transform: scale(.96); }
+.iconBtn:focus-visible { outline: 2px solid #22c55e; outline-offset: 2px; }
 
-/* stare toggled (aria-pressed="true") */
+/* stare toggled */
 .iconBtn[aria-pressed="true"] {
   outline: 2px solid #30b17333;
   background: #f3fffb;
   box-shadow: 0 6px 14px rgba(48,177,115,0.25);
+}
+
+/* mărire pe tabletă */
+@media (min-width: 640px) {
+  .toolbar { gap: 12px; }
+  .iconBtn {
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
+    line-height: 52px;
+    border-radius: 16px;
+  }
+}
+
+/* mărire pe laptop/desktop */
+@media (min-width: 1024px) {
+  .toolbar { gap: 14px; }
+  .iconBtn {
+    width: 56px;
+    height: 56px;
+    font-size: 26px;
+    line-height: 56px;
+    border-radius: 18px;
+  }
 }
 
 /* mic mesaj sub toolbar */
@@ -459,4 +476,76 @@
 .summaryButton:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+}
+/* ================== RESULT CARD — PRETTY ================== */
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+.resultTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+}
+.resultBadge {
+  padding: .35rem .6rem;
+  font-size: .75rem;
+  border-radius: .5rem;
+  color: #10b981;
+  background: rgba(16,185,129,.12);
+  border: 1px solid rgba(16,185,129,.35);
+}
+
+.totalBig {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #22c55e;
+  text-align: center;
+  margin: .25rem 0 1.25rem 0;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 640px) { .kpiGrid { grid-template-columns: repeat(3, 1fr); } }
+
+.kpiCard {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: .75rem;
+  padding: .75rem;
+  display: grid;
+  gap: .25rem;
+}
+.kpiLabel { color: #9ca3af; font-size: .8rem; }
+.kpiValue { color: #fff; font-weight: 700; font-size: 1.05rem; }
+
+.resultDetailsPretty {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .5rem;
+}
+.resultRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: .6rem .4rem;
+  border-bottom: 1px dashed rgba(255,255,255,.12);
+}
+.resultRow span:first-child {
+  color: #d1d5db;
+}
+.amount {
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  font-weight: 600;
 }
