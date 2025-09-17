@@ -312,36 +312,30 @@ export default function CalculadoraNomina() {
               aria-pressed={showConfig}
               title="Configurar contrato"
             >
-              ⚙️
-            </button>
+              <button
+  className={styles.iconBtn}
+  onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
+  aria-label="Configurar contrato"
+  aria-pressed={showConfig}
+  title="Configurar contrato"
+>
+  <span className={styles.emoji}>⚙️</span>
+</button>
 
-            <button
-              className={styles.iconBtn}
-              onClick={() => {
-                const r = calc();
-                setResult(r);
-                setShowResult(v => !v);
-                flashHint('Calcular nómina');
-              }}
-              aria-label="Calcular nómina"
-              aria-pressed={showResult}
-              title="Calcular nómina"
-            >
-              🧮
-            </button>
-          </div>
-
-          {hint && <div className={styles.hint}>{hint}</div>}
-
-          {showConfig && (
-            <NominaConfigCard
-              config={config}
-              onChange={setConfig}
-              onSave={() => setShowConfig(false)}
-              userId={profile?.id}
-            />
-          )}
-        </div>
+<button
+  className={styles.iconBtn}
+  onClick={() => {
+    const r = calc();
+    setResult(r);
+    setShowResult(v => !v);
+    flashHint('Calcular nómina');
+  }}
+  aria-label="Calcular nómina"
+  aria-pressed={showResult}
+  title="Calcular nómina"
+>
+  <span className={styles.emoji}>🧮</span>
+</button>
 
         <div className={styles.column}>
           <div className={styles.card}>
