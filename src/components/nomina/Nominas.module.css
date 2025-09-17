@@ -288,21 +288,28 @@
   margin-top: 1rem;
 }
 .cursaItem {
-  display: flex; align-items: flex-end; gap: .5rem;
+  display: flex; align-items: stretch; gap: .5rem;           /* stretch ca să nu mai pice la bază */
   background-color: rgba(255, 255, 255, 0.05);
   padding: 1rem;
   border-radius: .75rem;
 }
+
 .cursaInputs {
   flex-grow: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 80px;
+  grid-template-columns: 1fr !important;                      /* O SINGURĂ COLONĂ mereu */
   gap: .75rem;
 }
-@media (max-width: 500px) {
-  .cursaInputs { grid-template-columns: 1fr; }
+
+/* (opțional) dacă vrei 3 coloane pe ecrane FOARTE late, decomentează:
+@media (min-width: 1400px) {
+  .cursaInputs { grid-template-columns: 1fr 1fr 140px; }
 }
+*/
+
 .inputWithButton { display: flex; width: 100%; }
+
+/* rămâne ok cu butonul la dreapta; colțuri rotunjite pe stânga */
 .inputWithButton input { border-radius: .5rem 0 0 .5rem !important; border-right: none !important; }
 .inputWithButton button {
   padding: 0 .75rem; border: 1px solid rgba(255,255,255,.25); border-left: none;
@@ -312,12 +319,16 @@
 }
 .inputWithButton button:hover { background: rgba(255,255,255,.25); }
 .inputWithButton button:disabled { cursor: not-allowed; opacity: .5; }
+
+/* afișaj KM */
 .kmField input { text-align: center; }
+
 .removeCursaButton {
   background: transparent; border: none; color: #9ca3af; cursor: pointer;
   padding: .75rem .5rem; margin-bottom: 2px; transition: color .2s;
 }
 .removeCursaButton:hover { color: #ff5c5c; }
+
 .addCursaButton {
   width: 100%; padding: .75rem; margin-top: 1rem;
   background-color: transparent; border: 1px dashed rgba(255,255,255,.3);
