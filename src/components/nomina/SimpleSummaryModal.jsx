@@ -8,7 +8,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
   const { profile } = useAuth();
   if (!data) return null;
 
-  // CHOFER & CAMIÓN din profil (fallback dacă lipsesc)
+  // CHOFER & CAMIÓN din profil (fallback)
   const chofer = useMemo(
     () => profile?.full_name || profile?.username || profile?.name || '—',
     [profile]
@@ -25,12 +25,12 @@ export default function SimpleSummaryModal({ data, onClose }) {
     [profile]
   );
 
-  // KM semanal (dacă vin), altfel KM pe zi
+  // KM săptămânali (dacă vin), altfel KM pe zi
   const kmLunes   = data.km_iniciar_semana ?? data.km_iniciar ?? 0;
   const kmViernes = data.km_final_semana   ?? data.km_final   ?? 0;
   const kmTotalSemana = Math.max(0, Number(kmViernes || 0) - Number(kmLunes || 0));
 
-  // KM zi (pentru display în tabelul auxiliar)
+  // KM zi (nota informativă)
   const kmInicialDia = Number(data.km_iniciar || 0);
   const kmFinalDia   = Number(data.km_final   || 0);
   const kmTotalDia   = Math.max(0, kmFinalDia - kmInicialDia);
@@ -38,152 +38,163 @@ export default function SimpleSummaryModal({ data, onClose }) {
   const markX = (flag) => (flag ? 'X' : '');
 
   const generatePDF = () => {
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const left = 48;
-    let y = 56;
+    // Folosim mm pentru poziționare exactă
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = margin;
 
-    // TITLU
+    // Antet
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.text('PARTE DIARIO', left, y);
-    y += 24;
+    const title = 'PARTE DIARIO';
+    doc.text(title, margin, y);
+    y += 8;
 
-    // META: Chofer, Camión, Fecha
+    doc.setDrawColor(34, 197, 94);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    // Meta
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Chofer: ${chofer}`, left, y); y += 16;
-    doc.text(`Camión: ${camion}`, left, y); y += 16;
-    doc.text(`Fecha: ${data.day} ${data.monthName} ${data.year}`, left, y);
-    y += 28;
-
-    // KM SEMANAL
-    doc.setFont('helvetica', 'bold');
-    doc.text('Kilómetros (semanal)', left, y);
-    y += 14;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`KM inicial (Lunes): ${kmLunes}`, left, y); y += 14;
-    doc.text(`KM final (Viernes): ${kmViernes}`, left, y); y += 14;
-    doc.text(`KM total semana: ${kmTotalSemana}`, left, y);
-    y += 24;
-
-    // DIETAS (tabel)
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dietas', left, y);
+    doc.text(`Chofer: ${chofer}`, margin, y); y += 6;
+    doc.text(`Camión: ${camion}`, margin, y); y += 6;
+    doc.text(`Fecha: ${data.day} ${data.monthName} ${data.year}`, margin, y);
     y += 10;
 
-    const tableLeft = left;
-    const colW = [140, 70, 70, 90, 70]; // Nume + 4 coloane
-    const headers = ['Concepto', 'Des.', 'Cena', 'Pro-cena', 'Festivo'];
-    const row = [
-      'Aplicación',
-      markX(!!data.desayuno),
-      markX(!!data.cena),
-      markX(!!data.procena),
-      markX(!!data.festivo || !!data.suma_festivo)
-    ];
+    // Kilómetros (semanal)
+    doc.setFont('helvetica', 'bold');
+    doc.text('Kilómetros (semanal)', margin, y);
+    y += 6;
 
-    const drawRow = (texts, rowY, isHeader = false) => {
-      let x = tableLeft;
-      doc.setFont('helvetica', isHeader ? 'bold' : 'normal');
-      doc.setFontSize(11);
-      texts.forEach((t, i) => {
-        // celulă
-        doc.rect(x, rowY - 12, colW[i], 22);
-        // text centrat pentru coloanele mici, left pentru prima
-        if (i === 0) {
-          doc.text(String(t), x + 8, rowY + 4);
+    const boxH = 10;
+    const cW = (pageW - margin * 2 - 8) / 3; // 3 coloane + 2 spații de 4mm
+    const kmBlocks = [
+      { label: 'KM inicial (Lunes)', value: String(kmLunes) },
+      { label: 'KM final (Viernes)', value: String(kmViernes) },
+      { label: 'KM total semana', value: String(kmTotalSemana) },
+    ];
+    kmBlocks.forEach((b, i) => {
+      const x = margin + i * (cW + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(x, y, cW, boxH);
+      doc.text(b.label, x + 2, y + 4.3);
+      doc.setFont('helvetica', 'bold');
+      doc.text(b.value, x + cW - 2, y + 8, { align: 'right' });
+    });
+    y += boxH + 8;
+
+    // Dietas (tabel)
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dietas', margin, y);
+    y += 4;
+
+    const headers = ['Concepto', 'Des.', 'Cena', 'Pro-cena', 'Festivo'];
+    const colW = [60, 20, 20, 28, 22]; // total 150mm dacă pagina ~180mm util
+    const tableW = colW.reduce((s, v) => s + v, 0);
+    const startX = margin;
+
+    const drawRow = (vals, yRow, isHeader = false) => {
+      let x = startX;
+      vals.forEach((txt, idx) => {
+        doc.setDrawColor(190, 190, 190);
+        doc.rect(x, yRow, colW[idx], 8);
+        doc.setFont('helvetica', isHeader ? 'bold' : 'normal');
+        doc.setFontSize(11);
+        if (idx === 0) {
+          doc.text(String(txt), x + 2, yRow + 5.3);
         } else {
-          const textW = doc.getTextWidth(String(t));
-          doc.text(String(t), x + colW[i] / 2 - textW / 2, rowY + 4);
+          const t = String(txt);
+          const tw = doc.getTextWidth(t);
+          doc.text(t, x + colW[idx] / 2, yRow + 5.3, { align: 'center' });
         }
-        x += colW[i];
+        x += colW[idx];
       });
     };
 
     drawRow(headers, y, true);
-    y += 26;
-    drawRow(row, y, false);
-    y += 36;
-
-    // ITINERARIO (centru)
-    doc.setFont('helvetica', 'bold');
-    doc.text('Itinerario', left, y);
-    y += 14;
-    doc.setFont('helvetica', 'normal');
-
-    if (Array.isArray(data.curse) && data.curse.length > 0) {
-      data.curse.forEach((cursa, i) => {
-        const linea = `${cursa.start || 'N/A'}  →  ${cursa.end || 'N/A'}`;
-        // centru pe pagină (margini 48...pt width 595pt)
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const textW = doc.getTextWidth(linea);
-        const centerX = pageWidth / 2 - textW / 2;
-        doc.text(linea, Math.max(centerX, left), y);
-        y += 16;
-      });
-    } else {
-      const linea = '— sin carreras registradas —';
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const textW = doc.getTextWidth(linea);
-      const centerX = pageWidth / 2 - textW / 2;
-      doc.text(linea, Math.max(centerX, left), y);
-      y += 16;
-    }
-    y += 20;
-
-    // TABLA AUXILIAR (presencia física): Hora salida, Hora llegada, Referencia, Observaciones
-    doc.setFont('helvetica', 'bold');
-    doc.text('Datos adicionales (opcionales)', left, y);
+    y += 8;
+    const dietaRow = [
+      'Aplicación',
+      markX(!!data.desayuno),
+      markX(!!data.cena),
+      markX(!!data.procena),
+      markX(!!data.festivo || !!data.suma_festivo),
+    ];
+    drawRow(dietaRow, y, false);
     y += 12;
 
-    const auxColW = [120, 120, 140, 180];
-    const auxHeaders = ['Hora salida', 'Hora llegada', 'Referencia', 'Observaciones'];
-    const auxTop = y + 6;
-
-    // antet
-    let x = left;
+    // Itinerario (centrat)
     doc.setFont('helvetica', 'bold');
-    auxHeaders.forEach((h, i) => {
-      doc.rect(x, y, auxColW[i], 24);
-      const tW = doc.getTextWidth(h);
-      doc.text(h, x + auxColW[i] / 2 - tW / 2, y + 16);
-      x += auxColW[i];
+    doc.text('Itinerario', margin, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    const itinerarios = Array.isArray(data.curse) && data.curse.length > 0
+      ? data.curse.map(c => `${c.start || 'N/A'}  →  ${c.end || 'N/A'}`)
+      : ['— sin carreras registradas —'];
+
+    itinerarios.forEach(line => {
+      const tw = doc.getTextWidth(line);
+      const cx = pageW / 2;
+      doc.text(line, cx, y, { align: 'center' });
+      y += 6;
+    });
+    y += 6;
+
+    // Tabla „Datos adicionales” – prezență fizică
+    doc.setFont('helvetica', 'bold');
+    doc.text('Datos adicionales (opcionales)', margin, y);
+    y += 4;
+
+    const auxCols = ['Hora salida', 'Hora llegada', 'Referencia', 'Observaciones'];
+    const auxW = [30, 30, 45, tableW - 30 - 30 - 45]; // se încadrează în lățimea tabelului dietas
+    let ax = startX;
+    // antet
+    auxCols.forEach((h, i) => {
+      doc.setDrawColor(190, 190, 190);
+      doc.rect(ax, y, auxW[i], 8);
+      doc.text(h, ax + auxW[i] / 2, y + 5.3, { align: 'center' });
+      ax += auxW[i];
     });
     // rând gol
-    y += 24;
-    x = left;
-    doc.setFont('helvetica', 'normal');
-    auxColW.forEach((w) => {
-      doc.rect(x, y, w, 28);
-      x += w;
+    y += 8;
+    ax = startX;
+    auxW.forEach(w => {
+      doc.rect(ax, y, w, 12);
+      ax += w;
     });
+    y += 16;
 
-    // FOOTER mic cu KM zi (informativ)
-    y += 48;
+    // Notă km zi (informativ)
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(10);
-    doc.text(`KM del día — inicio: ${kmInicialDia}, fin: ${kmFinalDia}, total: ${kmTotalDia}`, left, y);
+    doc.text(
+      `KM del día — inicio: ${kmInicialDia}, fin: ${kmFinalDia}, total: ${kmTotalDia}`,
+      margin, y
+    );
 
     doc.save(`parte-diario-${data.day}-${data.monthName}.pdf`);
   };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
+      {/* IMPORTANT: containerul sheet e scrollabil, overlay-ul NU închide la scroll */}
       <div className={styles.summarySheet} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className={styles.header}>
           <h1>PARTE DIARIO</h1>
           <button className={styles.pdfButton} onClick={generatePDF}>📄 Generar PDF</button>
         </div>
 
-        {/* Meta */}
         <div className={styles.metaInfo}>
           <div><span>CHOFER:</span> {chofer}</div>
           <div><span>CAMIÓN:</span> {camion}</div>
           <div><span>FECHA:</span> {`${data.day} ${data.monthName} ${data.year}`}</div>
         </div>
 
-        {/* Kilometri săptămânali */}
         <div className={styles.kmWeekly}>
           <div className={styles.kmBox}>
             <span>KM INICIAL (LUNES)</span>
@@ -199,7 +210,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </div>
         </div>
 
-        {/* Dietas (X) */}
         <div className={styles.dietasCard}>
           <div className={styles.dietasHeader}>DIETAS</div>
           <table className={styles.dietasTable}>
@@ -224,7 +234,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </table>
         </div>
 
-        {/* Itinerario centrat */}
         <div className={styles.itinerary}>
           <div className={styles.itineraryHeader}>ITINERARIO</div>
           <div className={styles.itineraryBody}>
@@ -242,7 +251,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </div>
         </div>
 
-        {/* Tabel auxiliar – doar prezent fizic */}
         <div className={styles.auxTableWrap}>
           <table className={styles.auxTable}>
             <thead>
@@ -255,10 +263,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
             </thead>
             <tbody>
               <tr>
-                <td colSpan="1"></td>
-                <td colSpan="1"></td>
-                <td colSpan="1"></td>
-                <td colSpan="1"></td>
+                <td></td><td></td><td></td><td></td>
               </tr>
             </tbody>
           </table>
