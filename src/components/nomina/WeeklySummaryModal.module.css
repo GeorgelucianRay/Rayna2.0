@@ -1,0 +1,80 @@
+.overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(6px);
+  z-index:3600;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:1rem; overflow:auto;
+}
+.sheet{
+  width:100%; max-width:980px;
+  background:#0b1220; color:#eefef6;
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:18px;
+  box-shadow:0 24px 64px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);
+  max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+.titleBar{
+  position:sticky; top:0; z-index:1;
+  padding:1rem 1.25rem;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.titleBar h2{
+  margin:0; color:#b8ffd4; letter-spacing:.1rem;
+  text-shadow:0 0 12px rgba(34,197,94,.45);
+}
+.closeBtn{
+  width:36px; height:36px; border:none; border-radius:999px;
+  background:rgba(255,255,255,.12); color:#fff; cursor:pointer; display:grid; place-items:center;
+}
+.closeBtn:hover{ background:rgba(255,255,255,.22); }
+
+.meta{
+  display:grid; gap:.4rem; padding:1rem 1.25rem;
+}
+.meta span{ color:#8ff2c0; font-weight:900; }
+
+.tableWrap{
+  padding: .5rem 1.25rem 0 1.25rem;
+  display:grid; gap:.5rem;
+}
+.row{
+  display:grid; align-items:center;
+  grid-template-columns: 28% 5% 5% 5% 12% 11% 11% 11% 6% 16%;
+  gap:.4rem;
+}
+.header{ font-weight:800; color:#9ee6bf; }
+.row > div{
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:10px; padding:.5rem .6rem;
+  min-height: 38px; display:flex; align-items:center;
+}
+.cDia{ justify-content:flex-start; }
+.cTiny, .cSm, .cXs{ justify-content:center; }
+.cObs{ justify-content:flex-start; }
+
+.stats{
+  padding:1rem 1.25rem; display:flex; flex-wrap:wrap; gap:1rem;
+}
+.km{ color:#22c55e; }
+
+.actions{ display:flex; justify-content:center; padding:1rem 1.25rem 1.25rem; }
+.pdfBtn{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  border:1px solid #22c55e; color:#22c55e;
+  font-weight:900; font-size:1rem;
+  padding:.8rem 1.6rem; border-radius:14px; cursor:pointer;
+  text-shadow:0 0 6px rgba(34,197,94,.6);
+  box-shadow:0 0 14px rgba(34,197,94,.25);
+  transition:transform .15s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
+}
+.pdfBtn:hover{ transform:translateY(-1px); box-shadow:0 0 22px rgba(74,222,128,.45); color:#4ade80; border-color:#4ade80; }
+
+@media (max-width: 760px){
+  .row{
+    grid-template-columns: 32% 6% 6% 6% 14% 12% 12% 12% 6% 18%;
+  }
+}
