@@ -549,3 +549,22 @@
   color: #fff;
   font-weight: 600;
 }
+/* ================== BOTÓN PDF ================== */
+.pdfButton {
+  padding: .5rem 1rem;
+  border-radius: .5rem;
+  border: none;
+  background-image: linear-gradient(to right, #2563eb, #3b82f6);
+  color: #fff;
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+.pdfButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59,130,246,.4);
+}
