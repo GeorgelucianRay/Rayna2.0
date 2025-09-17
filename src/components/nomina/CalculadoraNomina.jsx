@@ -1,5 +1,5 @@
 // src/components/nomina/CalculadoraNomina.jsx
-// VERSIÓN COMPLETA REPARADA (botones centrados, textos en español, resultado arriba)
+// VERSIÓN COMPLETA REPARADA + PARTE SEMANAL (botones centrados, textos en español, resultado arriba)
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../Layout';
@@ -11,6 +11,9 @@ import NominaResultCard from './NominaResultCard';
 import SimpleSummaryModal from './SimpleSummaryModal';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
+
+// 🔹 NUEVO: Parte semanal
+import WeeklySummaryModal, { buildWeekData } from './WeeklySummaryModal';
 
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
@@ -69,6 +72,10 @@ export default function CalculadoraNomina() {
   const [isParteOpen, setIsParteOpen] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [summaryModalData, setSummaryModalData] = useState(null);
+
+  // 🔹 NUEVO: Parte semanal (modal + datos)
+  const [isWeeklyOpen, setIsWeeklyOpen] = useState(false);
+  const [weeklyData, setWeeklyData] = useState(null);
 
   // selector para el modal resumen simple
   const [selectedSummaryDay, setSelectedSummaryDay] = useState(new Date().getDate());
@@ -327,6 +334,22 @@ export default function CalculadoraNomina() {
             >
               <span className={styles.emoji}>🧮</span>
             </button>
+
+            {/* 🔹 NUEVO: botón Parte semanal */}
+            <button
+              className={styles.iconBtn}
+              onClick={() => {
+                const wd = buildWeekData(currentDate, zilePontaj); // semana de la fecha visible
+                setWeeklyData(wd);
+                setIsWeeklyOpen(true);
+                flashHint('Parte semanal');
+              }}
+              aria-label="Parte semanal"
+              aria-pressed={isWeeklyOpen}
+              title="Parte semanal"
+            >
+              <span className={styles.emoji}>🗓️</span>
+            </button>
           </div>
 
           {hint && <div className={styles.hint}>{hint}</div>}
@@ -397,6 +420,15 @@ export default function CalculadoraNomina() {
       />
 
       {summaryModalData && <SimpleSummaryModal data={summaryModalData} onClose={closeSummary} />}
+
+      {/* 🔹 NUEVO: Modal Parte semanal */}
+      {isWeeklyOpen && weeklyData && (
+        <WeeklySummaryModal
+          isOpen={isWeeklyOpen}
+          onClose={() => setIsWeeklyOpen(false)}
+          weekData={weeklyData}
+        />
+      )}
     </Layout>
   );
 }
