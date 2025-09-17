@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import styles from './Nominas.module.css';
 
-// Componenta internă a fost simplificată
+// Día del calendario
 const CalendarDay = ({ day, data, onPick, isPlaceholder }) => {
   const hasData = !isPlaceholder && data && (
     data.desayuno || data.cena || data.procena ||
@@ -24,14 +24,14 @@ const CalendarDay = ({ day, data, onPick, isPlaceholder }) => {
   );
 };
 
-// Componenta principală nu mai primește onViewDay
+// Calendario principal
 export default function NominaCalendar({ date, zilePontaj, onPickDay }) {
   const cells = useMemo(() => {
     const y = date.getFullYear();
     const m = date.getMonth();
     const first = new Date(y, m, 1).getDay();
     const daysIn = new Date(y, m + 1, 0).getDate();
-    const start = first === 0 ? 6 : first - 1; 
+    const start = first === 0 ? 6 : first - 1;
 
     const arr = [];
     for (let i = 0; i < start; i++) {
@@ -49,18 +49,23 @@ export default function NominaCalendar({ date, zilePontaj, onPickDay }) {
         />
       );
     }
-    
+
     while (arr.length % 7 !== 0) {
       arr.push(<CalendarDay key={`ph-e-${arr.length}`} isPlaceholder />);
     }
     return arr;
-    
   }, [date, zilePontaj, onPickDay]);
 
   return (
     <>
       <div className={styles.calendarWeekdays}>
-        <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div><div>Do</div>
+        <div>Lu</div>
+        <div>Ma</div>
+        <div>Mi</div>
+        <div>Ju</div>
+        <div>Vi</div>
+        <div>Sá</div>
+        <div>Do</div>
       </div>
       <div className={styles.calendarGrid}>{cells}</div>
     </>
