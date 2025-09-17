@@ -37,43 +37,52 @@ export default function NominaResultCard({ result }) {
 
   // Generar PDF
   const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Nómina - Resultado del Cálculo', 20, 20);
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text('Nómina - Resultado del cálculo', 20, 20);
 
-    doc.setFontSize(12);
-    doc.text(`Total bruto: ${total != null ? eur.format(total) : '—'}`, 20, 35);
+      doc.setFontSize(12);
+      doc.text(`Total bruto: ${total != null ? eur.format(total) : '—'}`, 20, 35);
 
-    let y = 50;
-    if (kpis.length > 0) {
-      doc.text('Indicadores clave:', 20, y);
-      y += 8;
-      kpis.forEach(k => {
-        doc.text(`${k.label}: ${k.value}`, 25, y);
+      let y = 50;
+      if (kpis.length > 0) {
+        doc.text('Indicadores clave:', 20, y);
         y += 8;
-      });
-    }
+        kpis.forEach(k => {
+          doc.text(`${k.label}: ${k.value}`, 25, y);
+          y += 8;
+        });
+      }
 
-    if (Object.keys(details).length > 0) {
-      y += 5;
-      doc.text('Detalles del cálculo:', 20, y);
-      y += 8;
-      Object.entries(details).forEach(([key, value]) => {
-        doc.text(`${key}: ${typeof value === 'number' ? eur.format(value) : String(value)}`, 25, y);
+      if (Object.keys(details).length > 0) {
+        y += 5;
+        doc.text('Detalles del cálculo:', 20, y);
         y += 8;
-      });
-    }
+        Object.entries(details).forEach(([key, value]) => {
+          doc.text(
+            `${key}: ${typeof value === 'number' ? eur.format(value) : String(value)}`,
+            25,
+            y
+          );
+          y += 8;
+        });
+      }
 
-    doc.save('nomina.pdf');
+      doc.save('nomina.pdf');
+    } catch (e) {
+      console.error('Error al generar el PDF:', e);
+      alert('No se pudo generar el PDF. Revisa la consola.');
+    }
   };
 
   return (
     <div className={`${styles.card} ${styles.resultCard}`}>
       <div className={styles.resultHeader}>
         <h3 className={styles.resultTitle}>Resultado del cálculo</h3>
-        <button className={styles.pdfButton} onClick={handleGeneratePDF}>
-  📄 Generar PDF
-</button>
+        <button className={styles.pdfButton} onClick={generatePDF}>
+          📄 Generar PDF
+        </button>
       </div>
 
       <p className={styles.totalBig}>
