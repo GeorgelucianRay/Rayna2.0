@@ -71,9 +71,9 @@ export default function NominaResultCard({ result }) {
     <div className={`${styles.card} ${styles.resultCard}`}>
       <div className={styles.resultHeader}>
         <h3 className={styles.resultTitle}>Resultado del cálculo</h3>
-        <button className={styles.pdfButton} onClick={generatePDF}>
-          📄 Generar PDF
-        </button>
+        <button className={styles.pdfButton} onClick={handleGeneratePDF}>
+  📄 Generar PDF
+</button>
       </div>
 
       <p className={styles.totalBig}>
