@@ -16,7 +16,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 const DefaultIcon = new L.Icon({ iconUrl, shadowUrl: iconShadow, iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-export default function MapPanelCore({ client, onClose }) {
+export default function MapPanelCore({ client, destination, autoStart = false, onClose }) {
   const mapRef = useRef(null);
   const basesRef = useRef({});
   const routeLayerRef = useRef(null);
