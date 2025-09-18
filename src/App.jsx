@@ -15,6 +15,7 @@ import ActualizarContrasena from './components/ActualizarContrasena.jsx';
 import HomepageDispecer from './components/HomepageDispecer.jsx';
 import HomepageSofer from './components/HomepageSofer.jsx';
 import DepotPage from './components/DepotPage.jsx';
+import GpsProPage from './components/GpsPro/GpsProPage.jsx';
 import GpsPage from './components/GpsPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
@@ -44,6 +45,7 @@ function App() {
 
       <Route path="/depot" element={<DepotPage />} />
       <Route path="/gps" element={<GpsPage />} />
+      <Route path="/gps-pro" element={<GpsProPage />} />
 
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
