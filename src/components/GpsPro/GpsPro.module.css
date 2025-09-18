@@ -187,3 +187,35 @@
   text-align: center;
   box-shadow: 0 16px 50px rgba(0,0,0,0.5);
 }
+.mapPanelBackdrop {
+  position: fixed; inset: 0; z-index: 120;
+  background: rgba(3,10,22,0.7); backdrop-filter: blur(6px);
+  display: grid; place-items: center;
+}
+.mapPanel {
+  width: min(1100px, 96vw); height: min(80vh, 820px);
+  border: 1px solid var(--border); border-radius: 16px;
+  background: linear-gradient(180deg, rgba(10,25,50,0.9), rgba(6,20,42,0.92));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 32px rgba(0,229,255,0.15) inset;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.mapHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.mapTitle { font-weight: 800; }
+.dotGlow { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px;
+  background: radial-gradient(circle, var(--cyan) 0%, transparent 70%); box-shadow: 0 0 12px var(--cyan), 0 0 20px var(--cyan);
+}
+.mapToolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border); }
+.segmented { display:inline-flex; background: var(--glass); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.segBtn { padding:6px 10px; color:var(--text); background:transparent; border:none; cursor:pointer; }
+.segActive { background: rgba(0,229,255,0.18); color: var(--cyan); }
+.controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); }
+.switch input { display:none; }
+.switch span { display:inline-block; width:34px; height:18px; background: var(--glass); border:1px solid var(--border); border-radius:999px; position:relative; }
+.switch input:checked + span::after { transform: translateX(16px); background: var(--cyan); }
+.switch span::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#cbd5e1; transition: transform .2s ease; }
+
+.kpis { display:flex; gap:12px; color: var(--muted); }
+.kpi strong { color: var(--cyan-2); }
+
+.mapCanvas { flex:1; }
