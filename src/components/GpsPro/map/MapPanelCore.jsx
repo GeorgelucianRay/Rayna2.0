@@ -33,7 +33,8 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     points, distanceM, start, stop, reset, toGeoJSON
   } = useRouteRecorder();
 
-  const clientDest = useMemo(() => parseCoords(client?.dest_coords || client?.coordenadas || null), [client]);
+  const clientDest = useMemo(  () => parseCoords(client?.dest_coords || client?.coordenadas || null),  [client]);
+const pickedDest = useMemo(  () => (destination?.coords ? parseCoords(destination.coords) : null),  [destination]);
 
   // init map
   useEffect(() => {
