@@ -1,8 +1,11 @@
+// src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
+
 import MapPanelCore from './map/MapPanelCore';
+import DestinationPicker from './DestinationPicker'; // 👈 nou
 
 // --- Iconos ---
 const SearchIcon = () => (
@@ -91,11 +94,14 @@ function ListView({ tableName, title }) {
   const [page, setPage] = useState(1);
   const [term, setTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
   const [selected, setSelected] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [openMapFor, setOpenMapFor] = useState(null); // 👈 clientul pt. hartă
+
+  const [openMapFor, setOpenMapFor] = useState(null);           // client pt. hartă
+  const [openDestPickerFor, setOpenDestPickerFor] = useState(null); // client pt. picker destinație
 
   const [newItem, setNewItem] = useState({
     nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '',
@@ -190,9 +196,14 @@ function ListView({ tableName, title }) {
               }
 
               {tableName === 'gps_clientes' && (
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=> setOpenMapFor(selected)}>
-                  Abrir mapa
-                </button>
+                <>
+                  <button className={`${styles.btn}`} onClick={()=> setOpenMapFor(selected)}>
+                    Abrir mapa
+                  </button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=> setOpenDestPickerFor(selected)}>
+                    Crear ruta →
+                  </button>
+                </>
               )}
 
               <button className={`${styles.btn}`} onClick={()=> setSelected(null)}>Cerrar</button>
@@ -258,10 +269,27 @@ function ListView({ tableName, title }) {
         </Modal>
       )}
 
+      {/* Picker de destinație */}
+      {openDestPickerFor && (
+        <DestinationPicker
+          onClose={()=> setOpenDestPickerFor(null)}
+          onPick={(dest) => {
+            setOpenDestPickerFor(null);
+            // deschidem harta pe client cu destinația selectată și pornire automată
+            setOpenMapFor({ ...openDestPickerFor, _pickedDestination: dest, _autoStart: true });
+          }}
+        />
+      )}
+
       {/* Map overlay */}
       {openMapFor && (
-           <MapPanelCore client={openMapFor} onClose={() => setOpenMapFor(null)} />
-          )}
+        <MapPanelCore
+          client={openMapFor}
+          destination={openMapFor._pickedDestination}   // undefined dacă ai apăsat “Abrir mapa”
+          autoStart={openMapFor._autoStart === true}
+          onClose={() => setOpenMapFor(null)}
+        />
+      )}
     </div>
   );
 }
