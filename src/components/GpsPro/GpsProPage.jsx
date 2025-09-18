@@ -260,8 +260,8 @@ function ListView({ tableName, title }) {
 
       {/* Map overlay */}
       {openMapFor && (
-        <MapPanel client={openMapFor} onClose={()=> setOpenMapFor(null)} />
-      )}
+           <MapPanelCore client={openMapFor} onClose={() => setOpenMapFor(null)} />
+          )}
     </div>
   );
 }
