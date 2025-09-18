@@ -9,6 +9,7 @@ import useRouteRecorder, { parseCoords } from '../hooks/useRouteRecorder';
 import { createBaseLayers } from '../tiles/baseLayers';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
+import useWakeLockIOS from '../hooks/useWakeLockIOS'; // 👈 anti-sleep iPhone
 
 // Fix icons (vite/webpack/CRA)
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -28,10 +29,8 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
   const [baseName, setBaseName] = useState('normal');
   const [saving, setSaving] = useState(false);
 
-  const {
-    active, precision, setPrecision,
-    points, distanceM, start, stop, reset, toGeoJSON
-  } = useRouteRecorder();
+  const { active, precision, setPrecision, points, distanceM, start, stop, reset, toGeoJSON } = useRouteRecorder();
+  const wake = useWakeLockIOS(); // 👈
 
   // destinații
   const clientDest = useMemo(
@@ -43,34 +42,40 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     [destination]
   );
 
-  // init hartă
+  // init hartă (safe)
   useEffect(() => {
     if (mapRef.current) return;
+    const container = document.getElementById('gpspro-map');
+    if (!container) return;
 
     const startCenter = pickedDest || clientDest;
     const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // Barcelona fallback
     const zoom = startCenter ? 12 : 6;
 
-    const map = L.map('gpspro-map', { center, zoom, zoomControl: false });
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-    mapRef.current = map;
+    try {
+      const map = L.map(container, { center, zoom, zoomControl: false });
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      mapRef.current = map;
 
-    // straturi de bază
-    basesRef.current = createBaseLayers();
-    (basesRef.current.normal)?.addTo(map);
+      // straturi de bază
+      basesRef.current = createBaseLayers();
+      (basesRef.current.normal)?.addTo(map);
 
-    // marker destinație (prioritar: aleasă din picker; altfel cea salvată la client)
-    if (pickedDest) {
-      L.marker([pickedDest.lat, pickedDest.lng]).addTo(map)
-        .bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
-    } else if (clientDest) {
-      L.marker([clientDest.lat, clientDest.lng]).addTo(map)
-        .bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
+      // marker destinație (prioritar: aleasă din picker; altfel cea salvată la client)
+      if (pickedDest) {
+        L.marker([pickedDest.lat, pickedDest.lng]).addTo(map)
+          .bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
+      } else if (clientDest) {
+        L.marker([clientDest.lat, clientDest.lng]).addTo(map)
+          .bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
+      }
+
+      // straturi pentru ruta curentă
+      routeLayerRef.current = L.polyline([], { color: '#00e5ff', weight: 5, opacity: 0.9 }).addTo(map);
+      vehicleMarkerRef.current = L.marker([0, 0], { opacity: 0 }).addTo(map);
+    } catch (err) {
+      console.error('Leaflet init error:', err);
     }
-
-    // straturi pentru ruta curentă
-    routeLayerRef.current = L.polyline([], { color: '#00e5ff', weight: 5, opacity: 0.9 }).addTo(map);
-    vehicleMarkerRef.current = L.marker([0, 0], { opacity: 0 }).addTo(map);
   }, [client, clientDest, pickedDest, destination?.label]);
 
   // comutare strat bază
@@ -106,17 +111,28 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     map.panTo(last, { animate: true });
   }, [points]);
 
-  // autoStart când vii din picker (pornește înregistrarea automat)
+  // autoStart (pornește recorder + wake lock)
   useEffect(() => {
     if (!autoStart) return;
-    // mic reset ca să fie un track curat
     reset();
-    const t = setTimeout(() => start(), 120);
+    const t = setTimeout(() => {
+      start();
+      wake.enable(); // 👈 ține ecranul „treaz” pe iPhone
+    }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  const onStartStop = () => (active ? stop() : (reset(), start()));
+  const onStartStop = () => {
+    if (active) {
+      stop();
+      wake.disable(); // 👈 eliberează când oprești
+    } else {
+      reset();
+      start();
+      wake.enable(); // 👈 pornește anti-sleep
+    }
+  };
 
   const onSave = async () => {
     if (!isDispecer) return alert('Solo el dispecer puede guardar rutas.');
@@ -126,9 +142,9 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     setSaving(true);
     try {
       const payload = {
-        client_id: client.id,
+        client_id: client?.id || null, // dacă deschizi din Clientes rămâne asociat; din Parking poate fi null
         origin_terminal_id: null,
-        name: `Ruta ${client?.nombre || ''} ${new Date().toLocaleString()}`,
+        name: `Ruta ${client?.nombre || destination?.label || 'sin nombre'} · ${new Date().toLocaleString()}`,
         mode: 'manual',
         provider: null,
         geojson,
@@ -144,6 +160,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       if (error) throw error;
       alert('¡Ruta guardada con éxito!');
       reset();
+      wake.disable(); // oprește anti-sleep după salvare
     } catch (e) {
       console.error(e);
       alert(`Error al guardar la ruta: ${e.message || e}`);
@@ -157,9 +174,9 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       <div className={styles.mapPanel} onClick={(e)=> e.stopPropagation()}>
         <div className={styles.mapHeader}>
           <div className={styles.mapTitle}>
-            <span className={styles.dotGlow}/> GPS<span className={styles.brandAccent}>Pro</span> · {client?.nombre || 'Cliente'}
+            <span className={styles.dotGlow}/> GPS<span className={styles.brandAccent}>Pro</span> · {client?.nombre || destination?.label || 'Mapa'}
           </div>
-          <button className={styles.iconBtn} onClick={onClose}>✕</button>
+          <button className={styles.iconBtn} onClick={() => { wake.disable(); onClose(); }}>✕</button>
         </div>
 
         <MapControls
@@ -168,7 +185,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
           active={active}
           onStartStop={onStartStop}
           precision={precision}
-          setPrecision={setPrecision}
+          setPrecision={setPrecision}   // 👈 comută 100 m ↔ 20 km în mers (hook-ul trebuie să suporte!)
           onSave={onSave}
           saving={saving}
           pointsCount={points?.length || 0}
