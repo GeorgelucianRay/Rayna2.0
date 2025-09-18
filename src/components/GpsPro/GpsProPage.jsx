@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
-import MapPanel from './MapPanel';
+import MapPanelCore from './map/MapPanelCore';
 
 // --- Iconos ---
 const SearchIcon = () => (
