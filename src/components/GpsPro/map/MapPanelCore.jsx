@@ -1,3 +1,4 @@
+// src/components/GpsPro/map/MapPanelCore.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,10 +10,11 @@ import { createBaseLayers } from '../tiles/baseLayers';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
 
-// robust icon fix (funcționează și în Vite/CRA)
-const markerIcon = new URL('leaflet/dist/images/marker-icon.png', import.meta.url).toString();
-const markerShadow = new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString();
-L.Icon.Default.mergeOptions({ iconUrl: markerIcon, shadowUrl: markerShadow });
+// Fix icons (vite/webpack)
+import iconUrl from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+const DefaultIcon = new L.Icon({ iconUrl, shadowUrl: iconShadow, iconAnchor: [12, 41] });
+L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function MapPanelCore({ client, onClose }) {
   const mapRef = useRef(null);
@@ -31,72 +33,58 @@ export default function MapPanelCore({ client, onClose }) {
     points, distanceM, start, stop, reset, toGeoJSON
   } = useRouteRecorder();
 
-  const clientDest = useMemo(
-    () => parseCoords(client?.dest_coords || client?.coordenadas || null),
-    [client]
-  );
+  const clientDest = useMemo(() => parseCoords(client?.dest_coords || client?.coordenadas || null), [client]);
 
-  // inițializează harta în siguranță
+  // init map
   useEffect(() => {
-    const el = document.getElementById('gpspro-map');
-    if (!el) return;           // elementul nu e pe DOM încă
     if (mapRef.current) return;
+    const center = clientDest ? [clientDest.lat, clientDest.lng] : [41.390205, 2.154007];
+    const zoom = clientDest ? 12 : 6;
 
-    try {
-      const center = clientDest ? [clientDest.lat, clientDest.lng] : [41.390205, 2.154007];
-      const zoom = clientDest ? 12 : 6;
+    const map = L.map('gpspro-map', { center, zoom, zoomControl: false });
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    mapRef.current = map;
 
-      const map = L.map(el, { center, zoom, zoomControl: false });
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-      mapRef.current = map;
+    basesRef.current = createBaseLayers();
+    basesRef.current.normal.addTo(map); // default
 
-      basesRef.current = createBaseLayers();
-      (basesRef.current.normal).addTo(map);
-
-      if (clientDest) {
-        L.marker([clientDest.lat, clientDest.lng]).addTo(map)
-          .bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
-      }
-
-      routeLayerRef.current = L.polyline([], { color: '#00e5ff', weight: 5, opacity: 0.9 }).addTo(map);
-      vehicleMarkerRef.current = L.marker([0,0], { opacity: 0 }).addTo(map);
-    } catch (err) {
-      console.error('Leaflet init error:', err);
+    // marker client dest (dacă există)
+    if (clientDest) {
+      L.marker([clientDest.lat, clientDest.lng]).addTo(map)
+        .bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
     }
+
+    routeLayerRef.current = L.polyline([], { color: '#00e5ff', weight: 5, opacity: 0.9 }).addTo(map);
+    vehicleMarkerRef.current = L.marker([0,0], { opacity: 0 }).addTo(map);
   }, [client, clientDest]);
 
-  // comută baza (cu protecție)
+  // switch base
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const bases = basesRef.current || {};
-    try {
-      Object.values(bases).forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
-      (bases[baseName] || bases.normal)?.addTo(map);
-    } catch (err) {
-      console.error('Layer switch error:', err);
-    }
+    const bases = basesRef.current;
+    Object.values(bases).forEach(layer => { try { map.removeLayer(layer); } catch {} });
+    (bases[baseName] || bases.normal).addTo(map);
   }, [baseName]);
 
-  // update traseu + marker
+  // update route and last point
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !routeLayerRef.current || !vehicleMarkerRef.current) return;
-
-    if (!points?.length) {
-      routeLayerRef.current.setLatLngs([]);
-      vehicleMarkerRef.current.setOpacity(0);
+    if (!map) return;
+    if (points.length === 0) {
+      routeLayerRef.current?.setLatLngs([]);
+      vehicleMarkerRef.current?.setOpacity(0);
       return;
     }
     const latlngs = points.map(p => [p.lat, p.lng]);
-    routeLayerRef.current.setLatLngs(latlngs);
+    routeLayerRef.current?.setLatLngs(latlngs);
     const last = latlngs[latlngs.length - 1];
-    vehicleMarkerRef.current.setLatLng(last);
-    vehicleMarkerRef.current.setOpacity(1);
+    vehicleMarkerRef.current?.setLatLng(last);
+    vehicleMarkerRef.current?.setOpacity(1);
     map.panTo(last, { animate: true });
   }, [points]);
 
-  const onStartStop = () => (active ? stop() : (reset(), start()));
+  const onStartStop = () => active ? stop() : (reset(), start());
 
   const onSave = async () => {
     if (!isDispecer) return alert('Solo el dispecer puede guardar rutas.');
@@ -150,8 +138,8 @@ export default function MapPanelCore({ client, onClose }) {
           setPrecision={setPrecision}
           onSave={onSave}
           saving={saving}
-          pointsCount={points?.length || 0}
-          distanceM={distanceM || 0}
+          pointsCount={points.length}
+          distanceM={distanceM}
         />
 
         <div id="gpspro-map" className={styles.mapCanvas}/>
