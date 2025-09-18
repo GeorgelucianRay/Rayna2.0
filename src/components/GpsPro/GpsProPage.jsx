@@ -100,12 +100,17 @@ function ListView({ tableName, title }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  const [openMapFor, setOpenMapFor] = useState(null);           // client pt. hartă
-  const [openDestPickerFor, setOpenDestPickerFor] = useState(null); // client pt. picker destinație
+  // 👇 ADĂUGĂ:
+  const [openMapFor, setOpenMapFor] = useState(null);
+  const [openDestPickerFor, setOpenDestPickerFor] = useState(null);
 
-  const [newItem, setNewItem] = useState({
-    nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '',
-  });
+  const typeMap = {
+    gps_clientes: 'clientes',
+    gps_parkings: 'parkings',
+    gps_servicios: 'servicios',
+    gps_terminale: 'terminale',
+  };
+  const currentType = typeMap[tableName];
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
