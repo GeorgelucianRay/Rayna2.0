@@ -5,7 +5,7 @@ import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
 
 import MapPanelCore from './map/MapPanelCore';
-import DestinationPicker from './DestinationPicker'; // 👈 nou
+import DestinationPicker from './DestinationPicker';
 
 // --- Iconos ---
 const SearchIcon = () => (
@@ -100,7 +100,12 @@ function ListView({ tableName, title }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // 👇 ADĂUGĂ:
+  // pentru formularul de adăugare (era folosit în onAddSubmit)
+  const [newItem, setNewItem] = useState({
+    nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '', tiempo_espera: ''
+  });
+
+  // pentru hartă și picker (nou)
   const [openMapFor, setOpenMapFor] = useState(null);
   const [openDestPickerFor, setOpenDestPickerFor] = useState(null);
 
@@ -116,7 +121,9 @@ function ListView({ tableName, title }) {
     setLoading(true);
     const from = (page - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
-    const cols = 'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' + (tableName==='gps_clientes' ? ', tiempo_espera, dest_coords' : '');
+    const cols =
+      'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' +
+      (tableName==='gps_clientes' ? ', tiempo_espera, dest_coords' : '');
     let q = supabase.from(tableName).select(cols, { count: 'exact' });
     if (term) q = q.ilike('nombre', `%${term}%`);
     const { data, error, count } = await q.order('created_at', { ascending: false }).range(from, to);
@@ -137,7 +144,12 @@ function ListView({ tableName, title }) {
     Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
     const { error } = await supabase.from(tableName).insert([payload]);
     if (error) alert(`Error al añadir: ${error.message}`);
-    else { setAddOpen(false); setNewItem({ nombre:'', direccion:'', link_maps:'', detalles:'', coordenadas:'', link_foto:'', tiempo_espera:'' }); setTerm(''); setPage(1); }
+    else {
+      setAddOpen(false);
+      setNewItem({ nombre:'', direccion:'', link_maps:'', detalles:'', coordenadas:'', link_foto:'', tiempo_espera:'' });
+      setTerm('');
+      setPage(1);
+    }
   };
 
   const onEditSubmit = async (e) => {
@@ -200,16 +212,39 @@ function ListView({ tableName, title }) {
                 : <button className={`${styles.btn} ${styles.btnDisabled}`} disabled>Maps no disponible</button>
               }
 
-              {tableName === 'gps_clientes' && (
-                <>
-                  <button className={`${styles.btn}`} onClick={()=> setOpenMapFor(selected)}>
-                    Abrir mapa
-                  </button>
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=> setOpenDestPickerFor(selected)}>
-                    Crear ruta →
-                  </button>
-                </>
-              )}
+              {/* Abrir mapa & Crear ruta → disponibile pe TOATE tab-urile */}
+              <button
+                className={`${styles.btn}`}
+                onClick={() => {
+                  if (currentType === 'clientes') {
+                    // deschide harta pe client (fără destinație preset)
+                    setOpenMapFor({
+                      ...selected,
+                      _subject: { type: 'clientes', id: selected.id, label: selected.nombre, coords: selected.coordenadas }
+                    });
+                  } else {
+                    // dacă e parking/servicio/terminal → îl folosim ca destinație implicită + autoStart
+                    setOpenMapFor({
+                      ...selected,
+                      _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas },
+                      _pickedDestination: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas },
+                      _autoStart: true,
+                    });
+                  }
+                }}
+              >
+                Abrir mapa
+              </button>
+
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => setOpenDestPickerFor({
+                  ...selected,
+                  _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas }
+                })}
+              >
+                Crear ruta →
+              </button>
 
               <button className={`${styles.btn}`} onClick={()=> setSelected(null)}>Cerrar</button>
             </>
@@ -278,10 +313,15 @@ function ListView({ tableName, title }) {
       {openDestPickerFor && (
         <DestinationPicker
           onClose={()=> setOpenDestPickerFor(null)}
+          initialTab={currentType === 'clientes' ? 'parkings' : 'clientes'}
           onPick={(dest) => {
             setOpenDestPickerFor(null);
-            // deschidem harta pe client cu destinația selectată și pornire automată
-            setOpenMapFor({ ...openDestPickerFor, _pickedDestination: dest, _autoStart: true });
+            // deschide harta cu destinația aleasă + autoStart
+            setOpenMapFor({
+              ...openDestPickerFor,
+              _pickedDestination: dest,
+              _autoStart: true,
+            });
           }}
         />
       )}
@@ -290,7 +330,7 @@ function ListView({ tableName, title }) {
       {openMapFor && (
         <MapPanelCore
           client={openMapFor}
-          destination={openMapFor._pickedDestination}   // undefined dacă ai apăsat “Abrir mapa”
+          destination={openMapFor._pickedDestination}   // undefined dacă ai apăsat doar “Abrir mapa”
           autoStart={openMapFor._autoStart === true}
           onClose={() => setOpenMapFor(null)}
         />
