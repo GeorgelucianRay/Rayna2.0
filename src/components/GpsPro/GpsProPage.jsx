@@ -1,10 +1,10 @@
-// src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
+import MapPanel from './MapPanel';
 
-// --- Iconos (estilo simple) ---
+// --- Iconos ---
 const SearchIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" className={styles.icon}>
     <path fill="currentColor" d="M10 18a8 8 0 1 1 5.293-14.293L21 9.414l-1.414 1.414l-1.9-1.9l-1.415 1.414l1.9 1.9L16 13.9L14.6 12.5A7.96 7.96 0 0 1 10 18m0-2a6 6 0 1 0-6-6a6.006 6.006 0 0 0 6 6Z"/>
@@ -35,12 +35,7 @@ function Toolbar({ activeView, setActiveView, canEdit, searchTerm, onSearch, onA
       <div className={styles.actions}>
         <div className={styles.search}>
           <SearchIcon />
-          <input
-            type="text"
-            placeholder="Buscar por nombre…"
-            value={searchTerm}
-            onChange={(e) => onSearch(e.target.value)}
-          />
+          <input type="text" placeholder="Buscar por nombre…" value={searchTerm} onChange={(e) => onSearch(e.target.value)} />
         </div>
         {canEdit && (
           <button className={styles.primary} onClick={onAdd}>
@@ -65,14 +60,7 @@ function Card({ item, onClick, canEdit, onEdit }) {
       <div className={styles.cardOverlay}>
         <h3 className={styles.cardTitle}>{item.nombre}</h3>
         {canEdit && (
-          <button
-            className={styles.cardEdit}
-            onClick={(e)=>{ e.stopPropagation(); onEdit(item); }}
-            aria-label="Editar"
-            title="Editar"
-          >
-            ✎
-          </button>
+          <button className={styles.cardEdit} onClick={(e)=>{ e.stopPropagation(); onEdit(item); }} aria-label="Editar" title="Editar">✎</button>
         )}
       </div>
     </div>
@@ -107,16 +95,17 @@ function ListView({ tableName, title }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [openMapFor, setOpenMapFor] = useState(null); // 👈 clientul pt. hartă
+
   const [newItem, setNewItem] = useState({
     nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '',
-    // tiempo_espera solo aplica para gps_clientes; îl tratăm în UI
   });
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const from = (page - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
-    const cols = 'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' + (tableName==='gps_clientes' ? ', tiempo_espera' : '');
+    const cols = 'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' + (tableName==='gps_clientes' ? ', tiempo_espera, dest_coords' : '');
     let q = supabase.from(tableName).select(cols, { count: 'exact' });
     if (term) q = q.ilike('nombre', `%${term}%`);
     const { data, error, count } = await q.order('created_at', { ascending: false }).range(from, to);
@@ -128,7 +117,6 @@ function ListView({ tableName, title }) {
   useEffect(()=>{ fetchItems(); }, [fetchItems]);
 
   const totalPages = Math.max(1, Math.ceil((count||0)/ITEMS_PER_PAGE));
-
   const getMapsLink = (it) => it.link_maps || (it.coordenadas ? `https://maps.google.com/?q=${it.coordenadas}` : null);
 
   const onAddSubmit = async (e) => {
@@ -154,7 +142,7 @@ function ListView({ tableName, title }) {
   return (
     <div className={styles.view}>
       <Toolbar
-        activeView={null} // controlat de nivelul superior, aici e doar bara de acțiuni
+        activeView={null}
         setActiveView={()=>{}}
         canEdit={canEdit}
         searchTerm={term}
@@ -200,7 +188,13 @@ function ListView({ tableName, title }) {
                 ? <a className={`${styles.btn} ${styles.btnPrimary}`} href={getMapsLink(selected)} target="_blank" rel="noopener noreferrer">Cómo llegar</a>
                 : <button className={`${styles.btn} ${styles.btnDisabled}`} disabled>Maps no disponible</button>
               }
-              {/* Aici vom adăuga „Abrir GPS Pro Map” în pasul următor */}
+
+              {tableName === 'gps_clientes' && (
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=> setOpenMapFor(selected)}>
+                  Abrir mapa
+                </button>
+              )}
+
               <button className={`${styles.btn}`} onClick={()=> setSelected(null)}>Cerrar</button>
             </>
           }
@@ -262,6 +256,11 @@ function ListView({ tableName, title }) {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Map overlay */}
+      {openMapFor && (
+        <MapPanel client={openMapFor} onClose={()=> setOpenMapFor(null)} />
       )}
     </div>
   );
