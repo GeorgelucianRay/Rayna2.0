@@ -1,3 +1,4 @@
+// src/components/GpsPro/map/MapControls.jsx
 import React from 'react';
 import styles from '../GpsPro.module.css';
 
@@ -11,6 +12,7 @@ export default function MapControls({
     <div className={styles.mapToolbar}>
       <div className={styles.segmented}>
         <button className={`${styles.segBtn} ${baseName==='normal'?styles.segActive:''}`} onClick={()=> setBaseName('normal')}>Normal</button>
+        <button className={`${styles.segBtn} ${baseName==='satelite'?styles.segActive:''}`} onClick={()=> setBaseName('satelite')}>Satélite</button>
         <button className={`${styles.segBtn} ${baseName==='black'?styles.segActive:''}`} onClick={()=> setBaseName('black')}>Black</button>
       </div>
 
