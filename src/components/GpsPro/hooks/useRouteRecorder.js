@@ -1,21 +1,18 @@
-// src/components/GpsPro/hooks/useRouteRecorder.js
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 
-// Haversine (metri)
+// haversine în metri
 function haversine(a, b) {
   const toRad = (d) => (d * Math.PI) / 180;
-  const R = 6371000; // m
+  const R = 6371000;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// str "lat,lng" -> {lat, lng}
+// "lat,lng" -> {lat, lng}
 export function parseCoords(str) {
   if (!str) return null;
   const [a, b] = String(str).split(',').map((x) => parseFloat(x.trim()));
@@ -25,14 +22,13 @@ export function parseCoords(str) {
 
 export default function useRouteRecorder() {
   const [active, setActive] = useState(false);
-  const [precision, setPrecision] = useState(false); // false=20km, true=100m
-  const [points, setPoints] = useState([]); // {lat,lng,ts}
+  const [precision, setPrecision] = useState(false); // false = 20 km, true = 100 m
+  const [points, setPoints] = useState([]);          // [{lat, lng, ts}]
   const [distanceM, setDistanceM] = useState(0);
   const watchIdRef = useRef(null);
 
   const threshold = precision ? 100 : 20000; // metri
 
-  // calculează distanța totală
   const recalcDistance = useCallback((pts) => {
     if (!pts || pts.length < 2) return 0;
     let d = 0;
@@ -42,9 +38,7 @@ export default function useRouteRecorder() {
 
   const addPointIfNeeded = useCallback((p) => {
     setPoints((prev) => {
-      if (prev.length === 0) {
-        return [{ ...p, ts: Date.now() }];
-      }
+      if (prev.length === 0) return [{ ...p, ts: Date.now() }];
       const last = prev[prev.length - 1];
       const d = haversine(last, p);
       if (d >= threshold) return [...prev, { ...p, ts: Date.now() }];
@@ -58,33 +52,28 @@ export default function useRouteRecorder() {
       return;
     }
     setPoints([]); setDistanceM(0); setActive(true);
-    // prim punct imediat
+
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => addPointIfNeeded({ lat: coords.latitude, lng: coords.longitude }),
-      () => {}, { enableHighAccuracy: true }
+      () => {},
+      { enableHighAccuracy: true }
     );
-    // monitorizare
+
     watchIdRef.current = navigator.geolocation.watchPosition(
       ({ coords }) => {
         const p = { lat: coords.latitude, lng: coords.longitude };
-        addPointIfNeeded(p);
-        // recalcul distanță (aprox) live
-        setDistanceM((prev) => {
-          // recalcul complet pentru simplitate; e ieftin
-          return recalcDistance(
-            (prevPoints => {
-              const arr = [...prevPoints];
-              const last = arr[arr.length - 1];
-              if (!last || haversine(last, p) >= threshold) arr.push({ ...p, ts: Date.now() });
-              return arr;
-            })(points)
-          );
+        setPoints((prev) => {
+          const next = prev.length === 0 || haversine(prev[prev.length - 1], p) >= threshold
+            ? [...prev, { ...p, ts: Date.now() }]
+            : prev;
+          setDistanceM(recalcDistance(next));
+          return next;
         });
       },
       (err) => console.warn('watchPosition error:', err),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
-  }, [addPointIfNeeded, recalcDistance, points, threshold]);
+  }, [addPointIfNeeded, recalcDistance, threshold]);
 
   const stop = useCallback(() => {
     setActive(false);
@@ -92,7 +81,7 @@ export default function useRouteRecorder() {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
-    setDistanceM(recalcDistance(points));
+    setDistanceM((prev) => recalcDistance(points));
   }, [points, recalcDistance]);
 
   const reset = useCallback(() => {
@@ -106,10 +95,7 @@ export default function useRouteRecorder() {
 
   const toGeoJSON = useCallback(() => {
     if (points.length < 2) return null;
-    return {
-      type: 'LineString',
-      coordinates: points.map(p => [p.lng, p.lat])
-    };
+    return { type: 'LineString', coordinates: points.map((p) => [p.lng, p.lat]) };
   }, [points]);
 
   return {
