@@ -9,7 +9,9 @@ import useRouteRecorder, { parseCoords } from '../hooks/useRouteRecorder';
 import { createBaseLayers } from '../tiles/baseLayers';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
-import useWakeLockIOS from '../hooks/useWakeLockIOS'; // 👈 anti-sleep iPhone
+
+// 🔒 wake lock strict (fără npm) + overlay
+import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict';
 
 // Fix icons (vite/webpack/CRA)
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -30,7 +32,9 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
   const [saving, setSaving] = useState(false);
 
   const { active, precision, setPrecision, points, distanceM, start, stop, reset, toGeoJSON } = useRouteRecorder();
-  const wake = useWakeLockIOS(); // 👈
+
+  // 🔒 wake lock cross-platform (Android + iOS)
+  const wake = useWakeLockStrict();
 
   // destinații
   const clientDest = useMemo(
@@ -115,22 +119,32 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
   useEffect(() => {
     if (!autoStart) return;
     reset();
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       start();
-      wake.enable(); // 👈 ține ecranul „treaz” pe iPhone
+      await wake.enable(); // 🔒 ține ecranul treaz
     }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  const onStartStop = () => {
+  // cleanup total la demontare (foarte important pe iOS/Android)
+  useEffect(() => {
+    return () => {
+      try { stop?.(); } catch {}
+      try { wake.disable?.(); } catch {}
+      try { mapRef.current?.remove(); mapRef.current = null; } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onStartStop = async () => {
     if (active) {
       stop();
-      wake.disable(); // 👈 eliberează când oprești
+      await wake.disable();
     } else {
       reset();
       start();
-      wake.enable(); // 👈 pornește anti-sleep
+      await wake.enable();
     }
   };
 
@@ -160,7 +174,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       if (error) throw error;
       alert('¡Ruta guardada con éxito!');
       reset();
-      wake.disable(); // oprește anti-sleep după salvare
+      await wake.disable(); // oprește anti-sleep după salvare
     } catch (e) {
       console.error(e);
       alert(`Error al guardar la ruta: ${e.message || e}`);
@@ -169,14 +183,24 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     }
   };
 
+  // protejează închiderea accidentală când înregistrezi
+  const safeClose = async () => {
+    if (active) {
+      const ok = window.confirm('La grabación está en curso. ¿Cerrar el mapa?');
+      if (!ok) return;
+    }
+    await wake.disable();
+    onClose();
+  };
+
   return (
-    <div className={styles.mapPanelBackdrop} onClick={onClose}>
+    <div className={styles.mapPanelBackdrop} onClick={safeClose}>
       <div className={styles.mapPanel} onClick={(e)=> e.stopPropagation()}>
         <div className={styles.mapHeader}>
           <div className={styles.mapTitle}>
             <span className={styles.dotGlow}/> GPS<span className={styles.brandAccent}>Pro</span> · {client?.nombre || destination?.label || 'Mapa'}
           </div>
-          <button className={styles.iconBtn} onClick={() => { wake.disable(); onClose(); }}>✕</button>
+          <button className={styles.iconBtn} onClick={safeClose}>✕</button>
         </div>
 
         <MapControls
@@ -185,7 +209,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
           active={active}
           onStartStop={onStartStop}
           precision={precision}
-          setPrecision={setPrecision}   // 👈 comută 100 m ↔ 20 km în mers (hook-ul trebuie să suporte!)
+          setPrecision={setPrecision}   // comută 100 m ↔ 20 km în mers (hook-ul trebuie să suporte)
           onSave={onSave}
           saving={saving}
           pointsCount={points?.length || 0}
@@ -193,6 +217,13 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
         />
 
         <div id="gpspro-map" className={styles.mapCanvas}/>
+
+        {/* Overlay pentru când browserul blochează autoplay la fallback-ul video */}
+        <WakePrompt
+          visible={wake.needsPrompt}
+          onConfirm={() => wake.confirmEnable()}
+          onCancel={() => wake.disable()}
+        />
       </div>
     </div>
   );
