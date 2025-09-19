@@ -10,7 +10,7 @@ import { createBaseLayers } from '../tiles/baseLayers';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
 
-// 🔒 wake lock strict (fără npm) + overlay
+// 🔒 wake lock strict cross-platform + overlay
 import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict';
 
 // Fix icons (vite/webpack/CRA)
@@ -53,7 +53,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     if (!container) return;
 
     const startCenter = pickedDest || clientDest;
-    const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // Barcelona fallback
+    const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // fallback Barcelona
     const zoom = startCenter ? 12 : 6;
 
     try {
@@ -65,7 +65,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       basesRef.current = createBaseLayers();
       (basesRef.current.normal)?.addTo(map);
 
-      // marker destinație (prioritar: aleasă din picker; altfel cea salvată la client)
+      // marker destinație
       if (pickedDest) {
         L.marker([pickedDest.lat, pickedDest.lng]).addTo(map)
           .bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
@@ -127,11 +127,17 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  // cleanup total la demontare (foarte important pe iOS/Android)
+  // cleanup complet
   useEffect(() => {
     return () => {
       try { stop?.(); } catch {}
       try { wake.disable?.(); } catch {}
+      try {
+        routeLayerRef.current?.remove();
+        vehicleMarkerRef.current?.remove();
+        routeLayerRef.current = null;
+        vehicleMarkerRef.current = null;
+      } catch {}
       try { mapRef.current?.remove(); mapRef.current = null; } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,7 +162,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     setSaving(true);
     try {
       const payload = {
-        client_id: client?.id || null, // dacă deschizi din Clientes rămâne asociat; din Parking poate fi null
+        client_id: client?.id || null,
         origin_terminal_id: null,
         name: `Ruta ${client?.nombre || destination?.label || 'sin nombre'} · ${new Date().toLocaleString()}`,
         mode: 'manual',
@@ -174,7 +180,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       if (error) throw error;
       alert('¡Ruta guardada con éxito!');
       reset();
-      await wake.disable(); // oprește anti-sleep după salvare
+      await wake.disable();
     } catch (e) {
       console.error(e);
       alert(`Error al guardar la ruta: ${e.message || e}`);
@@ -194,7 +200,10 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
   };
 
   return (
-    <div className={styles.mapPanelBackdrop} onClick={safeClose}>
+    <div
+      className={styles.mapPanelBackdrop}
+      onClick={wake.needsPrompt ? undefined : safeClose}
+    >
       <div className={styles.mapPanel} onClick={(e)=> e.stopPropagation()}>
         <div className={styles.mapHeader}>
           <div className={styles.mapTitle}>
@@ -209,7 +218,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
           active={active}
           onStartStop={onStartStop}
           precision={precision}
-          setPrecision={setPrecision}   // comută 100 m ↔ 20 km în mers (hook-ul trebuie să suporte)
+          setPrecision={setPrecision}
           onSave={onSave}
           saving={saving}
           pointsCount={points?.length || 0}
@@ -218,7 +227,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
 
         <div id="gpspro-map" className={styles.mapCanvas}/>
 
-        {/* Overlay pentru când browserul blochează autoplay la fallback-ul video */}
+        {/* Overlay pentru confirmare wake-lock pe iOS/Android */}
         <WakePrompt
           visible={wake.needsPrompt}
           onConfirm={() => wake.confirmEnable()}
