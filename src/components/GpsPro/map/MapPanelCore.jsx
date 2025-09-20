@@ -11,7 +11,7 @@ import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
 
 // 🔒 wake lock strict cross-platform + overlay
-import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict';
+import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict.jsx';
 
 // Fix icons (vite/webpack/CRA)
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
