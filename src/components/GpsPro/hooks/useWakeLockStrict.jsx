@@ -1,19 +1,18 @@
-// src/components/GpsPro/hooks/useWakeLockStrict.js
+// src/components/GpsPro/hooks/useWakeLockStrict.jsx
+import React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * WakeLock STRICT fără dependențe:
- * 1) Folosește Wake Lock API când există (Android/Chrome etc.)
- * 2) Fallback video invizibil care rulează în buclă (iOS/Safari & altele)
- * 3) Dacă autoplay e blocat, afișează un overlay ca să ceară un gest ("Activar")
+ * 1) Wake Lock API când există (Android/Chrome etc.)
+ * 2) Fallback video invizibil în buclă (iOS/Safari & altele)
+ * 3) Dacă autoplay e blocat, afișează overlay ca să ceară un gest ("Activar")
  *
- * Acceptă fișiere în /public cu nume:
+ * Acceptă fișiere în /public:
  *   - /tiny.mp4
  *   - /tiny.mp4.MOV
  *   - /tiny.mov
  *   - /tiny.MOV
- *
- * Pune unul dintre ele în /public direct din telefon — nu e nevoie să-l redenumești.
  */
 
 export default function useWakeLockStrict() {
@@ -25,17 +24,10 @@ export default function useWakeLockStrict() {
   const tryingRef = useRef(false);
   const idxRef = useRef(0);
 
-  // Ordinea de încercare pentru surse video fallback
-  const CANDIDATES = [
-    '/tiny.mp4',
-    '/tiny.mp4.MOV',
-    '/tiny.mov',
-    '/tiny.MOV',
-  ];
+  const CANDIDATES = ['/tiny.mp4', '/tiny.mp4.MOV', '/tiny.mov', '/tiny.MOV'];
 
   const ensureVideo = () => {
     if (videoRef.current) return videoRef.current;
-
     const v = document.createElement('video');
     v.setAttribute('playsinline', 'true');
     v.setAttribute('muted', 'true');
@@ -43,8 +35,6 @@ export default function useWakeLockStrict() {
     v.muted = true;
     v.loop = true;
     v.playsInline = true;
-
-    // ascuns total
     Object.assign(v.style, {
       position: 'fixed',
       width: '1px',
@@ -55,13 +45,11 @@ export default function useWakeLockStrict() {
       left: '0',
       zIndex: -1,
     });
-
     document.body.appendChild(v);
     videoRef.current = v;
     return v;
   };
 
-  // încearcă să pornească redarea cu fiecare candidat
   const tryPlay = async (v) => {
     for (let i = 0; i < CANDIDATES.length; i++) {
       const j = (idxRef.current + i) % CANDIDATES.length;
@@ -70,8 +58,8 @@ export default function useWakeLockStrict() {
         await v.play();
         idxRef.current = j;
         return true;
-      } catch (e) {
-        // trecem la următorul candidate
+      } catch (_) {
+        // încearcă următorul
       }
     }
     return false;
@@ -82,7 +70,7 @@ export default function useWakeLockStrict() {
     tryingRef.current = true;
     setNeedsPrompt(false);
 
-    // 1) Wake Lock API standard
+    // 1) Wake Lock API
     try {
       if ('wakeLock' in navigator && navigator.wakeLock?.request) {
         wakeRef.current = await navigator.wakeLock.request('screen');
@@ -95,7 +83,7 @@ export default function useWakeLockStrict() {
       wakeRef.current = null;
     }
 
-    // 2) Fallback video (iOS / browsere fără WakeLock)
+    // 2) Fallback video
     try {
       const v = ensureVideo();
       const ok = await tryPlay(v);
@@ -104,11 +92,9 @@ export default function useWakeLockStrict() {
         tryingRef.current = false;
         return true;
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
-    // 3) Dacă autoplay a fost blocat, cere un gest
+    // 3) Prompt
     setNeedsPrompt(true);
     setActive(false);
     tryingRef.current = false;
@@ -124,9 +110,7 @@ export default function useWakeLockStrict() {
         setNeedsPrompt(false);
         return true;
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
     setNeedsPrompt(true);
     setActive(false);
     return false;
@@ -142,7 +126,6 @@ export default function useWakeLockStrict() {
     try {
       if (videoRef.current) {
         videoRef.current.pause();
-        // opțional, ștergem sursa ca să eliberăm conexiunea
         videoRef.current.removeAttribute('src');
         videoRef.current.load?.();
       }
@@ -151,27 +134,23 @@ export default function useWakeLockStrict() {
     setNeedsPrompt(false);
   }, []);
 
-  // Re-acquire când revii în tab dacă era activ
   useEffect(() => {
     const onFocus = () => { if (active) enable(); };
-    document.addEventListener('visibilitychange', onFocus);
+    const onVis = () => { if (active && document.visibilityState === 'visible') enable(); };
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
     return () => {
-      document.removeEventListener('visibilitychange', onFocus);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [active, enable]);
 
-  // Cleanup la demontare
   useEffect(() => () => { disable(); }, [disable]);
 
   return { active, needsPrompt, enable, confirmEnable, disable };
 }
 
-/**
- * Mic overlay pentru când autoplay este blocat
- * — userul trebuie să atingă „Activar”.
- */
+/** Overlay prompt când autoplay e blocat */
 export function WakePrompt({ visible, onConfirm, onCancel }) {
   if (!visible) return null;
 
