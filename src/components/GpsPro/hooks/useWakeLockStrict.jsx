@@ -2,19 +2,6 @@
 import React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/**
- * WakeLock STRICT fără dependențe:
- * 1) Wake Lock API când există (Android/Chrome etc.)
- * 2) Fallback video invizibil în buclă (iOS/Safari & altele)
- * 3) Dacă autoplay e blocat, afișează overlay ca să ceară un gest ("Activar")
- *
- * Acceptă fișiere în /public:
- *   - /tiny.mp4
- *   - /tiny.mp4.MOV
- *   - /tiny.mov
- *   - /tiny.MOV
- */
-
 export default function useWakeLockStrict() {
   const [active, setActive] = useState(false);
   const [needsPrompt, setNeedsPrompt] = useState(false);
@@ -36,26 +23,25 @@ export default function useWakeLockStrict() {
     v.loop = true;
     v.playsInline = true;
     Object.assign(v.style, {
-      position: 'fixed',
-      width: '1px',
-      height: '1px',
-      opacity: '0',
-      pointerEvents: 'none',
-      bottom: '0',
-      left: '0',
-      zIndex: -1,
+      position: 'fixed', width: '1px', height: '1px', opacity: '0',
+      pointerEvents: 'none', bottom: '0', left: '0', zIndex: -1,
     });
     document.body.appendChild(v);
     videoRef.current = v;
     return v;
   };
 
-  const tryPlay = async (v) => {
+  const tryPlaySync = (v) => {
+    // IMPORTANT: fără async/await aici ca să păstrăm gestul
     for (let i = 0; i < CANDIDATES.length; i++) {
       const j = (idxRef.current + i) % CANDIDATES.length;
-      v.src = CANDIDATES[j];
       try {
-        await v.play();
+        v.src = CANDIDATES[j];
+        const p = v.play();
+        // Unele browsere întorc Promise, dar în cadrul gestului pornește imediat
+        if (p && typeof p.then === 'function') {
+          p.catch(() => { /* ignorăm, încercăm următorul */ });
+        }
         idxRef.current = j;
         return true;
       } catch (_) {
@@ -65,7 +51,7 @@ export default function useWakeLockStrict() {
     return false;
   };
 
-  const enable = useCallback(async () => {
+  const enable = useCallback((fromUserGesture = false) => {
     if (tryingRef.current || active) return true;
     tryingRef.current = true;
     setNeedsPrompt(false);
@@ -73,20 +59,30 @@ export default function useWakeLockStrict() {
     // 1) Wake Lock API
     try {
       if ('wakeLock' in navigator && navigator.wakeLock?.request) {
-        wakeRef.current = await navigator.wakeLock.request('screen');
-        wakeRef.current.addEventListener?.('release', () => setActive(false));
-        setActive(true);
-        tryingRef.current = false;
+        // în gest poate cere imediat
+        navigator.wakeLock.request('screen').then(lock => {
+          wakeRef.current = lock;
+          wakeRef.current.addEventListener?.('release', () => setActive(false));
+          setActive(true);
+          tryingRef.current = false;
+        }).catch(() => {
+          // cădem pe video fallback
+          tryVideo(fromUserGesture);
+        });
         return true;
       }
     } catch {
-      wakeRef.current = null;
+      // cădem pe video fallback
     }
 
     // 2) Fallback video
+    return tryVideo(fromUserGesture);
+  }, [active]);
+
+  const tryVideo = (fromUserGesture) => {
     try {
       const v = ensureVideo();
-      const ok = await tryPlay(v);
+      const ok = fromUserGesture ? tryPlaySync(v) : false;
       if (ok) {
         setActive(true);
         tryingRef.current = false;
@@ -94,27 +90,17 @@ export default function useWakeLockStrict() {
       }
     } catch {}
 
-    // 3) Prompt
-    setNeedsPrompt(true);
+    // 3) Prompt dacă nu a fost gest
+    setNeedsPrompt(!fromUserGesture);
     setActive(false);
     tryingRef.current = false;
     return false;
-  }, [active]);
+  };
 
-  const confirmEnable = useCallback(async () => {
-    try {
-      const v = ensureVideo();
-      const ok = await tryPlay(v);
-      if (ok) {
-        setActive(true);
-        setNeedsPrompt(false);
-        return true;
-      }
-    } catch {}
-    setNeedsPrompt(true);
-    setActive(false);
-    return false;
-  }, []);
+  const confirmEnable = useCallback(() => {
+    // apelat din butonul "Activar" (gest direct)
+    return enable(true);
+  }, [enable]);
 
   const disable = useCallback(async () => {
     try {
@@ -134,9 +120,10 @@ export default function useWakeLockStrict() {
     setNeedsPrompt(false);
   }, []);
 
+  // re-acquire când revii în tab
   useEffect(() => {
-    const onFocus = () => { if (active) enable(); };
-    const onVis = () => { if (active && document.visibilityState === 'visible') enable(); };
+    const onFocus = () => { if (active) enable(true); };
+    const onVis = () => { if (active && document.visibilityState === 'visible') enable(true); };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVis);
     return () => {
@@ -150,19 +137,12 @@ export default function useWakeLockStrict() {
   return { active, needsPrompt, enable, confirmEnable, disable };
 }
 
-/** Overlay prompt când autoplay e blocat */
 export function WakePrompt({ visible, onConfirm, onCancel }) {
   if (!visible) return null;
-
-  const back = {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 999999,
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
-  };
-  const card = {
-    background: '#0b1f3a', color: '#e8f7ff', border: '1px solid #0ea5e9',
-    borderRadius: 12, padding: '16px 18px', width: 'min(92vw, 420px)',
-    boxShadow: '0 8px 28px rgba(0,0,0,.4)'
-  };
+  const back = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 999999,
+    display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  const card = { background: '#0b1f3a', color: '#e8f7ff', border: '1px solid #0ea5e9',
+    borderRadius: 12, padding: '16px 18px', width: 'min(92vw, 420px)', boxShadow: '0 8px 28px rgba(0,0,0,.4)' };
   const h3 = { margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 };
   const p  = { margin: '0 0 14px 0', fontSize: 14, lineHeight: 1.5, opacity: .9 };
   const row= { display: 'flex', gap: 8, justifyContent: 'flex-end' };
