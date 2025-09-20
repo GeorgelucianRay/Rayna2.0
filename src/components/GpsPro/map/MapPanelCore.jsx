@@ -10,10 +10,10 @@ import { createBaseLayers } from '../tiles/baseLayers';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
 
-// 🔒 wake lock strict cross-platform + overlay
+// wake lock strict cross-platform + overlay (fără npm)
 import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict.jsx';
 
-// Fix icons (vite/webpack/CRA)
+// Fix Leaflet icons
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 const DefaultIcon = new L.Icon({ iconUrl, shadowUrl: iconShadow, iconAnchor: [12, 41] });
@@ -32,19 +32,11 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
   const [saving, setSaving] = useState(false);
 
   const { active, precision, setPrecision, points, distanceM, start, stop, reset, toGeoJSON } = useRouteRecorder();
-
-  // 🔒 wake lock cross-platform (Android + iOS)
   const wake = useWakeLockStrict();
 
-  // destinații
-  const clientDest = useMemo(
-    () => parseCoords(client?.dest_coords || client?.coordenadas || null),
-    [client]
-  );
-  const pickedDest = useMemo(
-    () => (destination?.coords ? parseCoords(destination.coords) : null),
-    [destination]
-  );
+  // destinații pentru centrare / pin
+  const clientDest = useMemo(() => parseCoords(client?.dest_coords || client?.coordenadas || null), [client]);
+  const pickedDest = useMemo(() => (destination?.coords ? parseCoords(destination.coords) : null), [destination]);
 
   // init hartă (safe)
   useEffect(() => {
@@ -53,7 +45,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     if (!container) return;
 
     const startCenter = pickedDest || clientDest;
-    const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // fallback Barcelona
+    const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // Barcelona fallback
     const zoom = startCenter ? 12 : 6;
 
     try {
@@ -67,11 +59,9 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
 
       // marker destinație
       if (pickedDest) {
-        L.marker([pickedDest.lat, pickedDest.lng]).addTo(map)
-          .bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
+        L.marker([pickedDest.lat, pickedDest.lng]).addTo(map).bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
       } else if (clientDest) {
-        L.marker([clientDest.lat, clientDest.lng]).addTo(map)
-          .bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
+        L.marker([clientDest.lat, clientDest.lng]).addTo(map).bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
       }
 
       // straturi pentru ruta curentă
@@ -115,42 +105,35 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     map.panTo(last, { animate: true });
   }, [points]);
 
-  // autoStart (pornește recorder + wake lock)
+  // autoStart: cere wake-lock (fără gest) ca să afișeze overlay; pornirea efectivă se face la primul tap Start
   useEffect(() => {
     if (!autoStart) return;
     reset();
-    const t = setTimeout(async () => {
-      start();
-      await wake.enable(); // 🔒 ține ecranul treaz
-    }, 120);
-    return () => clearTimeout(t);
+    // acesta va seta needsPrompt=true dacă nu e din gest
+    wake.enable(false);
+    // nu chemăm start() aici; se va porni la buton sau automat imediat după ce wake devine activ (vezi efectul de mai jos)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  // cleanup complet
+  // dacă ai venit cu autoStart și userul confirmă wake (devine activ) iar recorderul nu e pornit → pornește automat
   useEffect(() => {
-    return () => {
-      try { stop?.(); } catch {}
-      try { wake.disable?.(); } catch {}
-      try {
-        routeLayerRef.current?.remove();
-        vehicleMarkerRef.current?.remove();
-        routeLayerRef.current = null;
-        vehicleMarkerRef.current = null;
-      } catch {}
-      try { mapRef.current?.remove(); mapRef.current = null; } catch {}
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onStartStop = async () => {
-    if (active) {
-      stop();
-      await wake.disable();
-    } else {
+    if (autoStart && wake.active && !active) {
+      // nu mai chemăm wake.enable aici (deja e activ), doar pornim înregistrarea
       reset();
       start();
-      await wake.enable();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, wake.active]);
+
+  // start/stop din buton — IMPORTANT: wake.enable(true) în același gest, înainte de start()
+  const onStartStop = () => {
+    if (active) {
+      stop();
+      wake.disable();
+    } else {
+      wake.enable(true);   // în gestul utilizatorului
+      reset();
+      start();
     }
   };
 
@@ -180,7 +163,7 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
       if (error) throw error;
       alert('¡Ruta guardada con éxito!');
       reset();
-      await wake.disable();
+      wake.disable();
     } catch (e) {
       console.error(e);
       alert(`Error al guardar la ruta: ${e.message || e}`);
@@ -189,15 +172,31 @@ export default function MapPanelCore({ client, destination, autoStart = false, o
     }
   };
 
-  // protejează închiderea accidentală când înregistrezi
-  const safeClose = async () => {
+  // închidere sigură
+  const safeClose = () => {
     if (active) {
       const ok = window.confirm('La grabación está en curso. ¿Cerrar el mapa?');
       if (!ok) return;
     }
-    await wake.disable();
+    wake.disable();
     onClose();
   };
+
+  // cleanup complet
+  useEffect(() => {
+    return () => {
+      try { stop?.(); } catch {}
+      try { wake.disable?.(); } catch {}
+      try {
+        routeLayerRef.current?.remove();
+        vehicleMarkerRef.current?.remove();
+        routeLayerRef.current = null;
+        vehicleMarkerRef.current = null;
+      } catch {}
+      try { mapRef.current?.remove(); mapRef.current = null; } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
