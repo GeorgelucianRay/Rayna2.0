@@ -375,3 +375,23 @@
     max-height: 96dvh;
   }
 }
+/* Hint sub câmpul Link Foto */
+.inputHint {
+  display: block;
+  margin-top: 0.35rem;
+  color: #cbd5e1;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* (Optional) stilizare discretă pentru input[type=file] */
+.inputGroup input[type="file"] {
+  background: transparent;
+  border: 1px dashed rgba(148,163,184,0.35);
+  color: #f1f5f9;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+}
+.inputGroup input[type="file"]:hover {
+  border-color: rgba(255,140,58,0.7);
+}
