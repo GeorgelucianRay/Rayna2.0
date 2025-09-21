@@ -37,7 +37,7 @@ function AddContainerModal({
               id="newMatricula"
               type="text"
               value={newMatricula}
-              onChange={(e) => setNewMatricula(e.target.value)}
+              onChange={(e) => setNewMatricula(e.target.value.toUpperCase())}
               required
             />
           </div>
@@ -47,7 +47,7 @@ function AddContainerModal({
               id="newNaviera"
               type="text"
               value={newNaviera}
-              onChange={(e) => setNewNaviera(e.target.value)}
+              onChange={(e) => setNewNaviera(e.target.value.toUpperCase())}
               required
             />
           </div>
@@ -68,7 +68,7 @@ function AddContainerModal({
               id="newPosicion"
               type="text"
               value={newPosicion}
-              onChange={(e) => setNewPosicion(e.target.value)}
+              onChange={(e) => setNewPosicion(e.target.value.toUpperCase())}
               required
             />
           </div>
@@ -110,7 +110,7 @@ function AddContainerModal({
               id="newMatriculaCamion"
               type="text"
               value={newMatriculaCamion}
-              onChange={(e) => setNewMatriculaCamion(e.target.value)}
+              onChange={(e) => setNewMatriculaCamion(e.target.value.toUpperCase())}
             />
           </div>
           <div className={styles.modalActions}>
