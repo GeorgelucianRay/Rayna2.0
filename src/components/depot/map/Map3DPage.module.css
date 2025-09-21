@@ -1,128 +1,64 @@
-/* src/components/Depot/map/Map3DPage.module.css */
-:root {
-  --glass-bg: rgba(255,255,255,0.18);
-  --glass-layer: rgba(255,255,255,0.06);
-  --glass-stroke: rgba(255,255,255,0.28);
-  --glass-stroke-soft: rgba(255,255,255,0.16);
-  --ink: #f3f6fb;
-  --muted: rgba(243,246,251,0.75);
-  --cta1: #3b82f6;
-  --cta2: #60a5fa;
-  --shadow: rgba(0,0,0,0.35);
-  --radius-card: 16px;
-  --speed: 160ms;
+/* Canvas full-screen în spate */
+.canvasWrap {
+  position: fixed;
+  inset: 0;            /* top/right/bottom/left: 0 */
+  z-index: 0;          /* sub HUD */
+  width: 100vw;
+  height: 100vh;
+  background: #0b0f14; /* fallback când nu randăm */
 }
 
-/* Container centrat pentru card / overlay */
+/* Containerul paginii (HUD-ul) rămâne peste canvas */
 .pageContainer {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  pointer-events: none; /* lăsăm canvasul să prindă gesturile; butoanele re-enablează mai jos */
+}
+
+/* Bară HUD cu butonul de back și titlul */
+.hudBar {
+  position: absolute;
+  left: 16px;
+  top: 88px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 80vh;
-  padding: 2rem;
-  position: relative;
-  color: var(--ink);
-  /* Opțional: un fundal subtil cu glow-uri cyan/violet */
-  background:
-    radial-gradient(1200px 800px at -10% -10%, rgba(125,211,252,0.20), transparent 55%),
-    radial-gradient(1000px 700px at 110% -20%, rgba(167,139,250,0.20), transparent 50%);
+  gap: 16px;
+  pointer-events: auto; /* butoanele sunt clicabile */
 }
 
-/* Card „liquid glass” pentru mesaj/overlay */
-.card {
-  position: relative;
-  background:
-    linear-gradient(180deg, var(--glass-bg), var(--glass-layer));
-  border: 1px solid var(--glass-stroke-soft);
-  border-radius: var(--radius-card);
-  padding: 2rem 2.5rem;
-  color: var(--ink);
-  text-align: center;
-  max-width: 520px;
-  width: 100%;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.24),
-    0 26px 60px -24px var(--shadow);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
-  animation: slideUp .3s ease-out;
-}
-
-/* Animație de intrare */
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
-}
-
-/* Titlu cu gradient metalic discret */
-.title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.75rem;
-  font-weight: 800;
-  background:
-    linear-gradient(90deg, #fff, #dbeafe);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
-}
-
-/* Texte secundare */
-.text {
-  font-size: 1.1rem;
-  margin: 0;
-  color: var(--ink);
-  opacity: 0.95;
-}
-.subtext {
-  font-size: 0.9rem;
-  margin: 0.25rem 0 1.5rem 0;
-  color: var(--muted);
-}
-
-/* Buton CTA „sticlă + gradient” */
+/* Buton back */
 .backButton {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
-  border-radius: 12px;
-  border: 1px solid var(--glass-stroke-soft);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10)),
-    linear-gradient(120deg, var(--cta1), var(--cta2));
-  color: #0b1220;
-  font-weight: 800;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: linear-gradient(180deg, #5b86f7, #3f66e9);
+  color: #fff;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform var(--speed) ease, box-shadow var(--speed) ease, border-color var(--speed) ease, background var(--speed) ease;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.25),
-    0 14px 32px -18px rgba(37,99,235,.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-.backButton:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.28),
-    0 18px 40px -18px rgba(37,99,235,.55);
-  border-color: var(--glass-stroke);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
 }
 
-/* Focus accesibil */
-.backButton:focus-visible {
-  outline: 2px solid #38bdf8;
-  outline-offset: 3px;
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1;
+  color: rgba(255,255,255,.9);
+  text-shadow: 0 2px 10px rgba(0,0,0,.3);
 }
 
-/* Reduce motion */
-@media (prefers-reduced-motion: reduce) {
-  .card, .backButton { transition: none; animation: none; }
-  .backButton:hover { transform: none; }
-}
-.canvasWrap {
-  flex: 1;
-  width: 100%;
-  height: calc(100vh - 80px); /* ajustat după header */
-  background: #111;
+/* opțional: watermark mic pe centru */
+.watermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 42px;
+  font-weight: 800;
+  color: rgba(255,255,255,.12);
+  letter-spacing: .5px;
+  pointer-events: none;
 }
