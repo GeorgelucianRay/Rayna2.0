@@ -1,5 +1,6 @@
 // src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';             // 👈 pentru butonul X (back/home)
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
@@ -26,19 +27,19 @@ const CloseIcon = () => (
 
 const ITEMS_PER_PAGE = 24;
 
-function Toolbar({ activeView, setActiveView, canEdit, searchTerm, onSearch, onAdd, title }) {
+/** Toolbar fără tab-uri (doar search + Add) */
+function Toolbar({ canEdit, searchTerm, onSearch, onAdd, title }) {
   return (
     <div className={styles.toolbar}>
-      <div className={styles.tabs}>
-        <button className={`${styles.tab} ${activeView === 'clientes' ? styles.tabActive : ''}`} onClick={() => setActiveView('clientes')}>Clientes</button>
-        <button className={`${styles.tab} ${activeView === 'parkings' ? styles.tabActive : ''}`} onClick={() => setActiveView('parkings')}>Parkings</button>
-        <button className={`${styles.tab} ${activeView === 'servicios' ? styles.tabActive : ''}`} onClick={() => setActiveView('servicios')}>Servicios</button>
-        <button className={`${styles.tab} ${activeView === 'terminale' ? styles.tabActive : ''}`} onClick={() => setActiveView('terminale')}>Terminales</button>
-      </div>
       <div className={styles.actions}>
         <div className={styles.search}>
           <SearchIcon />
-          <input type="text" placeholder="Buscar por nombre…" value={searchTerm} onChange={(e) => onSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Buscar por nombre…"
+            value={searchTerm}
+            onChange={(e) => onSearch(e.target.value)}
+          />
         </div>
         {canEdit && (
           <button className={styles.primary} onClick={onAdd}>
@@ -52,7 +53,8 @@ function Toolbar({ activeView, setActiveView, canEdit, searchTerm, onSearch, onA
 
 function Card({ item, onClick, canEdit, onEdit }) {
   return (
-    <div className={styles.card} onClick={onClick} role="button" tabIndex={0} onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && onClick()}>
+    <div className={styles.card} onClick={onClick} role="button" tabIndex={0}
+      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && onClick()}>
       <div className={styles.cardImgWrap}>
         <img
           src={item.link_foto || 'https://placehold.co/800x600/0b1f3a/99e6ff?text=Sin+Foto'}
@@ -63,7 +65,11 @@ function Card({ item, onClick, canEdit, onEdit }) {
       <div className={styles.cardOverlay}>
         <h3 className={styles.cardTitle}>{item.nombre}</h3>
         {canEdit && (
-          <button className={styles.cardEdit} onClick={(e)=>{ e.stopPropagation(); onEdit(item); }} aria-label="Editar" title="Editar">✎</button>
+          <button
+            className={styles.cardEdit}
+            onClick={(e)=>{ e.stopPropagation(); onEdit(item); }}
+            aria-label="Editar" title="Editar"
+          >✎</button>
         )}
       </div>
     </div>
@@ -76,7 +82,9 @@ function Modal({ title, children, onClose, footer }) {
       <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3>{title}</h3>
-          <button className={styles.iconBtn} onClick={onClose} aria-label="Cerrar"><CloseIcon/></button>
+          <button className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">
+            <CloseIcon/>
+          </button>
         </div>
         <div className={styles.modalBody}>{children}</div>
         {footer && <div className={styles.modalFooter}>{footer}</div>}
@@ -100,12 +108,11 @@ function ListView({ tableName, title }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // pentru formularul de adăugare (era folosit în onAddSubmit)
   const [newItem, setNewItem] = useState({
     nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '', tiempo_espera: ''
   });
 
-  // pentru hartă și picker (nou)
+  // hartă + picker
   const [openMapFor, setOpenMapFor] = useState(null);
   const [openDestPickerFor, setOpenDestPickerFor] = useState(null);
 
@@ -165,8 +172,6 @@ function ListView({ tableName, title }) {
   return (
     <div className={styles.view}>
       <Toolbar
-        activeView={null}
-        setActiveView={()=>{}}
         canEdit={canEdit}
         searchTerm={term}
         onSearch={(v)=>{ setTerm(v); setPage(1); }}
@@ -217,13 +222,11 @@ function ListView({ tableName, title }) {
                 className={`${styles.btn}`}
                 onClick={() => {
                   if (currentType === 'clientes') {
-                    // deschide harta pe client (fără destinație preset)
                     setOpenMapFor({
                       ...selected,
                       _subject: { type: 'clientes', id: selected.id, label: selected.nombre, coords: selected.coordenadas }
                     });
                   } else {
-                    // dacă e parking/servicio/terminal → îl folosim ca destinație implicită + autoStart
                     setOpenMapFor({
                       ...selected,
                       _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas },
@@ -316,7 +319,6 @@ function ListView({ tableName, title }) {
           initialTab={currentType === 'clientes' ? 'parkings' : 'clientes'}
           onPick={(dest) => {
             setOpenDestPickerFor(null);
-            // deschide harta cu destinația aleasă + autoStart
             setOpenMapFor({
               ...openDestPickerFor,
               _pickedDestination: dest,
@@ -330,7 +332,7 @@ function ListView({ tableName, title }) {
       {openMapFor && (
         <MapPanelCore
           client={openMapFor}
-          destination={openMapFor._pickedDestination}   // undefined dacă ai apăsat doar “Abrir mapa”
+          destination={openMapFor._pickedDestination}
           autoStart={openMapFor._autoStart === true}
           onClose={() => setOpenMapFor(null)}
         />
@@ -342,6 +344,7 @@ function ListView({ tableName, title }) {
 export default function GpsProPage() {
   const { profile } = useAuth();
   const [tab, setTab] = useState('clientes');
+  const navigate = useNavigate();                    // 👈 pentru butonul X
 
   if (profile?.role !== 'dispecer') {
     return (
@@ -357,11 +360,24 @@ export default function GpsProPage() {
   return (
     <div className={styles.frame}>
       <header className={styles.header}>
-        <div className={styles.brand}>
-          <div className={styles.logoGlow}/>
-          <span>GPS<span className={styles.brandAccent}>Pro</span></span>
+        {/* rând cu brand + buton X */}
+        <div className={styles.headerRow}>
+          <div className={styles.brand}>
+            <div className={styles.logoGlow}/>
+            <span>GPS<span className={styles.brandAccent}>Pro</span></span>
+          </div>
+          <button
+            className={styles.closeBackBtn}
+            onClick={() => navigate('/dispecer-homepage')}
+            aria-label="Salir de GPS Pro"
+            title="Salir de GPS Pro"
+          >
+            ✕
+          </button>
         </div>
-        <nav className={styles.nav}>
+
+        {/* tab-urile sub brand */}
+        <nav className={styles.navUnderBrand}>
           <button className={`${styles.navBtn} ${tab==='clientes'?styles.navBtnActive:''}`} onClick={()=> setTab('clientes')}>Clientes</button>
           <button className={`${styles.navBtn} ${tab==='parkings'?styles.navBtnActive:''}`} onClick={()=> setTab('parkings')}>Parkings</button>
           <button className={`${styles.navBtn} ${tab==='servicios'?styles.navBtnActive:''}`} onClick={()=> setTab('servicios')}>Servicios</button>
