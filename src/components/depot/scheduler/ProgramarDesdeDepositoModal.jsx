@@ -1,4 +1,3 @@
-// src/components/Depot/scheduler/ProgramarDesdeDepositoModal.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './SchedulerStandalone.module.css';
 import { supabase } from '../../../supabaseClient';
@@ -6,28 +5,29 @@ import { supabase } from '../../../supabaseClient';
 export default function ProgramarDesdeDepositoModal({
   open,
   onClose,
-  onProgramar, // (row, payload) -> promise
+  onProgramar, // async (containerRow, payload) => void
 }) {
   const [term, setTerm] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState(null);
 
-  // formular (uppercase doar pentru matrícula/posición)
+  // form
   const [empresa_descarga, setEmpresa] = useState('');
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
   const [posicion, setPosicion] = useState('');
   const [matricula_camion, setMatriculaCamion] = useState('');
-  const [estado, setEstado] = useState('programado'); // sau 'pendiente'
+  const [estado, setEstado] = useState('programado'); // programado | pendiente
 
   useEffect(() => {
     if (!open) return;
     let alive = true;
     (async () => {
       setLoading(true);
-      let q = supabase.from('contenedores')
-        .select('id, matricula_contenedor, naviera, tipo, posicion, created_at')
+      let q = supabase
+        .from('contenedores')
+        .select('id, created_at, matricula_contenedor, naviera, tipo, posicion')
         .order('created_at', { ascending: false })
         .limit(100);
       if (term) q = q.ilike('matricula_contenedor', `%${term}%`);
@@ -46,7 +46,6 @@ export default function ProgramarDesdeDepositoModal({
 
   useEffect(() => {
     if (!open) {
-      // reset când se închide
       setTerm('');
       setItems([]);
       setPicked(null);
@@ -61,12 +60,10 @@ export default function ProgramarDesdeDepositoModal({
 
   const canSave = useMemo(() => {
     if (!picked) return false;
-    // dacă vrei să forțezi minime: client + fecha + hora pentru programado
     if (estado === 'programado') {
-      return empresa_descarga && fecha && hora;
+      return !!empresa_descarga && !!fecha && !!hora;
     }
-    // „pendiente” – permis și fără toate câmpurile
-    return true;
+    return true; // pendiente permite parțial
   }, [picked, empresa_descarga, fecha, hora, estado]);
 
   const handleSave = async () => {
@@ -75,9 +72,9 @@ export default function ProgramarDesdeDepositoModal({
       empresa_descarga: empresa_descarga || null,
       fecha: fecha || null,
       hora: hora || null,
-      posicion: posicion || null,
-      matricula_camion: matricula_camion || null,
-      estado, // 'programado' sau 'pendiente'
+      posicion: (posicion || '').toUpperCase() || null,
+      matricula_camion: (matricula_camion || '').toUpperCase() || null,
+      estado, // 'programado' | 'pendiente'
     });
   };
 
@@ -92,8 +89,6 @@ export default function ProgramarDesdeDepositoModal({
         </div>
 
         <div className={styles.modalBody}>
-
-          {/* Pasul 1: căutare & listă (dacă nu ai selectat încă) */}
           {!picked && (
             <>
               <div className={styles.inputGroup}>
@@ -105,17 +100,23 @@ export default function ProgramarDesdeDepositoModal({
                 />
               </div>
 
-              <div className={styles.card} style={{maxHeight: 280, overflow: 'auto'}}>
+              <div className={styles.card} style={{ maxHeight: 280, overflow: 'auto' }}>
                 {loading ? (
-                  <p style={{margin:0, opacity:.85}}>Cargando…</p>
+                  <p style={{ margin:0, opacity:.85 }}>Cargando…</p>
                 ) : items.length === 0 ? (
-                  <p style={{margin:0}}>No hay contenedores en depósito (o no coinciden con la búsqueda).</p>
+                  <p style={{ margin:0 }}>No hay contenedores en depósito (o no coinciden con la búsqueda).</p>
                 ) : (
                   <ul className={styles.list}>
                     {items.map(it => (
-                      <li key={it.id} className={styles.item} style={{cursor:'pointer'}} onClick={()=> setPicked(it)}>
+                      <li
+                        key={it.id}
+                        className={styles.item}
+                        style={{ cursor:'pointer' }}
+                        onClick={()=> setPicked(it)}
+                        title="Seleccionar contenedor"
+                      >
                         <div className={styles.itemTop}>
-                          <span className={styles.dot} />
+                          <span className={styles.dot}/>
                           <span className={styles.cid}>{it.matricula_contenedor}</span>
                           <span className={`${styles.badge} ${styles.badgeWarn}`}>En depósito</span>
                         </div>
@@ -131,12 +132,11 @@ export default function ProgramarDesdeDepositoModal({
             </>
           )}
 
-          {/* Pasul 2: formular programare (după selecție) */}
           {picked && (
             <>
               <div className={styles.inputGroup}>
                 <label>Contenedor</label>
-                <input value={picked.matricula_contenedor} disabled />
+                <input value={(picked.matricula_contenedor || '').toUpperCase()} disabled />
               </div>
 
               <div className={styles.inputGroup}>
@@ -150,7 +150,7 @@ export default function ProgramarDesdeDepositoModal({
               <div className={styles.inputGroup}>
                 <label>Cliente / Empresa</label>
                 <input
-                  value={empresa_descarga}
+                  value={empresa_descarga || ''}
                   onChange={(e)=> setEmpresa(e.target.value)} // fără uppercase
                   placeholder="Cliente…"
                 />
@@ -159,11 +159,11 @@ export default function ProgramarDesdeDepositoModal({
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>Fecha</label>
-                  <input type="date" value={fecha} onChange={(e)=> setFecha(e.target.value)} />
+                  <input type="date" value={fecha || ''} onChange={(e)=> setFecha(e.target.value)} />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Hora</label>
-                  <input type="time" value={hora} onChange={(e)=> setHora(e.target.value)} />
+                  <input type="time" value={hora || ''} onChange={(e)=> setHora(e.target.value)} />
                 </div>
               </div>
 
@@ -171,7 +171,7 @@ export default function ProgramarDesdeDepositoModal({
                 <label>Posición</label>
                 <input
                   value={posicion}
-                  onChange={(e)=> setPosicion((e.target.value || '').toUpperCase())} // UPPERCASE
+                  onChange={(e)=> setPosicion((e.target.value || '').toUpperCase())}
                   placeholder="Ej. A-12 / Rampa 3"
                 />
               </div>
@@ -180,7 +180,7 @@ export default function ProgramarDesdeDepositoModal({
                 <label>Matrícula camión (opcional)</label>
                 <input
                   value={matricula_camion}
-                  onChange={(e)=> setMatriculaCamion((e.target.value || '').toUpperCase())} // UPPERCASE
+                  onChange={(e)=> setMatriculaCamion((e.target.value || '').toUpperCase())}
                   placeholder="Ej. B-1234-XYZ"
                 />
               </div>
@@ -191,17 +191,11 @@ export default function ProgramarDesdeDepositoModal({
         <div className={styles.modalFooter}>
           {picked ? (
             <>
-              <button className={styles.actionGhost} onClick={()=> setPicked(null)}>
-                Volver a la lista
-              </button>
-              <button className={styles.actionMini} onClick={handleSave} disabled={!canSave}>
-                Guardar
-              </button>
+              <button className={styles.actionGhost} onClick={()=> setPicked(null)}>Volver a la lista</button>
+              <button className={styles.actionMini} onClick={handleSave} disabled={!canSave}>Guardar</button>
             </>
           ) : (
-            <button className={styles.actionGhost} onClick={onClose}>
-              Cerrar
-            </button>
+            <button className={styles.actionGhost} onClick={onClose}>Cerrar</button>
           )}
         </div>
       </div>
