@@ -1,12 +1,10 @@
 // src/components/Depot/DepotPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import Layout from '../Layout';
 import { supabase } from '../../supabaseClient';
+import * as XLSX from 'xlsx';
 import styles from './DepotPage.module.css';
-// Dacă ai nevoie de override-uri globale, folosește un fișier .css simplu:
-// import './DepotGlass.css';
 
 /* Iconos */
 const SearchIcon = () => (
@@ -21,7 +19,6 @@ const PlusIcon = () => (
   </svg>
 );
 
-/* Modales */
 import AddContainerModal from './modals/AddContainerModal';
 import EditContainerModal from './modals/EditContainerModal';
 import SalidaContainerModal from './modals/SalidaContainerModal';
@@ -42,7 +39,7 @@ function DepotPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Estados para modales
+  // Modales
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newMatricula, setNewMatricula] = useState('');
   const [newNaviera, setNewNaviera] = useState('');
@@ -61,7 +58,7 @@ function DepotPage() {
 
   const [selectedContainer, setSelectedContainer] = useState(null);
 
-  // Sesión
+  // Sesión (redirect a login si no hay sesión)
   useEffect(() => {
     const checkSession = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -70,12 +67,13 @@ function DepotPage() {
     checkSession();
   }, [navigate]);
 
-  // Fetch
+  // Fetch principal (lista vizibilă)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       if (activeTab === 'contenedores') {
+        // En Depósito = contenedores ∪ contenedores_programados
         const { data: enDeposito, error: errA } = await supabase
           .from('contenedores')
           .select('*')
@@ -112,7 +110,7 @@ function DepotPage() {
         return;
       }
 
-      // 'contenedores_rotos' | 'contenedores_salidos'
+      // 'contenedores_rotos' | 'contenedores_salidos' (paginación server-side)
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
@@ -170,81 +168,6 @@ function DepotPage() {
       posicion: newPosicion || null,
       matricula_camion: newMatriculaCamion || null,
     };
-    // Exportă în Excel TOATE elementele din "En Depósito" (contenedores ∪ programados),
-// aplicând același filtru (searchTerm) și sort (created_at desc), dar fără paginare.
-const handleExportExcel = async () => {
-  try {
-    // 1) citește date brute
-    const [{ data: enDeposito, error: errA }, { data: programados, error: errB }] = await Promise.all([
-      supabase.from('contenedores')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase.from('contenedores_programados')
-        .select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado')
-        .order('created_at', { ascending: false }),
-    ]);
-
-    if (errA) throw errA;
-    if (errB) throw errB;
-
-    // 2) combină + filtrează (ca în fetchData)
-    const combinedRaw = [
-      ...(enDeposito || []).map(x => ({ ...x, __from: 'contenedores' })),
-      ...(programados || []).map(x => ({ ...x, __from: 'programados' })),
-    ];
-
-    const filtered = searchTerm
-      ? combinedRaw.filter(x =>
-          (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : combinedRaw;
-
-    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    // 3) mapare către rânduri “curate” pentru Excel
-    const rows = filtered.map((x, idx) => ({
-      '#': idx + 1,
-      'Matrícula Contenedor': x.matricula_contenedor || '',
-      'Naviera': x.naviera || '',
-      'Tipo': x.tipo || '',
-      'Posición': x.posicion || '',
-      'Estado': x.estado || '',
-      'Matrícula Camión': x.matricula_camion || '',
-      'Empresa Descarga (programado)': x.empresa_descarga || '',
-      'Fecha Programada': x.fecha || '',              // date (YYYY-MM-DD)
-      'Hora Programada': x.hora || '',                // time (HH:MM:SS)
-      'Desde Programados': x.__from === 'programados' ? 'Sí' : 'No',
-      'Fecha Entrada (created_at)': x.created_at ? new Date(x.created_at).toLocaleString() : '',
-    }));
-
-    if (rows.length === 0) {
-      alert('No hay datos para exportar.');
-      return;
-    }
-
-    // 4) generează workbook + foaie
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows, { cellDates: false });
-
-    // opțional: lățimi coloane
-    const colWidths = Object.keys(rows[0]).map(() => ({ wch: 22 }));
-    colWidths[0] = { wch: 5 }; // pentru coloana "#"
-    ws['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'En Deposito');
-
-    // 5) nume fișier
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const fname = `Depot_EnDeposito_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.xlsx`;
-
-    // 6) descarcă
-    XLSX.writeFile(wb, fname);
-  } catch (err) {
-    console.error('[Excel export error]', err);
-    alert(`No se pudo generar el Excel:\n${err.message || err}`);
-  }
-};
 
     if (isBroken) {
       data.detalles = newDetalles || null;
@@ -277,7 +200,7 @@ const handleExportExcel = async () => {
     setIsEditModalOpen(true);
   };
 
-  // permite editar posición para TODOS (incl. programados)
+  // permite editar posición pentru TOATE (inclusiv programados)
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
@@ -313,7 +236,7 @@ const handleExportExcel = async () => {
 
     const {
       id,
-      __from,                     // 'contenedores' | 'programados' (în lista "En Depósito" UNIÓN)
+      __from, // 'contenedores' | 'programados' (în lista En Depósito)
       matricula_contenedor,
       naviera,
       tipo,
@@ -321,8 +244,8 @@ const handleExportExcel = async () => {
       estado: estadoActual,
       detalles,
       empresa_descarga,
-      fecha,                      // (din programados)
-      hora,                       // (din programados)
+      fecha, // (din programados)
+      hora,  // (din programados)
     } = selectedContainer;
 
     try {
@@ -333,13 +256,12 @@ const handleExportExcel = async () => {
         return;
       }
 
-      // 1) curățăm orice programare existentă pentru aceeași matrícula
-      await supabase
-        .from('contenedores_programados')
+      // șterge orice programare existentă cu aceeași matrícula
+      await supabase.from('contenedores_programados')
         .delete()
         .eq('matricula_contenedor', matricula_contenedor);
 
-      // 2) payload EXACT după schema contenedores_salidos
+      // payload conform `contenedores_salidos`
       const salidaPayload = {
         matricula_contenedor: matricula_contenedor || null,
         naviera: naviera || null,
@@ -353,13 +275,12 @@ const handleExportExcel = async () => {
         fecha: fecha || null,
         hora: hora || null,
 
-        desde_programados: __from === 'programados', // aici va fi false, dar e logic corect
+        desde_programados: __from === 'programados', // aici va fi false
         fecha_programada: fecha || null,
         hora_programada: hora || null,
-        fecha_salida: new Date().toISOString(),      // OBLIGATORIU la tine, fără default
+        fecha_salida: new Date().toISOString(), // obligatoriu în schema ta
       };
 
-      // 3) insert în salidos
       const { error: insertError } = await supabase
         .from('contenedores_salidos')
         .insert([salidaPayload]);
@@ -371,7 +292,7 @@ const handleExportExcel = async () => {
         return;
       }
 
-      // 4) ștergem din tabela activă (contenedores / contenedores_rotos)
+      // elimină din tabela activă
       const { error: deleteError } = await supabase
         .from(activeTab)
         .delete()
@@ -379,12 +300,12 @@ const handleExportExcel = async () => {
 
       if (deleteError) {
         console.error('[SALIDA delete error]', deleteError);
-        alert(`Error al eliminar el registro de "${activeTab}":\n${deleteError.message || deleteError}`);
+        alert(`Error al limpiar el contenedor de "${activeTab}":\n${deleteError.message || deleteError}`);
         setIsSalidaModalOpen(false);
         return;
       }
 
-      // 5) UI refresh
+      // UI
       setContainers(prev => prev.filter(c => c.id !== id));
       setActiveTab('contenedores_salidos');
     } catch (err) {
@@ -393,6 +314,151 @@ const handleExportExcel = async () => {
     }
 
     setIsSalidaModalOpen(false);
+  };
+
+  /* ---------- EXPORT EXCEL (toate tab-urile) ---------- */
+
+  // helper comun
+  const exportRowsToExcel = (rows, sheetName, fileName) => {
+    if (!rows || rows.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows, { cellDates: false });
+    // lățimi coloane (heuristic)
+    const colWidths = Object.keys(rows[0]).map(() => ({ wch: 22 }));
+    if (colWidths.length > 0) colWidths[0] = { wch: 5 };
+    ws['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const nowFileStamp = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  };
+
+  // En Depósito (UNION) — respectă filtrul de căutare
+  const handleExportExcelEnDeposito = async () => {
+    try {
+      const [{ data: enDeposito, error: errA }, { data: programados, error: errB }] = await Promise.all([
+        supabase.from('contenedores')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase.from('contenedores_programados')
+          .select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado')
+          .order('created_at', { ascending: false }),
+      ]);
+      if (errA) throw errA;
+      if (errB) throw errB;
+
+      const combined = [
+        ...(enDeposito || []).map(x => ({ ...x, __from: 'contenedores' })),
+        ...(programados || []).map(x => ({ ...x, __from: 'programados' })),
+      ];
+
+      const filtered = searchTerm
+        ? combined.filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+        : combined;
+
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const rows = filtered.map((x, idx) => ({
+        '#': idx + 1,
+        'Matrícula Contenedor': x.matricula_contenedor || '',
+        'Naviera': x.naviera || '',
+        'Tipo': x.tipo || '',
+        'Posición': x.posicion || '',
+        'Estado': x.estado || '',
+        'Matrícula Camión': x.matricula_camion || '',
+        'Empresa Descarga (programado)': x.empresa_descarga || '',
+        'Fecha Programada': x.fecha || '',
+        'Hora Programada': x.hora || '',
+        'Desde Programados': x.__from === 'programados' ? 'Sí' : 'No',
+        'Fecha Entrada (created_at)': x.created_at ? new Date(x.created_at).toLocaleString() : '',
+      }));
+
+      exportRowsToExcel(rows, 'En Deposito', `Depot_EnDeposito_${nowFileStamp()}.xlsx`);
+    } catch (err) {
+      console.error('[Excel export EnDepósito]', err);
+      alert(`No se pudo generar el Excel (En Depósito):\n${err.message || err}`);
+    }
+  };
+
+  // Defectos
+  const handleExportExcelRotos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contenedores_rotos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const filtered = searchTerm
+        ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+        : (data || []);
+
+      const rows = filtered.map((x, idx) => ({
+        '#': idx + 1,
+        'Matrícula Contenedor': x.matricula_contenedor || '',
+        'Naviera': x.naviera || '',
+        'Tipo': x.tipo || '',
+        'Posición': x.posicion || '',
+        'Matrícula Camión': x.matricula_camion || '',
+        'Detalles (defecto)': x.detalles || '',
+        'Fecha Entrada (created_at)': x.created_at ? new Date(x.created_at).toLocaleString() : '',
+      }));
+
+      exportRowsToExcel(rows, 'Defectos', `Depot_Defectos_${nowFileStamp()}.xlsx`);
+    } catch (err) {
+      console.error('[Excel export Rotos]', err);
+      alert(`No se pudo generar el Excel (Defectos):\n${err.message || err}`);
+    }
+  };
+
+  // Salidos — conform schema shared (incluye fecha_salida etc.)
+  const handleExportExcelSalidos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contenedores_salidos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const filtered = searchTerm
+        ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+        : (data || []);
+
+      const rows = filtered.map((x, idx) => ({
+        '#': idx + 1,
+        'Matrícula Contenedor': x.matricula_contenedor || '',
+        'Naviera': x.naviera || '',
+        'Tipo': x.tipo || '',
+        'Posición (al salir)': x.posicion || '',
+        'Estado (al salir)': x.estado || '',
+        'Matrícula Camión (salida)': x.matricula_camion || '',
+        'Empresa Descarga (prog)': x.empresa_descarga || '',
+        'Fecha Programada': x.fecha || '',
+        'Hora Programada': x.hora || '',
+        'Desde Programados': x.desde_programados ? 'Sí' : 'No',
+        'Fecha salida': x.fecha_salida ? new Date(x.fecha_salida).toLocaleString() : '',
+        'Fecha registro (created_at)': x.created_at ? new Date(x.created_at).toLocaleString() : '',
+      }));
+
+      exportRowsToExcel(rows, 'Salidos', `Depot_Salidos_${nowFileStamp()}.xlsx`);
+    } catch (err) {
+      console.error('[Excel export Salidos]', err);
+      alert(`No se pudo generar el Excel (Salidos):\n${err.message || err}`);
+    }
+  };
+
+  // handler generic în toolbar în funcție de tab
+  const handleExportExcel = () => {
+    if (activeTab === 'contenedores') return handleExportExcelEnDeposito();
+    if (activeTab === 'contenedores_rotos') return handleExportExcelRotos();
+    if (activeTab === 'contenedores_salidos') return handleExportExcelSalidos();
   };
 
   return (
@@ -420,7 +486,7 @@ const handleExportExcel = async () => {
           </button>
         </div>
 
-        {/* Botones grandes */}
+        {/* Accesos rápidos */}
         <div className={styles.extraButtons}>
           <button
             className={`${styles.actionButton} ${styles.programButton}`}
@@ -450,12 +516,19 @@ const handleExportExcel = async () => {
               }}
             />
           </div>
-          {activeTab === 'contenedores' && (
-            <button className={styles.addButton} onClick={openAddModal}>
-              <PlusIcon />
-              Añadir contenedor
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            {activeTab === 'contenedores' && (
+              <button className={styles.addButton} onClick={openAddModal}>
+                <PlusIcon />
+                Añadir contenedor
+              </button>
+            )}
+            {/* Export Excel pentru tab curent */}
+            <button className={styles.addButton} onClick={handleExportExcel}>
+              📄 Exportar Excel
             </button>
-          )}
+          </div>
         </div>
 
         {/* Lista */}
@@ -474,7 +547,7 @@ const handleExportExcel = async () => {
                       <p className={styles.cardNaviera}>{container.naviera}</p>
                     </div>
 
-                    {/* Editar SIEMPRE; Salida solo si NO es programado y no estamos ya en salidos */}
+                    {/* Editar: mereu; Salida: doar dacă nu e programado și nu suntem în "salidos" */}
                     {activeTab !== 'contenedores_salidos' && (
                       <div className={styles.cardActions}>
                         <button className={styles.cardButton} onClick={() => openEditModal(container)}>
@@ -498,7 +571,7 @@ const handleExportExcel = async () => {
                     {container.tipo && <p><strong>Tipo:</strong> {container.tipo}</p>}
                     {container.posicion && <p><strong>Posición:</strong> {container.posicion}</p>}
 
-                    {/* Badge para programados dentro de En Depósito */}
+                    {/* Badge pentru programados în En Depósito */}
                     {activeTab === 'contenedores' && container.__from === 'programados' && (
                       <p><span className={styles.badgeOrange}>Programado</span></p>
                     )}
@@ -511,7 +584,7 @@ const handleExportExcel = async () => {
                       <p><strong>Matrícula camión:</strong> {container.matricula_camion}</p>
                     )}
 
-                    {/* Info extra si viene de programados */}
+                    {/* Info extra dacă vine din programados */}
                     {activeTab === 'contenedores' && container.__from === 'programados' && (
                       <>
                         {container.empresa_descarga && <p><strong>Empresa:</strong> {container.empresa_descarga}</p>}
