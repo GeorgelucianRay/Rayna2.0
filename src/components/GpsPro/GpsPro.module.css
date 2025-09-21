@@ -11,6 +11,7 @@
   --text:    #e6f2ff;
   --muted:   #9fb6cc;
   --danger:  #ff5277;
+  --danger-2:#ff8aa3;
   --glass:   rgba(255,255,255,0.06);
   --glass-2: rgba(0,229,255,0.12);
   --border:  rgba(138,243,255,0.25);
@@ -20,28 +21,33 @@
 
 .frame {
   min-height: 100vh;
-  background: radial-gradient(1000px 600px at 20% -10%, #143a62 0%, transparent 60%),
-              radial-gradient(1000px 600px at 120% 10%, #0b2c54 0%, transparent 60%),
-              linear-gradient(180deg, var(--bg-top), var(--bg-deep));
+  background:
+    radial-gradient(1000px 600px at 20% -10%, #143a62 0%, transparent 60%),
+    radial-gradient(1000px 600px at 120% 10%, #0b2c54 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-deep));
   color: var(--text);
   display: flex;
   flex-direction: column;
 }
 
-/* Header brand */
+/* ---------------- Header + Tabs sub brand ---------------- */
 .header {
   position: sticky; top: 0; z-index: 50;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
   backdrop-filter: blur(10px);
   background: linear-gradient(180deg, rgba(8,18,40,0.7), rgba(8,18,40,0.35));
   border-bottom: 1px solid var(--border);
   box-shadow: 0 8px 40px rgba(0,0,0,0.35);
-  gap: 10px;
+  padding: 10px 14px 12px;
 }
 
+/* rândul de sus: brand + buton X */
+.headerRow {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px;
+}
 .brand {
-  font-weight: 800; letter-spacing: 0.5px; font-size: 20px; display: flex; align-items: center; gap: 10px;
+  font-weight: 800; letter-spacing: 0.5px; font-size: 20px;
+  display: flex; align-items: center; gap: 10px;
 }
 .brandAccent { color: var(--cyan); }
 .logoGlow {
@@ -49,51 +55,31 @@
   background: radial-gradient(circle, var(--cyan) 0%, transparent 70%);
   box-shadow: 0 0 16px var(--cyan), 0 0 32px var(--cyan);
 }
-/* —— Brand row + Exit (X) button —— */
-.brandRow {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
 
-/* dacă nu poți modifica JSX, poți pune .exitBtn direct în .header;
-   în mobil rămâne pe primul rând cu brandul */
-.exitBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  min-width: 32px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 82, 119, 0.7);      /* roșu perimetru */
-  background: linear-gradient(180deg,
-              rgba(255, 82, 119, 0.18),
-              rgba(255, 82, 119, 0.10));
-  color: #ffd7e0;                                  /* roșu deschis */
-  cursor: pointer;
-  font-weight: 700;
-  box-shadow: 0 0 18px rgba(255, 82, 119, 0.15) inset,
-              0 6px 18px rgba(0, 0, 0, 0.28);
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease;
+/* buton X (roșu – închidere) */
+.closeBackBtn {
+  appearance: none;
+  border: 1px solid rgba(255,82,119,0.55);
+  background: linear-gradient(180deg, rgba(255,82,119,0.22), rgba(255,82,119,0.08));
+  color: var(--danger-2);
+  width: 36px; height: 36px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1; cursor: pointer;
+  box-shadow: 0 0 16px rgba(255,82,119,0.18) inset, 0 6px 16px rgba(0,0,0,0.35);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
-
-.exitBtn:hover {
+.closeBackBtn:hover {
   transform: translateY(-1px);
-  border-color: #ff5277;                           /* accent la hover */
-  color: #ffe8ee;
-  box-shadow: 0 0 26px rgba(255, 82, 119, 0.28) inset,
-              0 10px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255,82,119,0.9);
+  color: #fff;
+  box-shadow: 0 0 22px rgba(255,82,119,0.28) inset, 0 8px 22px rgba(0,0,0,0.4);
 }
 
-/* păstrează-l pe același rând cu brandul, iar tab-urile rămân pe rândul 2 */
-@media (max-width: 640px) {
-  .header { flex-wrap: wrap; }
-  .nav { order: 2; width: 100%; justify-content: center; margin-top: 6px; }
-  .exitBtn { order: 0; } /* se afișează lângă brand, înaintea tab-urilor */
+/* tab-urile sub brand (centrate) */
+.navUnderBrand {
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px solid var(--border);
 }
-
-.nav { display: flex; gap: 8px; }
 .navBtn {
   background: transparent; color: var(--text); border: 1px solid var(--border);
   padding: 8px 12px; border-radius: 10px; cursor: pointer;
@@ -106,27 +92,13 @@
   box-shadow: 0 0 24px rgba(0,229,255,0.25) inset;
 }
 
-/* Tabs sub brand pe ecrane mici */
-@media (max-width: 640px) {
-  .header { flex-wrap: wrap; }
-  .nav {
-    order: 2;
-    width: 100%;
-    justify-content: center;
-    margin-top: 6px;
-    flex-wrap: wrap;
-  }
-}
+.main { padding: 16px; }
 
-.main { padding: 18px; }
-
-/* Toolbar */
+/* ---------------- Toolbar (search + Add) ---------------- */
 .toolbar {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px; gap: 12px;
 }
-.tabs { display: none; } /* (folosim tab-urile din header) */
-
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .search {
@@ -149,7 +121,7 @@
 }
 .primary:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(0,229,255,0.25) inset, 0 8px 22px rgba(0,0,0,0.35); }
 
-/* Grid cards */
+/* ---------------- Grid cards ---------------- */
 .view { position: relative; }
 .loading { color: var(--muted); padding: 24px; text-align: center; }
 
@@ -160,7 +132,8 @@
 
 .card {
   position: relative; border-radius: 14px; overflow: hidden; cursor: pointer;
-  border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 .card:hover { transform: translateY(-3px); border-color: var(--cyan); box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 24px rgba(0,229,255,0.18) inset; }
@@ -182,8 +155,10 @@
 }
 .cardEdit:hover { background: rgba(0,229,255,0.28); }
 
-/* Pagination */
-.pagination { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 16px; }
+/* ---------------- Pagination ---------------- */
+.pagination {
+  display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 16px;
+}
 .pageBtn {
   background: var(--glass); color: var(--text); border: 1px solid var(--border);
   padding: 8px 12px; border-radius: 12px; cursor: pointer;
@@ -191,7 +166,7 @@
 .pageBtn:disabled { opacity: .5; cursor: not-allowed; }
 .pageInfo { color: var(--muted); }
 
-/* Modal (detalii + add/edit) */
+/* ---------------- Modal ---------------- */
 .modalBackdrop {
   position: fixed; inset: 0; background: rgba(3,10,22,0.6); backdrop-filter: blur(6px);
   display: grid; place-items: center; z-index: 100;
@@ -214,52 +189,35 @@
   padding: 12px 14px; border-top: 1px solid var(--border);
 }
 
-/* Form styles (Añadir / Editar) */
+/* ---------------- Form stilizat (Add/Edit) ---------------- */
 .form {
-  display: grid;
-  gap: 10px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .form label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 14px;
+  display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted);
 }
-.form input,
-.form textarea,
-.form select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  color: var(--text);
-  outline: none;
+.form input, .form textarea {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: var(--glass); color: var(--text);
+  border: 1px solid var(--border); outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
-.form textarea { resize: vertical; min-height: 100px; }
-.form input:focus,
-.form textarea:focus,
-.form select:focus {
+.form textarea { resize: vertical; min-height: 90px; }
+.form input:focus, .form textarea:focus {
   border-color: var(--cyan);
-  box-shadow: 0 0 0 3px rgba(0,229,255,0.15);
+  box-shadow: 0 0 0 3px rgba(0,229,255,0.12);
 }
 .formActions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 6px;
+  grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;
 }
 
-/* Detalle */
+/* ---------------- Detalle ---------------- */
 .detail { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
 .detailImg { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
 .detailInfo p { margin: 0 0 8px; color: var(--text); }
 .detailInfo strong { color: var(--cyan-2); }
 
-@media (max-width: 780px) {
-  .detail { grid-template-columns: 1fr; }
-}
-
+/* Buttons */
 .btn {
   background: var(--glass); color: var(--text);
   border: 1px solid var(--border); border-radius: 10px;
@@ -272,7 +230,7 @@
 }
 .btnDisabled { opacity: .5; cursor: not-allowed; }
 
-/* Guard */
+/* ---------------- Guard ---------------- */
 .guard {
   margin: 48px auto;
   width: min(900px, 94vw);
@@ -284,7 +242,7 @@
   box-shadow: 0 16px 50px rgba(0,0,0,0.5);
 }
 
-/* ===== Map panel ===== */
+/* ---------------- Map Panel ---------------- */
 .mapPanelBackdrop {
   position: fixed; inset: 0; z-index: 120;
   background: rgba(3,10,22,0.7); backdrop-filter: blur(6px);
@@ -303,89 +261,44 @@
   background: radial-gradient(circle, var(--cyan) 0%, transparent 70%); box-shadow: 0 0 12px var(--cyan), 0 0 20px var(--cyan);
 }
 
-/* Toolbar existentă (rămâne, dar o să o "supra-scriem" pentru mobil) */
-.mapToolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border); }
-
-/* Segmented */
-.segmented {
-  display:inline-flex; background: var(--glass); border:1px solid var(--border);
-  border-radius:12px; overflow:hidden; flex-wrap: wrap;
+/* Bara de control hartă */
+.mapToolbar {
+  display:flex; align-items:center; justify-content:center;
+  gap:14px; padding:10px 12px; border-bottom:1px solid var(--border);
+  flex-wrap: wrap;
 }
-.segBtn { padding:6px 10px; color:var(--text); background:transparent; border:none; cursor:pointer; min-width: 90px; }
+.segmented {
+  display:inline-flex; background: var(--glass);
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+}
+.segBtn { padding:6px 12px; color:var(--text); background:transparent; border:none; cursor:pointer; }
 .segActive { background: rgba(0,229,255,0.18); color: var(--cyan); }
-
-.controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
 .switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); }
 .switch input { display:none; }
 .switch span { display:inline-block; width:34px; height:18px; background: var(--glass); border:1px solid var(--border); border-radius:999px; position:relative; }
-.switch input:checked + span::after { transform: translateX(16px); background: var(--cyan); }
 .switch span::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#cbd5e1; transition: transform .2s ease; }
+.switch input:checked + span::after { transform: translateX(16px); background: var(--cyan); }
 
 .kpis { display:flex; gap:12px; color: var(--muted); }
 .kpi strong { color: var(--cyan-2); }
 
 .mapCanvas { flex:1; }
 
-/* ===== MapControls layout improvements (mobile-first) ===== */
-.baseRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.segmentedWrap {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 100%;
-}
-
-.ctrlRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.saveRow {
-  display: flex;
-  justify-content: center;
-}
-.btnWide {
-  width: 100%;
-  max-width: 420px;
-}
-
-.kpisRow {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-/* Desktop layout pentru map controls */
-@media (min-width: 900px) {
-  .mapToolbar {
-    display: grid;
-    grid-template-columns: 1fr auto auto 1fr;
-    grid-template-areas:
-      "base base base base"
-      ".    ctrl save ."
-      ".    kpis kpis .";
-    gap: 10px;
-  }
-  .baseRow { grid-area: base; }
-  .ctrlRow { grid-area: ctrl; justify-content: flex-start; }
-  .saveRow { grid-area: save; justify-content: flex-end; }
-  .kpisRow { grid-area: kpis; justify-content: center; }
-}
-
-/* Destination picker */
-.destTabs { display:flex; gap:8px; flex-wrap: wrap; }
+/* ---------------- Destination Picker ---------------- */
+.destTabs { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 .destList { list-style:none; margin:10px 0 0; padding:0; max-height:50vh; overflow:auto; }
 .destItem { width:100%; text-align:left; background:transparent; color:var(--text);
   border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; }
 .destItem:hover { border-color: var(--cyan); }
 .destTitle { font-weight:700; }
 .destSub { font-size:12px; color: var(--muted); }
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 780px) {
+  .form { grid-template-columns: 1fr; }
+  .detail { grid-template-columns: 1fr; }
+  .mapToolbar { flex-direction: column; align-items: center; gap: 10px; }
+  .controls { flex-direction: column; align-items: center; }
+  /* pe mobil, butonul Guardar ruta ajunge natural sub tabs */
+}
