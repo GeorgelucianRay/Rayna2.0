@@ -11,7 +11,7 @@ import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../../AuthContext';
 
 // wake lock strict cross-platform + overlay (fără npm)
-import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict.jsx';
+import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict';
 
 // Fix Leaflet icons
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
