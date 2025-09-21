@@ -1,3 +1,4 @@
+// src/components/Depot/scheduler/SchedulerPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -11,9 +12,7 @@ import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
 import ProgramarDesdeDepositoModal from './ProgramarDesdeDepositoModal';
-
-// hook existent din proiectul tău
-import { useScheduler } from "../hooks/useScheduler";
+import { useScheduler } from '../hooks/useScheduler';
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -28,7 +27,6 @@ export default function SchedulerPage() {
     marcarHecho,
     editarPosicion,
     actualizarProgramado,
-    // notă: nu depind de el pentru inserții din depozit (facem local mai jos)
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
@@ -37,6 +35,15 @@ export default function SchedulerPage() {
   // Modal: Programar desde En Depósito
   const [programarOpen, setProgramarOpen] = useState(false);
 
+  // ── Calendar integration ─────────────────────────────────────────────────────
+  // mark days with programados in current month: { 'YYYY-MM-DD': count }
+  const [markers, setMarkers] = useState({});
+  // single-day filter for Programado/Pendiente/Todos (string 'YYYY-MM-DD' or null)
+  const [dayFilter, setDayFilter] = useState(null);
+  // multi-select zile pentru Completado (set de 'YYYY-MM-DD')
+  const [selectedDates, setSelectedDates] = useState(new Set());
+
+  // dacă rolul e mecanic, ascunde "Todos"
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
@@ -47,6 +54,63 @@ export default function SchedulerPage() {
       calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // Fetch programări pentru luna curentă (pt. markere)
+  useEffect(() => {
+    const loadMonth = async () => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      const start = new Date(y, m, 1).toISOString().slice(0, 10);
+      const end   = new Date(y, m + 1, 0).toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from('contenedores_programados')
+        .select('fecha')
+        .gte('fecha', start)
+        .lte('fecha', end);
+
+      if (error) {
+        console.error('Error loading month markers:', error);
+        setMarkers({});
+        return;
+      }
+      const map = {};
+      (data || []).forEach(r => {
+        const k = r.fecha; // 'YYYY-MM-DD'
+        if (!k) return;
+        map[k] = (map[k] || 0) + 1;
+      });
+      setMarkers(map);
+    };
+    loadMonth();
+  }, [date]);
+
+  // Când schimbi tabul, curăț filtrele specifice
+  useEffect(() => {
+    if (tab === 'completado') {
+      setDayFilter(null); // folosește multi-select în completado
+    } else {
+      setSelectedDates(new Set());
+    }
+  }, [tab]);
+
+  // Lista vizibilă după filtrele de calendar
+  const visibleItems = useMemo(() => {
+    let list = filtered || [];
+    if (tab === 'completado') {
+      if (selectedDates.size > 0) {
+        list = list.filter(r => {
+          const d = r.fecha_salida ? new Date(r.fecha_salida).toISOString().slice(0,10) : '';
+          return selectedDates.has(d);
+        });
+      }
+      return list;
+    }
+    // programado / pendiente / todos → filtru single-day (dacă există)
+    if (dayFilter) {
+      list = list.filter(r => (r.fecha || '').slice(0,10) === dayFilter);
+    }
+    return list;
+  }, [filtered, tab, dayFilter, selectedDates]);
 
   // Inserție contenedor programado/pendiente din En Depósito
   const onProgramarDesdeDeposito = async (contenedorRow, payload) => {
@@ -59,7 +123,7 @@ export default function SchedulerPage() {
       fecha: payload.fecha || null,
       hora: payload.hora || null,
       matricula_camion: payload.matricula_camion || null,
-      estado: payload.estado || 'programado', // 'programado' | 'pendiente'
+      estado: payload.estado || 'programado',
     };
     const { error } = await supabase.from('contenedores_programados').insert([insert]);
     if (error) {
@@ -68,17 +132,21 @@ export default function SchedulerPage() {
       return;
     }
     alert('¡Programación guardada!');
+    // reîmprospătează markerele zilei respective
+    if (insert.fecha) {
+      setMarkers(prev => ({ ...prev, [insert.fecha]: (prev[insert.fecha] || 0) + 1 }));
+    }
   };
 
-  // Export Excel pentru tab-ul curent
+  // Export Excel — exact lista vizibilă după filtre
   const exportarExcelTab = () => {
-    const items = filtered || [];
+    const items = visibleItems || [];
     const hoja = items.map((r) => {
       if (tab === 'completado') {
         return {
           'Matrícula Contenedor': (r.matricula_contenedor || '').toUpperCase(),
           'Cliente/Empresa': r.empresa_descarga || '',
-          'Fecha Salida': r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : '',
+          'Fecha de Salida': r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : '',
           'Posición': r.posicion || '',
           'Naviera': r.naviera || '',
           'Tipo': r.tipo || '',
@@ -86,7 +154,6 @@ export default function SchedulerPage() {
           'Detalles': r.detalles || '',
         };
       }
-      // programado / pendiente / todos
       return {
         'Matrícula Contenedor': (r.matricula_contenedor || '').toUpperCase(),
         'Estado': r.estado || (r.source === 'contenedores' ? 'en_deposito' : ''),
@@ -108,7 +175,7 @@ export default function SchedulerPage() {
       tab === 'programado' ? 'programado.xlsx'
       : tab === 'pendiente' ? 'pendiente.xlsx'
       : tab === 'completado' ? 'completado.xlsx'
-      : 'programacion.xlsx';
+      : 'programacion_todos.xlsx';
 
     XLSX.writeFile(wb, filename);
   };
@@ -120,7 +187,7 @@ export default function SchedulerPage() {
         <div className={styles.vignette} />
 
         <div className={styles.topBar}>
-          <Link to="/depot" className={styles.backBtn}>Depot</Link>
+          <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
           {(role === 'dispecer' || role === 'admin') && (
             <button className={styles.newBtn} onClick={handleProgramarClick}>
@@ -130,7 +197,7 @@ export default function SchedulerPage() {
         </div>
 
         <SchedulerToolbar
-          tab={tab} setTab={setTab}
+          tab={tab} setTab={(t)=>{ setTab(t); setDayFilter(null); setSelectedDates(new Set()); }}
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
           canProgramar={role === 'dispecer' || role === 'admin'}
@@ -140,7 +207,7 @@ export default function SchedulerPage() {
 
         <div className={styles.grid}>
           <SchedulerList
-            items={filtered}
+            items={visibleItems}
             tab={tab}
             loading={loading}
             role={role}
@@ -148,7 +215,27 @@ export default function SchedulerPage() {
           />
 
           <div ref={calRef}>
-            <SchedulerCalendar date={date} setDate={setDate} />
+            <SchedulerCalendar
+              date={date}
+              setDate={setDate}
+              mode={tab}                    // 'todos' | 'programado' | 'pendiente' | 'completado'
+              markers={markers}             // { 'YYYY-MM-DD': count }
+              selectedDates={selectedDates} // set pentru completado
+              onSelectDay={(dayStr) => {    // single-day (non-completado)
+                setDayFilter(dayStr);
+                if (tab !== 'programado' && tab !== 'pendiente' && tab !== 'todos') {
+                  setTab('programado');
+                }
+              }}
+              onToggleDate={(dayStr) => {   // multi-select pentru completado
+                setSelectedDates(prev => {
+                  const next = new Set(prev);
+                  if (next.has(dayStr)) next.delete(dayStr);
+                  else next.add(dayStr);
+                  return next;
+                });
+              }}
+            />
           </div>
         </div>
 
