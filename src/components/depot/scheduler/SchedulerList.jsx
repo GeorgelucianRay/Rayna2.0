@@ -1,4 +1,4 @@
-// src/components/scheduler/SchedulerList.jsx
+// src/components/Depot/scheduler/SchedulerList.jsx
 import React from 'react';
 import styles from './SchedulerStandalone.module.css';
 
@@ -51,7 +51,7 @@ function CompletedItem({ row, onSelect }) {
 
 export default function SchedulerList({ items, tab, loading, role, onSelect }) {
   if (loading) return <div className={styles.card}><p style={{opacity:.85,margin:0}}>Cargando…</p></div>;
-  if (!items || items.length === 0) return <div className={styles.card}><p style={{margin:0}}>Nu există date.</p></div>;
+  if (!items || items.length === 0) return <div className={styles.card}><p style={{margin:0}}>No hay datos.</p></div>;
 
   return (
     <div className={styles.card}>
