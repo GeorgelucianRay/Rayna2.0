@@ -117,3 +117,7 @@
 .dayNumber {
   font-size: 0.95rem;
 }
+/* SchedulerCalendar.module.css (adauga/ajusteaza) */
+.hasPrograms { box-shadow: inset 0 0 0 2px rgba(56,189,248,.35); }
+.dot { width:6px; height:6px; border-radius:50%; background:#22d3ee; display:block; margin:4px auto 0; opacity:.9; }
+.dayNumber { display:block; }
