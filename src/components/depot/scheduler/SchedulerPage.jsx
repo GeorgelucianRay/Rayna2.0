@@ -10,7 +10,8 @@ import SchedulerToolbar from './SchedulerToolbar';
 import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
-import ProgramarModal from './ProgramarModal';
+import ProgramarPickerModal from './ProgramarPickerModal';
+import ProgramarFormModal from './ProgramarFormModal';
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -25,24 +26,26 @@ export default function SchedulerPage() {
     marcarHecho,
     editarPosicion,
     actualizarProgramado,
+    // opțional: poți expune un refetch() din useScheduler ca să reîncarci după salvare
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
-  const [programarOpen, setProgramarOpen] = useState(false);
+
+  // modale programare (2 pași)
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedContainer, setPickedContainer] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+
   const calRef = useRef(null);
 
-  // Los mecánicos no ven "Todos"
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
-  const handleProgramarClick = () => {
-    // Abrimos el modal de programación
-    setProgramarOpen(true);
-    // Si quieres además hacer scroll al calendario en móvil, descomenta lo de abajo:
-    // if (window.innerWidth <= 980 && calRef.current) {
-    //   calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // }
+  const openProgramarFlow = () => {
+    setPickedContainer(null);
+    setFormOpen(false);
+    setPickerOpen(true);
   };
 
   return (
@@ -55,7 +58,7 @@ export default function SchedulerPage() {
           <Link to="/depot" className={styles.backBtn}>Depot</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
           {(role === 'dispecer' || role === 'admin') && (
-            <button className={styles.newBtn} onClick={handleProgramarClick}>
+            <button className={styles.newBtn} onClick={openProgramarFlow}>
               Programar
             </button>
           )}
@@ -95,14 +98,32 @@ export default function SchedulerPage() {
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, pos); setSelected(null); }}
         />
 
-        {/* Modal para crear una programación desde "En Depósito" */}
-        <ProgramarModal
-          open={programarOpen}
-          onClose={() => setProgramarOpen(false)}
-          onDone={() => {
-            // tras guardar, mostramos la pestaña “Programado”
+        {/* PAS 1: alege contenedor */}
+        <ProgramarPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onPick={(it) => {
+            setPickedContainer(it);
+            setFormOpen(true);       // deschide formularul peste
+          }}
+        />
+
+        {/* PAS 2: formular (peste) */}
+        <ProgramarFormModal
+          open={formOpen}
+          contenedor={pickedContainer}
+          onClose={() => {
+            setFormOpen(false);
+            // dacă închizi formularul, poți lăsa picker-ul deschis ca să alegi altul
+            // sau îl închidem și pe el:
+            // setPickerOpen(false);
+          }}
+          onSaved={() => {
+            // după guardado, mergem pe “Programado”
             setTab('programado');
-            setProgramarOpen(false);
+            setFormOpen(false);
+            setPickerOpen(false);
+            // dacă ai un refetch() în useScheduler, apelează-l aici
           }}
         />
       </div>
