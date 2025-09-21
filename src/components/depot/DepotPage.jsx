@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';                   // <- ajustat (un nivel mai sus)
 import { supabase } from '../../supabaseClient';  // <- ajustat (doi pași în sus)
 import styles from './DepotPage.module.css';
+import './DepotGlass.module.css'; // override-uri
 
 // Modaluri (mutate în ./modals)
 import AddContainerModal from './modals/AddContainerModal';
