@@ -37,6 +37,7 @@
   background: linear-gradient(180deg, rgba(8,18,40,0.7), rgba(8,18,40,0.35));
   border-bottom: 1px solid var(--border);
   box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+  gap: 10px;
 }
 
 .brand {
@@ -62,6 +63,18 @@
   box-shadow: 0 0 24px rgba(0,229,255,0.25) inset;
 }
 
+/* Tabs sub brand pe ecrane mici */
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; }
+  .nav {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+}
+
 .main { padding: 18px; }
 
 /* Toolbar */
@@ -71,7 +84,7 @@
 }
 .tabs { display: none; } /* (folosim tab-urile din header) */
 
-.actions { display: flex; gap: 10px; align-items: center; }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .search {
   position: relative; display: flex; align-items: center;
@@ -135,7 +148,7 @@
 .pageBtn:disabled { opacity: .5; cursor: not-allowed; }
 .pageInfo { color: var(--muted); }
 
-/* Modal */
+/* Modal (detalii + add/edit) */
 .modalBackdrop {
   position: fixed; inset: 0; background: rgba(3,10,22,0.6); backdrop-filter: blur(6px);
   display: grid; place-items: center; z-index: 100;
@@ -158,11 +171,51 @@
   padding: 12px 14px; border-top: 1px solid var(--border);
 }
 
+/* Form styles (Añadir / Editar) */
+.form {
+  display: grid;
+  gap: 10px;
+}
+.form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  outline: none;
+}
+.form textarea { resize: vertical; min-height: 100px; }
+.form input:focus,
+.form textarea:focus,
+.form select:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(0,229,255,0.15);
+}
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
 /* Detalle */
 .detail { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
 .detailImg { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
 .detailInfo p { margin: 0 0 8px; color: var(--text); }
 .detailInfo strong { color: var(--cyan-2); }
+
+@media (max-width: 780px) {
+  .detail { grid-template-columns: 1fr; }
+}
 
 .btn {
   background: var(--glass); color: var(--text);
@@ -187,6 +240,8 @@
   text-align: center;
   box-shadow: 0 16px 50px rgba(0,0,0,0.5);
 }
+
+/* ===== Map panel ===== */
 .mapPanelBackdrop {
   position: fixed; inset: 0; z-index: 120;
   background: rgba(3,10,22,0.7); backdrop-filter: blur(6px);
@@ -204,10 +259,18 @@
 .dotGlow { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px;
   background: radial-gradient(circle, var(--cyan) 0%, transparent 70%); box-shadow: 0 0 12px var(--cyan), 0 0 20px var(--cyan);
 }
+
+/* Toolbar existentă (rămâne, dar o să o "supra-scriem" pentru mobil) */
 .mapToolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border); }
-.segmented { display:inline-flex; background: var(--glass); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-.segBtn { padding:6px 10px; color:var(--text); background:transparent; border:none; cursor:pointer; }
+
+/* Segmented */
+.segmented {
+  display:inline-flex; background: var(--glass); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; flex-wrap: wrap;
+}
+.segBtn { padding:6px 10px; color:var(--text); background:transparent; border:none; cursor:pointer; min-width: 90px; }
 .segActive { background: rgba(0,229,255,0.18); color: var(--cyan); }
+
 .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); }
 .switch input { display:none; }
@@ -219,7 +282,64 @@
 .kpi strong { color: var(--cyan-2); }
 
 .mapCanvas { flex:1; }
-.destTabs { display:flex; gap:8px; }
+
+/* ===== MapControls layout improvements (mobile-first) ===== */
+.baseRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.segmentedWrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.ctrlRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.saveRow {
+  display: flex;
+  justify-content: center;
+}
+.btnWide {
+  width: 100%;
+  max-width: 420px;
+}
+
+.kpisRow {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Desktop layout pentru map controls */
+@media (min-width: 900px) {
+  .mapToolbar {
+    display: grid;
+    grid-template-columns: 1fr auto auto 1fr;
+    grid-template-areas:
+      "base base base base"
+      ".    ctrl save ."
+      ".    kpis kpis .";
+    gap: 10px;
+  }
+  .baseRow { grid-area: base; }
+  .ctrlRow { grid-area: ctrl; justify-content: flex-start; }
+  .saveRow { grid-area: save; justify-content: flex-end; }
+  .kpisRow { grid-area: kpis; justify-content: center; }
+}
+
+/* Destination picker */
+.destTabs { display:flex; gap:8px; flex-wrap: wrap; }
 .destList { list-style:none; margin:10px 0 0; padding:0; max-height:50vh; overflow:auto; }
 .destItem { width:100%; text-align:left; background:transparent; color:var(--text);
   border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; }
