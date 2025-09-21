@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from './Layout';
+import Layout from "../../Layout';
 import styles from './MapStandalone.module.css'; // Corrected based on your file structure
 
 // The typo was in the viewBox attribute below
