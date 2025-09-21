@@ -1,16 +1,14 @@
+// src/components/Depot/DepotPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../Layout';                   // <- ajustat (un nivel mai sus)
-import { supabase } from '../../supabaseClient';  // <- ajustat (doi pași în sus)
+import Layout from '../Layout';
+import { supabase } from '../../supabaseClient';
 import styles from './DepotPage.module.css';
-import './DepotGlass.module.css'; // override-uri
+// Atenție: un .module.css importat "fără styles" NU are efect global. Dacă ai override-uri globale,
+// mută-le într-un fișier .css normal, ex: "./DepotGlass.css" și importă-l așa:
+// import './DepotGlass.css';
 
-// Modaluri (mutate în ./modals)
-import AddContainerModal from './modals/AddContainerModal';
-import EditContainerModal from './modals/EditContainerModal';
-import SalidaContainerModal from './modals/SalidaContainerModal';
-
-/* Iconițe */
+/* Iconos */
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="8"></circle>
@@ -23,20 +21,28 @@ const PlusIcon = () => (
   </svg>
 );
 
+/* Modales */
+import AddContainerModal from './modals/AddContainerModal';
+import EditContainerModal from './modals/EditContainerModal';
+import SalidaContainerModal from './modals/SalidaContainerModal';
+
 function DepotPage() {
   const ITEMS_PER_PAGE = 25;
+  const navigate = useNavigate();
+
+  // Tabs: 'contenedores' | 'contenedores_rotos' | 'contenedores_salidos'
   const [activeTab, setActiveTab] = useState('contenedores');
+
+  // Lista + UI
   const [containers, setContainers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Căutare + paginare
+  // Búsqueda + paginación
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const navigate = useNavigate();
-
-  // Modaluri & state
+  // Estados para modales
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newMatricula, setNewMatricula] = useState('');
   const [newNaviera, setNewNaviera] = useState('');
@@ -55,7 +61,7 @@ function DepotPage() {
 
   const [selectedContainer, setSelectedContainer] = useState(null);
 
-  // Sesiune
+  // Sesión
   useEffect(() => {
     const checkSession = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -64,7 +70,7 @@ function DepotPage() {
     checkSession();
   }, [navigate]);
 
-  // FETCH
+  // Fetch
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -106,7 +112,7 @@ function DepotPage() {
         return;
       }
 
-      // rotos / salidos — paginare server
+      // 'contenedores_rotos' | 'contenedores_salidos'
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
@@ -131,7 +137,10 @@ function DepotPage() {
     fetchData();
   }, [activeTab, currentPage, searchTerm]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)), [totalCount]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)),
+    [totalCount]
+  );
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -139,7 +148,7 @@ function DepotPage() {
     setSearchTerm('');
   };
 
-  // ADD
+  /* ---------- ADD ---------- */
   const openAddModal = () => {
     setNewMatricula('');
     setNewNaviera('');
@@ -155,10 +164,10 @@ function DepotPage() {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     const data = {
-      matricula_contenedor: newMatricula,
-      naviera: newNaviera,
-      tipo: newTipo,
-      posicion: newPosicion,
+      matricula_contenedor: newMatricula || null,
+      naviera: newNaviera || null,
+      tipo: newTipo || null,
+      posicion: newPosicion || null,
       matricula_camion: newMatriculaCamion || null,
     };
 
@@ -167,7 +176,7 @@ function DepotPage() {
       const { error } = await supabase.from('contenedores_rotos').insert([data]);
       if (error) {
         console.error('Error adding broken container:', error);
-        alert('A apărut o eroare la adăugarea containerului defect.');
+        alert('Error al añadir contenedor defectuoso.');
       } else {
         setActiveTab('contenedores_rotos');
       }
@@ -176,7 +185,7 @@ function DepotPage() {
       const { error } = await supabase.from('contenedores').insert([data]);
       if (error) {
         console.error('Error adding container:', error);
-        alert('A apărut o eroare la adăugarea containerului.');
+        alert('Error al añadir contenedor.');
       } else {
         setActiveTab('contenedores');
       }
@@ -186,75 +195,114 @@ function DepotPage() {
     setSearchTerm('');
   };
 
-  // EDIT
+  /* ---------- EDIT ---------- */
   const openEditModal = (container) => {
     setSelectedContainer(container);
     setEditPosicion(container.posicion || '');
     setIsEditModalOpen(true);
   };
 
+  // ✅ permite editar posición para TODOS (incl. programados)
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
     const { id } = selectedContainer;
 
-    const table = selectedContainer.__from === 'programados' ? 'contenedores_programados' : activeTab;
-    const patch = selectedContainer.__from === 'programados' ? {} : { posicion: editPosicion || null };
+    const table =
+      selectedContainer.__from === 'programados'
+        ? 'contenedores_programados'
+        : activeTab;
 
-    if (Object.keys(patch).length === 0) {
-      setIsEditModalOpen(false);
-      return;
-    }
+    const patch = { posicion: editPosicion || null };
 
     const { error } = await supabase.from(table).update(patch).eq('id', id);
     if (error) {
       console.error('Error updating position:', error);
+      alert(`Error al actualizar posición:\n${error.message || error}`);
     } else {
       setContainers(prev => prev.map(c => (c.id === id ? { ...c, ...patch } : c)));
     }
     setIsEditModalOpen(false);
   };
 
-  // SALIDA
+  /* ---------- SALIDA ---------- */
   const openSalidaModal = (container) => {
     setSelectedContainer(container);
     setSalidaMatriculaCamion('');
     setIsSalidaModalOpen(true);
   };
 
+  // ❗ Salida NO se permite para "programados" desde Depot (se hace desde Programación → Hecho)
   const handleSalidaSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
 
-    const { id, estado: selectedEstado, detalles: selectedDetalles, matricula_contenedor, __from, ...rest } = selectedContainer;
+    const {
+      id,
+      __from,
+      matricula_contenedor,
+      naviera,
+      tipo,
+      posicion,
+      estado: estadoActual,
+      detalles,
+    } = selectedContainer;
 
     try {
       if (__from === 'programados') {
-        alert('Este contenedor está programado. Completa la salida desde "Programación" (Hecho).');
+        alert('Este contenedor está programado. Realiza la salida desde "Programación" → Hecho.');
         setIsSalidaModalOpen(false);
         return;
       }
 
-      await supabase.from('contenedores_programados').delete().eq('matricula_contenedor', matricula_contenedor);
+      // Si había una programación con la misma matrícula, la limpiamos
+      await supabase
+        .from('contenedores_programados')
+        .delete()
+        .eq('matricula_contenedor', matricula_contenedor);
 
-      const newRecord = {
-        ...rest,
-        matricula_contenedor,
-        estado: selectedEstado || null,
-        detalles: selectedDetalles || null,
+      // ⚙️ Construimos payload explícito según columnas de `contenedores_salidos`
+      const salidaPayload = {
+        matricula_contenedor: matricula_contenedor || null,
+        naviera: naviera || null,
+        tipo: tipo || null,
+        posicion: posicion || null,
+        estado: estadoActual || 'salido',   // quita este campo si NO existe en tu tabla
+        detalles: detalles || null,
         matricula_camion: salidaMatriculaCamion || null,
+        // si tu tabla tiene `fecha_salida` con DEFAULT NOW(), no envíes nada aquí
       };
-      const { error: insertError } = await supabase.from('contenedores_salidos').insert([newRecord]);
-      if (insertError) throw insertError;
 
-      const { error: deleteError } = await supabase.from(activeTab).delete().eq('id', id);
-      if (deleteError) throw deleteError;
+      const { error: insertError } = await supabase
+        .from('contenedores_salidos')
+        .insert([salidaPayload]);
 
+      if (insertError) {
+        console.error('[SALIDA insert error]', insertError);
+        alert(`Error al registrar la salida:\n${insertError.message || insertError}`);
+        setIsSalidaModalOpen(false);
+        return;
+      }
+
+      // Eliminamos el registro de la tabla activa (contenedores o contenedores_rotos)
+      const { error: deleteError } = await supabase
+        .from(activeTab)
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        console.error('[SALIDA delete error]', deleteError);
+        alert(`Error al limpiar el contenedor de "${activeTab}":\n${deleteError.message || deleteError}`);
+        setIsSalidaModalOpen(false);
+        return;
+      }
+
+      // UI
       setContainers(prev => prev.filter(c => c.id !== id));
       setActiveTab('contenedores_salidos');
     } catch (err) {
-      console.error('Error en salida:', err);
-      alert('A apărut o eroare la înregistrarea ieșirii containerului.');
+      console.error('Error en salida (catch):', err);
+      alert(`Ocurrió un error al registrar la salida.\n${err?.message || ''}`);
     }
 
     setIsSalidaModalOpen(false);
@@ -263,7 +311,7 @@ function DepotPage() {
   return (
     <Layout backgroundClassName="depotBackground">
       <div className={styles.pageWrap}>
-        {/* TABURI */}
+        {/* Tabs */}
         <div className={styles.depotHeader}>
           <button
             className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`}
@@ -285,7 +333,7 @@ function DepotPage() {
           </button>
         </div>
 
-        {/* BUTOANE mari sub taburi */}
+        {/* Botones grandes */}
         <div className={styles.extraButtons}>
           <button
             className={`${styles.actionButton} ${styles.programButton}`}
@@ -301,13 +349,13 @@ function DepotPage() {
           </button>
         </div>
 
-        {/* BARĂ DE CĂUTARE + ADD */}
+        {/* Toolbar */}
         <div className={styles.toolbar}>
           <div className={styles.searchBar}>
             <SearchIcon />
             <input
               type="text"
-              placeholder="Buscar por matrícula..."
+              placeholder="Buscar por matrícula…"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -318,14 +366,14 @@ function DepotPage() {
           {activeTab === 'contenedores' && (
             <button className={styles.addButton} onClick={openAddModal}>
               <PlusIcon />
-              Añadir Contenedor
+              Añadir contenedor
             </button>
           )}
         </div>
 
-        {/* LISTĂ */}
+        {/* Lista */}
         {loading ? (
-          <p className={styles.loadingText}>Cargando...</p>
+          <p className={styles.loadingText}>Cargando…</p>
         ) : containers.length === 0 ? (
           <p className={styles.noDataText}>No hay contenedores.</p>
         ) : (
@@ -339,14 +387,17 @@ function DepotPage() {
                       <p className={styles.cardNaviera}>{container.naviera}</p>
                     </div>
 
-                    {container.__from !== 'programados' && activeTab !== 'contenedores_salidos' && (
+                    {/* Editar SIEMPRE; Salida solo si NO es programado y no estamos ya en salidos */}
+                    {activeTab !== 'contenedores_salidos' && (
                       <div className={styles.cardActions}>
                         <button className={styles.cardButton} onClick={() => openEditModal(container)}>
                           Editar
                         </button>
-                        <button className={styles.cardButtonSalida} onClick={() => openSalidaModal(container)}>
-                          Salida
-                        </button>
+                        {container.__from !== 'programados' && (
+                          <button className={styles.cardButtonSalida} onClick={() => openSalidaModal(container)}>
+                            Salida
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -357,27 +408,23 @@ function DepotPage() {
                       {new Date(container.created_at).toLocaleDateString()}
                     </p>
 
-                    {container.tipo && (
-                      <p><strong>Tipo:</strong> {container.tipo}</p>
-                    )}
-                    {container.posicion && (
-                      <p><strong>Posición:</strong> {container.posicion}</p>
-                    )}
+                    {container.tipo && <p><strong>Tipo:</strong> {container.tipo}</p>}
+                    {container.posicion && <p><strong>Posición:</strong> {container.posicion}</p>}
 
+                    {/* Badge para programados dentro de En Depósito */}
                     {activeTab === 'contenedores' && container.__from === 'programados' && (
                       <p><span className={styles.badgeOrange}>Programado</span></p>
                     )}
 
-                    {(activeTab === 'contenedores_rotos' || activeTab === 'contenedores_salidos') &&
-                      container.detalles && (
-                        <p><strong>Detalles:</strong> {container.detalles}</p>
-                      )
-                    }
-
-                    {activeTab === 'contenedores_salidos' && container.matricula_camion && (
-                      <p><strong>Matrícula Camión:</strong> {container.matricula_camion}</p>
+                    {(activeTab === 'contenedores_rotos' || activeTab === 'contenedores_salidos') && container.detalles && (
+                      <p><strong>Detalles:</strong> {container.detalles}</p>
                     )}
 
+                    {activeTab === 'contenedores_salidos' && container.matricula_camion && (
+                      <p><strong>Matrícula camión:</strong> {container.matricula_camion}</p>
+                    )}
+
+                    {/* Info extra si viene de programados */}
                     {activeTab === 'contenedores' && container.__from === 'programados' && (
                       <>
                         {container.empresa_descarga && <p><strong>Empresa:</strong> {container.empresa_descarga}</p>}
@@ -391,7 +438,7 @@ function DepotPage() {
               ))}
             </div>
 
-            {/* PAGINARE */}
+            {/* Paginación */}
             <div className={styles.paginationContainer}>
               <button
                 className={styles.paginationButton}
@@ -414,7 +461,7 @@ function DepotPage() {
           </>
         )}
 
-        {/* MODALURI */}
+        {/* Modales */}
         <AddContainerModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
