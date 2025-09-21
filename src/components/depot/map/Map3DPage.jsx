@@ -5,143 +5,138 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import styles from './Map3DStandalone.module.css';
+
+// helpers 3D
 import createGround from '../../threeWorld/createGround';
 import createSky from '../../threeWorld/createSky';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
+
   const wrapRef = useRef(null);
   const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
   const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
   const controlsRef = useRef(null);
+  const rafRef = useRef(0);
   const skyRef = useRef(null);
-  const [isNight, setIsNight] = useState(false);
+
+  // ui: zi / noapte
+  const [mode, setMode] = useState('day'); // 'day' | 'night'
 
   useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // ----- init renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    wrap.appendChild(renderer.domElement);
+    renderer.shadowMap.enabled = true;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
     rendererRef.current = renderer;
 
-    // Scene
+    // canvas sizing
+    const resize = () => {
+      if (!wrapRef.current) return;
+      const w = wrapRef.current.clientWidth;
+      const h = wrapRef.current.clientHeight;
+      renderer.setSize(w, h);
+      if (cameraRef.current) {
+        cameraRef.current.aspect = w / h;
+        cameraRef.current.updateProjectionMatrix();
+      }
+    };
+
+    // ----- scene + camera
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      wrap.clientWidth / wrap.clientHeight,
-      0.1,
-      1500
-    );
-    camera.position.set(40, 55, 90);
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
+    camera.position.set(70, 55, 95);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    // Controls
+    // ----- orbit
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.maxPolarAngle = Math.PI * 0.49;
+    controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI * 0.49;
     controlsRef.current = controls;
 
-    // Sky + lights
-    const sky = createSky();
+    // ----- sky + lights
+    const sky = createSky({ mode: 'day' });
     scene.add(sky.group);
-    sky.setMode('day');
     skyRef.current = sky;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    ambient.name = 'ambient';
-    scene.add(ambient);
-
-    // Ground (automat încadrat)
+    // ----- ground (asfalt + marcaje)
+    // Parametrii de poziționare pot fi reglați rapid aici:
     const ground = createGround({
-      width: 90,     // lățimea asfaltului (X)
-      depth: 95,     // lungimea asfaltului (Z)
-      marginX: 1.5,  // margine la stânga/dreapta
-      marginZ: 2.0,  // margine sus/jos
-      laneGap: 0.10, // spațiul dintre benzi
-      color: 0x2b2f33
+      width: 120,     // lățimea totală a asfaltului (X)
+      depth: 95,      // lungimea totală (Z)
+      color: 0x2b2f33,
+
+      // bloc ABC (orizontal), 10 sloturi
+      abc: {
+        // poziționare relativă: start la stânga, la 12 unități de margine
+        marginLeft: 12,
+        centerZ: -8,        // coboră/urcă benzile pe Z
+        reverseNumbers: true, // numerotare 10→1 la A/C
+      },
+
+      // bloc DEF (vertical), 7 sloturi
+      def: {
+        marginRight: 10, // cât spațiu lăsăm până la marginea din dreapta a asfaltului
+        startZ: -2,      // punctul de plecare pe Z
+        gapToABC: 18,    // distanța vizuală față de ABC
+      },
     });
-    ground.name = 'ground';
     scene.add(ground);
 
-    // Floor mare (sub asfalt) doar ca fallback
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(2000, 2000),
-      new THREE.MeshBasicMaterial({ color: 0x111418 })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.002;
-    scene.add(floor);
+    // ----- mount
+    wrapRef.current.appendChild(renderer.domElement);
+    resize();
+    window.addEventListener('resize', resize);
 
-    // Resize
-    const onResize = () => {
-      camera.aspect = wrap.clientWidth / wrap.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(wrap.clientWidth, wrap.clientHeight);
-    };
-    window.addEventListener('resize', onResize);
-
-    // Loop
-    let raf = 0;
-    const tick = () => {
+    // ----- animate
+    const loop = () => {
       controls.update();
       renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(loop);
     };
-    tick();
+    loop();
 
-    // Cleanup
+    // cleanup
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
       controls.dispose();
       renderer.dispose();
-      wrap.removeChild(renderer.domElement);
+      if (wrapRef.current && renderer.domElement.parentNode === wrapRef.current) {
+        wrapRef.current.removeChild(renderer.domElement);
+      }
     };
   }, []);
 
-  // Zi / Noapte
+  // aplică mod zi/noapte asupra cerului
   useEffect(() => {
-    const sky = skyRef.current;
-    const scene = sceneRef.current;
-    if (!sky || !scene) return;
-    const amb = scene.getObjectByName('ambient');
-    if (isNight) {
-      sky.setMode('night');
-      if (amb) amb.intensity = 0.25;
-    } else {
-      sky.setMode('day');
-      if (amb) amb.intensity = 0.6;
-    }
-  }, [isNight]);
+    if (!skyRef.current) return;
+    skyRef.current.setMode(mode);
+  }, [mode]);
 
   return (
-    <div className={styles.root}>
+    <div className={styles.page}>
       <header className={styles.hud}>
-        <button className={styles.backBtn} onClick={() => navigate('/depot')}>
-          <span className={styles.backIcon}>←</span> Volver al Depot
-        </button>
+        <button className={styles.back} onClick={() => navigate('/depot')}>← Volver al Depot</button>
         <h1 className={styles.title}>Mapa 3D · Depósito</h1>
         <button
-          className={styles.modeBtn}
-          onClick={() => setIsNight(v => !v)}
-          aria-label="Cambiar modo día/noche"
+          className={styles.mode}
+          onClick={() => setMode(m => (m === 'day' ? 'night' : 'day'))}
+          title="Cambiar modo"
         >
-          {isNight ? '🌙 Noche' : '🌞 Día'}
+          {mode === 'day' ? '🌙 Noche' : '🌞 Día'}
         </button>
       </header>
-      <div ref={wrapRef} className={styles.canvasWrap} />
+
+      <div className={styles.canvasWrap} ref={wrapRef} />
     </div>
   );
 }
