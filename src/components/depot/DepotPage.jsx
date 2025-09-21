@@ -170,6 +170,81 @@ function DepotPage() {
       posicion: newPosicion || null,
       matricula_camion: newMatriculaCamion || null,
     };
+    // Exportă în Excel TOATE elementele din "En Depósito" (contenedores ∪ programados),
+// aplicând același filtru (searchTerm) și sort (created_at desc), dar fără paginare.
+const handleExportExcel = async () => {
+  try {
+    // 1) citește date brute
+    const [{ data: enDeposito, error: errA }, { data: programados, error: errB }] = await Promise.all([
+      supabase.from('contenedores')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase.from('contenedores_programados')
+        .select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (errA) throw errA;
+    if (errB) throw errB;
+
+    // 2) combină + filtrează (ca în fetchData)
+    const combinedRaw = [
+      ...(enDeposito || []).map(x => ({ ...x, __from: 'contenedores' })),
+      ...(programados || []).map(x => ({ ...x, __from: 'programados' })),
+    ];
+
+    const filtered = searchTerm
+      ? combinedRaw.filter(x =>
+          (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : combinedRaw;
+
+    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // 3) mapare către rânduri “curate” pentru Excel
+    const rows = filtered.map((x, idx) => ({
+      '#': idx + 1,
+      'Matrícula Contenedor': x.matricula_contenedor || '',
+      'Naviera': x.naviera || '',
+      'Tipo': x.tipo || '',
+      'Posición': x.posicion || '',
+      'Estado': x.estado || '',
+      'Matrícula Camión': x.matricula_camion || '',
+      'Empresa Descarga (programado)': x.empresa_descarga || '',
+      'Fecha Programada': x.fecha || '',              // date (YYYY-MM-DD)
+      'Hora Programada': x.hora || '',                // time (HH:MM:SS)
+      'Desde Programados': x.__from === 'programados' ? 'Sí' : 'No',
+      'Fecha Entrada (created_at)': x.created_at ? new Date(x.created_at).toLocaleString() : '',
+    }));
+
+    if (rows.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+
+    // 4) generează workbook + foaie
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows, { cellDates: false });
+
+    // opțional: lățimi coloane
+    const colWidths = Object.keys(rows[0]).map(() => ({ wch: 22 }));
+    colWidths[0] = { wch: 5 }; // pentru coloana "#"
+    ws['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(wb, ws, 'En Deposito');
+
+    // 5) nume fișier
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fname = `Depot_EnDeposito_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.xlsx`;
+
+    // 6) descarcă
+    XLSX.writeFile(wb, fname);
+  } catch (err) {
+    console.error('[Excel export error]', err);
+    alert(`No se pudo generar el Excel:\n${err.message || err}`);
+  }
+};
 
     if (isBroken) {
       data.detalles = newDetalles || null;
