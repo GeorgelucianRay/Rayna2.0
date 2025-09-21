@@ -255,3 +255,16 @@
   color: var(--muted);
   font-size: 13.5px;
 }
+.excelButton {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.excelButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
