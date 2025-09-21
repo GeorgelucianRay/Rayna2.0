@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './DepotPage.module.css';
+import styles from './AddContainerModal.module.css';
 
 function AddContainerModal({
   isOpen,
