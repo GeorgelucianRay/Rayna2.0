@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../../supabaseClient';
 
 export function useScheduler() {
   const [tab, setTab] = useState('todos');
