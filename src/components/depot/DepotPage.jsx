@@ -1,6 +1,7 @@
 // src/components/Depot/DepotPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import Layout from '../Layout';
 import { supabase } from '../../supabaseClient';
 import styles from './DepotPage.module.css';
