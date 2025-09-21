@@ -1,95 +1,114 @@
+// src/components/depot/map/Map3DPage.jsx
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import createGround from '../../threeWorld/createGround';
-import createSky from '../../threeWorld/createSky';
 import styles from './Map3DStandalone.module.css';
 
+// helpers 3D
+import createGround from '../../threeWorld/createGround';
+import createSky from '../../threeWorld/createSky';
+
 export default function Map3DPage() {
-  const mountRef = useRef(null);
-  const [night, setNight] = useState(false);
+  const navigate = useNavigate();
+
+  const wrapRef = useRef(null);
+  const rendererRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
+  const skyRef = useRef(null);
+
+  const [isNight, setIsNight] = useState(false);
 
   useEffect(() => {
-    const host = mountRef.current;
-    if (!host) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
 
-    // renderer
+    // — Renderer —
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(host.clientWidth, host.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    host.appendChild(renderer.domElement);
+    wrap.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
-    // scene
+    // — Scene —
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xbad7ff); // va fi ascuns de cupola "sky"
+    sceneRef.current = scene;
 
-    // camera
+    // — Camera —
     const camera = new THREE.PerspectiveCamera(
-      55,
-      host.clientWidth / host.clientHeight,
+      60,
+      wrap.clientWidth / wrap.clientHeight,
       0.1,
-      2000
+      1200
     );
-    camera.position.set(60, 60, 60);
+    camera.position.set(40, 55, 80);
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
+    cameraRef.current = camera;
 
-    // controls
+    // — Controls —
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
     controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI * 0.49; // nu permite să intri sub plan
+    controlsRef.current = controls;
 
-    // sky + lights
-    const sky = createSky({ radius: 900 });
-    scene.add(sky);
+    // — Lumină —
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(60, 120, 40);
+    dir.castShadow = false;
+    scene.add(dir);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(120, 160, 80);
-    scene.add(sun);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    ambient.name = 'ambient';
+    scene.add(ambient);
 
-    const amb = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(amb);
+    // — Sky (cupolă gradient) —
+    const sky = createSky(); // are setMode('day' | 'night')
+    scene.add(sky.group);
+    sky.setMode('day');
+    skyRef.current = sky;
 
-    const applyMode = (isNight) => {
-      if (isNight) {
-        renderer.setClearColor(0x0b1220, 1);
-        amb.color.set(0xbfd4ff); amb.intensity = 0.35;
-        sun.color.set(0xaec8ff); sun.intensity = 0.6;
-        sky.userData.setNight?.(true);
-      } else {
-        renderer.setClearColor(0xcfefff, 1);
-        amb.color.set(0xffffff); amb.intensity = 0.75;
-        sun.color.set(0xffffff); sun.intensity = 0.9;
-        sky.userData.setNight?.(false);
-      }
-    };
-    applyMode(night);
-
-    // ground (centred @ 0,0,0)
+    // — Ground cu marcaje —
     const ground = createGround({
-      // îl ținem centrat și suficient de mare
-      width: 90,
-      depth: 80,
+      width: 90,          // X total asfalt
+      depth: 95,          // Z total asfalt
       color: 0x2b2f33,
-      abcX: -18,     // unde „cade” ABC pe X
-      defX: 16,      // unde „cade” DEF pe X
-      gapBetween: 6, // distanța ABC↔DEF pe Z
-      numbersReversed: true
+
+      // încadrări exacte (explicate în mesajul anterior)
+      abcOffsetX: 43.5,   // capătul din dreapta al lui ABC ≈ marginea asfaltului - 1.5m
+      defOffsetX: 34.42,  // face ca F ≈ marginea asfaltului - 1.5m
+      abcToDefGap: 2.0,   // spațiu pe Z între C și D (poți regla 1.5–3)
     });
+    ground.name = 'ground';
     scene.add(ground);
 
-    // frame ground: box fit
-    const box = new THREE.Box3().setFromObject(ground);
-    const size = new THREE.Vector3(); box.getSize(size);
-    const center = new THREE.Vector3(); box.getCenter(center);
+    // — Floor foarte mare (capturare umbre / navigare plăcută) —
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.MeshBasicMaterial({ color: 0x111418 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.001;
+    scene.add(floor);
 
-    controls.target.copy(center);
-    const maxDim = Math.max(size.x, size.z);
-    const dist = maxDim * 1.4;
-    camera.position.set(center.x + dist, center.y + dist, center.z + dist);
-    camera.lookAt(center);
+    // — Resize —
+    const onResize = () => {
+      if (!wrap) return;
+      camera.aspect = wrap.clientWidth / wrap.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    };
+    window.addEventListener('resize', onResize);
 
-    // animate
-    let raf;
+    // — Loop —
+    let raf = 0;
     const tick = () => {
       controls.update();
       renderer.render(scene, camera);
@@ -97,50 +116,51 @@ export default function Map3DPage() {
     };
     tick();
 
-    // resize
-    const onResize = () => {
-      const w = host.clientWidth, h = host.clientHeight;
-      camera.aspect = w / h; camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    const ro = new ResizeObserver(onResize);
-    ro.observe(host);
-
-    // listen for external night toggle (optional)
-    const onMode = (e) => applyMode(!!e.detail?.night);
-    window.addEventListener('map3d-mode-toggle', onMode);
-
+    // — Cleanup —
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect();
-      window.removeEventListener('map3d-mode-toggle', onMode);
+      window.removeEventListener('resize', onResize);
+      controls.dispose();
       renderer.dispose();
-      host.removeChild(renderer.domElement);
+      wrap.removeChild(renderer.domElement);
     };
-  }, []); // mount once
+  }, []);
 
-  // local toggle -> event (sky ascultă)
+  // toggle zi/noapte
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('map3d-mode-toggle', { detail: { night } }));
-  }, [night]);
+    const sky = skyRef.current;
+    const scene = sceneRef.current;
+    if (!sky || !scene) return;
+
+    const ambient = scene.getObjectByName('ambient');
+    if (isNight) {
+      sky.setMode('night');
+      if (ambient) ambient.intensity = 0.25;
+    } else {
+      sky.setMode('day');
+      if (ambient) ambient.intensity = 0.6;
+    }
+  }, [isNight]);
 
   return (
-    <div className={styles.wrap}>
-      <div className={styles.headerBar}>
-        <button className={styles.backBtn} onClick={() => history.back()}>
-          ← Volver al Depot
+    <div className={styles.root}>
+      <header className={styles.hud}>
+        <button className={styles.backBtn} onClick={() => navigate('/depot')}>
+          <span className={styles.backIcon}>←</span> Volver al Depot
         </button>
+
         <h1 className={styles.title}>Mapa 3D · Depósito</h1>
+
         <button
           className={styles.modeBtn}
-          onClick={() => setNight(v => !v)}
-          title={night ? 'Día' : 'Noche'}
+          onClick={() => setIsNight(v => !v)}
+          aria-label="Cambiar modo día/noche"
         >
-          {night ? '☀️ Día' : '🌙 Noche'}
+          {isNight ? '🌙 Noche' : '🌞 Día'}
         </button>
-      </div>
+      </header>
 
-      <div ref={mountRef} className={styles.canvasHost} />
+      <div ref={wrapRef} className={styles.canvasWrap} />
     </div>
   );
 }
