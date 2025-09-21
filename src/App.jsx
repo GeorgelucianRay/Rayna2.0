@@ -3,7 +3,7 @@ import './index.css';
 
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
-// --- Pagina mutată ---
+// --- Pagina mutată (rămâne la fel) ---
 import MiPerfilPage from './pages/MiPerfilPage.jsx';
 
 // --- Toate celelalte componente/pagini rămân în dosarul original 'components' ---
@@ -14,7 +14,13 @@ import RestaurarContrasena from './components/RestaurarContrasena.jsx';
 import ActualizarContrasena from './components/ActualizarContrasena.jsx';
 import HomepageDispecer from './components/HomepageDispecer.jsx';
 import HomepageSofer from './components/HomepageSofer.jsx';
-import DepotPage from './components/DepotPage.jsx';
+
+// --- DEPOT (mutate sub components/Depot) ---
+import DepotPage from './components/depot/DepotPage';
+import SchedulerPage from './components/depot/scheduler/SchedulerPage';
+import Map3DPage from './components/depot/map/Map3DPage';
+
+// --- Restul paginilor existente ---
 import GpsProPage from './components/GpsPro/GpsProPage.jsx';
 import GpsPage from './components/GpsPage.jsx';
 import CamionPage from './components/CamionPage.jsx';
@@ -22,8 +28,6 @@ import RemorcaPage from './components/RemorcaPage.jsx';
 import TallerPage from './components/TallerPage.jsx';
 import ReparatiiPage from './components/ReparatiiPage.jsx';
 import CalculadoraNomina from './components/nomina/CalculadoraNomina';
-import MapPage from './components/MapPage.jsx';
-import SchedulerPage from './pages/SchedulerPage.jsx';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
@@ -43,10 +47,16 @@ function App() {
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
+      {/* DEPOT */}
       <Route path="/depot" element={<DepotPage />} />
+      <Route path="/programacion" element={<SchedulerPage />} />
+      <Route path="/mapa" element={<Map3DPage />} />
+
+      {/* GPS */}
       <Route path="/gps" element={<GpsPage />} />
       <Route path="/gps-pro" element={<GpsProPage />} />
 
+      {/* Profil */}
       <Route path="/mi-perfil" element={<MiPerfilPage />} />
 
       {/* Vacaciones */}
@@ -70,10 +80,6 @@ function App() {
 
       {/* Nómina */}
       <Route path="/calculadora-nomina" element={<CalculadoraNomina />} />
-
-      {/* Extra */}
-      <Route path="/mapa" element={<MapPage />} />
-      <Route path="/programacion" element={<SchedulerPage />} />
 
       {/* Pagina 404 */}
       <Route
