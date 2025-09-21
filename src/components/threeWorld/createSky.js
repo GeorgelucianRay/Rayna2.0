@@ -1,51 +1,53 @@
-// src/components/threeWorld/createSky.js
 import * as THREE from 'three';
 
-export default function createSky({
-  radius = 320,
-  topColor = 0x87ceeb,      // albastru senin sus
-  bottomColor = 0xb3e5fc    // albastru deschis jos
-} = {}) {
+export default function createSky({ radius = 800 } = {}) {
   const g = new THREE.Group();
 
-  // cupolă cer – sferă inversată cu gradient
+  const uniforms = {
+    topDay:    { value: new THREE.Color(0x87ceeb) },
+    botDay:    { value: new THREE.Color(0xcfefff) },
+    topNight:  { value: new THREE.Color(0x0b1220) },
+    botNight:  { value: new THREE.Color(0x151d33) },
+    mix:       { value: 0.0 } // 0 = zi, 1 = noapte
+  };
+
   const geo = new THREE.SphereGeometry(radius, 32, 24);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
-    uniforms: {
-      topColor:    { value: new THREE.Color(topColor) },
-      bottomColor: { value: new THREE.Color(bottomColor) },
-      offset:      { value: 0.2 },
-      exponent:    { value: 0.9 },
-    },
+    uniforms,
     vertexShader: `
       varying vec3 vPos;
-      void main(){
+      void main() {
         vPos = (modelMatrix * vec4(position,1.0)).xyz;
         gl_Position = projectionMatrix * viewMatrix * vec4(vPos,1.0);
-      }`,
+      }
+    `,
     fragmentShader: `
-      uniform vec3 topColor;
-      uniform vec3 bottomColor;
-      uniform float offset;
-      uniform float exponent;
+      uniform vec3 topDay;   uniform vec3 botDay;
+      uniform vec3 topNight; uniform vec3 botNight;
+      uniform float mix;
       varying vec3 vPos;
-      void main(){
-        float h = normalize(vPos).y;
-        float f = max(pow(max(h + offset, 0.0), exponent), 0.0);
-        gl_FragColor = vec4(mix(bottomColor, topColor, f), 1.0);
-      }`
+      void main() {
+        float h = normalize(vPos).y * 0.5 + 0.5;
+        vec3 day    = mix(botDay,   topDay,   h);
+        vec3 night  = mix(botNight, topNight, h);
+        vec3 col    = mix(day, night, clamp(mix,0.0,1.0));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `
   });
   const sky = new THREE.Mesh(geo, mat);
   g.add(sky);
 
-  // lumină de “soare” + ambient
-  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-  sun.position.set(80, 120, 40);
-  g.add(sun);
+  g.userData.setNight = (isNight) => {
+    mat.uniforms.mix.value = isNight ? 1.0 : 0.0;
+    mat.needsUpdate = true;
+  };
 
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xcad2e1, 0.6);
-  g.add(hemi);
+  // ascultă evenimentul din Map3DPage pentru toggle
+  const onToggle = (e) => g.userData.setNight?.(e.detail?.night);
+  window.addEventListener('map3d-mode-toggle', onToggle);
+  g.userData.cleanup = () => window.removeEventListener('map3d-mode-toggle', onToggle);
 
   return g;
 }
