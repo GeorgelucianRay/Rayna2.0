@@ -1,145 +1,164 @@
-// src/components/Depot/map3d/Map3DStandalone.jsx
+// Independent, fără Layout
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// folosește utilitățile tale existente:
-import fetchContainers from '../../threeWorld/fetchContainers';
-import createContainersLayer from '../../threeWorld/createContainersLayer';
-// dacă vrei varianta cu instancing: import createContainersLayer from '../../threeWorld/createContainersLayerOptimized';
-import createSky from '../../threeWorld/createSky'; // doar cer + lumină ușoară (păstrăm, dar poți șterge)
-
 import styles from './Map3DStandalone.module.css';
 
-export default function Map3DStandalone() {
+// utilități 3D existente în proiectul tău
+import createGround from '../../threeWorld/createGround';
+import fetchContainers from '../../threeWorld/fetchContainers';
+import createContainersLayer from '../../threeWorld/createContainersLayer'; // sau Optimized, dacă preferi
+
+export default function Map3DPage() {
   const navigate = useNavigate();
   const mountRef = useRef(null);
-  const rafRef = useRef(0);
+  const threeRef = useRef({
+    scene: null,
+    camera: null,
+    renderer: null,
+    controls: null,
+    layers: [],
+    raf: 0,
+  });
 
   useEffect(() => {
-    const mountEl = mountRef.current;
-    if (!mountEl) return;
+    const mount = mountRef.current;
 
-    // --- Scene / Camera / Renderer ---
+    // — renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.setClearColor(0x000000, 0); // transparent (fondul vine din css)
+    mount.appendChild(renderer.domElement);
+
+    // — scenă & cameră
     const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(
-      60,
-      window.innerWidth / window.innerHeight,
+      55,
+      mount.clientWidth / mount.clientHeight,
       0.1,
-      3000
+      1000
     );
-    camera.position.set(28, 20, 36);
-    camera.lookAt(0, 3, 0);
+    camera.position.set(32, 34, 52);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    mountEl.appendChild(renderer.domElement);
+    // — lumini
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x2a2a2a, 0.7);
+    scene.add(hemi);
 
-    // --- Controls (mișcare liberă) ---
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.minDistance = 8;
-    controls.maxDistance = 180;
-    controls.maxPolarAngle = Math.PI * 0.49;
-    controls.target.set(0, 3, 0);
-
-    // --- Lumină + cer (fără „munte”) ---
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(60, 110, 40);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(50, 100, 40);
     sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
     scene.add(sun);
 
-    // Cer discret (poți comenta dacă vrei chiar „nimic”)
-    const sky = createSky({ topColor: 0x66b6ff, bottomColor: 0x1f2937, radius: 800 });
-    scene.add(sky);
+    // — orbit controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0, 0);
+    controls.update();
 
-    // Sol simplu (îl poți înlocui cu createGround-ul tău)
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(400, 400),
-      new THREE.MeshStandardMaterial({ color: 0x1f242b, roughness: 0.95, metalness: 0 })
-    );
-    ground.rotation.x = -Math.PI / 2;
+    // — asfalt + marcaje
+    const ground = createGround({
+      width: 90,
+      depth: 60,
+      color: 0x2b2f36,
+      abcOffsetX: -10,
+      defOffsetX: 32,
+      abcToDefGap: 16,
+    });
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- Config pentru poziționare (slotToWorld) ---
-    const slotsConfig = {
-      abcOffsetX: 0,
-      defOffsetX: 0,
-      abcToDefGap: -10,
-      abcNumbersReversed: true,
-      debug: false,
-    };
-
-    // --- Încărcare containere din Supabase ---
-    let containersLayer = null;
+    // — încărcare containere din Supabase și plasare în scenă
+    let disposed = false;
     (async () => {
-      const data = await fetchContainers(); // { containers: [...] }
-      if (!data?.containers?.length) {
-        console.warn('⚠️ Nu s-au găsit containere cu poziție validă.');
-      }
       try {
-        containersLayer = createContainersLayer(data, slotsConfig);
-        scene.add(containersLayer);
-      } catch (e) {
-        console.error('Eroare creare strat containere:', e);
+        const data = await fetchContainers(); // { containers: [...] }
+        if (disposed) return;
+
+        const layout = {
+          abcOffsetX: -10,
+          defOffsetX: 32,
+          abcToDefGap: 16,
+          abcNumbersReversed: true, // sincron cu slotToWorld
+          debug: false,
+        };
+
+        const layer = createContainersLayer(data, layout);
+        scene.add(layer);
+        threeRef.current.layers.push(layer);
+      } catch (err) {
+        console.error('Eroare încărcare containere:', err);
       }
     })();
 
-    // --- Resize ---
-    const onResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', onResize);
-
-    // --- Loop ---
+    // — animare
+    const clock = new THREE.Clock();
     const tick = () => {
+      const _ = clock.getDelta(); // dacă ai nevoie de timp
+      threeRef.current.layers.forEach((L) => {
+        if (L?.userData?.tick) L.userData.tick();
+      });
       controls.update();
-      containersLayer?.userData?.tick?.(); // puls pentru programados
       renderer.render(scene, camera);
-      rafRef.current = requestAnimationFrame(tick);
+      threeRef.current.raf = requestAnimationFrame(tick);
     };
     tick();
 
-    // --- Cleanup ---
+    // — resize
+    const onResize = () => {
+      if (!mount) return;
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+    window.addEventListener('resize', onResize);
+
+    // stochează pentru cleanup
+    threeRef.current.scene = scene;
+    threeRef.current.camera = camera;
+    threeRef.current.renderer = renderer;
+    threeRef.current.controls = controls;
+
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      disposed = true;
+      cancelAnimationFrame(threeRef.current.raf);
       window.removeEventListener('resize', onResize);
       controls.dispose();
       renderer.dispose();
-      if (mountEl.contains(renderer.domElement)) {
-        mountEl.removeChild(renderer.domElement);
-      }
+      mount.removeChild(renderer.domElement);
+      // eliberăm geometrii/materiale
+      scene.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+          else obj.material.dispose();
+        }
+        if (obj.texture) obj.texture.dispose?.();
+      });
     };
   }, []);
 
   return (
-    <div className={styles.root}>
-      {/* Buton back în colț (fără Layout) */}
-      <button className={styles.backBtn} onClick={() => navigate('/depot')}>
-        ← Volver al Depot
-      </button>
-
-      {/* Titlu HUD */}
-      <div className={styles.hudTop}>
+    <div className={styles.wrap}>
+      {/* Header propriu (înlocuiește hamburgerul) */}
+      <div className={styles.topbar}>
+        <button className={styles.backBtn} onClick={() => navigate('/depot')}>
+          <span className={styles.backIcon}>←</span>
+          Volver al Depot
+        </button>
         <h1 className={styles.title}>Mapa 3D · Depósito</h1>
       </div>
 
-      {/* Canvas 3D */}
-      <div ref={mountRef} className={styles.canvasWrap} />
-
-      {/* Watermark subtil (opțional) */}
-      <div className={styles.watermark}>Mapa 3D · Depósito</div>
+      {/* Canvas container */}
+      <div ref={mountRef} className={styles.canvasMount} />
     </div>
   );
 }
