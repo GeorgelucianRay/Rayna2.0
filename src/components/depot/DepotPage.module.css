@@ -1,0 +1,257 @@
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.10);
+  --glass-stroke: rgba(255, 255, 255, 0.25);
+  --glass-shadow: rgba(0, 0, 0, 0.35);
+  --ink: #f3f6fb;
+  --muted: rgba(243, 246, 251, 0.7);
+  --accent: #7dd3fc;      /* azuriu iOS-like */
+  --accent-2: #a78bfa;    /* violet moale */
+  --danger: #f87171;
+  --ok: #34d399;
+  --orange: #ffb86b;
+  --card-radius: 18px;
+  --inset-radius: 14px;
+  --speed: 160ms;
+}
+
+/* Background general lucios (poți scoate dacă Layout deja setează fundalul) */
+.pageWrap {
+  min-height: 100%;
+  padding: 24px clamp(16px, 3vw, 32px);
+  color: var(--ink);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  background:
+    radial-gradient(1200px 800px at -10% -10%, rgba(125,211,252,0.20), transparent 55%),
+    radial-gradient(1000px 700px at 110% -20%, rgba(167,139,250,0.20), transparent 50%),
+    linear-gradient(180deg, rgba(8,11,17,0.65), rgba(8,11,17,0.65));
+}
+
+/* Tabs „pills” pe sticlă */
+.depotHeader {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.depotTabButton {
+  position: relative;
+  border: 1px solid var(--glass-stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 24px -12px var(--glass-shadow);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.depotTabButton:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 12px 28px -10px var(--glass-shadow);
+}
+
+.active {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0.10)),
+    linear-gradient(120deg, rgba(125,211,252,0.25), rgba(167,139,250,0.25));
+  border-color: rgba(255,255,255,0.35);
+}
+
+/* Butoane mari */
+.extraButtons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.actionButton {
+  border: 1px solid var(--glass-stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 10px 26px -12px var(--glass-shadow);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.programButton { outline: 1px solid rgba(125,211,252,0.35); }
+.mapButton { outline: 1px solid rgba(167,139,250,0.35); }
+
+.actionButton:hover {
+  transform: translateY(-1px);
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 18px;
+  flex-wrap: wrap;
+}
+
+.searchBar {
+  flex: 1 1 320px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--glass-stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
+  border-radius: 14px;
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.searchBar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  outline: none;
+  font-size: 14px;
+}
+
+.addButton {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--glass-stroke);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.08)),
+    linear-gradient(120deg, rgba(52,211,153,0.30), rgba(125,211,252,0.30));
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 12px 28px -12px var(--glass-shadow);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease;
+}
+.addButton:hover { transform: translateY(-1px); }
+
+/* Grid carduri */
+.containersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.containerCard {
+  border: 1px solid var(--glass-stroke);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  border-radius: var(--card-radius);
+  padding: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.24),
+    0 18px 40px -18px var(--glass-shadow);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease;
+}
+.containerCard:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    0 22px 46px -20px var(--glass-shadow);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cardMatricula {
+  margin: 0 0 4px;
+  font-size: 18px;
+  letter-spacing: 0.3px;
+}
+
+.cardNaviera {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
+.cardButton,
+.cardButtonSalida {
+  border: 1px solid var(--glass-stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 10px 24px -14px var(--glass-shadow);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease;
+}
+.cardButton:hover,
+.cardButtonSalida:hover { transform: translateY(-1px); }
+.cardButtonSalida { outline: 1px solid rgba(248,113,113,0.35); }
+
+.cardBody p {
+  margin: 6px 0;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.badgeOrange {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #2b1d00;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)),
+    linear-gradient(120deg, rgba(255,184,107,0.7), rgba(255,214,150,0.7));
+  border: 1px solid rgba(255,255,255,0.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* State */
+.loadingText, .noDataText {
+  margin: 18px 0;
+  color: var(--muted);
+}
+
+/* Paginare */
+.paginationContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.paginationButton {
+  border: 1px solid var(--glass-stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 24px -14px var(--glass-shadow);
+  transition: transform var(--speed) ease, box-shadow var(--speed) ease;
+}
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.paginationButton:hover:not(:disabled) { transform: translateY(-1px); }
+
+.pageIndicator {
+  color: var(--muted);
+  font-size: 13.5px;
+}
