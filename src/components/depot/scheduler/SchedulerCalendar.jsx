@@ -1,21 +1,15 @@
-// src/components/Depot/scheduler/SchedulerCalendar.jsx
 import React, { useMemo } from 'react';
 import styles from './SchedulerCalendar.module.css';
 
-/**
- * Props:
- * - date, setDate: luna/ziua curentă
- * - mode: 'todos' | 'programado' | 'pendiente' | 'completado'
- * - markers: { 'YYYY-MM-DD': number }  // zile cu programări
- * - selectedDates: Set<string>         // doar pt. completado
- * - onSelectDay(dayStr)                // single-day (non-completado)
- * - onToggleDate(dayStr)               // toggle pentru completado
- */
+// format local YYYY-MM-DD (fără conversie la UTC)
+const pad = (n) => String(n).padStart(2, '0');
+const fmtLocal = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
 export default function SchedulerCalendar({
   date, setDate,
   mode,
-  markers = {},
-  selectedDates = new Set(),
+  markers = {},              // { 'YYYY-MM-DD': number }
+  selectedDates = new Set(), // doar pt. completado
   onSelectDay,
   onToggleDate,
 }) {
@@ -28,30 +22,24 @@ export default function SchedulerCalendar({
     [year, month]
   );
 
-  // 0=Sun..6=Sat → vrem să începem cu Luni
-  const firstDay = new Date(year, month, 1).getDay(); // 0..6
+  // 0=Sun..6=Sat → vrem Luni la început
+  const firstDay = new Date(year, month, 1).getDay();
   const leadingEmpty = (firstDay + 6) % 7;
 
-  const fmt = (y, m, d) =>
-    new Date(y, m, d).toISOString().slice(0, 10); // YYYY-MM-DD
-
   const handleClick = (day) => {
-    const iso = fmt(year, month, day);
-    // schimbă "date" (pt. navigație vizuală și pentru eventuale filtre globale)
-    setDate(new Date(year, month, day));
-
-    if (mode === 'completado') {
-      onToggleDate?.(iso);
-    } else {
-      onSelectDay?.(iso);
-    }
+    const iso = fmtLocal(year, month, day);
+    setDate(new Date(year, month, day)); // doar pentru highlight & filtre
+    if (mode === 'completado') onToggleDate?.(iso);
+    else onSelectDay?.(iso);
   };
+
+  const selectedKey = fmtLocal(date.getFullYear(), date.getMonth(), date.getDate());
 
   return (
     <div className={styles.sideCard}>
       <div className={styles.sideHeader}>
         <h3>
-          {date.toLocaleString('es-ES', { month: 'long' })}{' '} {year}
+          {date.toLocaleString('es-ES', { month: 'long' })} {year}
         </h3>
       </div>
 
@@ -73,13 +61,13 @@ export default function SchedulerCalendar({
             month === today.getMonth() &&
             year === today.getFullYear();
 
-          const iso = fmt(year, month, day);
+          const iso = fmtLocal(year, month, day);
           const hasPrograms = !!markers[iso];
 
           const isSelected =
             mode === 'completado'
               ? selectedDates.has(iso)
-              : iso === fmt(date.getFullYear(), date.getMonth(), date.getDate());
+              : iso === selectedKey;
 
           return (
             <button
@@ -93,6 +81,7 @@ export default function SchedulerCalendar({
                 hasPrograms ? styles.hasPrograms : '',
               ].join(' ')}
               title={hasPrograms ? `${markers[iso]} programado(s)` : undefined}
+              aria-pressed={isSelected ? 'true' : 'false'}
             >
               <span className={styles.dayNumber}>{day}</span>
               {hasPrograms && <span className={styles.dot} />}
