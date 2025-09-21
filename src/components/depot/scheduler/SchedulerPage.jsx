@@ -1,9 +1,8 @@
-// src/components/Depot/scheduler/SchedulerPage.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../../../AuthContext';
 import { supabase } from '../../../supabaseClient';
-import { useScheduler } from "../hooks/useScheduler";
 
 import styles from './SchedulerPage.module.css';
 
@@ -11,6 +10,10 @@ import SchedulerToolbar from './SchedulerToolbar';
 import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
+import ProgramarDesdeDepositoModal from './ProgramarDesdeDepositoModal';
+
+// hook existent din proiectul tău
+import { useScheduler } from "../hooks/useScheduler";
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -25,119 +28,89 @@ export default function SchedulerPage() {
     marcarHecho,
     editarPosicion,
     actualizarProgramado,
-    // dacă hook-ul tău are un refetch, îl poți apela după inserții:
-    // refetch,
+    // notă: nu depind de el pentru inserții din depozit (facem local mai jos)
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
-  const [mode, setMode] = useState(null); // 'en_deposito' | 'programado' | 'pendiente'
   const calRef = useRef(null);
 
-  // mecanicii nu văd "Todos"
+  // Modal: Programar desde En Depósito
+  const [programarOpen, setProgramarOpen] = useState(false);
+
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
   const handleProgramarClick = () => {
+    setProgramarOpen(true);
     if (window.innerWidth <= 980 && calRef.current) {
       calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  const onSelect = (row) => {
-    // Determină modul după sursă/stare
-    if (row?.source === 'programados') {
-      if (row?.estado === 'pendiente') setMode('pendiente');
-      else setMode('programado');
-    } else {
-      setMode('en_deposito');
+  // Inserție contenedor programado/pendiente din En Depósito
+  const onProgramarDesdeDeposito = async (contenedorRow, payload) => {
+    const insert = {
+      matricula_contenedor: (contenedorRow.matricula_contenedor || '').toUpperCase(),
+      naviera: contenedorRow.naviera || null,
+      tipo: contenedorRow.tipo || null,
+      posicion: (payload.posicion || contenedorRow.posicion || null),
+      empresa_descarga: payload.empresa_descarga || null,
+      fecha: payload.fecha || null,
+      hora: payload.hora || null,
+      matricula_camion: payload.matricula_camion || null,
+      estado: payload.estado || 'programado', // 'programado' | 'pendiente'
+    };
+    const { error } = await supabase.from('contenedores_programados').insert([insert]);
+    if (error) {
+      console.error(error);
+      alert(`Error al programar:\n${error.message || error}`);
+      return;
     }
-    setSelected(row);
+    alert('¡Programación guardada!');
   };
 
-  // ➜ Programar un contenedor care e "en depósito" (creează în contenedores_programados)
-  const onProgramarDesdeDeposito = async (row, payload) => {
-    // payload conține: empresa_descarga, fecha, hora, posicion, matricula_camion (opțional)
-    try {
-      const insert = {
-        matricula_contenedor: (row?.matricula_contenedor || '').toUpperCase(),
-        naviera: row?.naviera || null,
-        tipo: row?.tipo || null,
-        posicion: payload.posicion || null,
-        empresa_descarga: payload.empresa_descarga || null,
-        fecha: payload.fecha || null,
-        hora: payload.hora || null,
-        matricula_camion: payload.matricula_camion || null,
-        estado: 'programado',
+  // Export Excel pentru tab-ul curent
+  const exportarExcelTab = () => {
+    const items = filtered || [];
+    const hoja = items.map((r) => {
+      if (tab === 'completado') {
+        return {
+          'Matrícula Contenedor': (r.matricula_contenedor || '').toUpperCase(),
+          'Cliente/Empresa': r.empresa_descarga || '',
+          'Fecha Salida': r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : '',
+          'Posición': r.posicion || '',
+          'Naviera': r.naviera || '',
+          'Tipo': r.tipo || '',
+          'Matrícula Camión': r.matricula_camion || '',
+          'Detalles': r.detalles || '',
+        };
+      }
+      // programado / pendiente / todos
+      return {
+        'Matrícula Contenedor': (r.matricula_contenedor || '').toUpperCase(),
+        'Estado': r.estado || (r.source === 'contenedores' ? 'en_deposito' : ''),
+        'Cliente/Empresa': r.empresa_descarga || r.naviera || '',
+        'Fecha': r.fecha || '',
+        'Hora': r.hora || '',
+        'Posición': r.posicion || '',
+        'Naviera': r.naviera || '',
+        'Tipo': r.tipo || '',
+        'Matrícula Camión': r.matricula_camion || '',
       };
-      const { error } = await supabase.from('contenedores_programados').insert([insert]);
-      if (error) throw error;
-      // poți comuta pe tab-ul “programado” ca să vezi imediat:
-      setTab('programado');
-      setSelected(null);
-      setMode(null);
-      // refetch?.();
-      alert('Programación guardada con éxito.');
-    } catch (e) {
-      console.error(e);
-      alert(`Error al programar el contenedor:\n${e.message || e}`);
-    }
-  };
+    });
 
-  // ➜ Actualizar un programado (completare din “pendiente” sau editare ușoară)
-  const onActualizarProgramado = async (row, payload) => {
-    try {
-      await actualizarProgramado(row, payload);
-      setSelected(null);
-      setMode(null);
-      // refetch?.();
-      alert('Actualización guardada.');
-    } catch (e) {
-      console.error(e);
-      alert(`Error al actualizar:\n${e.message || e}`);
-    }
-  };
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(hoja);
+    XLSX.utils.book_append_sheet(wb, ws, (tab || 'lista').toUpperCase());
 
-  // ➜ Editar solo la posición (atașăm pentru modul programado)
-  const onEditarPosicion = async (row, posicion) => {
-    try {
-      await editarPosicion(row, posicion);
-      setSelected(null);
-      setMode(null);
-      // refetch?.();
-      alert('Posición actualizada.');
-    } catch (e) {
-      console.error(e);
-      alert(`Error al actualizar la posición:\n${e.message || e}`);
-    }
-  };
+    const filename =
+      tab === 'programado' ? 'programado.xlsx'
+      : tab === 'pendiente' ? 'pendiente.xlsx'
+      : tab === 'completado' ? 'completado.xlsx'
+      : 'programacion.xlsx';
 
-  // ➜ Hecho (muta în contenedores_salidos)
-  const onHecho = async (row) => {
-    try {
-      await marcarHecho(row);
-      setSelected(null);
-      setMode(null);
-      // refetch?.();
-      alert('Salida registrada (Hecho).');
-    } catch (e) {
-      console.error(e);
-      alert(`Error al marcar como hecho:\n${e.message || e}`);
-    }
-  };
-
-  // ➜ Eliminar (doar programados)
-  const onEliminar = async (row) => {
-    try {
-      await eliminarProgramado(row);
-      setSelected(null);
-      setMode(null);
-      // refetch?.();
-      alert('Programación eliminada.');
-    } catch (e) {
-      console.error(e);
-      alert(`Error al eliminar:\n${e.message || e}`);
-    }
+    XLSX.writeFile(wb, filename);
   };
 
   return (
@@ -160,6 +133,9 @@ export default function SchedulerPage() {
           tab={tab} setTab={setTab}
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
+          canProgramar={role === 'dispecer' || role === 'admin'}
+          onProgramarClick={handleProgramarClick}
+          onExportExcel={exportarExcelTab}
         />
 
         <div className={styles.grid}>
@@ -168,7 +144,7 @@ export default function SchedulerPage() {
             tab={tab}
             loading={loading}
             role={role}
-            onSelect={onSelect}
+            onSelect={setSelected}
           />
 
           <div ref={calRef}>
@@ -179,14 +155,21 @@ export default function SchedulerPage() {
         <SchedulerDetailModal
           open={!!selected}
           row={selected}
-          mode={mode}
           role={role}
-          onClose={() => { setSelected(null); setMode(null); }}
-          onProgramarDesdeDeposito={onProgramarDesdeDeposito}
-          onActualizarProgramado={onActualizarProgramado}
-          onEditarPosicion={onEditarPosicion}
-          onHecho={onHecho}
-          onEliminar={onEliminar}
+          onClose={() => setSelected(null)}
+          onEliminar={async (row) => { await eliminarProgramado(row); setSelected(null); }}
+          onHecho={async (row)   => { await marcarHecho(row);       setSelected(null); }}
+          onEditar={async (row, payload) => { await actualizarProgramado(row, payload); setSelected(null); }}
+          onEditarPosicion={async (row, pos) => { await editarPosicion(row, (pos || '').toUpperCase()); setSelected(null); }}
+        />
+
+        <ProgramarDesdeDepositoModal
+          open={programarOpen}
+          onClose={() => setProgramarOpen(false)}
+          onProgramar={async (row, payload) => {
+            await onProgramarDesdeDeposito(row, payload);
+            setProgramarOpen(false);
+          }}
         />
       </div>
     </div>
