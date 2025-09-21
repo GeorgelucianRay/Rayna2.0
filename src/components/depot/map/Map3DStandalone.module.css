@@ -1,60 +1,56 @@
-/* ecran complet, fără Layout */
-.root {
+.wrap {
   position: fixed;
   inset: 0;
-  background: radial-gradient(120% 80% at 50% 0%, #111827 0%, #0f172a 60%, #0b1220 100%);
-  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 0%,
+              #66c3f4 0%, #5bb8ef 20%, #1d232a 40%, #0f1317 100%);
+  /* fără Layout: ocupă tot ecranul */
 }
 
-/* canvas pe tot ecranul */
-.canvasWrap {
+.topbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 5;
+  pointer-events: none; /* lăsăm canvasul să ia gesturile; butonul are pointer-events: all */
+}
+
+.backBtn {
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: linear-gradient(180deg, #5e86ff, #3863f9);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  cursor: pointer;
+  user-select: none;
+}
+.backBtn:hover { filter: brightness(1.05); }
+.backIcon { font-size: 18px; line-height: 1; }
+
+.title {
+  pointer-events: none;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+  color: #eef2f7;
+  text-shadow: 0 2px 16px rgba(0,0,0,.35);
+}
+
+.canvasMount {
   position: absolute;
   inset: 0;
-}
-
-/* buton back în header (fără Layout) */
-.backBtn {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 30;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(180deg, #5b84ff, #3e64d8);
-  box-shadow: 0 10px 28px rgba(0,0,0,.35);
-  cursor: pointer;
-}
-
-/* titlu HUD */
-.hudTop {
-  position: fixed;
-  top: 14px;
-  left: 160px;
-  right: 14px;
-  z-index: 20;
-  pointer-events: none;
-}
-.title {
-  margin: 0;
-  font-size: 26px;
-  line-height: 1.1;
-  color: #e5e7eb;
-  text-shadow: 0 2px 12px rgba(0,0,0,.5);
-  font-weight: 800;
-}
-
-/* watermark discret */
-.watermark {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: clamp(28px, 8vw, 72px);
-  color: rgba(255,255,255,.05);
-  user-select: none;
-  pointer-events: none;
+  z-index: 1;
+  /* un subtil “nor” la orizont */
+  background:
+    radial-gradient(140% 80% at 50% 20%, rgba(255,255,255,.06), rgba(255,255,255,0) 60%) ,
+    transparent;
 }
