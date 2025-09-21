@@ -1,21 +1,18 @@
-// src/components/Depot/map3d/Map3DPage.jsx
+// src/components/Depot/map3d/Map3DStandalone.jsx
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// componentele tale „lume 3D”
-import createSky from '../../threeWorld/createSky';
-import createMountainWall from '../../threeWorld/createMountainWall';
+// folosește utilitățile tale existente:
 import fetchContainers from '../../threeWorld/fetchContainers';
 import createContainersLayer from '../../threeWorld/createContainersLayer';
-// (poți schimba cu varianta optimizată dacă vrei):
-// import createContainersLayer from '../../threeWorld/createContainersLayerOptimized';
+// dacă vrei varianta cu instancing: import createContainersLayer from '../../threeWorld/createContainersLayerOptimized';
+import createSky from '../../threeWorld/createSky'; // doar cer + lumină ușoară (păstrăm, dar poți șterge)
 
-import Layout from '../../Layout';
-import styles from './Map3DPage.module.css';
+import styles from './Map3DStandalone.module.css';
 
-export default function Map3DPage() {
+export default function Map3DStandalone() {
   const navigate = useNavigate();
   const mountRef = useRef(null);
   const rafRef = useRef(0);
@@ -24,7 +21,7 @@ export default function Map3DPage() {
     const mountEl = mountRef.current;
     if (!mountEl) return;
 
-    // --- Scene/Camera/Renderer ---
+    // --- Scene / Camera / Renderer ---
     const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(
@@ -33,7 +30,7 @@ export default function Map3DPage() {
       0.1,
       3000
     );
-    camera.position.set(30, 22, 38);
+    camera.position.set(28, 20, 36);
     camera.lookAt(0, 3, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -47,34 +44,31 @@ export default function Map3DPage() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controls.minDistance = 8;
-    controls.maxDistance = 150;
-    controls.maxPolarAngle = Math.PI * 0.49; // nu lăsa să intre „sub pământ”
+    controls.maxDistance = 180;
+    controls.maxPolarAngle = Math.PI * 0.49;
     controls.target.set(0, 3, 0);
 
-    // --- Lumină + cer + „munte” ---
+    // --- Lumină + cer (fără „munte”) ---
     scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
     sun.position.set(60, 110, 40);
     sun.castShadow = true;
     scene.add(sun);
 
-    const sky = createSky();
+    // Cer discret (poți comenta dacă vrei chiar „nimic”)
+    const sky = createSky({ topColor: 0x66b6ff, bottomColor: 0x1f2937, radius: 800 });
     scene.add(sky);
 
-    const mountain = createMountainWall({ yardDepth: 140, fenceMargin: 2 });
-    scene.add(mountain);
-
-    // --- Sol simplu (poți înlocui cu createGround dacă ai) ---
+    // Sol simplu (îl poți înlocui cu createGround-ul tău)
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(400, 400),
-      new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.95, metalness: 0 })
+      new THREE.MeshStandardMaterial({ color: 0x1f242b, roughness: 0.95, metalness: 0 })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- Config pentru slotToWorld (strict numeric, nu e „Layout.jsx”) ---
+    // --- Config pentru poziționare (slotToWorld) ---
     const slotsConfig = {
       abcOffsetX: 0,
       defOffsetX: 0,
@@ -83,15 +77,18 @@ export default function Map3DPage() {
       debug: false,
     };
 
-    // --- Layer de containere din Supabase ---
+    // --- Încărcare containere din Supabase ---
     let containersLayer = null;
     (async () => {
+      const data = await fetchContainers(); // { containers: [...] }
+      if (!data?.containers?.length) {
+        console.warn('⚠️ Nu s-au găsit containere cu poziție validă.');
+      }
       try {
-        const data = await fetchContainers(); // { containers: [...] }
         containersLayer = createContainersLayer(data, slotsConfig);
         scene.add(containersLayer);
       } catch (e) {
-        console.error('Eroare layer containere:', e);
+        console.error('Eroare creare strat containere:', e);
       }
     })();
 
@@ -107,8 +104,8 @@ export default function Map3DPage() {
 
     // --- Loop ---
     const tick = () => {
-      controls.update();                          // inerție
-      containersLayer?.userData?.tick?.();        // puls „programados”
+      controls.update();
+      containersLayer?.userData?.tick?.(); // puls pentru programados
       renderer.render(scene, camera);
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -127,21 +124,22 @@ export default function Map3DPage() {
   }, []);
 
   return (
-    // vezi secțiunea 2 de mai jos pentru „buton în header”
-    <Layout
-      headerLeft={{ type: 'back', label: 'Volver al Depot', onClick: () => navigate('/depot') }}
-      hideMenuButton
-    >
-      {/* Canvas 3D pe tot ecranul */}
-      <div ref={mountRef} className={styles.canvasWrap} />
+    <div className={styles.root}>
+      {/* Buton back în colț (fără Layout) */}
+      <button className={styles.backBtn} onClick={() => navigate('/depot')}>
+        ← Volver al Depot
+      </button>
 
-      {/* HUD peste canvas (titlu) */}
+      {/* Titlu HUD */}
       <div className={styles.hudTop}>
         <h1 className={styles.title}>Mapa 3D · Depósito</h1>
       </div>
 
-      {/* watermark subtil (opțional) */}
+      {/* Canvas 3D */}
+      <div ref={mountRef} className={styles.canvasWrap} />
+
+      {/* Watermark subtil (opțional) */}
       <div className={styles.watermark}>Mapa 3D · Depósito</div>
-    </Layout>
+    </div>
   );
 }
