@@ -1,8 +1,17 @@
+// src/components/Depot/map3d/Map3DPage.jsx
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Layout from '../../Layout';
 import styles from './Map3DPage.module.css';
+
+// ====== importă piesele tale ======
+import createSky from '../../threeWorld/createSky';
+import createMountainWall from '../../threeWorld/createMountainWall';
+import fetchContainers from '../../threeWorld/fetchContainers';
+import createContainersLayer from '../../threeWorld/createContainersLayer';
+// Dacă vrei instanced meshes, schimbă linia de mai sus cu:
+// import createContainersLayer from '../../threeWorld/createContainersLayerOptimized';
 
 const BackIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -27,9 +36,9 @@ export default function Map3DPage() {
       60,
       window.innerWidth / window.innerHeight,
       0.1,
-      2000
+      3000
     );
-    camera.position.set(20, 18, 26);
+    camera.position.set(28, 20, 36);
     camera.lookAt(0, 3, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -43,11 +52,18 @@ export default function Map3DPage() {
     scene.add(ambient);
 
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(30, 60, 20);
+    sun.position.set(60, 110, 40);
     sun.castShadow = true;
     scene.add(sun);
 
-    // --- Ground (vizual) ---
+    // --- Cer și „munte” (piesa ta) ---
+    const sky = createSky();                 // cupolă + lumini ambient/soare
+    scene.add(sky);
+
+    const mountain = createMountainWall({ yardDepth: 140, fenceMargin: 2 });
+    scene.add(mountain);
+
+    // --- Ground (simplu, îl poți înlocui cu createGround dacă ai) ---
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(400, 400),
       new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.95, metalness: 0 })
@@ -56,16 +72,31 @@ export default function Map3DPage() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- Cub de test (poți șterge după ce vezi scena) ---
-    const testCube = new THREE.Mesh(
-      new THREE.BoxGeometry(6, 6, 6),
-      new THREE.MeshStandardMaterial({ color: 0x00c853 })
-    );
-    testCube.position.set(0, 3, 0);
-    testCube.castShadow = true;
-    scene.add(testCube);
+    // --- Layout pentru slotToWorld (același contract folosit în layer-ul tău) ---
+    const layout = {
+      abcOffsetX: 0,
+      defOffsetX: 0,
+      abcToDefGap: -10,
+      abcNumbersReversed: true,
+      debug: false,
+    };
 
-    // --- Resize handler (IMPORTANT pt. full-screen) ---
+    // --- Container layer (din datele reale) ---
+    let containersLayer = null;
+
+    const loadAndBuild = async () => {
+      try {
+        const data = await fetchContainers(); // { containers: [...] }
+        // construiește stratul 3D după datele din supabase
+        containersLayer = createContainersLayer(data, layout);
+        scene.add(containersLayer);
+      } catch (e) {
+        console.error('Eroare la încărcarea/constructia stratului de containere:', e);
+      }
+    };
+    loadAndBuild();
+
+    // --- Resize ---
     const onResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -77,10 +108,8 @@ export default function Map3DPage() {
 
     // --- Loop ---
     const tick = () => {
-      // mică animație de “viață”
-      testCube.rotation.y += 0.01;
-      testCube.rotation.x += 0.005;
-
+      // rulează animația layer-ului tău (puls pentru programados)
+      containersLayer?.userData?.tick?.();
       renderer.render(scene, camera);
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -109,7 +138,6 @@ export default function Map3DPage() {
           <h1 className={styles.title}>Mapa 3D · Depósito</h1>
         </div>
 
-        {/* watermark opțional */}
         <div className={styles.watermark}>Mapa 3D · Depósito</div>
       </div>
     </Layout>
