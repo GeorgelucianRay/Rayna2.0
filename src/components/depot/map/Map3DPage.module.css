@@ -1,64 +1,60 @@
-/* Canvas full-screen în spate */
-.canvasWrap {
+/* ecran complet, fără Layout */
+.root {
   position: fixed;
-  inset: 0;            /* top/right/bottom/left: 0 */
-  z-index: 0;          /* sub HUD */
-  width: 100vw;
-  height: 100vh;
-  background: #0b0f14; /* fallback când nu randăm */
+  inset: 0;
+  background: radial-gradient(120% 80% at 50% 0%, #111827 0%, #0f172a 60%, #0b1220 100%);
+  overflow: hidden;
 }
 
-/* Containerul paginii (HUD-ul) rămâne peste canvas */
-.pageContainer {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  pointer-events: none; /* lăsăm canvasul să prindă gesturile; butoanele re-enablează mai jos */
-}
-
-/* Bară HUD cu butonul de back și titlul */
-.hudBar {
+/* canvas pe tot ecranul */
+.canvasWrap {
   position: absolute;
-  left: 16px;
-  top: 88px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  pointer-events: auto; /* butoanele sunt clicabile */
+  inset: 0;
 }
 
-/* Buton back */
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.2);
-  background: linear-gradient(180deg, #5b86f7, #3f66e9);
-  color: #fff;
+/* buton back în header (fără Layout) */
+.backBtn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 30;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
   font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #5b84ff, #3e64d8);
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0,0,0,.25);
 }
 
+/* titlu HUD */
+.hudTop {
+  position: fixed;
+  top: 14px;
+  left: 160px;
+  right: 14px;
+  z-index: 20;
+  pointer-events: none;
+}
 .title {
   margin: 0;
-  font-size: 28px;
-  line-height: 1;
-  color: rgba(255,255,255,.9);
-  text-shadow: 0 2px 10px rgba(0,0,0,.3);
+  font-size: 26px;
+  line-height: 1.1;
+  color: #e5e7eb;
+  text-shadow: 0 2px 12px rgba(0,0,0,.5);
+  font-weight: 800;
 }
 
-/* opțional: watermark mic pe centru */
+/* watermark discret */
 .watermark {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%,-50%);
-  font-size: 42px;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font-weight: 800;
-  color: rgba(255,255,255,.12);
-  letter-spacing: .5px;
+  font-size: clamp(28px, 8vw, 72px);
+  color: rgba(255,255,255,.05);
+  user-select: none;
   pointer-events: none;
 }
