@@ -1,94 +1,159 @@
+// src/components/threeWorld/createGround.js
 import * as THREE from 'three';
 
-// dimensiuni slot 20'
-const SLOT_LEN = 6.06, SLOT_W = 2.44, SLOT_GAP = 0.06;
-const STEP = SLOT_LEN + SLOT_GAP;
+/** slot geometry numbers */
+const SLOT_LEN = 6.06;   // lungimea slotului (20')
+const SLOT_W   = 2.44;   // lățimea containerului
+const SLOT_GAP = 0.06;   // mic spațiu vizual
+const STEP     = SLOT_LEN + SLOT_GAP;
 
-function textPaint(s, { size = 1.5, opacity = .8 } = {}) {
-  const C = 256, cv = document.createElement('canvas'); cv.width = cv.height = C;
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0,0,C,C);
-  ctx.fillStyle = '#e5e7eb'; ctx.globalAlpha = opacity;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `bold ${Math.floor(C * .7)}px sans-serif`;
-  ctx.fillText(s, C/2, C/2);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-  m.rotation.x = -Math.PI/2; m.position.y = .03; return m;
+/** desen text “vopsit” pe asfalt (canvas → texture) */
+function paintedText(text, { size = 1.6, color = '#e5e7eb', opacity = 0.8 } = {}) {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, S, S);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = opacity;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${Math.floor(S * 0.74)}px Inter, system-ui, Arial, sans-serif`;
+  ctx.fillText(text, S / 2, S / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  const geo = new THREE.PlaneGeometry(size, size);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.03;
+  return mesh;
 }
 
-function slot({ x, z, alongX }) {
-  const w = alongX ? STEP : SLOT_W;
-  const d = alongX ? SLOT_W : STEP;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .22, depthWrite: false }));
-  m.rotation.x = -Math.PI/2; m.position.set(x, .02, z); return m;
+/** un “slot” alb subtil */
+function slotMark({ x, z, along = 'X' }) {
+  const sizeX = along === 'X' ? STEP : SLOT_W;
+  const sizeZ = along === 'X' ? SLOT_W : STEP;
+  const geo = new THREE.PlaneGeometry(sizeX, sizeZ);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, 0.02, z);
+  return m;
 }
 
 /**
- * Creează asfalt centrat și marchează ABC (orizontal, 10 sloturi) + DEF (vertical, 7 sloturi).
- * - width/depth = dimensiuni asfalt
- * - abcX / defX = offset pe X al benzilor
- * - gapBetween  = distanța pe Z între ABC și începutul DEF
+ * Creează asfalt + marcaje ABC (orizontale) și DEF (verticale).
+ *  - width/depth: dimensiunea plăcii de asfalt (centrată în 0,0)
+ *  - abcOffsetX: coordonata X a capătului din DREAPTA al blocului ABC
+ *  - defOffsetX: offset pentru D (DEF_BASE_X = 4.0 + defOffsetX)
+ *  - abcToDefGap: distanța pe Z între C și începutul lui D
  */
 export default function createGround({
   width = 90,
-  depth = 80,
+  depth = 95,
   color = 0x2b2f33,
-  abcX = -18,
-  defX = 16,
-  gapBetween = 6,
-  numbersReversed = true,
+  abcOffsetX = 43.5,
+  defOffsetX = 34.42,
+  abcToDefGap = 2.0,
 } = {}) {
   const g = new THREE.Group();
 
-  // asfalt centrat la (0,0,0)
+  // ASFALT
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
-    new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: .02 })
+    new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.02 })
   );
   plane.rotation.x = -Math.PI / 2;
   g.add(plane);
 
-  // poziționare benzi
-  const ABC_Z = { A: 8, B: 8 - (SLOT_W + .10), C: 8 - 2*(SLOT_W + .10) };
-  const START_DEF_Z = ABC_Z.C + gapBetween;
+  // — ABC —
+  const ABC_BASE_Z = -4.0;
+  const ABC_ROW_Z = {
+    A: ABC_BASE_Z,
+    B: ABC_BASE_Z - (SLOT_W + 0.10),
+    C: ABC_BASE_Z - 2 * (SLOT_W + 0.10),
+  };
 
-  // ===== ABC (10 sloturi pe X) =====
-  for (const row of ['A','B','C']) {
-    const z = ABC_Z[row];
-    for (let c = 1; c <= 10; c++) {
-      const idx = numbersReversed ? (11 - c) : c;
-      const x = abcX - (idx - .5) * STEP;
-      g.add(slot({ x, z, alongX: true }));
+  // — DEF —
+  const DEF_BASE_X = 4.0 + defOffsetX;
+  const DEF_COL_X = {
+    D: DEF_BASE_X,
+    E: DEF_BASE_X + (SLOT_W + 0.10),
+    F: DEF_BASE_X + 2 * (SLOT_W + 0.10),
+  };
+  const START_Z_DEF = ABC_ROW_Z.C + abcToDefGap;
+
+  // — ABC: 10 sloturi pe X, numerotate 10..1 spre stânga —
+  const ABC_LABEL_GAP_X = 0.6;
+  const ABC_LABEL_GAP_Z = 0.0;
+
+  for (const row of ['A', 'B', 'C']) {
+    const z = ABC_ROW_Z[row];
+
+    for (let col = 1; col <= 10; col++) {
+      const xCenter = abcOffsetX - (col - 0.5) * STEP; // spre stânga
+      g.add(slotMark({ x: xCenter, z, along: 'X' }));
     }
-    const left = abcX - 10*STEP, right = abcX;
-    const labL = textPaint(row, { size: 2.0 }); labL.position.set(left - .6, .03, z); g.add(labL);
-    const labR = textPaint(row, { size: 2.0 }); labR.position.set(right + .6, .03, z); g.add(labR);
-  }
-  for (let c = 1; c <= 10; c++) {
-    const idx = numbersReversed ? (11 - c) : c;
-    const x = abcX - (idx - .5) * STEP;
-    const nA = textPaint(String(idx), { size: 1.1 }); nA.position.set(x, .03, ABC_Z.A + 1.5); g.add(nA);
-    const nC = textPaint(String(idx), { size: 1.1 }); nC.position.set(x, .03, ABC_Z.C - 1.5); g.add(nC);
+
+    // litere la capete
+    const xLeftEdge = abcOffsetX - 10 * STEP;
+    const labL = paintedText(row, { size: 2.0 });
+    labL.position.set(xLeftEdge - ABC_LABEL_GAP_X, 0.03, z + ABC_LABEL_GAP_Z);
+    g.add(labL);
+
+    const xRightEdge = abcOffsetX;
+    const labR = paintedText(row, { size: 2.0 });
+    labR.position.set(xRightEdge + ABC_LABEL_GAP_X, 0.03, z + ABC_LABEL_GAP_Z);
+    g.add(labR);
   }
 
-  // ===== DEF (7 sloturi pe Z) =====
-  const DEF_X = { D: defX, E: defX + (SLOT_W + .10), F: defX + 2*(SLOT_W + .10) };
+  // numerotare 10..1 pe A (sus) și C (jos)
+  for (let col = 1; col <= 10; col++) {
+    const xNum = abcOffsetX - (col - 0.5) * STEP;
+    const label = 11 - col;
 
-  for (const k of ['D','E','F']) {
-    const x = DEF_X[k];
+    const nA = paintedText(String(label), { size: 1.2 });
+    nA.position.set(xNum, 0.03, ABC_ROW_Z.A + 1.6);
+    g.add(nA);
+
+    const nC = paintedText(String(label), { size: 1.2 });
+    nC.position.set(xNum, 0.03, ABC_ROW_Z.C - 1.6);
+    g.add(nC);
+  }
+
+  // — DEF: 7 sloturi pe Z —
+  const DEF_LABEL_GAP_Z = 0.8;
+  const D_NUMBERS_GAP_X = 1.2;
+
+  for (const key of ['D', 'E', 'F']) {
+    const x = DEF_COL_X[key];
+
     for (let r = 1; r <= 7; r++) {
-      const z = START_DEF_Z + (r - .5) * STEP;
-      g.add(slot({ x, z, alongX: false }));
+      const zCenter = START_Z_DEF + (r - 0.5) * STEP;
+      g.add(slotMark({ x, z: zCenter, along: 'Z' }));
     }
-    const lab = textPaint(k, { size: 2.0 }); lab.position.set(x, .03, START_DEF_Z - .8); g.add(lab);
+
+    // litera coloanei
+    const lab = paintedText(key, { size: 2.0 });
+    lab.position.set(x, 0.03, START_Z_DEF - DEF_LABEL_GAP_Z);
+    g.add(lab);
   }
+
+  // numerotare 1..7 lângă D
   for (let r = 1; r <= 7; r++) {
-    const t = textPaint(String(r), { size: 1.1 });
-    t.position.set(DEF_X.D - 1.2, .03, START_DEF_Z + (r - .5) * STEP);
-    g.add(t);
+    const n = paintedText(String(r), { size: 1.2 });
+    n.position.set(DEF_COL_X.D - D_NUMBERS_GAP_X, 0.03, START_Z_DEF + (r - 0.5) * STEP);
+    g.add(n);
   }
 
   return g;
