@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../AuthContext';
-import { useScheduler } from '../../Depot/hooks/useScheduler';
+import { useScheduler } from "../hooks/useScheduler";
 
 import styles from './SchedulerPage.module.css';
 
