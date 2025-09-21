@@ -1,53 +1,66 @@
+// src/components/threeWorld/createSky.js
 import * as THREE from 'three';
 
-export default function createSky({ radius = 800 } = {}) {
-  const g = new THREE.Group();
+/**
+ * Cupolă “cer” gradient + lumini; expune setMode('day'|'night')
+ */
+export default function createSky({
+  radius = 420,
+  topDay = 0x88c9ff,
+  bottomDay = 0xd5ecff,
+  topNight = 0x0d1730,
+  bottomNight = 0x0a0f1e,
+} = {}) {
+  const group = new THREE.Group();
 
+  const geo = new THREE.SphereGeometry(radius, 48, 32);
   const uniforms = {
-    topDay:    { value: new THREE.Color(0x87ceeb) },
-    botDay:    { value: new THREE.Color(0xcfefff) },
-    topNight:  { value: new THREE.Color(0x0b1220) },
-    botNight:  { value: new THREE.Color(0x151d33) },
-    mix:       { value: 0.0 } // 0 = zi, 1 = noapte
+    topColor:    { value: new THREE.Color(topDay) },
+    bottomColor: { value: new THREE.Color(bottomDay) },
+    offset:      { value: 0.25 },
+    exponent:    { value: 0.9 },
   };
-
-  const geo = new THREE.SphereGeometry(radius, 32, 24);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms,
     vertexShader: `
       varying vec3 vPos;
-      void main() {
+      void main(){
         vPos = (modelMatrix * vec4(position,1.0)).xyz;
         gl_Position = projectionMatrix * viewMatrix * vec4(vPos,1.0);
-      }
-    `,
+      }`,
     fragmentShader: `
-      uniform vec3 topDay;   uniform vec3 botDay;
-      uniform vec3 topNight; uniform vec3 botNight;
-      uniform float mix;
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      uniform float offset;
+      uniform float exponent;
       varying vec3 vPos;
-      void main() {
-        float h = normalize(vPos).y * 0.5 + 0.5;
-        vec3 day    = mix(botDay,   topDay,   h);
-        vec3 night  = mix(botNight, topNight, h);
-        vec3 col    = mix(day, night, clamp(mix,0.0,1.0));
-        gl_FragColor = vec4(col, 1.0);
-      }
-    `
+      void main(){
+        float h = normalize(vPos).y;
+        float f = max(pow(max(h + offset, 0.0), exponent), 0.0);
+        gl_FragColor = vec4(mix(bottomColor, topColor, f), 1.0);
+      }`,
   });
-  const sky = new THREE.Mesh(geo, mat);
-  g.add(sky);
+  const dome = new THREE.Mesh(geo, mat);
+  group.add(dome);
 
-  g.userData.setNight = (isNight) => {
-    mat.uniforms.mix.value = isNight ? 1.0 : 0.0;
-    mat.needsUpdate = true;
-  };
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xcad2e1, 0.5);
+  hemi.position.set(0, 1, 0);
+  hemi.name = 'hemi';
+  group.add(hemi);
 
-  // ascultă evenimentul din Map3DPage pentru toggle
-  const onToggle = (e) => g.userData.setNight?.(e.detail?.night);
-  window.addEventListener('map3d-mode-toggle', onToggle);
-  g.userData.cleanup = () => window.removeEventListener('map3d-mode-toggle', onToggle);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(120, 160, 40);
+  sun.name = 'sun';
+  group.add(sun);
 
-  return g;
+  function setMode(mode) {
+    const isNight = mode === 'night';
+    uniforms.topColor.value.set(isNight ? topNight : topDay);
+    uniforms.bottomColor.value.set(isNight ? bottomNight : bottomDay);
+    sun.intensity = isNight ? 0.25 : 0.8;
+    hemi.intensity = isNight ? 0.25 : 0.5;
+  }
+
+  return { group, setMode };
 }
