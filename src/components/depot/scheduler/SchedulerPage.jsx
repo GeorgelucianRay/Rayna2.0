@@ -1,8 +1,8 @@
-// src/components/Depot/scheduler/SchedulerPage.jsx
+// src/components/depot/scheduler/SchedulerPage.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../AuthContext';
-import { useScheduler } from "../hooks/useScheduler";
+import { useScheduler } from '../hooks/useScheduler';
 
 import styles from './SchedulerPage.module.css';
 
@@ -10,6 +10,7 @@ import SchedulerToolbar from './SchedulerToolbar';
 import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
+import ProgramarModal from './ProgramarModal';
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -27,16 +28,21 @@ export default function SchedulerPage() {
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
+  const [programarOpen, setProgramarOpen] = useState(false);
   const calRef = useRef(null);
 
+  // Los mecánicos no ven "Todos"
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
   const handleProgramarClick = () => {
-    if (window.innerWidth <= 980 && calRef.current) {
-      calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Abrimos el modal de programación
+    setProgramarOpen(true);
+    // Si quieres además hacer scroll al calendario en móvil, descomenta lo de abajo:
+    // if (window.innerWidth <= 980 && calRef.current) {
+    //   calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // }
   };
 
   return (
@@ -62,20 +68,22 @@ export default function SchedulerPage() {
         />
 
         <div className={styles.grid}>
+          {/* Lista (izquierda) */}
           <SchedulerList
             items={filtered}
             tab={tab}
             loading={loading}
             role={role}
-            onHecho={async (row) => { await marcarHecho(row); }}
             onSelect={setSelected}
           />
 
+          {/* Calendario (derecha o abajo en móvil) */}
           <div ref={calRef}>
             <SchedulerCalendar date={date} setDate={setDate} />
           </div>
         </div>
 
+        {/* Modal de detalle/edición */}
         <SchedulerDetailModal
           open={!!selected}
           row={selected}
@@ -85,6 +93,17 @@ export default function SchedulerPage() {
           onHecho={async (row) => { await marcarHecho(row); setSelected(null); }}
           onEditar={async (row, payload) => { await actualizarProgramado(row, payload); setSelected(null); }}
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, pos); setSelected(null); }}
+        />
+
+        {/* Modal para crear una programación desde "En Depósito" */}
+        <ProgramarModal
+          open={programarOpen}
+          onClose={() => setProgramarOpen(false)}
+          onDone={() => {
+            // tras guardar, mostramos la pestaña “Programado”
+            setTab('programado');
+            setProgramarOpen(false);
+          }}
         />
       </div>
     </div>
