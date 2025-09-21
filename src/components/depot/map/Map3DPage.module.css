@@ -120,3 +120,9 @@
   .card, .backButton { transition: none; animation: none; }
   .backButton:hover { transform: none; }
 }
+.canvasWrap {
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 80px); /* ajustat după header */
+  background: #111;
+}
