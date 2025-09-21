@@ -1,3 +1,4 @@
+// src/components/Depot/modals/SalidaContainerModal.jsx
 import React from 'react';
 import styles from './SalidaContainerModal.module.css';
 
@@ -9,27 +10,30 @@ function SalidaContainerModal({
   setSalidaMatriculaCamion,
   selectedContainer,
 }) {
-  if (!isOpen || !selectedContainer) {
-    return null;
-  }
+  if (!isOpen || !selectedContainer) return null;
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
-        <h3>Registrar Salida</h3>
+        <h3>Registrar salida</h3>
         <form onSubmit={onSubmit}>
           <div className={styles.formGroup}>
-            <label htmlFor="salidaMatriculaCamion">Matrícula Camión</label>
+            <label htmlFor="salidaMatriculaCamion">Matrícula del camión</label>
             <input
               id="salidaMatriculaCamion"
               type="text"
               value={salidaMatriculaCamion}
               onChange={(e) => setSalidaMatriculaCamion(e.target.value)}
-              required
+              placeholder="Ej. 1234-ABC"
             />
           </div>
+
           <div className={styles.modalActions}>
-            <button type="button" className={styles.cancelButton} onClick={onClose}>
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={onClose}
+            >
               Cancelar
             </button>
             <button type="submit" className={styles.saveButton}>
