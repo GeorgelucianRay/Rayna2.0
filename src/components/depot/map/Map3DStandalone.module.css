@@ -1,65 +1,48 @@
-.wrap {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(120% 120% at 50% 0%,
-              rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 40%),
-              #0f1317;
+.wrap{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  background:#0f1115;
 }
 
-.topbar {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
-  z-index: 5;
-  pointer-events: none;
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  z-index:2;
 }
 
-.leftRow, .rightRow { pointer-events: all; }
-
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: linear-gradient(180deg, #5e86ff, #3863f9);
-  color: #fff;
-  font-weight: 800;
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
-  cursor: pointer;
+.title{
+  margin:0;
+  font-size:28px;
+  font-weight:800;
+  color:#e8eef6;
+  text-shadow:0 6px 22px rgba(0,0,0,.35);
 }
 
-.backIcon { font-size: 18px; line-height: 1; }
-
-.title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 900;
-  color: #eef2f7;
-  text-shadow: 0 2px 16px rgba(0,0,0,.35);
-  text-align: center;
-  pointer-events: none;
+.backBtn, .modeBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 16px;
+  border:none;
+  border-radius:14px;
+  background:#3b82f6;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 8px 26px rgba(59,130,246,.35);
 }
+.modeBtn{ background:#111827; color:#f4f7fb; box-shadow:0 8px 26px rgba(17,24,39,.35); }
 
-.toggleBtn {
-  padding: 10px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(255,255,255,.06);
-  color: #f3f6fb;
-  font-weight: 700;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-}
-
-.canvasMount {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+.canvas{
+  /* cheia: canvas ia TOT spațiul rămas sub header */
+  flex:1;
+  min-height: 300px;      /* fallback pe mobile vechi */
+  position:relative;
+  z-index:1;
+  outline:none;
 }
