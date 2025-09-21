@@ -1,71 +1,51 @@
 /* src/components/depot/map/Map3DStandalone.module.css */
-.root {
+.page {
   position: fixed;
   inset: 0;
-  background: #0f1216;
-  overflow: hidden;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  background: #0f1115;
+  display: flex;
+  flex-direction: column;
 }
 
 .hud {
-  position: absolute;
-  z-index: 3;
-  top: 10px;
-  left: 12px;
-  right: 12px;
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  pointer-events: none; /* ca gesturile să treacă la canvas */
-}
-
-.backBtn,
-.modeBtn {
-  pointer-events: auto;
-  border: 0;
-  outline: 0;
-  border-radius: 14px;
   padding: 10px 14px;
-  font-weight: 700;
-  font-size: 14px;
-  background: linear-gradient(180deg, #4f7cff, #3760ee);
-  color: #fff;
-  box-shadow: 0 8px 28px rgba(55,96,238,0.35);
-}
-
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.backIcon {
-  font-size: 16px;
-  line-height: 1;
+  background: linear-gradient(180deg, rgba(0,0,0,.75), rgba(0,0,0,.25) 60%, rgba(0,0,0,0));
+  -webkit-app-region: drag;
 }
 
 .title {
   margin: 0;
-  padding: 6px 10px;
-  font-size: clamp(18px, 5vw, 32px);
-  color: #e9edf5;
-  letter-spacing: 0.5px;
-  background: rgba(0,0,0,0.45);
-  border-radius: 12px;
-  pointer-events: none;
+  font-size: 22px;
+  color: #e6e8ea;
+  letter-spacing: .5px;
+  -webkit-app-region: no-drag;
 }
 
-.modeBtn {
-  background: rgba(255,255,255,0.06);
-  color: #e9edf5;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+.back, .mode {
+  -webkit-app-region: no-drag;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #4b6bff;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(75,107,255,.35);
+}
+
+.mode {
+  background: #1f2937;
+  box-shadow: none;
 }
 
 .canvasWrap {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
