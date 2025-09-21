@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
 
 import createGround from '../../threeWorld/createGround';
-import createContainersLayer from '../../threeWorld/createContainersLayer'; // folosește pozițiile tale
+import createContainersLayer from '../../threeWorld/createContainersLayer';
 import styles from './Map3DStandalone.module.css';
 
 const BackIcon = () => (
@@ -15,52 +15,52 @@ const BackIcon = () => (
   </svg>
 );
 
-export default function Map3DPage() {
+export default function Map3DPage(){
   const navigate = useNavigate();
   const mountRef = useRef(null);
+  const headerRef = useRef(null);
   const [night, setNight] = useState(false);
   const [containers, setContainers] = useState([]);
 
-  // ======= fetch contenidores (simplu) =======
+  /* ==== DATA ==== */
   useEffect(() => {
     (async () => {
       const cols = 'id, matricula_contenedor, naviera, tipo, posicion, pos';
-      const [a, b, c] = await Promise.all([
+      const [a,b,c] = await Promise.all([
         supabase.from('contenedores').select(cols),
         supabase.from('contenedores_programados').select(cols),
         supabase.from('contenedores_rotos').select(cols),
       ]);
       const combined = [
-        ...((a.data || []).map(r => ({ ...r, __source: 'enDeposito' }))),
-        ...((b.data || []).map(r => ({ ...r, __source: 'programados' }))),
-        ...((c.data || []).map(r => ({ ...r, __source: 'rotos' }))),
+        ...((a.data||[]).map(r=>({ ...r, __source:'enDeposito'}))),
+        ...((b.data||[]).map(r=>({ ...r, __source:'programados'}))),
+        ...((c.data||[]).map(r=>({ ...r, __source:'rotos'}))),
       ];
       setContainers(combined);
     })();
   }, []);
 
-  // ======= scena 3D =======
+  /* ==== 3D ==== */
   useEffect(() => {
     const mount = mountRef.current;
+    if (!mount) return;
+
+    // măsurare robustă a spațiului disponibil
+    const hHeader = headerRef.current?.getBoundingClientRect()?.height ?? 0;
+    const width  = mount.clientWidth || window.innerWidth;
+    const height = (mount.clientHeight || (window.innerHeight - hHeader)) || 400;
+
     const scene = new THREE.Scene();
+    const skyBottom = new THREE.Color(night ? 0x0a0f18 : 0xd5efff);
+    scene.background = skyBottom;
 
-    // cer (gradient simplu, zi/noapte)
-    const skyTop   = night ? 0x0b1b2a : 0x8ad1ff;
-    const skyBottom= night ? 0x0a0f18 : 0xd5efff;
-    scene.background = new THREE.Color(skyBottom);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
     mount.appendChild(renderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(
-      55,
-      mount.clientWidth / mount.clientHeight,
-      0.1,
-      800
-    );
+    const camera = new THREE.PerspectiveCamera(55, width/height, 0.1, 800);
     camera.position.set(60, 65, 85);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -68,45 +68,43 @@ export default function Map3DPage() {
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.49;
 
-    // lumină zi/noapte
+    // lumini zi/noapte
     const sun = new THREE.DirectionalLight(0xffffff, night ? 0.35 : 0.95);
     sun.position.set(100, 160, 60);
     sun.castShadow = true;
     scene.add(sun);
     scene.add(new THREE.AmbientLight(0xffffff, night ? 0.25 : 0.55));
 
-    // GROUND – valori tunate pentru layout-ul dorit
+    // asfalt + marcaje (valorile calibrate)
     const ground = createGround({
-      width: 130,     // unde vrei să “se termine” asfaltul
+      width: 130,
       depth: 105,
       color: 0x2b2f33,
-      abcOffsetX: -18, // apropie ABC de centru
-      defOffsetX: 16,  // apropie DEF de ABC
-      abcToDefGap: 8,  // micșorează distanța dintre blocuri
+      abcOffsetX: -18,
+      defOffsetX: 16,
+      abcToDefGap: 8,
     });
     scene.add(ground);
 
-    // containere (dacă nu sunt, nu crăpă)
+    // containere (dacă nu există, funcția nu crapă)
     const layer = createContainersLayer(
       { containers },
-      {
-        abcOffsetX: -18,
-        defOffsetX: 16,
-        abcToDefGap: 8,
-        abcNumbersReversed: true
-      }
+      { abcOffsetX:-18, defOffsetX:16, abcToDefGap:8, abcNumbersReversed:true }
     );
     scene.add(layer);
 
-    // loop
-    let raf;
+    // resize sigur (cu fallback de înălțime)
     const onResize = () => {
-      renderer.setSize(mount.clientWidth, mount.clientHeight);
-      camera.aspect = mount.clientWidth / mount.clientHeight;
+      const hh = headerRef.current?.getBoundingClientRect()?.height ?? 0;
+      const w  = mount.clientWidth || window.innerWidth;
+      const h  = (mount.clientHeight || (window.innerHeight - hh)) || 400;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
     window.addEventListener('resize', onResize);
 
+    let raf;
     const tick = () => {
       layer.userData?.tick?.();
       controls.update();
@@ -119,25 +117,22 @@ export default function Map3DPage() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       renderer.dispose();
-      mount.removeChild(renderer.domElement);
+      if (renderer.domElement?.parentNode === mount) {
+        mount.removeChild(renderer.domElement);
+      }
     };
   }, [night, containers]);
 
   return (
     <div className={styles.wrap}>
-      <header className={styles.header}>
+      <header ref={headerRef} className={styles.header}>
         <button className={styles.backBtn} onClick={() => navigate('/depot')}>
-          <BackIcon />
-          <span>Volver al Depot</span>
+          <BackIcon /><span>Volver al Depot</span>
         </button>
-
         <h1 className={styles.title}>Mapa 3D · Depósito</h1>
-
-        <button
-          className={styles.modeBtn}
-          onClick={() => setNight(v => !v)}
-          title={night ? 'Modo día' : 'Modo noche'}
-        >
+        <button className={styles.modeBtn}
+          onClick={()=>setNight(v=>!v)}
+          title={night ? 'Modo día' : 'Modo noche'}>
           {night ? '☀️ Día' : '🌙 Noche'}
         </button>
       </header>
