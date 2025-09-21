@@ -49,6 +49,49 @@
   background: radial-gradient(circle, var(--cyan) 0%, transparent 70%);
   box-shadow: 0 0 16px var(--cyan), 0 0 32px var(--cyan);
 }
+/* —— Brand row + Exit (X) button —— */
+.brandRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* dacă nu poți modifica JSX, poți pune .exitBtn direct în .header;
+   în mobil rămâne pe primul rând cu brandul */
+.exitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 82, 119, 0.7);      /* roșu perimetru */
+  background: linear-gradient(180deg,
+              rgba(255, 82, 119, 0.18),
+              rgba(255, 82, 119, 0.10));
+  color: #ffd7e0;                                  /* roșu deschis */
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(255, 82, 119, 0.15) inset,
+              0 6px 18px rgba(0, 0, 0, 0.28);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.exitBtn:hover {
+  transform: translateY(-1px);
+  border-color: #ff5277;                           /* accent la hover */
+  color: #ffe8ee;
+  box-shadow: 0 0 26px rgba(255, 82, 119, 0.28) inset,
+              0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* păstrează-l pe același rând cu brandul, iar tab-urile rămân pe rândul 2 */
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; }
+  .nav { order: 2; width: 100%; justify-content: center; margin-top: 6px; }
+  .exitBtn { order: 0; } /* se afișează lângă brand, înaintea tab-urilor */
+}
 
 .nav { display: flex; gap: 8px; }
 .navBtn {
