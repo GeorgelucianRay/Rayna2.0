@@ -2,23 +2,18 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
-import Layout from '../../Layout';
-import styles from './Map3DPage.module.css';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// ====== importă piesele tale ======
+// componentele tale „lume 3D”
 import createSky from '../../threeWorld/createSky';
 import createMountainWall from '../../threeWorld/createMountainWall';
 import fetchContainers from '../../threeWorld/fetchContainers';
 import createContainersLayer from '../../threeWorld/createContainersLayer';
-// Dacă vrei instanced meshes, schimbă linia de mai sus cu:
+// (poți schimba cu varianta optimizată dacă vrei):
 // import createContainersLayer from '../../threeWorld/createContainersLayerOptimized';
 
-const BackIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-);
+import Layout from '../../Layout';
+import styles from './Map3DPage.module.css';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -29,7 +24,7 @@ export default function Map3DPage() {
     const mountEl = mountRef.current;
     if (!mountEl) return;
 
-    // --- Scene / Camera / Renderer ---
+    // --- Scene/Camera/Renderer ---
     const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(
@@ -38,7 +33,7 @@ export default function Map3DPage() {
       0.1,
       3000
     );
-    camera.position.set(28, 20, 36);
+    camera.position.set(30, 22, 38);
     camera.lookAt(0, 3, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -47,23 +42,30 @@ export default function Map3DPage() {
     renderer.shadowMap.enabled = true;
     mountEl.appendChild(renderer.domElement);
 
-    // --- Lights ---
-    const ambient = new THREE.AmbientLight(0xffffff, 0.55);
-    scene.add(ambient);
+    // --- Controls (mișcare liberă) ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 8;
+    controls.maxDistance = 150;
+    controls.maxPolarAngle = Math.PI * 0.49; // nu lăsa să intre „sub pământ”
+    controls.target.set(0, 3, 0);
+
+    // --- Lumină + cer + „munte” ---
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
 
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
     sun.position.set(60, 110, 40);
     sun.castShadow = true;
     scene.add(sun);
 
-    // --- Cer și „munte” (piesa ta) ---
-    const sky = createSky();                 // cupolă + lumini ambient/soare
+    const sky = createSky();
     scene.add(sky);
 
     const mountain = createMountainWall({ yardDepth: 140, fenceMargin: 2 });
     scene.add(mountain);
 
-    // --- Ground (simplu, îl poți înlocui cu createGround dacă ai) ---
+    // --- Sol simplu (poți înlocui cu createGround dacă ai) ---
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(400, 400),
       new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.95, metalness: 0 })
@@ -72,8 +74,8 @@ export default function Map3DPage() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- Layout pentru slotToWorld (același contract folosit în layer-ul tău) ---
-    const layout = {
+    // --- Config pentru slotToWorld (strict numeric, nu e „Layout.jsx”) ---
+    const slotsConfig = {
       abcOffsetX: 0,
       defOffsetX: 0,
       abcToDefGap: -10,
@@ -81,20 +83,17 @@ export default function Map3DPage() {
       debug: false,
     };
 
-    // --- Container layer (din datele reale) ---
+    // --- Layer de containere din Supabase ---
     let containersLayer = null;
-
-    const loadAndBuild = async () => {
+    (async () => {
       try {
         const data = await fetchContainers(); // { containers: [...] }
-        // construiește stratul 3D după datele din supabase
-        containersLayer = createContainersLayer(data, layout);
+        containersLayer = createContainersLayer(data, slotsConfig);
         scene.add(containersLayer);
       } catch (e) {
-        console.error('Eroare la încărcarea/constructia stratului de containere:', e);
+        console.error('Eroare layer containere:', e);
       }
-    };
-    loadAndBuild();
+    })();
 
     // --- Resize ---
     const onResize = () => {
@@ -108,8 +107,8 @@ export default function Map3DPage() {
 
     // --- Loop ---
     const tick = () => {
-      // rulează animația layer-ului tău (puls pentru programados)
-      containersLayer?.userData?.tick?.();
+      controls.update();                          // inerție
+      containersLayer?.userData?.tick?.();        // puls „programados”
       renderer.render(scene, camera);
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -119,27 +118,30 @@ export default function Map3DPage() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', onResize);
+      controls.dispose();
       renderer.dispose();
-      mountEl.removeChild(renderer.domElement);
+      if (mountEl.contains(renderer.domElement)) {
+        mountEl.removeChild(renderer.domElement);
+      }
     };
   }, []);
 
   return (
-    <Layout>
-      {/* Canvas full-screen */}
+    // vezi secțiunea 2 de mai jos pentru „buton în header”
+    <Layout
+      headerLeft={{ type: 'back', label: 'Volver al Depot', onClick: () => navigate('/depot') }}
+      hideMenuButton
+    >
+      {/* Canvas 3D pe tot ecranul */}
       <div ref={mountRef} className={styles.canvasWrap} />
 
-      {/* HUD peste canvas */}
-      <div className={styles.pageContainer}>
-        <div className={styles.hudBar}>
-          <button className={styles.backButton} onClick={() => navigate('/depot')}>
-            <BackIcon /> <span>Volver al Depot</span>
-          </button>
-          <h1 className={styles.title}>Mapa 3D · Depósito</h1>
-        </div>
-
-        <div className={styles.watermark}>Mapa 3D · Depósito</div>
+      {/* HUD peste canvas (titlu) */}
+      <div className={styles.hudTop}>
+        <h1 className={styles.title}>Mapa 3D · Depósito</h1>
       </div>
+
+      {/* watermark subtil (opțional) */}
+      <div className={styles.watermark}>Mapa 3D · Depósito</div>
     </Layout>
   );
 }
