@@ -1,9 +1,34 @@
 import React, { useMemo } from 'react';
 import styles from './SchedulerCalendar.module.css';
 
-export default function SchedulerCalendar({ date, setDate }) {
+const fmtISO = (d) => {
+  // yyyy-mm-dd (fără TZ)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+export default function SchedulerCalendar({
+  date,                // Date selectat curent
+  setDate,             // setter pentru schimbarea lunii/zii curente
+  // HARTĂ cu zile → listă de programări în acea zi (pentru color + listare)
+  programadosByDate = {}, // ex: { "2025-09-21": [row, row,...], ... }
+
+  // Când dai click pe o zi în modul normal → vrem să afișăm lista acelei zile
+  onPickDay,           // (iso, items) => void
+
+  // MODUL DE SELECȚIE MULTIPĂ (pentru export în Completado)
+  selectable = false,  // dacă true, click-ul face toggle de selecție, nu deschide listă
+  selectedDates = new Set(), // set(string ISO)
+  onToggleSelect,      // (iso) => void
+
+  // opțional: etichete custom pentru limbă (fallback spaniolă)
+  weekLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'],
+  locale = 'es-ES',
+}) {
   const today = new Date();
-  const year = date.getFullYear();
+  const year  = date.getFullYear();
   const month = date.getMonth();
 
   const daysInMonth = useMemo(
@@ -11,26 +36,42 @@ export default function SchedulerCalendar({ date, setDate }) {
     [year, month]
   );
 
-  // duminică=0 … sâmbătă=6; vrem să înceapă cu luni
-  const firstDay = new Date(year, month, 1).getDay(); // 0..6
+  // Pornește de LUNI (Mon-first)
+  const firstDay = new Date(year, month, 1).getDay(); // 0..6 (duminică=0)
   const leadingEmpty = (firstDay + 6) % 7;
 
-  const handleSelect = (day) => {
-    const next = new Date(year, month, day);
-    setDate(next);
+  const goPrevMonth = () => setDate(new Date(year, month - 1, 1));
+  const goNextMonth = () => setDate(new Date(year, month + 1, 1));
+  const goToday     = () => setDate(new Date());
+
+  const handleClickDay = (day) => {
+    const d = new Date(year, month, day);
+    const iso = fmtISO(d);
+
+    if (selectable) {
+      onToggleSelect?.(iso);
+      return;
+    }
+
+    // modul normal: setăm ziua și notificăm lista zilei
+    setDate(d);
+    const items = programadosByDate[iso] || [];
+    onPickDay?.(iso, items);
   };
 
   return (
     <div className={styles.sideCard}>
       <div className={styles.sideHeader}>
-        <h3>
-          {date.toLocaleString('default', { month: 'long' })}{' '}
-          {year}
+        <button className={styles.navBtn} onClick={goPrevMonth} aria-label="Mes anterior">‹</button>
+        <h3 className={styles.monthTitle}>
+          {date.toLocaleString(locale, { month: 'long' })} {year}
         </h3>
+        <button className={styles.navBtn} onClick={goNextMonth} aria-label="Mes siguiente">›</button>
+        <button className={styles.todayBtn} onClick={goToday}>Hoy</button>
       </div>
 
       <div className={styles.week}>
-        {['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du'].map((d) => (
+        {weekLabels.map((d) => (
           <div key={d}>{d}</div>
         ))}
       </div>
@@ -39,29 +80,41 @@ export default function SchedulerCalendar({ date, setDate }) {
         {Array.from({ length: leadingEmpty }).map((_, i) => (
           <div key={`ph-${i}`} className={styles.placeholderDay} />
         ))}
+
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
+          const cellDate = new Date(year, month, day);
+          const iso = fmtISO(cellDate);
+
           const isToday =
             day === today.getDate() &&
             month === today.getMonth() &&
             year === today.getFullYear();
+
           const isSelected =
             day === date.getDate() &&
             month === date.getMonth() &&
             year === date.getFullYear();
 
+          const hasProg = (programadosByDate[iso]?.length || 0) > 0;
+          const isMultiPicked = selectable && selectedDates?.has?.(iso);
+
           return (
             <button
               key={day}
               type="button"
-              onClick={() => handleSelect(day)}
+              onClick={() => handleClickDay(day)}
               className={[
                 styles.day,
                 isToday ? styles.today : '',
-                isSelected ? styles.dayActive : '',
+                isSelected && !selectable ? styles.dayActive : '',
+                hasProg ? styles.dayHasProgramados : '',
+                isMultiPicked ? styles.dayMultiSelected : '',
               ].join(' ')}
+              title={hasProg ? `${programadosByDate[iso].length} programaciones` : ''}
             >
-              {day}
+              <span className={styles.dayNumber}>{day}</span>
+              {hasProg && <span className={styles.dotProg} />}
             </button>
           );
         })}
