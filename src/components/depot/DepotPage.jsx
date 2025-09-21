@@ -503,33 +503,35 @@ function DepotPage() {
         </div>
 
         {/* Toolbar */}
-        <div className={styles.toolbar}>
-          <div className={styles.searchBar}>
-            <SearchIcon />
-            <input
-              type="text"
-              placeholder="Buscar por matrícula…"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
+<div className={styles.toolbar}>
+  <div className={styles.searchBar}>
+    <SearchIcon />
+    <input
+      type="text"
+      placeholder="Buscar por matrícula…"
+      value={searchTerm}
+      onChange={(e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1);
+      }}
+    />
+  </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            {activeTab === 'contenedores' && (
-              <button className={styles.addButton} onClick={openAddModal}>
-                <PlusIcon />
-                Añadir contenedor
-              </button>
-            )}
-            {/* Export Excel pentru tab curent */}
-            <button className={styles.addButton} onClick={handleExportExcel}>
-              📄 Exportar Excel
-            </button>
-          </div>
-        </div>
+  {/* Buton Excel */}
+  <img
+    src="/excel_circle_green.png"
+    alt="Exportar Excel"
+    className={styles.excelButton}
+    onClick={handleExportExcel}
+  />
+
+  {activeTab === 'contenedores' && (
+    <button className={styles.addButton} onClick={openAddModal}>
+      <PlusIcon />
+      Añadir contenedor
+    </button>
+  )}
+</div>
 
         {/* Lista */}
         {loading ? (
