@@ -232,46 +232,100 @@ function DepotPage() {
     setIsSalidaModalOpen(true);
   };
 
-  // ❗ Salida NO se permite para "programados" desde Depot (se hace desde Programación → Hecho)
-  const handleSalidaSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedContainer) return;
+  // 🔁 Înlocuiește toată funcția ta handleSalidaSubmit cu aceasta
+const handleSalidaSubmit = async (e) => {
+  e.preventDefault();
+  if (!selectedContainer) return;
 
-    const {
-      id,
-      __from,
-      matricula_contenedor,
-      naviera,
-      tipo,
-      posicion,
-      estado: estadoActual,
-      detalles,
-    } = selectedContainer;
+  const {
+    id,
+    __from,                     // 'contenedores' | 'programados' (doar în lista "En Depósito" UNIÓ)
+    matricula_contenedor,
+    naviera,
+    tipo,
+    posicion,
+    estado: estadoActual,
+    detalles,
+    empresa_descarga,
+    fecha,                      // (din programados)
+    hora,                       // (din programados)
+  } = selectedContainer;
 
-    try {
-      if (__from === 'programados') {
-        alert('Este contenedor está programado. Realiza la salida desde "Programación" → Hecho.');
-        setIsSalidaModalOpen(false);
-        return;
-      }
+  try {
+    // 🚫 Din Depot NU permitem salida pentru "programados"
+    if (__from === 'programados') {
+      alert('Este contenedor está programado. Realiza la salida desde "Programación" → Hecho.');
+      setIsSalidaModalOpen(false);
+      return;
+    }
 
-      // Si había una programación con la misma matrícula, la limpiamos
-      await supabase
-        .from('contenedores_programados')
-        .delete()
-        .eq('matricula_contenedor', matricula_contenedor);
+    // 1) dacă exista o programare cu aceeași matrícula, o curățăm (a ieșit deja)
+    await supabase
+      .from('contenedores_programados')
+      .delete()
+      .eq('matricula_contenedor', matricula_contenedor);
 
-      // ⚙️ Construimos payload explícito según columnas de `contenedores_salidos`
-      const salidaPayload = {
-        matricula_contenedor: matricula_contenedor || null,
-        naviera: naviera || null,
-        tipo: tipo || null,
-        posicion: posicion || null,
-        estado: estadoActual || 'salido',   // quita este campo si NO existe en tu tabla
-        detalles: detalles || null,
-        matricula_camion: salidaMatriculaCamion || null,
-        // si tu tabla tiene `fecha_salida` con DEFAULT NOW(), no envíes nada aquí
-      };
+    // 2) construim payloadul EXACT pe schema `contenedores_salidos`
+    const salidaPayload = {
+      // obligatorii / cheie
+      matricula_contenedor: matricula_contenedor || null,
+
+      // meta de business
+      naviera: naviera || null,
+      tipo: tipo || null,
+      posicion: posicion || null,
+      matricula_camion: salidaMatriculaCamion || null,
+      detalles: detalles || null,
+      estado: estadoActual || null,
+
+      // relație cu programados (după cum ai în schema ta):
+      empresa_descarga: empresa_descarga || null,          // text
+      fecha: fecha || null,                                // date (dacă vrei să păstrezi și „fecha” simplu)
+      hora: hora || null,                                  // time
+
+      // câmpuri obligatorii conform tabelului tău:
+      desde_programados: __from === 'programados',         // boolean (aici va fi false, dar lăsăm logic corect)
+      fecha_programada: fecha || null,                     // date
+      hora_programada: hora || null,                       // time
+      fecha_salida: new Date().toISOString(),              // ⚠️ OBLIGATORIU în schema ta, nu are default
+      // created_at are default, id este serial → nu trimitem
+    };
+
+    // 3) inserăm în `contenedores_salidos`
+    const { error: insertError } = await supabase
+      .from('contenedores_salidos')
+      .insert([salidaPayload]);
+
+    if (insertError) {
+      console.error('[SALIDA insert error]', insertError);
+      alert(`Error al registrar la salida:\n${insertError.message || insertError}`);
+      setIsSalidaModalOpen(false);
+      return;
+    }
+
+    // 4) ștergem intrarea din tabela activă (aici este 'contenedores' sau 'contenedores_rotos')
+    const { error: deleteError } = await supabase
+      .from(activeTab)
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('[SALIDA delete error]', deleteError);
+      alert(`Error al eliminar el registro de "${activeTab}":\n${deleteError.message || deleteError}`);
+      setIsSalidaModalOpen(false);
+      return;
+    }
+
+    // 5) UI refresh
+    setContainers(prev => prev.filter(c => c.id !== id));
+    setActiveTab('contenedores_salidos');
+  } catch (err) {
+    console.error('Error en salida (catch):', err);
+    alert(`Ocurrió un error al registrar la salida.\n${err?.message || ''}`);
+  }
+
+  setIsSalidaModalOpen(false);
+};
 
       const { error: insertError } = await supabase
         .from('contenedores_salidos')
