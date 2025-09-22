@@ -1,15 +1,12 @@
 // src/components/GpsPro/utils/dbRoutes.js
 import { supabase } from '../../../supabaseClient';
 
-// maparea “modurilor” din UI → ce acceptă CHECK-ul din DB
+// mapează modurile din UI → ce permite CHECK-ul din DB
 function normalizeMode(uiMode) {
   if (!uiMode) return 'service';
-  const m = uiMode.toLowerCase();
-  if (m === 'manual' || m === 'recorder' || m === 'draw' || m === 'manual-draw') {
-    return 'manual';
-  }
-  // 'api', 'service', 'ors', etc. => considerăm serviciu
-  return 'service';
+  const m = String(uiMode).toLowerCase();
+  if (['manual', 'recorder', 'draw', 'manual-draw'].includes(m)) return 'manual';
+  return 'service'; // api/ors/service etc.
 }
 
 function toIntOrNull(n) {
@@ -18,34 +15,35 @@ function toIntOrNull(n) {
 }
 
 /**
- * Salvează o rută în gps_routes, garantând că `mode` trece CHECK-ul
- * și că integer-ele sunt integer.
+ * Salvează ruta în gps_routes respectând CHECK-ul pe 'mode'
+ * + curăță integer-ele.
  */
-export async function saveRouteToDb(rawPayload) {
+export async function saveRouteToDb(raw) {
   const payload = {
-    client_id: rawPayload.client_id ?? null,
-    origin_terminal_id: rawPayload.origin_terminal_id ?? null,
-    name: rawPayload.name ?? 'Ruta',
-    mode: normalizeMode(rawPayload.mode),             // ✅ 'manual' | 'service'
-    provider: rawPayload.provider ?? 'user',
-    geojson: rawPayload.geojson ?? null,
-    points: rawPayload.points ?? null,
-    distance_m: toIntOrNull(rawPayload.distance_m),   // ✅ integer
-    duration_s: toIntOrNull(rawPayload.duration_s),   // ✅ integer
-    round_trip: !!rawPayload.round_trip,
-    sampling: rawPayload.sampling ?? null,
-    meta: rawPayload.meta ?? null,
-    created_by: rawPayload.created_by ?? null,
+    client_id: raw.client_id ?? null,
+    origin_terminal_id: raw.origin_terminal_id ?? null,
+    name: raw.name ?? 'Ruta',
+    mode: normalizeMode(raw.mode),             // ✅ 'manual' | 'service'
+    provider: raw.provider ?? 'user',
+    geojson: raw.geojson ?? null,
+    points: raw.points ?? null,
+    distance_m: toIntOrNull(raw.distance_m),
+    duration_s: toIntOrNull(raw.duration_s),
+    round_trip: !!raw.round_trip,
+    sampling: raw.sampling ?? null,
+    meta: raw.meta ?? null,
+    created_by: raw.created_by ?? null,
   };
 
-  // Debug vizibil în console
-  // (poți comenta linia după ce confirmi că trece)
-  // eslint-disable-next-line no-console
+  // util când testezi
   console.log('[saveRouteToDb] payload:', payload);
 
-  const { data, error } = await supabase.from('gps_routes').insert([payload]).select('id');
+  const { data, error } = await supabase
+    .from('gps_routes')
+    .insert([payload])
+    .select('id');
+
   if (error) {
-    // arată exact ce mod a ajuns și valorile sensibile
     throw new Error(`${error.message} (mode="${payload.mode}", distance_m=${payload.distance_m}, duration_s=${payload.duration_s})`);
   }
   return data?.[0]?.id ?? null;
