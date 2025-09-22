@@ -1,6 +1,6 @@
 // src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';             // 👈 pentru butonul X (back/home)
+import { useNavigate } from 'react-router-dom';   // 👈 pentru butonul X (back/home)
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
@@ -53,8 +53,13 @@ function Toolbar({ canEdit, searchTerm, onSearch, onAdd, title }) {
 
 function Card({ item, onClick, canEdit, onEdit }) {
   return (
-    <div className={styles.card} onClick={onClick} role="button" tabIndex={0}
-      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && onClick()}>
+    <div
+      className={styles.card}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && onClick()}
+    >
       <div className={styles.cardImgWrap}>
         <img
           src={item.link_foto || 'https://placehold.co/800x600/0b1f3a/99e6ff?text=Sin+Foto'}
@@ -68,8 +73,11 @@ function Card({ item, onClick, canEdit, onEdit }) {
           <button
             className={styles.cardEdit}
             onClick={(e)=>{ e.stopPropagation(); onEdit(item); }}
-            aria-label="Editar" title="Editar"
-          >✎</button>
+            aria-label="Editar"
+            title="Editar"
+          >
+            ✎
+          </button>
         )}
       </div>
     </div>
