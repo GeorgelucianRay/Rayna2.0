@@ -1,6 +1,5 @@
-// src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';   // 👈 pentru butonul X (back/home)
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
@@ -27,8 +26,8 @@ const CloseIcon = () => (
 
 const ITEMS_PER_PAGE = 24;
 
-/** Toolbar fără tab-uri (doar search + Add) */
-function Toolbar({ canEdit, searchTerm, onSearch, onAdd, title }) {
+/** Toolbar: search + Añadir + Planificar ruta */
+function Toolbar({ canEdit, searchTerm, onSearch, onAdd, onPlan, title }) {
   return (
     <div className={styles.toolbar}>
       <div className={styles.actions}>
@@ -42,9 +41,14 @@ function Toolbar({ canEdit, searchTerm, onSearch, onAdd, title }) {
           />
         </div>
         {canEdit && (
-          <button className={styles.primary} onClick={onAdd}>
-            <PlusIcon /> Añadir {title}
-          </button>
+          <>
+            <button className={styles.primary} onClick={onAdd}>
+              <PlusIcon /> Añadir {title}
+            </button>
+            <button className={`${styles.primary} ${styles.routeBtn}`} onClick={onPlan}>
+              🚚 Planificar ruta
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -184,6 +188,9 @@ function ListView({ tableName, title }) {
         searchTerm={term}
         onSearch={(v)=>{ setTerm(v); setPage(1); }}
         onAdd={()=> setAddOpen(true)}
+        onPlan={()=> setOpenDestPickerFor({
+          _subject: { type: currentType, id: null, label: 'Mi ubicación', coords: null }
+        })}
         title={title}
       />
 
@@ -225,7 +232,6 @@ function ListView({ tableName, title }) {
                 : <button className={`${styles.btn} ${styles.btnDisabled}`} disabled>Maps no disponible</button>
               }
 
-              {/* Abrir mapa & Crear ruta → disponibile pe TOATE tab-urile */}
               <button
                 className={`${styles.btn}`}
                 onClick={() => {
@@ -352,7 +358,7 @@ function ListView({ tableName, title }) {
 export default function GpsProPage() {
   const { profile } = useAuth();
   const [tab, setTab] = useState('clientes');
-  const navigate = useNavigate();                    // 👈 pentru butonul X
+  const navigate = useNavigate();
 
   if (profile?.role !== 'dispecer') {
     return (
@@ -368,7 +374,6 @@ export default function GpsProPage() {
   return (
     <div className={styles.frame}>
       <header className={styles.header}>
-        {/* rând cu brand + buton X */}
         <div className={styles.headerRow}>
           <div className={styles.brand}>
             <div className={styles.logoGlow}/>
@@ -384,7 +389,6 @@ export default function GpsProPage() {
           </button>
         </div>
 
-        {/* tab-urile sub brand */}
         <nav className={styles.navUnderBrand}>
           <button className={`${styles.navBtn} ${tab==='clientes'?styles.navBtnActive:''}`} onClick={()=> setTab('clientes')}>Clientes</button>
           <button className={`${styles.navBtn} ${tab==='parkings'?styles.navBtnActive:''}`} onClick={()=> setTab('parkings')}>Parkings</button>
