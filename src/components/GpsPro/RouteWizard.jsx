@@ -1,28 +1,26 @@
-// src/components/GpsPro/RouteWizard.jsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import styles from './GpsPro.module.css';
 
 const TABS = ['clientes','parkings','servicios','terminale'];
 
-function List({table, term, onPick}) {
+function List({ table, term, onPick }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const run = useCallback(async () => {
     setLoading(true);
-    const cols = 'id,nombre,coordenadas,detalles';
     const { data, error } = await supabase
-      .from(table)
-      .select(cols)
+      .from(`gps_${table}`)
+      .select('id,nombre,coordenadas,detalles')
       .ilike('nombre', term ? `%${term}%` : '%')
       .order('nombre', { ascending: true })
-      .limit(200);
-    setItems(error ? [] : (data||[]));
+      .limit(300);
+    setItems(error ? [] : (data || []));
     setLoading(false);
   }, [table, term]);
 
-  useEffect(()=>{ fetch(); }, [fetch]);
+  useEffect(() => { run(); }, [run]);
 
   if (loading) return <div className={styles.loading}>Cargando…</div>;
 
@@ -30,13 +28,9 @@ function List({table, term, onPick}) {
     <ul className={styles.destList}>
       {items.map(it => (
         <li key={it.id}>
-          <button className={styles.destItem}
-            onClick={() => onPick({
-              type: table.replace('gps_', ''), // 'clientes' etc
-              id: it.id,
-              label: it.nombre,
-              coords: it.coordenadas,
-            })}
+          <button
+            className={styles.destItem}
+            onClick={() => onPick({ type: table, id: it.id, label: it.nombre, coords: it.coordenadas })}
           >
             <div className={styles.destTitle}>{it.nombre}</div>
             {it.detalles && <div className={styles.destSub}>{it.detalles}</div>}
@@ -47,25 +41,14 @@ function List({table, term, onPick}) {
   );
 }
 
-export default function RouteWizard({
-  onClose,
-  defaultOrigin,   // opțional: { type, id, label, coords } sau 'gps' pentru „mi ubicación”
-  onDone           // (origin,destination) => void
-}) {
-  const [step, setStep] = useState(1); // 1=origen, 2=destino
-  const [originMode, setOriginMode] = useState(defaultOrigin ? 'preset' : 'gps'); // 'gps' | 'preset' | 'manual'
-  const [origin, setOrigin] = useState(defaultOrigin || null);
+export default function RouteWizard({ onClose, onDone }) {
+  const [step, setStep] = useState(1); // 1=origen 2=destino
   const [tab, setTab] = useState('clientes');
   const [term, setTerm] = useState('');
+  const [origin, setOrigin] = useState(null);
   const [dest, setDest] = useState(null);
 
-  useEffect(() => {
-    if (originMode === 'gps') {
-      setOrigin({ type:'gps', id:null, label:'Mi ubicación', coords:null });
-    }
-  }, [originMode]);
-
-  const title = step===1 ? 'Elegir origen' : 'Elegir destino';
+  const title = step === 1 ? 'Elegir origen' : 'Elegir destino';
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
@@ -76,90 +59,45 @@ export default function RouteWizard({
         </div>
 
         <div className={styles.modalBody}>
-          {step===1 && (
-            <>
-              <div className={styles.destTabs}>
-                <button
-                  className={`${styles.navBtn} ${originMode==='gps'?styles.navBtnActive:''}`}
-                  onClick={()=>{ setOriginMode('gps'); setOrigin({ type:'gps', label:'Mi ubicación' }); }}
-                >Mi ubicación</button>
-                <button
-                  className={`${styles.navBtn} ${originMode==='preset'?styles.navBtnActive:''}`}
-                  onClick={()=> setOriginMode('preset')}
-                >Elegir de listas</button>
-              </div>
+          <div className={styles.destTabs}>
+            {TABS.map(t => (
+              <button
+                key={t}
+                className={`${styles.navBtn} ${tab===t?styles.navBtnActive:''}`}
+                onClick={()=> setTab(t)}
+              >
+                {t.charAt(0).toUpperCase()+t.slice(1)}
+              </button>
+            ))}
+          </div>
 
-              {originMode==='preset' && (
-                <>
-                  <div className={styles.destTabs}>
-                    {TABS.map(t => (
-                      <button key={t}
-                        className={`${styles.navBtn} ${tab===t?styles.navBtnActive:''}`}
-                        onClick={()=> setTab(t)}
-                      >
-                        {t.charAt(0).toUpperCase()+t.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+          <div className={styles.search} style={{marginTop:8}}>
+            <input placeholder="Buscar por nombre…" value={term} onChange={(e)=> setTerm(e.target.value)} />
+          </div>
 
-                  <div className={styles.search} style={{marginTop:8}}>
-                    <input placeholder="Buscar por nombre…" value={term} onChange={e=> setTerm(e.target.value)} />
-                  </div>
-
-                  <List table={`gps_${tab}`} term={term} onPick={(o) => setOrigin(o)} />
-                </>
-              )}
-            </>
-          )}
-
-          {step===2 && (
-            <>
-              <div className={styles.destTabs}>
-                {TABS.map(t => (
-                  <button key={t}
-                    className={`${styles.navBtn} ${tab===t?styles.navBtnActive:''}`}
-                    onClick={()=> setTab(t)}
-                  >
-                    {t.charAt(0).toUpperCase()+t.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              <div className={styles.search} style={{marginTop:8}}>
-                <input placeholder="Buscar por nombre…" value={term} onChange={e=> setTerm(e.target.value)} />
-              </div>
-
-              <List table={`gps_${tab}`} term={term} onPick={(d) => setDest(d)} />
-            </>
-          )}
+          <List table={tab} term={term} onPick={(val)=>{
+            if (step===1) setOrigin(val); else setDest(val);
+          }}/>
         </div>
 
         <div className={styles.modalFooter} style={{justifyContent:'space-between'}}>
           <div style={{color:'var(--muted)'}}>
-            {origin && step===2 && (
-              <>Origen: <strong style={{color:'var(--text)'}}>{origin.label}</strong></>
-            )}
+            {origin ? <>Origen: <strong style={{color:'var(--text)'}}>{origin.label}</strong></> : '—'}
+            {dest && <> · Destino: <strong style={{color:'var(--text)'}}>{dest.label}</strong></>}
           </div>
-
           <div style={{display:'flex', gap:8}}>
-            {step===2 ? (
-              <>
-                <button className={styles.btn} onClick={()=> setStep(1)}>Atrás</button>
-                <button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  disabled={!dest}
-                  onClick={() => onDone(origin, dest)}
-                >
-                  Crear ruta
-                </button>
-              </>
-            ) : (
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                disabled={!origin}
-                onClick={()=> setStep(2)}
-              >
+            {step===2 && <button className={styles.btn} onClick={()=> setStep(1)}>Atrás</button>}
+            {step===1 && (
+              <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!origin} onClick={()=> setStep(2)}>
                 Siguiente →
+              </button>
+            )}
+            {step===2 && (
+              <button className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={!origin || !dest}
+                onClick={()=> onDone(origin, dest)}
+              >
+                Crear ruta (API)
               </button>
             )}
           </div>
