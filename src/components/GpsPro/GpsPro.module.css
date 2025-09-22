@@ -120,6 +120,17 @@
   box-shadow: 0 0 20px rgba(0,229,255,0.15) inset, 0 6px 18px rgba(0,0,0,0.3);
 }
 .primary:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(0,229,255,0.25) inset, 0 8px 22px rgba(0,0,0,0.35); }
+/* Buton roșu – Planificar ruta */
+.routeBtn {
+  margin-left: 8px;
+  background: linear-gradient(135deg, #b00020, #e53935);
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+.routeBtn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
 
 /* ---------------- Grid cards ---------------- */
 .view { position: relative; }
