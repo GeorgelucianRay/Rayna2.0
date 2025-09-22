@@ -5,7 +5,12 @@ import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
 
 import MapPanelCore from './map/MapPanelCore';
-import DestinationPicker from './DestinationPicker';
+
+// 🔁 Noile componente pentru rute
+import RouteWizard from './RouteWizard';
+import RoutePreview from './RoutePreview';
+import DrawRouteModal from './DrawRouteModal';
+import { fetchTruckRouteORS } from './utils/routeService';
 
 // --- Iconos ---
 const SearchIcon = () => (
@@ -26,7 +31,7 @@ const CloseIcon = () => (
 
 const ITEMS_PER_PAGE = 24;
 
-/** Toolbar: search + Añadir + Planificar ruta */
+/** Toolbar: search + Añadir + Planificar ruta (API) */
 function Toolbar({ canEdit, searchTerm, onSearch, onAdd, onPlan, title }) {
   return (
     <div className={styles.toolbar}>
@@ -45,7 +50,7 @@ function Toolbar({ canEdit, searchTerm, onSearch, onAdd, onPlan, title }) {
             <button className={styles.primary} onClick={onAdd}>
               <PlusIcon /> Añadir {title}
             </button>
-            <button className={`${styles.primary} ${styles.routeBtn}`} onClick={onPlan}>
+            <button className={styles.primary} onClick={onPlan} title="Pedir ruta por API (camión)">
               🚚 Planificar ruta
             </button>
           </>
@@ -124,9 +129,11 @@ function ListView({ tableName, title }) {
     nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '', tiempo_espera: ''
   });
 
-  // hartă + picker
+  // Recorder (hartă existentă) + RouteWizard/Preview/Dibujar
   const [openMapFor, setOpenMapFor] = useState(null);
-  const [openDestPickerFor, setOpenDestPickerFor] = useState(null);
+  const [openWizard, setOpenWizard] = useState(false);
+  const [previewRoute, setPreviewRoute] = useState(null); // {title, geojson}
+  const [drawingFor, setDrawingFor] = useState(null);     // subject pentru dibujar
 
   const typeMap = {
     gps_clientes: 'clientes',
@@ -181,6 +188,18 @@ function ListView({ tableName, title }) {
     else { setEditOpen(false); setEditing(null); fetchItems(); }
   };
 
+  // găsește o rută salvată pentru „client_id = selected.id” (ultima)
+  async function findLastRouteForSubject(subjectId) {
+    const { data, error } = await supabase
+      .from('gps_routes')
+      .select('id,name,geojson')
+      .eq('client_id', subjectId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error || !data?.length) return null;
+    return data[0];
+  }
+
   return (
     <div className={styles.view}>
       <Toolbar
@@ -188,9 +207,7 @@ function ListView({ tableName, title }) {
         searchTerm={term}
         onSearch={(v)=>{ setTerm(v); setPage(1); }}
         onAdd={()=> setAddOpen(true)}
-        onPlan={()=> setOpenDestPickerFor({
-          _subject: { type: currentType, id: null, label: 'Mi ubicación', coords: null }
-        })}
+        onPlan={()=> setOpenWizard(true)}
         title={title}
       />
 
@@ -227,43 +244,55 @@ function ListView({ tableName, title }) {
           onClose={()=> setSelected(null)}
           footer={
             <>
-              {getMapsLink(selected)
-                ? <a className={`${styles.btn} ${styles.btnPrimary}`} href={getMapsLink(selected)} target="_blank" rel="noopener noreferrer">Cómo llegar</a>
-                : <button className={`${styles.btn} ${styles.btnDisabled}`} disabled>Maps no disponible</button>
-              }
-
+              {/* 1) Cere rută via API (ORS) */}
               <button
-                className={`${styles.btn}`}
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => setOpenWizard(true)}
+              >
+                Cere rută (API)
+              </button>
+
+              {/* 2) Recorder (GPS) */}
+              <button
+                className={styles.btn}
                 onClick={() => {
-                  if (currentType === 'clientes') {
-                    setOpenMapFor({
-                      ...selected,
-                      _subject: { type: 'clientes', id: selected.id, label: selected.nombre, coords: selected.coordenadas }
-                    });
+                  setOpenMapFor({
+                    ...selected,
+                    _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas }
+                  });
+                }}
+              >
+                Recorder (GPS)
+              </button>
+
+              {/* 3) Dibujar manual */}
+              <button
+                className={styles.btn}
+                onClick={() => setDrawingFor({
+                  type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas
+                })}
+              >
+                Dibujar
+              </button>
+
+              {/* 4) Cómo llegar (preferă ruta salvată) */}
+              <button
+                className={styles.btn}
+                onClick={async () => {
+                  const saved = await findLastRouteForSubject(selected.id);
+                  if (saved?.geojson) {
+                    setPreviewRoute({ title: saved.name || 'Ruta', geojson: saved.geojson });
                   } else {
-                    setOpenMapFor({
-                      ...selected,
-                      _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas },
-                      _pickedDestination: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas },
-                      _autoStart: true,
-                    });
+                    const link = getMapsLink(selected);
+                    if (link) window.open(link, '_blank', 'noopener');
+                    else alert('No hay ruta guardada ni enlace de Maps.');
                   }
                 }}
               >
-                Abrir mapa
+                Cómo llegar
               </button>
 
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => setOpenDestPickerFor({
-                  ...selected,
-                  _subject: { type: currentType, id: selected.id, label: selected.nombre, coords: selected.coordenadas }
-                })}
-              >
-                Crear ruta →
-              </button>
-
-              <button className={`${styles.btn}`} onClick={()=> setSelected(null)}>Cerrar</button>
+              <button className={styles.btn} onClick={()=> setSelected(null)}>Cerrar</button>
             </>
           }
         >
@@ -326,23 +355,89 @@ function ListView({ tableName, title }) {
         </Modal>
       )}
 
-      {/* Picker de destinație */}
-      {openDestPickerFor && (
-        <DestinationPicker
-          onClose={()=> setOpenDestPickerFor(null)}
-          initialTab={currentType === 'clientes' ? 'parkings' : 'clientes'}
-          onPick={(dest) => {
-            setOpenDestPickerFor(null);
-            setOpenMapFor({
-              ...openDestPickerFor,
-              _pickedDestination: dest,
-              _autoStart: true,
-            });
+      {/* RouteWizard (Alege ORIGINE/DESTINO) */}
+      {openWizard && (
+        <RouteWizard
+          onClose={()=> setOpenWizard(false)}
+          onDone={async (origin, destination) => {
+            try {
+              const apiKey = import.meta.env.VITE_ORS_KEY;
+              if (!apiKey) { alert('Lipsește VITE_ORS_KEY în .env'); return; }
+
+              const { geojson, distance_m } = await fetchTruckRouteORS({ origin, destination, apiKey });
+
+              const payload = {
+                client_id: selected?.id ?? null,
+                origin_terminal_id: null,
+                name: `Ruta ${origin.label} → ${destination.label} · ${new Date().toLocaleString()}`,
+                mode: 'api',
+                provider: 'ors',
+                geojson,
+                points: null,
+                distance_m: distance_m ?? null,
+                duration_s: null,
+                round_trip: false,
+                sampling: { mode: 'api', threshold_m: null },
+                meta: { origin, destination },
+                created_by: null,
+              };
+              const { error } = await supabase.from('gps_routes').insert([payload]);
+              if (error) throw error;
+
+              setPreviewRoute({ title: payload.name, geojson });
+              setOpenWizard(false);
+            } catch (e) {
+              console.error(e);
+              alert(`Eroare rută (API): ${e.message || e}`);
+            }
           }}
         />
       )}
 
-      {/* Map overlay */}
+      {/* Preview rută salvată */}
+      {previewRoute && (
+        <RoutePreview
+          title={previewRoute.title}
+          geojson={previewRoute.geojson}
+          onClose={()=> setPreviewRoute(null)}
+        />
+      )}
+
+      {/* Dibujar manual */}
+      {drawingFor && (
+        <DrawRouteModal
+          subject={drawingFor}
+          onClose={()=> setDrawingFor(null)}
+          onSave={async ({ geojson, points, distance_m }) => {
+            try {
+              const payload = {
+                client_id: selected?.id ?? null,
+                origin_terminal_id: null,
+                name: `Ruta (dibujar) · ${selected?.nombre || drawingFor?.label || ''} · ${new Date().toLocaleString()}`,
+                mode: 'manual-draw',
+                provider: 'user',
+                geojson,
+                points,
+                distance_m: distance_m ?? null,
+                duration_s: null,
+                round_trip: false,
+                sampling: { mode: 'dibujar', threshold_m: null },
+                meta: { subject: drawingFor },
+                created_by: null,
+              };
+              const { error } = await supabase.from('gps_routes').insert([payload]);
+              if (error) throw error;
+              setDrawingFor(null);
+              setPreviewRoute({ title: payload.name, geojson });
+            } catch (e) {
+              console.error(e);
+              alert(`Eroare salvare rută: ${e.message || e}`);
+            }
+          }}
+        />
+      )}
+
+      {/* Map overlay – recorder */}
       {openMapFor && (
         <MapPanelCore
           client={openMapFor}
