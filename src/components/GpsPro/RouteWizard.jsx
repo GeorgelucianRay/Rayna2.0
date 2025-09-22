@@ -1,271 +1,167 @@
 // src/components/GpsPro/RouteWizard.jsx
-import React, { useEffect, useMemo, useState } from 'react';
-import styles from './GpsPro.module.css';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useAuth } from '../../AuthContext';
+import styles from './GpsPro.module.css';
 
-// mic util pt parsare coordonate "lat, lng"
-function parseCoords(str) {
-  if (!str) return null;
-  const p = String(str).split(',').map(s=>parseFloat(s.trim()));
-  if (p.length<2 || isNaN(p[0]) || isNaN(p[1])) return null;
-  return { lat: p[0], lng: p[1] };
-}
-function fmt(lat,lng){ return `${lat.toFixed(6)}, ${lng.toFixed(6)}`; }
-function haversineMeters(a,b) {
-  const R=6371000; const toRad=x=>x*Math.PI/180;
-  const dLat=toRad(b.lat-a.lat); const dLng=toRad(b.lng-a.lng);
-  const sa=Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(sa));
-}
+const TABS = ['clientes','parkings','servicios','terminale'];
 
-export default function RouteWizard({ onClose, onOpenMap }) {
-  const { profile } = useAuth();
-  const canEdit = profile?.role === 'dispecer';
-
-  // taburi: de unde alegi listele
-  const [tabOrigin, setTabOrigin] = useState('clientes');
-  const [tabDest, setTabDest]     = useState('parkings');
-
-  const [dataOrigin, setDataOrigin] = useState([]);
-  const [dataDest, setDataDest]     = useState([]);
-
-  const [origin, setOrigin] = useState(null); // {type,id,label,coords}
-  const [dest, setDest]     = useState(null); // {type,id,label,coords}
-
+function List({table, term, onPick}) {
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingDest, setLoadingDest] = useState(true);
-  const [busy, setBusy] = useState(false);
 
-  const tableByType = (t) => ({
-    clientes:  'gps_clientes',
-    parkings:  'gps_parkings',
-    servicios: 'gps_servicios',
-    terminale: 'gps_terminale',
-  }[t]);
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const cols = 'id,nombre,coordenadas,detalles';
+    const { data, error } = await supabase
+      .from(table)
+      .select(cols)
+      .ilike('nombre', term ? `%${term}%` : '%')
+      .order('nombre', { ascending: true })
+      .limit(200);
+    setItems(error ? [] : (data||[]));
+    setLoading(false);
+  }, [table, term]);
 
-  // încarcă listele
+  useEffect(()=>{ fetch(); }, [fetch]);
+
+  if (loading) return <div className={styles.loading}>Cargando…</div>;
+
+  return (
+    <ul className={styles.destList}>
+      {items.map(it => (
+        <li key={it.id}>
+          <button className={styles.destItem}
+            onClick={() => onPick({
+              type: table.replace('gps_', ''), // 'clientes' etc
+              id: it.id,
+              label: it.nombre,
+              coords: it.coordenadas,
+            })}
+          >
+            <div className={styles.destTitle}>{it.nombre}</div>
+            {it.detalles && <div className={styles.destSub}>{it.detalles}</div>}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function RouteWizard({
+  onClose,
+  defaultOrigin,   // opțional: { type, id, label, coords } sau 'gps' pentru „mi ubicación”
+  onDone           // (origin,destination) => void
+}) {
+  const [step, setStep] = useState(1); // 1=origen, 2=destino
+  const [originMode, setOriginMode] = useState(defaultOrigin ? 'preset' : 'gps'); // 'gps' | 'preset' | 'manual'
+  const [origin, setOrigin] = useState(defaultOrigin || null);
+  const [tab, setTab] = useState('clientes');
+  const [term, setTerm] = useState('');
+  const [dest, setDest] = useState(null);
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from(tableByType(tabOrigin))
-        .select('id,nombre,coordenadas,direccion')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      setDataOrigin(error ? [] : (data||[]));
-      setLoading(false);
-    };
-    load();
-  }, [tabOrigin]);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoadingDest(true);
-      const { data, error } = await supabase
-        .from(tableByType(tabDest))
-        .select('id,nombre,coordenadas,direccion')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      setDataDest(error ? [] : (data||[]));
-      setLoadingDest(false);
-    };
-    load();
-  }, [tabDest]);
-
-  // GPS ca origine (opțional)
-  const useMyGPSAsOrigin = async () => {
-    try {
-      setBusy(true);
-      const pos = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true, timeout: 8000, maximumAge: 30000
-        });
-      });
-      const o = {
-        type: 'gps',
-        id: null,
-        label: 'Mi posición (GPS)',
-        coords: fmt(pos.coords.latitude, pos.coords.longitude),
-      };
-      setOrigin(o);
-    } catch(e) {
-      alert('No se pudo obtener tu ubicación GPS.');
-    } finally {
-      setBusy(false);
+    if (originMode === 'gps') {
+      setOrigin({ type:'gps', id:null, label:'Mi ubicación', coords:null });
     }
-  };
+  }, [originMode]);
 
-  // marchează o parcare "AICI" (din GPS)
-  const markParkingHere = async () => {
-    try {
-      setBusy(true);
-      const pos = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true, timeout: 10000, maximumAge: 30000
-        });
-      });
-      const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-
-      // caută parcare existentă la < 60m
-      const { data: parks, error } = await supabase
-        .from('gps_parkings')
-        .select('id,nombre,coordenadas')
-        .limit(300);
-      const found = (parks||[]).find(p => {
-        const c = parseCoords(p.coordenadas);
-        return c && haversineMeters(c, here) < 60;
-      });
-
-      if (found) {
-        alert(`Reutilizo: ${found.nombre}`);
-        // setează ca DESTINAȚIE intermediară, dacă vrei
-        setDest({ type:'parkings', id:found.id, label:found.nombre, coords: found.coordenadas });
-      } else {
-        // creează una nouă
-        const nombre = `Parking ${new Date().toLocaleString()}`;
-        const payload = {
-          nombre,
-          direccion: null,
-          link_maps: null,
-          detalles: 'Marcat din traseu',
-          coordenadas: fmt(here.lat, here.lng),
-          link_foto: null,
-        };
-        const { data: inserted, error: errIns } = await supabase
-          .from('gps_parkings').insert([payload]).select().single();
-        if (errIns) throw errIns;
-        alert('Parcare creată ✅');
-        setDest({ type:'parkings', id:inserted.id, label:nombre, coords: payload.coordenadas });
-      }
-    } catch(e) {
-      alert('Nu am reușit să marchez parcarea. Activează GPS-ul.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const canOpen = !!origin && !!dest;
+  const title = step===1 ? 'Elegir origen' : 'Elegir destino';
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e)=>e.stopPropagation()}>
+      <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>🧭 Planificador de ruta</h3>
-          <button className={styles.iconBtn} onClick={onClose}>✕</button>
+          <h3>{title}</h3>
+          <button className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
         <div className={styles.modalBody}>
-          {/* ORIGEN */}
-          <div style={{marginBottom:12}}>
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+          {step===1 && (
+            <>
               <div className={styles.destTabs}>
-                {['clientes','parkings','servicios','terminale'].map(t => (
-                  <button
-                    key={t}
-                    className={`${styles.btn} ${tabOrigin===t?styles.btnPrimary:''}`}
-                    onClick={()=> setTabOrigin(t)}
+                <button
+                  className={`${styles.navBtn} ${originMode==='gps'?styles.navBtnActive:''}`}
+                  onClick={()=>{ setOriginMode('gps'); setOrigin({ type:'gps', label:'Mi ubicación' }); }}
+                >Mi ubicación</button>
+                <button
+                  className={`${styles.navBtn} ${originMode==='preset'?styles.navBtnActive:''}`}
+                  onClick={()=> setOriginMode('preset')}
+                >Elegir de listas</button>
+              </div>
+
+              {originMode==='preset' && (
+                <>
+                  <div className={styles.destTabs}>
+                    {TABS.map(t => (
+                      <button key={t}
+                        className={`${styles.navBtn} ${tab===t?styles.navBtnActive:''}`}
+                        onClick={()=> setTab(t)}
+                      >
+                        {t.charAt(0).toUpperCase()+t.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.search} style={{marginTop:8}}>
+                    <input placeholder="Buscar por nombre…" value={term} onChange={e=> setTerm(e.target.value)} />
+                  </div>
+
+                  <List table={`gps_${tab}`} term={term} onPick={(o) => setOrigin(o)} />
+                </>
+              )}
+            </>
+          )}
+
+          {step===2 && (
+            <>
+              <div className={styles.destTabs}>
+                {TABS.map(t => (
+                  <button key={t}
+                    className={`${styles.navBtn} ${tab===t?styles.navBtnActive:''}`}
+                    onClick={()=> setTab(t)}
                   >
-                    {t[0].toUpperCase()+t.slice(1)}
+                    {t.charAt(0).toUpperCase()+t.slice(1)}
                   </button>
                 ))}
               </div>
-              <button className={styles.btn} onClick={useMyGPSAsOrigin} disabled={busy}>Usar mi GPS</button>
-            </div>
 
-            <ul className={styles.destList}>
-              {loading ? (
-                <li style={{color:'var(--muted)', padding:'8px'}}>Cargando…</li>
-              ) : (
-                dataOrigin.map(it => (
-                  <li key={it.id} style={{marginTop:8}}>
-                    <button
-                      className={styles.destItem}
-                      onClick={() => setOrigin({
-                        type: tabOrigin,
-                        id: it.id,
-                        label: it.nombre,
-                        coords: it.coordenadas
-                      })}
-                    >
-                      <div className={styles.destTitle}>{it.nombre}</div>
-                      <div className={styles.destSub}>{it.direccion || it.coordenadas || '—'}</div>
-                      {origin?.id===it.id && origin?.type===tabOrigin && (
-                        <div className={styles.destSub}>✓ Seleccionado</div>
-                      )}
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-
-          <hr style={{border:'none', borderTop:'1px solid var(--border)', margin:'12px 0'}} />
-
-          {/* DESTINO */}
-          <div>
-            <div className={styles.destTabs} style={{justifyContent:'space-between', alignItems:'center'}}>
-              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                {['clientes','parkings','servicios','terminale'].map(t => (
-                  <button
-                    key={t}
-                    className={`${styles.btn} ${tabDest===t?styles.btnPrimary:''}`}
-                    onClick={()=> setTabDest(t)}
-                  >
-                    {t[0].toUpperCase()+t.slice(1)}
-                  </button>
-                ))}
+              <div className={styles.search} style={{marginTop:8}}>
+                <input placeholder="Buscar por nombre…" value={term} onChange={e=> setTerm(e.target.value)} />
               </div>
-              <button className={styles.btn} onClick={markParkingHere} disabled={busy}>
-                + Marcar parking AQUI
-              </button>
-            </div>
 
-            <ul className={styles.destList}>
-              {loadingDest ? (
-                <li style={{color:'var(--muted)', padding:'8px'}}>Cargando…</li>
-              ) : (
-                dataDest.map(it => (
-                  <li key={it.id} style={{marginTop:8}}>
-                    <button
-                      className={styles.destItem}
-                      onClick={() => setDest({
-                        type: tabDest,
-                        id: it.id,
-                        label: it.nombre,
-                        coords: it.coordenadas
-                      })}
-                    >
-                      <div className={styles.destTitle}>{it.nombre}</div>
-                      <div className={styles.destSub}>{it.direccion || it.coordenadas || '—'}</div>
-                      {dest?.id===it.id && dest?.type===tabDest && (
-                        <div className={styles.destSub}>✓ Seleccionado</div>
-                      )}
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
+              <List table={`gps_${tab}`} term={term} onPick={(d) => setDest(d)} />
+            </>
+          )}
         </div>
 
         <div className={styles.modalFooter} style={{justifyContent:'space-between'}}>
-          <div className={styles.kpis}>
-            <span className={styles.kpi}><strong>Origen:</strong> {origin?.label || '—'}</span>
-            <span className={styles.kpi}><strong>Destino:</strong> {dest?.label || '—'}</span>
+          <div style={{color:'var(--muted)'}}>
+            {origin && step===2 && (
+              <>Origen: <strong style={{color:'var(--text)'}}>{origin.label}</strong></>
+            )}
           </div>
+
           <div style={{display:'flex', gap:8}}>
-            <button className={styles.btn} onClick={onClose}>Cancelar</button>
-            <button
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={() => onOpenMap(
-                { ...origin, _subject: origin },
-                { ...dest }
-              )}
-              disabled={!canOpen}
-            >
-              Deschide harta →
-            </button>
+            {step===2 ? (
+              <>
+                <button className={styles.btn} onClick={()=> setStep(1)}>Atrás</button>
+                <button
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  disabled={!dest}
+                  onClick={() => onDone(origin, dest)}
+                >
+                  Crear ruta
+                </button>
+              </>
+            ) : (
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={!origin}
+                onClick={()=> setStep(2)}
+              >
+                Siguiente →
+              </button>
+            )}
           </div>
         </div>
       </div>
