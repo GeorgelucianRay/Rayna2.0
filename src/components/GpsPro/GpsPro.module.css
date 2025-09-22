@@ -271,6 +271,17 @@
 .dotGlow { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px;
   background: radial-gradient(circle, var(--cyan) 0%, transparent 70%); box-shadow: 0 0 12px var(--cyan), 0 0 20px var(--cyan);
 }
+/* --- Dibujar map --- */
+.drawMap {
+  width: 100%;
+  height: min(70vh, 620px);
+}
+.drawToolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(10,25,50,0.9), rgba(6,20,42,0.92));
+}
+.drawKpi { color: var(--muted); }
 
 /* Bara de control hartă */
 .mapToolbar {
