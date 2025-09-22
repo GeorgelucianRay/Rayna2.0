@@ -6,11 +6,12 @@ import styles from './GpsPro.module.css';
 
 import MapPanelCore from './map/MapPanelCore';
 
-// 🔁 Noile componente pentru rute
+// 🔁 rute
 import RouteWizard from './RouteWizard';
 import RoutePreview from './RoutePreview';
 import DrawRouteModal from './DrawRouteModal';
 import { fetchTruckRouteORS } from './utils/routeService';
+import { saveRouteToDb } from './utils/dbRoutes';   // ✅ nou
 
 // --- Iconos ---
 const SearchIcon = () => (
@@ -50,7 +51,11 @@ function Toolbar({ canEdit, searchTerm, onSearch, onAdd, onPlan, title }) {
             <button className={styles.primary} onClick={onAdd}>
               <PlusIcon /> Añadir {title}
             </button>
-            <button className={styles.primary} onClick={onPlan} title="Pedir ruta por API (camión)">
+            <button
+              className={styles.primary}
+              onClick={onPlan}
+              title="Pedir ruta por API (camión)"
+            >
               🚚 Planificar ruta
             </button>
           </>
@@ -129,11 +134,11 @@ function ListView({ tableName, title }) {
     nombre: '', direccion: '', link_maps: '', detalles: '', coordenadas: '', link_foto: '', tiempo_espera: ''
   });
 
-  // Recorder (hartă existentă) + RouteWizard/Preview/Dibujar
+  // Recorder + ORS + Preview + Dibujar
   const [openMapFor, setOpenMapFor] = useState(null);
   const [openWizard, setOpenWizard] = useState(false);
   const [previewRoute, setPreviewRoute] = useState(null); // {title, geojson}
-  const [drawingFor, setDrawingFor] = useState(null);     // subject pentru dibujar
+  const [drawingFor, setDrawingFor] = useState(null);     // subject pt. dibujar
 
   const typeMap = {
     gps_clientes: 'clientes',
@@ -188,7 +193,7 @@ function ListView({ tableName, title }) {
     else { setEditOpen(false); setEditing(null); fetchItems(); }
   };
 
-  // găsește o rută salvată pentru „client_id = selected.id” (ultima)
+  // găsește ultima rută salvată pentru client_id
   async function findLastRouteForSubject(subjectId) {
     const { data, error } = await supabase
       .from('gps_routes')
@@ -362,29 +367,31 @@ function ListView({ tableName, title }) {
           onDone={async (origin, destination) => {
             try {
               const apiKey = import.meta.env.VITE_ORS_KEY;
-              if (!apiKey) { alert('Lipsește VITE_ORS_KEY în .env'); return; }
+              if (!apiKey) { alert('Lipsește VITE_ORS_KEY în Vercel → Project → Settings → Environment Variables'); return; }
 
-              const { geojson, distance_m } = await fetchTruckRouteORS({ origin, destination, apiKey });
+              const { geojson, distance_m, duration_s } =
+                await fetchTruckRouteORS({ origin, destination, apiKey });
 
-              const payload = {
+              const name = `Ruta ${origin.label} → ${destination.label} · ${new Date().toLocaleString()}`;
+
+              // ✅ folosește helperul (mode devine 'service')
+              await saveRouteToDb({
                 client_id: selected?.id ?? null,
                 origin_terminal_id: null,
-                name: `Ruta ${origin.label} → ${destination.label} · ${new Date().toLocaleString()}`,
-                mode: 'api',
+                name,
+                mode: 'service',
                 provider: 'ors',
                 geojson,
                 points: null,
-                distance_m: distance_m ?? null,
-                duration_s: null,
+                distance_m,
+                duration_s,
                 round_trip: false,
                 sampling: { mode: 'api', threshold_m: null },
                 meta: { origin, destination },
                 created_by: null,
-              };
-              const { error } = await supabase.from('gps_routes').insert([payload]);
-              if (error) throw error;
+              });
 
-              setPreviewRoute({ title: payload.name, geojson });
+              setPreviewRoute({ title: name, geojson });
               setOpenWizard(false);
             } catch (e) {
               console.error(e);
@@ -410,25 +417,27 @@ function ListView({ tableName, title }) {
           onClose={()=> setDrawingFor(null)}
           onSave={async ({ geojson, points, distance_m }) => {
             try {
-              const payload = {
+              const name = `Ruta (dibujar) · ${selected?.nombre || drawingFor?.label || ''} · ${new Date().toLocaleString()}`;
+
+              // ✅ helper (mode devine 'manual')
+              await saveRouteToDb({
                 client_id: selected?.id ?? null,
                 origin_terminal_id: null,
-                name: `Ruta (dibujar) · ${selected?.nombre || drawingFor?.label || ''} · ${new Date().toLocaleString()}`,
-                mode: 'manual-draw',
+                name,
+                mode: 'manual',
                 provider: 'user',
                 geojson,
                 points,
-                distance_m: distance_m ?? null,
+                distance_m,
                 duration_s: null,
                 round_trip: false,
                 sampling: { mode: 'dibujar', threshold_m: null },
                 meta: { subject: drawingFor },
                 created_by: null,
-              };
-              const { error } = await supabase.from('gps_routes').insert([payload]);
-              if (error) throw error;
+              });
+
               setDrawingFor(null);
-              setPreviewRoute({ title: payload.name, geojson });
+              setPreviewRoute({ title: name, geojson });
             } catch (e) {
               console.error(e);
               alert(`Eroare salvare rută: ${e.message || e}`);
