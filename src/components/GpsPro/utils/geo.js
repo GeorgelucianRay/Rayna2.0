@@ -1,89 +1,64 @@
-// src/components/GpsPro/utils/geo.js
+// src/components/GpsPro/map/utils/geo.js
 
-/** Parsează "lat,lon" -> {lat, lng} sau întoarce null dacă nu e valid */
-export function strToLatLng(str) {
-  if (!str || typeof str !== 'string') return null;
-  const parts = str.split(',').map(s => s.trim());
-  if (parts.length !== 2) return null;
-  const lat = Number(parts[0]);
-  const lng = Number(parts[1]);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-  return { lat, lng };
-}
+/** Acceptă string/object și întoarce un FeatureCollection valid (sau null) */
+export function normalizeGeoJSON(input) {
+  if (!input) return null;
 
-export function haversine(a, b) {
-  const R = 6371000; // m
-  const toRad = (x) => (x * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-
-/** points: [{lat,lng,ts?}] -> GeoJSON LineString (FeatureCollection) */
-export function pointsToGeoJSON(points, props = {}) {
-  const coords = points.map(p => [p.lng, p.lat]);
-  return {
-    type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        properties: { ...props },
-        geometry: {
-          type: 'LineString',
-          coordinates: coords,
-        },
-      },
-    ],
-  };
-}
-
-/** Încearcă să normalizeze orice fel de payload într-un obiect GeoJSON valid */
-export function normalizeGeoJSON(raw) {
-  try {
-    const gj = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!gj) return null;
-
-    // Dacă e un Feature simplu, împachetăm în FeatureCollection
-    if (gj.type === 'Feature' && gj.geometry) {
-      return { type: 'FeatureCollection', features: [gj] };
-    }
-
-    // Dacă e deja FeatureCollection și pare valid
-    if (gj.type === 'FeatureCollection' && Array.isArray(gj.features)) {
-      return gj;
-    }
-
-    // Dacă e doar o geometrie, o împachetăm ca Feature
-    if (gj.type && gj.coordinates) {
-      return {
-        type: 'FeatureCollection',
-        features: [{ type: 'Feature', properties: {}, geometry: gj }],
-      };
-    }
-    return null;
-  } catch {
-    return null;
+  let gj = input;
+  if (typeof input === 'string') {
+    try { gj = JSON.parse(input); } catch { return null; }
   }
+
+  // dacă e LineString simplu -> îl împachetăm într-un FeatureCollection
+  if (gj?.type === 'LineString') {
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: gj }],
+    };
+  }
+
+  // dacă e Feature cu LineString
+  if (gj?.type === 'Feature' && gj?.geometry?.type === 'LineString') {
+    return {
+      type: 'FeatureCollection',
+      features: [gj],
+    };
+  }
+
+  // dacă e FeatureCollection
+  if (gj?.type === 'FeatureCollection' && Array.isArray(gj.features)) {
+    // filtrăm doar geometrii lineare
+    const feats = gj.features.filter(f => f?.geometry?.type === 'LineString' || f?.geometry?.type === 'MultiLineString');
+    if (feats.length === 0) return null;
+    return { type: 'FeatureCollection', features: feats };
+  }
+
+  return null;
 }
 
-/** Calculează bounds [ [south, west], [north, east] ] dintr-un GeoJSON simplu (prima linie) */
+/** Bounds pentru orice FeatureCollection (LineString/MultiLineString) */
 export function geojsonBounds(gj) {
-  const fc = normalizeGeoJSON(gj);
-  if (!fc || !fc.features?.length) return null;
-  const geom = fc.features[0]?.geometry;
-  if (!geom || geom.type !== 'LineString') return null;
+  if (!gj || gj.type !== 'FeatureCollection') return null;
+  const coords = [];
 
-  let minLat = +Infinity, minLng = +Infinity, maxLat = -Infinity, maxLng = -Infinity;
-  for (const [lng, lat] of geom.coordinates) {
-    if (lat < minLat) minLat = lat;
-    if (lng < minLng) minLng = lng;
-    if (lat > maxLat) maxLat = lat;
-    if (lng > maxLng) maxLng = lng;
-  }
-  return [[minLat, minLng], [maxLat, maxLng]];
+  gj.features.forEach(f => {
+    if (!f?.geometry) return;
+    const g = f.geometry;
+    if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
+      g.coordinates.forEach(c => coords.push(c));
+    } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
+      g.coordinates.forEach(arr => arr.forEach(c => coords.push(c)));
+    }
+  });
+
+  if (coords.length === 0) return null;
+
+  const lats = coords.map(c => c[1]);
+  const lons = coords.map(c => c[0]);
+  const south = Math.min(...lats);
+  const north = Math.max(...lats);
+  const west  = Math.min(...lons);
+  const east  = Math.max(...lons);
+
+  return [[south, west], [north, east]];
 }
