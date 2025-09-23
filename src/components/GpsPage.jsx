@@ -6,11 +6,57 @@ import Layout from './Layout';
 import styles from './GpsPage.module.css';
 import depotStyles from './DepotPage.module.css';
 
-// 🔹 Harta noastră full-screen (OSM + GPS follow)
+// 🔹 Overlay navigație full-screen (harta noastră)
 import NavOverlay from './GpsPro/NavOverlay';
 
 // === SUBIDA a imgbb (usa la variable VITE_IMGBB_API_KEY) ===
 const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
+
+/* ------------------------- Utils locale ------------------------- */
+
+// În unele înregistrări, geojson-ul poate fi string, Geometry sau Feature.
+// Normalizăm totul într-un FeatureCollection valid pentru harta noastră.
+function normalizeGeoJSON(input) {
+  if (!input) return null;
+
+  let obj = input;
+  if (typeof input === 'string') {
+    try { obj = JSON.parse(input); } catch { return null; }
+  }
+
+  // Dacă e deja FeatureCollection
+  if (obj?.type === 'FeatureCollection' && Array.isArray(obj.features)) {
+    return obj;
+  }
+
+  // Dacă e Feature singur -> îl punem într-o colecție
+  if (obj?.type === 'Feature' && obj.geometry) {
+    return { type: 'FeatureCollection', features: [obj] };
+  }
+
+  // Dacă e Geometry simplu -> îl transformăm în Feature
+  if (obj?.type && obj.coordinates) {
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', geometry: obj, properties: {} }],
+    };
+  }
+
+  return null;
+}
+
+// Caută ultima rută salvată pentru client
+async function findSavedRouteForClient(clientId) {
+  const { data, error } = await supabase
+    .from('gps_routes')
+    .select('id,name,geojson')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error || !data?.length) return null;
+  return data[0];
+}
 
 // Convierte File -> base64 (imgbb espera el campo "image" como base64)
 function fileToBase64(file) {
@@ -42,14 +88,10 @@ async function uploadToImgbb(file) {
     const msg = json?.error?.message || 'La subida a imgbb ha fallado.';
     throw new Error(msg);
   }
-
-  // Devolvemos una URL directa de la imagen
-  const url = json?.data?.display_url || json?.data?.image?.url || json?.data?.url;
-  if (!url) throw new Error('Subida correcta, pero no se recibió la URL de la imagen.');
-  return url;
+  return json?.data?.display_url || json?.data?.image?.url || json?.data?.url;
 }
 
-// --- Iconos SVG ---
+/* -------------------------- Iconițe ---------------------------- */
 const SearchIcon = () => ( <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> );
 const PlusIcon = () => ( <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/></svg> );
 const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" /></svg> );
@@ -58,18 +100,7 @@ const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" heig
 
 const ITEMS_PER_PAGE = 25;
 
-// 🔎 caută ultima rută salvată pentru client
-async function findSavedRouteForClient(clientId) {
-  const { data, error } = await supabase
-    .from('gps_routes')
-    .select('id,name,geojson')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(1);
-  if (error || !data?.length) return null;
-  return data[0];
-}
-
+/* ----------------------- Lista locații ------------------------- */
 const LocationList = ({ tableName, title }) => {
   const { profile } = useAuth();
   const [locations, setLocations] = useState([]);
@@ -78,18 +109,18 @@ const LocationList = ({ tableName, title }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
 
   // 🧭 overlay „Navigar” pe harta noastră
   const [navData, setNavData] = useState(null); // { title, geojson }
 
-  // Estado de subida
+  // Form state / upload
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
   const [uploadingAdd, setUploadingAdd] = useState(false);
   const [uploadingEdit, setUploadingEdit] = useState(false);
-  
+
   const addFormStorageKey = `addForm-${tableName}`;
   const editFormStorageKey = `editForm-${tableName}`;
 
@@ -99,12 +130,11 @@ const LocationList = ({ tableName, title }) => {
 
   const updateNewLocationState = (newState) => {
     setNewLocation(newState);
-    localStorage.setItem(addFormStorageKey, JSON.stringify(newState));
+    try { localStorage.setItem(addFormStorageKey, JSON.stringify(newState)); } catch {}
   };
-  
   const updateEditingLocationState = (newState) => {
     setEditingLocation(newState);
-    localStorage.setItem(editFormStorageKey, JSON.stringify(newState));
+    try { localStorage.setItem(editFormStorageKey, JSON.stringify(newState)); } catch {}
   };
 
   const fetchLocations = useCallback(
@@ -126,6 +156,8 @@ const LocationList = ({ tableName, title }) => {
 
       if (error) {
         alert(`Error al cargar ${title.toLowerCase()}s: ${error.message}`);
+        setLocations([]);
+        setTotalCount(0);
       } else {
         setLocations(data || []);
         setTotalCount(count || 0);
@@ -142,20 +174,15 @@ const LocationList = ({ tableName, title }) => {
         setNewLocation(JSON.parse(savedAddForm));
         setIsAddModalOpen(true);
       }
-
       const savedEditForm = localStorage.getItem(editFormStorageKey);
       if (savedEditForm) {
         setEditingLocation(JSON.parse(savedEditForm));
         setIsEditModalOpen(true);
       }
-    } catch (e) {
-      console.error('Error al leer estado guardado del formulario:', e);
-      localStorage.removeItem(addFormStorageKey);
-      localStorage.removeItem(editFormStorageKey);
+    } catch {
+      // ignore localStorage errors
     }
-    
     fetchLocations(currentPage, searchTerm);
-
   }, [fetchLocations, currentPage, searchTerm]);
 
   const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
@@ -164,12 +191,9 @@ const LocationList = ({ tableName, title }) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1); 
   };
-  
+
   const handleGetLocation = (setter, stateUpdater) => {
-    if (!navigator.geolocation) {
-      alert('La geolocalización no es compatible con este navegador.');
-      return;
-    }
+    if (!navigator.geolocation) { alert('La geolocalización no es compatible con este navegador.'); return; }
     setGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords: { latitude, longitude } }) => {
@@ -204,7 +228,7 @@ const LocationList = ({ tableName, title }) => {
       setCurrentPage(1);
     }
   };
-  
+
   const handleEditClick = (location) => {
     updateEditingLocationState(location);
     setIsEditModalOpen(true);
@@ -226,27 +250,25 @@ const LocationList = ({ tableName, title }) => {
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    localStorage.removeItem(addFormStorageKey);
+    try { localStorage.removeItem(addFormStorageKey); } catch {}
     setNewLocation({ nombre: '', direccion: '', link_maps: '', tiempo_espera: '', detalles: '', coordenadas: '', link_foto: '' });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
-    localStorage.removeItem(editFormStorageKey);
+    try { localStorage.removeItem(editFormStorageKey); } catch {}
     setEditingLocation(null);
   };
   
   const getMapsLink = (location) => {
     if (location.link_maps) return location.link_maps;
-    if (location.coordenadas) {
-      return `https://maps.google.com/?q=${location.coordenadas}`;
-    }
+    if (location.coordenadas) return `https://maps.google.com/?q=${location.coordenadas}`;
     return null;
   };
 
   const canEdit = profile?.role === 'dispecer' || profile?.role === 'sofer';
 
-  // === Manejadores de subida para Añadir / Editar ===
+  // === Upload handlers ===
   const handleUploadForAdd = async (e) => {
     try {
       const file = e.target.files?.[0];
@@ -317,8 +339,8 @@ const LocationList = ({ tableName, title }) => {
                   alt={`Foto de ${location.nombre}`}
                   className={styles.locationCardImage}
                   onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen';
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen';
                   }}
                 />
                 <div className={styles.locationCardOverlay}>
@@ -393,8 +415,8 @@ const LocationList = ({ tableName, title }) => {
                 alt={`Foto de ${selectedLocation.nombre}`}
                 className={styles.locationModalImage}
                 onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen';
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = 'https://placehold.co/600x400/cccccc/ffffff?text=Error+de+Imagen';
                 }}
               />
               <div className={styles.locationDetails}>
@@ -411,23 +433,39 @@ const LocationList = ({ tableName, title }) => {
             </div>
 
             <div className={styles.modalFooter}>
-              {/* 🔵 Navigare pe harta noastră (dacă există rută salvată) cu fallback Google Maps */}
+              {/* 🔵 Navigare pe harta noastră (dacă există rută salvată), cu fallback sigur */}
               <button
                 className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
                 onClick={async () => {
-                  const saved = await findSavedRouteForClient(selectedLocation.id);
-                  if (saved?.geojson) {
-                    setNavData({ title: saved.name || selectedLocation.nombre, geojson: saved.geojson });
-                  } else {
+                  try {
+                    const saved = await findSavedRouteForClient(selectedLocation.id);
+                    if (!saved?.geojson) {
+                      const link = getMapsLink(selectedLocation);
+                      if (link) return window.open(link, '_blank', 'noopener');
+                      return alert('Nu există rută salvată și nici link de Google Maps.');
+                    }
+
+                    const normalized = normalizeGeoJSON(saved.geojson);
+                    if (!normalized || !Array.isArray(normalized.features) || normalized.features.length === 0) {
+                      // GeoJSON invalid sau gol -> fallback
+                      const link = getMapsLink(selectedLocation);
+                      if (link) return window.open(link, '_blank', 'noopener');
+                      return alert('Ruta salvată este invalidă.');
+                    }
+
+                    setNavData({ title: saved.name || selectedLocation.nombre, geojson: normalized });
+                  } catch (err) {
+                    console.error(err);
                     const link = getMapsLink(selectedLocation);
                     if (link) window.open(link, '_blank', 'noopener');
-                    else alert('Nu există rută salvată și nici link de Google Maps.');
+                    else alert('Eroare la deschiderea navigației.');
                   }
                 }}
               >
                 Navigar
               </button>
 
+              {/* 🔷 Google Maps mereu disponibil dacă avem link/coords */}
               {getMapsLink(selectedLocation) ? (
                 <a
                   href={getMapsLink(selectedLocation)}
@@ -753,6 +791,7 @@ const LocationList = ({ tableName, title }) => {
   );
 };
 
+/* --------------------------- Pagina ---------------------------- */
 function GpsPage() {
   const [activeView, setActiveView] = useState('clientes');
 
