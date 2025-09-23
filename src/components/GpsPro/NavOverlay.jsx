@@ -1,259 +1,242 @@
+// src/components/GpsPro/NavOverlay.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 
-/** ========= UI styles (inline, fără CSS extern) ========= */
-const Z = 2147483000;
-const Wrap = {
-  position: 'fixed', inset: 0, zIndex: Z, background: '#0b1220', overflow: 'hidden'
-};
-const mapBox = { position: 'absolute', inset: 0 };
-const TopBar = {
-  position: 'absolute', left: 0, right: 0, top: 0, zIndex: Z + 2,
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: 'calc(env(safe-area-inset-top,0px) + 8px) 10px 8px 10px',
-  background: 'linear-gradient(180deg, rgba(11,18,32,.95) 0%, rgba(11,18,32,.55) 70%, rgba(11,18,32,0) 100%)',
-  color: '#fff'
-};
-const Title = { fontWeight: 700, fontSize: 16, textShadow: '0 1px 2px rgba(0,0,0,.6)' };
-const Btn = {
-  background: 'rgba(255,255,255,.12)', color:'#fff', border:'1px solid rgba(255,255,255,.25)',
-  borderRadius: 10, padding: '8px 12px', fontSize: 14, cursor: 'pointer'
-};
-const BtnGhost = { ...Btn };
-const BtnPrimary = { ...Btn, background: '#2563eb', borderColor: '#1d4ed8' };
-const FabCol = {
-  position: 'absolute', right: 10, bottom: 'calc(env(safe-area-inset-bottom,0px) + 12px)',
-  display: 'flex', flexDirection: 'column', gap: 10, zIndex: Z + 2
-};
-const InfoRow = {
-  position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom,0px) + 12px)',
-  display: 'flex', gap: 8, zIndex: Z + 2
-};
-const Pill = {
-  background: 'rgba(255,255,255,.14)', color:'#fff', border:'1px solid rgba(255,255,255,.25)',
-  borderRadius: 999, padding: '6px 10px', fontSize: 13
-};
+// marker mic tip “blue dot”
+const meIcon = new L.DivIcon({
+  className: '',
+  html: `
+    <div style="
+      width:16px;height:16px;border-radius:50%;
+      background:#3aa0ff;border:3px solid #fff;box-shadow:0 0 8px rgba(0,0,0,.35);
+    "></div>
+  `,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
 
-/** ========= Helpers (coords în [lon,lat]) ========= */
-function dist2(lon1, lat1, lon2, lat2) {
-  const x = (lon2 - lon1) * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
-  const y = (lat2 - lat1);
-  return x * x + y * y;
-}
-function projectOnSegment(a, b, p) {
-  const [ax, ay] = a, [bx, by] = b, [px, py] = p;
-  const vx = bx - ax, vy = by - ay;
-  const wx = px - ax, wy = py - ay;
-  const vv = vx * vx + vy * vy || 1e-9;
-  let t = (wx * vx + wy * vy) / vv;
-  if (t < 0) t = 0; else if (t > 1) t = 1;
-  return [ax + t * vx, ay + t * vy, t];
-}
-function closestOnPolyline(coords, pLon, pLat) {
-  if (!coords || coords.length < 2) return null;
-  let best = null;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const a = coords[i], b = coords[i + 1];
-    const [x, y, t] = projectOnSegment(a, b, [pLon, pLat]);
-    const d2 = dist2(x, y, pLon, pLat);
-    if (!best || d2 < best.d2) best = { i, t, coord:[x,y], d2 };
+// ===== helpers =====
+function toLatLngsFromGeoJSON(geojson) {
+  const gj = typeof geojson === 'string' ? JSON.parse(geojson) : geojson;
+  if (!gj) return [];
+
+  const lines = [];
+
+  const pushCoords = (coords) => {
+    // coords: [[lon,lat], ...]
+    lines.push(coords.map(([lon, lat]) => [lat, lon]));
+  };
+
+  if (gj.type === 'FeatureCollection') {
+    gj.features?.forEach((f) => {
+      const g = f?.geometry;
+      if (!g) return;
+      if (g.type === 'LineString') pushCoords(g.coordinates);
+      if (g.type === 'MultiLineString') g.coordinates.forEach(pushCoords);
+    });
+  } else if (gj.type === 'Feature') {
+    const g = gj.geometry;
+    if (g?.type === 'LineString') pushCoords(g.coordinates);
+    if (g?.type === 'MultiLineString') g.coordinates.forEach(pushCoords);
+  } else if (gj.type === 'LineString') {
+    pushCoords(gj.coordinates);
+  } else if (gj.type === 'MultiLineString') {
+    gj.coordinates.forEach(pushCoords);
   }
-  return best;
-}
-function sliceRemaining(coords, closest) {
-  if (!closest || !coords?.length) return [];
-  const { i, coord } = closest;
-  const out = [coord];
-  for (let k = i + 1; k < coords.length; k++) out.push(coords[k]);
-  return out;
-}
-function approxLengthKm(coords) {
-  if (!coords || coords.length < 2) return 0;
-  let sum = 0;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const a = coords[i], b = coords[i + 1];
-    sum += Math.sqrt(dist2(a[0], a[1], b[0], b[1])) * 111;
-  }
-  return sum;
-}
-function extractRouteCoords(geojson) {
-  try {
-    const f = (geojson?.features || []).find(
-      (ft) =>
-        (ft.geometry?.type === 'LineString' && Array.isArray(ft.geometry.coordinates)) ||
-        (ft.geometry?.type === 'MultiLineString' && Array.isArray(ft.geometry.coordinates))
-    );
-    if (!f) return [];
-    if (f.geometry.type === 'LineString') return f.geometry.coordinates.slice();
-    const out = [];
-    for (const line of f.geometry.coordinates) for (const c of line) out.push(c);
-    return out;
-  } catch { return []; }
+
+  // îmbinăm toate segmentele într-o singură polilinie (simplu)
+  return lines.flat();
 }
 
-export default function NavOverlay({ title, geojson, onClose }) {
-  // acceptă și string din DB
-  const parsed = useMemo(() => {
-    if (!geojson) return null;
-    if (typeof geojson === 'string') {
-      try { return JSON.parse(geojson); } catch { return null; }
+function distMeters(a, b) {
+  const toRad = (t) => (t * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b[0] - a[0]);
+  const dLon = toRad(b[1] - a[1]);
+  const lat1 = toRad(a[0]);
+  const lat2 = toRad(b[0]);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+function nearestIndexOnRoute(pos, routeLatLngs) {
+  if (!pos || !routeLatLngs?.length) return 0;
+  let bestI = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < routeLatLngs.length; i++) {
+    const d = distMeters([pos.lat, pos.lng], routeLatLngs[i]);
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
+}
+
+function FitOnInit({ latlngs }) {
+  const map = useMap();
+  useEffect(() => {
+    if (latlngs?.length) {
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
     }
-    return geojson;
-  }, [geojson]);
+  }, [map, latlngs]);
+  return null;
+}
 
-  const valid = parsed && parsed.type === 'FeatureCollection' && Array.isArray(parsed.features) && parsed.features.length > 0;
-  const routeLonLat = useMemo(() => (valid ? extractRouteCoords(parsed) : []), [valid, parsed]);
-  const routeLatLng = useMemo(() => routeLonLat.map(([lon, lat]) => [lat, lon]), [routeLonLat]);
+// ===== component =====
+export default function NavOverlay({ title = 'Ruta', geojson, onClose }) {
+  const routeLatLngs = useMemo(() => toLatLngsFromGeoJSON(geojson), [geojson]);
 
-  const mapEl = useRef(null);
+  const [following, setFollowing] = useState(true);
+  const [me, setMe] = useState(null);             // {lat,lng,heading?,speed?}
+  const watchIdRef = useRef(null);
   const mapRef = useRef(null);
-  const fullRef = useRef(null);
-  const remainRef = useRef(null);
-  const meRef = useRef(null);
-  const startRef = useRef(null);
-  const endRef = useRef(null);
+  const [startIdx, setStartIdx] = useState(0);
 
-  const [remainKm, setRemainKm] = useState(0);
-  const [gpsOn, setGpsOn] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [offRoute, setOffRoute] = useState(false);
-
-  // ====== init Leaflet + layere
+  // pornește GPS
   useEffect(() => {
-    if (!mapEl.current || !routeLatLng.length) return;
-
-    const map = L.map(mapEl.current, { zoomControl: true, center: routeLatLng[0], zoom: 14 });
-    mapRef.current = map;
-
-    // tiles OSM
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: 19,
-    }).addTo(map);
-
-    // markers start / end
-    startRef.current = L.circleMarker(routeLatLng[0], { radius: 7, color:'#22c55e', weight:3, fillColor:'#22c55e', fillOpacity:.8 }).addTo(map);
-    endRef.current   = L.circleMarker(routeLatLng[routeLatLng.length - 1], { radius: 7, color:'#ef4444', weight:3, fillColor:'#ef4444', fillOpacity:.8 }).addTo(map);
-
-    // traseu complet + rămas
-    fullRef.current = L.polyline(routeLatLng, { color:'#d1d5db', weight:8, opacity:.9 }).addTo(map);
-    remainRef.current = L.polyline([], { color:'#3b82f6', weight:8 }).addTo(map);
-
-    // marker „eu”
-    meRef.current = L.circleMarker(routeLatLng[0], { radius:6, color:'#fff', weight:2, fillColor:'#3b82f6', fillOpacity:1 }).addTo(map);
-
-    map.fitBounds(fullRef.current.getBounds(), { padding:[90,40], maxZoom:16 });
-
-    return () => { map.remove(); };
-  }, [routeLatLng]);
-
-  // ====== GPS watch (doar când e „running”)
-  useEffect(() => {
-    if (!routeLonLat.length) return;
-    let watchId = null;
-
-    if (running && 'geolocation' in navigator) {
-      setGpsOn(true);
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const lon = pos.coords.longitude;
-          const lat = pos.coords.latitude;
-
-          const closest = closestOnPolyline(routeLonLat, lon, lat);
-          if (!closest) return;
-
-          const tooFar = Math.sqrt(closest.d2) * 111 > 0.15; // >150 m de traseu
-          setOffRoute(tooFar);
-
-          const rem = sliceRemaining(routeLonLat, closest);
-          setRemainKm(approxLengthKm(rem));
-          const remLatLng = rem.map(([LON, LAT]) => [LAT, LON]);
-
-          const map = mapRef.current;
-          const me = meRef.current;
-          const remain = remainRef.current;
-          if (!map || !me || !remain) return;
-
-          me.setLatLng([lat, lon]);
-          remain.setLatLngs(remLatLng);
-
-          // urmează poziția (ca pe Maps)
-          map.panTo([lat, lon], { animate: true });
-        },
-        (err) => { console.warn('GPS error', err); setGpsOn(false); },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 12000 }
-      );
-    } else {
-      setGpsOn(false);
+    if (!navigator.geolocation) {
+      alert('Geolocația nu este disponibilă pe acest dispozitiv.');
+      return;
     }
+    try {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, heading, speed } = pos.coords || {};
+          const fix = { lat: latitude, lng: longitude, heading, speed };
+          setMe(fix);
 
-    return () => { if (watchId !== null) navigator.geolocation.clearWatch(watchId); };
-  }, [running, routeLonLat]);
+          // când vine primul fix -> alege cel mai apropiat punct de rută
+          if (routeLatLngs.length && startIdx === 0) {
+            const idx = nearestIndexOnRoute(fix, routeLatLngs);
+            setStartIdx(idx);
+          }
 
-  const fitAll = () => {
-    const map = mapRef.current, full = fullRef.current;
-    if (map && full) map.fitBounds(full.getBounds(), { padding:[90,40], maxZoom:16 });
+          if (following && mapRef.current) {
+            mapRef.current.setView([latitude, longitude], Math.max(mapRef.current.getZoom(), 15), {
+              animate: false,
+            });
+          }
+        },
+        (err) => console.warn('GPS error:', err?.message || err),
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+      );
+    } catch (e) {
+      console.warn('Geolocation error', e);
+    }
+    return () => {
+      const id = watchIdRef.current;
+      if (id !== null) {
+        try { navigator.geolocation.clearWatch(id); } catch {}
+      }
+    };
+  }, [following, routeLatLngs, startIdx]);
+
+  // culoare rută
+  const routeColor = '#7A86FF';
+
+  // UI – stiluri inline ca să nu depindem de CSS extra
+  const headerStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: '10px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    color: 'white',
+    zIndex: 5000,
+    pointerEvents: 'none',
   };
+  const pillStyle = {
+    background: 'rgba(0,0,0,.55)',
+    backdropFilter: 'blur(4px)',
+    borderRadius: 12,
+    padding: '6px 10px',
+    fontSize: 14,
+    lineHeight: '18px',
+    pointerEvents: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  };
+  const btnStyle = {
+    background: 'rgba(0,0,0,.65)',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,.2)',
+    borderRadius: 10,
+    padding: '8px 10px',
+    fontSize: 14,
+    lineHeight: '16px',
+    cursor: 'pointer',
+  };
+
   const centerMe = () => {
-    if (!('geolocation' in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude:lat, longitude:lon } = pos.coords;
-        const map = mapRef.current, me = meRef.current;
-        if (map && me) { me.setLatLng([lat, lon]); map.setView([lat, lon], Math.max(map.getZoom(), 15)); }
-      },
-      () => {},
-      { enableHighAccuracy:true, maximumAge:0, timeout:8000 }
-    );
+    if (!me || !mapRef.current) return;
+    mapRef.current.setView([me.lat, me.lng], Math.max(mapRef.current.getZoom(), 16), { animate: true });
   };
-
-  if (!valid || !routeLatLng.length) {
-    return (
-      <div style={Wrap}>
-        <div style={TopBar}>
-          <div style={Title}>{title || 'Navigare'}</div>
-          <button style={BtnGhost} onClick={onClose}>Închide</button>
-        </div>
-        <div style={{ position:'absolute', inset:0, display:'grid', placeItems:'center', color:'#fff' }}>
-          Ruta nu este disponibilă sau este invalidă.
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div style={Wrap}>
-      {/* bara de sus */}
-      <div style={TopBar}>
-        <div style={Title}>{title || 'Navigare'}</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button style={BtnGhost} onClick={fitAll}>Potrivește traseu</button>
-          <button style={BtnGhost} onClick={onClose}>Închide</button>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 4000, background: '#000'
+    }}>
+      {/* HEADER */}
+      <div style={headerStyle}>
+        <div style={pillStyle}>
+          <strong style={{ fontWeight: 700 }}>{title}</strong>
+        </div>
+        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto' }}>
+          <button style={btnStyle} onClick={() => setFollowing((f) => !f)}>
+            {following ? 'Stop' : 'Start'}
+          </button>
+          <button style={btnStyle} onClick={centerMe}>Centrează</button>
+          <button style={{ ...btnStyle, background: '#d33' }} onClick={onClose}>Închide</button>
         </div>
       </div>
 
-      {/* harta */}
-      <div ref={mapEl} style={mapBox} />
+      {/* MAPA */}
+      <MapContainer
+        ref={(ref) => (mapRef.current = ref)}
+        style={{ position: 'absolute', inset: 0 }}
+        center={routeLatLngs[0] || [41.39, 2.17]}
+        zoom={13}
+        zoomControl={true}
+      >
+        <TileLayer
+          attribution='&copy; OpenStreetMap'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      {/* info jos-stânga */}
-      <div style={InfoRow}>
-        <span style={Pill}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
-        <span style={Pill}>Rămas: {remainKm.toFixed(1)} km</span>
-        {offRoute && <span style={{ ...Pill, background:'rgba(255,99,71,.25)', border:'1px solid rgba(255,99,71,.55)' }}>În afara rutei</span>}
-      </div>
+        {/* RUTA */}
+        {routeLatLngs.length > 0 && (
+          <>
+            <Polyline
+              positions={routeLatLngs}
+              pathOptions={{ color: routeColor, weight: 10, opacity: 0.35 }}
+            />
+            <Polyline
+              positions={routeLatLngs}
+              pathOptions={{ color: routeColor, weight: 4, opacity: 0.9 }}
+            />
+            <FitOnInit latlngs={routeLatLngs} />
+          </>
+        )}
 
-      {/* butoane flotante jos-dreapta */}
-      <div style={FabCol}>
-        <button
-          style={running ? BtnGhost : BtnPrimary}
-          onClick={() => setRunning(v => !v)}
-          title={running ? 'Oprește navigarea' : 'Pornește navigarea'}
-        >
-          {running ? '⏹ Oprește' : '▶ Pornește'}
-        </button>
-        <button style={BtnGhost} onClick={centerMe}>Centrează pe mine</button>
-      </div>
+        {/* ME */}
+        {me && <Marker position={[me.lat, me.lng]} icon={meIcon} />}
+
+        {/* (opțional) progres de la startIdx până la poziția cea mai apropiată */}
+        {me && routeLatLngs.length > 1 && (() => {
+          const curIdx = nearestIndexOnRoute(me, routeLatLngs);
+          const a = Math.min(startIdx, curIdx);
+          const b = Math.max(startIdx, curIdx);
+          const slice = routeLatLngs.slice(a, b + 1);
+          return slice.length > 1 ? (
+            <Polyline positions={slice} pathOptions={{ color: '#25c59e', weight: 6, opacity: 0.9 }} />
+          ) : null;
+        })()}
+      </MapContainer>
     </div>
   );
 }
