@@ -1,201 +1,206 @@
 // src/components/GpsPro/NavOverlay.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import 'leaflet-geometryutil'; // Importăm pachetul ajutător
+import 'leaflet/dist/leaflet.css';
 
-// Repară problema iconițelor default din Leaflet cu bundlere moderne
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// ---------- UI inline ----------
+const wrap = { position:'fixed', inset:0, zIndex:9999, background:'#0b1220', display:'flex', flexDirection:'column' };
+const header = { height:56, padding:'0 12px', display:'flex', alignItems:'center', justifyContent:'space-between',
+  color:'#fff', borderBottom:'1px solid rgba(255,255,255,.08)' };
+const titleSt = { fontSize:16, fontWeight:600 };
+const closeBtn = { background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,.25)', borderRadius:8,
+  padding:'6px 10px', fontSize:14, cursor:'pointer' };
+const footer = { padding:10, color:'#fff', display:'flex', gap:10, alignItems:'center', justifyContent:'space-between',
+  background:'linear-gradient(180deg, rgba(11,18,32,0.5) 0%, rgba(11,18,32,1) 70%)', borderTop:'1px solid rgba(255,255,255,.08)' };
+const pill = { padding:'6px 10px', borderRadius:10, background:'rgba(255,255,255,.08)', fontSize:13 };
 
-
-// ===== Stiluri (rămân la fel) =====
-const containerStyle = { position: 'fixed', inset: 0, zIndex: 9999, background: '#0b1220', display: 'flex', flexDirection: 'column' };
-const headerStyle = { height: 56, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', borderBottom: '1px solid rgba(255,255,255,.08)' };
-const titleStyle = { fontSize: 16, fontWeight: 600 };
-const closeBtnStyle = { appearance: 'none', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.25)', borderRadius: 8, padding: '6px 10px', fontSize: 14 };
-const footerStyle = { padding: 10, color: '#fff', display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(180deg, rgba(11,18,32,0.5) 0%, rgba(11,18,32,1) 70%)', borderTop: '1px solid rgba(255,255,255,.08)' };
-const pillStyle = { padding: '6px 10px', borderRadius: 10, background: 'rgba(255,255,255,.08)', fontSize: 13 };
-
-// ===== Helpers (adaptate pentru Leaflet) =====
-
-// Extrage coordonatele [lat, lon] din GeoJSON (Leaflet folosește [lat, lon])
+// ---------- Geo helpers (lucrează în [lon,lat]) ----------
+function dist2(lon1, lat1, lon2, lat2) {
+  const x = (lon2 - lon1) * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
+  const y = (lat2 - lat1);
+  return x * x + y * y; // grade^2
+}
+function projectOnSegment(a, b, p) {
+  const [ax, ay] = a, [bx, by] = b, [px, py] = p;
+  const vx = bx - ax, vy = by - ay;
+  const wx = px - ax, wy = py - ay;
+  const vv = vx * vx + vy * vy || 1e-9;
+  let t = (wx * vx + wy * vy) / vv;
+  if (t < 0) t = 0; else if (t > 1) t = 1;
+  return [ax + t * vx, ay + t * vy, t];
+}
+function closestOnPolyline(coords, pLon, pLat) {
+  if (!coords || coords.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = coords[i], b = coords[i + 1];
+    const [x, y, t] = projectOnSegment(a, b, [pLon, pLat]);
+    const d2 = dist2(x, y, pLon, pLat);
+    if (!best || d2 < best.d2) best = { i, t, coord:[x,y], d2 };
+  }
+  return best; // { i, t, coord:[lon,lat], d2 }
+}
 function extractRouteCoords(geojson) {
   try {
-    const feature = (geojson?.features || []).find(
-      (ft) => ft.geometry?.type === 'LineString' || ft.geometry?.type === 'MultiLineString'
+    const f = (geojson?.features || []).find(
+      (ft) =>
+        (ft.geometry?.type === 'LineString' && Array.isArray(ft.geometry.coordinates)) ||
+        (ft.geometry?.type === 'MultiLineString' && Array.isArray(ft.geometry.coordinates))
     );
-    if (!feature) return [];
-    
-    const coords = feature.geometry.coordinates;
-    // Leaflet vrea [lat, lon], GeoJSON are [lon, lat]. Inversăm.
-    if (feature.geometry.type === 'LineString') {
-        return coords.map(c => [c[1], c[0]]);
-    }
-    // MultiLineString
+    if (!f) return [];
+    if (f.geometry.type === 'LineString') return f.geometry.coordinates.slice();
     const out = [];
-    for (const line of coords) {
-        for (const c of line) out.push([c[1], c[0]]);
-    }
+    for (const line of f.geometry.coordinates) for (const c of line) out.push(c);
     return out;
-  } catch {
-    return [];
+  } catch { return []; }
+}
+function sliceRemaining(coords, closest) {
+  if (!closest || !coords?.length) return [];
+  const { i, coord } = closest;
+  const out = [coord];
+  for (let k = i + 1; k < coords.length; k++) out.push(coords[k]);
+  return out;
+}
+function approxLengthKm(coords) {
+  if (!coords || coords.length < 2) return 0;
+  let sum = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = coords[i], b = coords[i + 1];
+    sum += Math.sqrt(dist2(a[0], a[1], b[0], b[1])) * 111;
   }
+  return sum;
 }
-
-// Calculează lungimea unei polilinii (în km)
-function calculatePolylineLengthKm(latLngs) {
-    let totalDistance = 0;
-    if (!latLngs || latLngs.length < 2) return 0;
-    for (let i = 0; i < latLngs.length - 1; i++) {
-        totalDistance += latLngs[i].distanceTo(latLngs[i + 1]);
-    }
-    return totalDistance / 1000;
-}
-
-
-// ===== Componenta principală (rescrisă cu Leaflet) =====
 
 export default function NavOverlay({ title, geojson, onClose }) {
-  const valid = geojson && geojson.type === 'FeatureCollection' && Array.isArray(geojson.features);
-  // Coordonatele sunt acum în format [lat, lon]
-  const routeCoords = useMemo(() => (valid ? extractRouteCoords(geojson) : []), [valid, geojson]);
+  const valid = geojson && geojson.type === 'FeatureCollection' && Array.isArray(geojson.features) && geojson.features.length > 0;
+  // Coordonate din GeoJSON în [lon,lat]
+  const routeLonLat = useMemo(() => (valid ? extractRouteCoords(geojson) : []), [valid, geojson]);
+  // Pentru Leaflet trebuie [lat,lon]
+  const routeLatLng = useMemo(() => routeLonLat.map(([lon, lat]) => [lat, lon]), [routeLonLat]);
 
-  const mapDiv = useRef(null);
+  const mapEl = useRef(null);
   const mapRef = useRef(null);
-  const routeLayerRef = useRef(null);
-  const remainLayerRef = useRef(null);
-  const meLayerRef = useRef(null);
+  const fullRef = useRef(null);
+  const remainRef = useRef(null);
+  const meRef = useRef(null);
 
   const [remainKm, setRemainKm] = useState(0);
   const [gpsOn, setGpsOn] = useState(false);
   const [offRoute, setOffRoute] = useState(false);
 
-  // Inițializează harta
+  // Init hartă
   useEffect(() => {
-    if (!mapDiv.current || !routeCoords.length || mapRef.current) return;
+    if (!mapEl.current) return;
+    if (!routeLatLng.length) return;
 
-    // Creăm harta Leaflet
-    const map = L.map(mapDiv.current).setView(routeCoords[0], 14);
+    const map = L.map(mapEl.current, {
+      center: routeLatLng[0],
+      zoom: 14,
+    });
     mapRef.current = map;
 
-    // Adăugăm stratul de la OpenStreetMap
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; OpenStreetMap',
+      maxZoom: 19,
     }).addTo(map);
 
-    // Stratul întregii rute (gri)
-    const fullRoute = L.polyline(routeCoords, { color: 'rgba(255,255,255,0.35)', weight: 6 }).addTo(map);
-    routeLayerRef.current = fullRoute;
+    // Traseu complet (gri)
+    const full = L.polyline(routeLatLng, { color:'#ffffff', opacity:0.35, weight:6 }).addTo(map);
+    fullRef.current = full;
 
-    // Zoom pentru a încadra toată ruta
-    map.fitBounds(fullRoute.getBounds(), { padding: [40, 40] });
+    // Traseu rămas (albastru)
+    const remain = L.polyline([], { color:'#3fb0ff', weight:6 }).addTo(map);
+    remainRef.current = remain;
+
+    // Marker „eu”
+    const me = L.circleMarker(routeLatLng[0], { radius:6, color:'#fff', weight:2, fillColor:'#3fb0ff', fillOpacity:1 }).addTo(map);
+    meRef.current = me;
+
+    map.fitBounds(full.getBounds(), { padding:[80,40], maxZoom:16 });
 
     return () => {
       map.remove();
       mapRef.current = null;
+      fullRef.current = null;
+      remainRef.current = null;
+      meRef.current = null;
     };
-  }, [routeCoords]);
+  }, [routeLatLng]);
 
-  // Urmărire GPS
+  // GPS tracking + snap + remaining
   useEffect(() => {
-    if (!routeCoords.length || !mapRef.current) return;
+    if (!routeLonLat.length) return;
     let watchId = null;
-    const map = mapRef.current;
 
-    function updateWithPosition(pos) {
-      const userLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+    const onPos = (pos) => {
+      try {
+        const lon = pos.coords.longitude;
+        const lat = pos.coords.latitude;
 
-      // Găsim cel mai apropiat punct pe rută folosind 'leaflet-geometryutil'
-      const closestPointResult = L.GeometryUtil.closest(map, routeLayerRef.current, userLatLng);
-      if (!closestPointResult) return;
+        const closest = closestOnPolyline(routeLonLat, lon, lat);
+        if (!closest) return;
 
-      const closestLatLng = closestPointResult.latlng;
-      const closestIndex = closestPointResult.predecessor;
+        // >150m = off-route
+        const tooFar = Math.sqrt(closest.d2) * 111 > 0.15;
+        setOffRoute(tooFar);
 
-      // Verificăm dacă suntem prea departe de rută (> 150m)
-      const distanceToRoute = userLatLng.distanceTo(closestLatLng);
-      setOffRoute(distanceToRoute > 150);
+        const rem = sliceRemaining(routeLonLat, closest);
+        setRemainKm(approxLengthKm(rem));
 
-      // Decupăm traseul rămas
-      const remainingCoords = [closestLatLng, ...routeCoords.slice(closestIndex + 1)];
-      const remainingLatLngs = remainingCoords.map(c => L.latLng(c));
-      
-      setRemainKm(calculatePolylineLengthKm(remainingLatLngs));
+        const remLatLng = rem.map(([LON, LAT]) => [LAT, LON]);
 
-      // Actualizăm stratul "remaining" (albastru)
-      if (!remainLayerRef.current) {
-        remainLayerRef.current = L.polyline(remainingLatLngs, { color: '#3fb0ff', weight: 6 }).addTo(map);
-      } else {
-        remainLayerRef.current.setLatLngs(remainingLatLngs);
+        const map = mapRef.current;
+        const remain = remainRef.current;
+        const me = meRef.current;
+        if (!map || !remain || !me) return;
+
+        remain.setLatLngs(remLatLng);
+        me.setLatLng([lat, lon]);
+        map.panTo([lat, lon], { animate:true, duration:0.25 });
+      } catch (e) {
+        // nu aruncăm, evităm ecran alb
+        console.warn('GPS update error:', e);
       }
-
-      // Actualizăm marker-ul "eu"
-      if (!meLayerRef.current) {
-        const customIcon = L.divIcon({
-            className: 'custom-gps-marker',
-            html: `<div style="background-color:#3fb0ff; width:12px; height:12px; border-radius:50%; border: 2px solid #fff;"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        });
-        meLayerRef.current = L.marker(userLatLng, { icon: customIcon }).addTo(map);
-      } else {
-        meLayerRef.current.setLatLng(userLatLng);
-      }
-
-      // Centram harta pe utilizator
-      map.setView(userLatLng, Math.max(15, map.getZoom()), { animate: true, pan: { duration: 0.5 } });
-    }
+    };
 
     if ('geolocation' in navigator) {
       setGpsOn(true);
       watchId = navigator.geolocation.watchPosition(
-        updateWithPosition,
-        (err) => { console.warn('GPS error', err); setGpsOn(false); },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1500 }
+        onPos,
+        (err) => { console.warn('GPS error:', err); setGpsOn(false); },
+        { enableHighAccuracy:true, maximumAge:1500, timeout:10000 }
       );
     } else {
       setGpsOn(false);
     }
+    return () => { if (watchId !== null) navigator.geolocation.clearWatch(watchId); };
+  }, [routeLonLat]);
 
-    return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [routeCoords]);
-
-  if (!valid || !routeCoords.length) {
+  if (!valid || !routeLatLng.length) {
     return (
-      <div style={containerStyle}>
-        <div style={headerStyle}>
-          <div style={titleStyle}>{title || 'Navigare'}</div>
-          <button style={closeBtnStyle} onClick={onClose}>Închide</button>
+      <div style={wrap}>
+        <div style={header}>
+          <div style={titleSt}>{title || 'Navigare'}</div>
+          <button style={closeBtn} onClick={onClose}>Închide</button>
         </div>
-        <div style={{ color: '#fff', padding: 16 }}>Ruta nu este disponibilă sau este invalidă.</div>
+        <div style={{ color:'#fff', padding:16 }}>Ruta nu este disponibilă sau este invalidă.</div>
       </div>
     );
   }
 
   return (
-    <div style={containerStyle}>
-      <div style={headerStyle}>
-        <div style={titleStyle}>{title || 'Navigare'}</div>
-        <button style={closeBtnStyle} onClick={onClose}>Închide</button>
+    <div style={wrap}>
+      <div style={header}>
+        <div style={titleSt}>{title || 'Navigare'}</div>
+        <button style={closeBtn} onClick={onClose}>Închide</button>
       </div>
-      <div ref={mapDiv} style={{ flex: 1, backgroundColor: '#0b1220' }} />
-      <div style={footerStyle}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={pillStyle}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
-          {offRoute && <span style={{ ...pillStyle, background: 'rgba(255,99,71,.25)', border: '1px solid rgba(255,99,71,.6)' }}>În afara rutei</span>}
+      <div ref={mapEl} style={{ flex:1 }} />
+      <div style={footer}>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <span style={pill}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
+          {offRoute && <span style={{ ...pill, background:'rgba(255,99,71,.25)', border:'1px solid rgba(255,99,71,.6)' }}>În afara rutei</span>}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span style={pillStyle}>Rămas: {remainKm.toFixed(1)} km</span>
-        </div>
+        <div><span style={pill}>Rămas: {remainKm.toFixed(1)} km</span></div>
       </div>
     </div>
   );
