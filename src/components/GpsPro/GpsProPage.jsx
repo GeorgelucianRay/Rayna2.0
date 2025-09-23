@@ -281,21 +281,48 @@ function ListView({ tableName, title }) {
               </button>
 
               {/* 4) Cómo llegar (preferă ruta salvată) */}
-              <button
-                className={styles.btn}
-                onClick={async () => {
-                  const saved = await findLastRouteForSubject(selected.id);
-                  if (saved?.geojson) {
-                    setPreviewRoute({ title: saved.name || 'Ruta', geojson: saved.geojson });
-                  } else {
-                    const link = getMapsLink(selected);
-                    if (link) window.open(link, '_blank', 'noopener');
-                    else alert('No hay ruta guardada ni enlace de Maps.');
-                  }
-                }}
-              >
-                Cómo llegar
-              </button>
+<button
+  className={styles.btn}
+  onClick={async () => {
+    try {
+      const saved = await findLastRouteForSubject(selected.id);
+      if (!saved) {
+        const link = getMapsLink(selected);
+        if (link) window.open(link, '_blank', 'noopener');
+        else alert('Nu există rută salvată și nici link Maps.');
+        return;
+      }
+
+      // Asigură GeoJSON obiect chiar dacă în DB e string
+      const raw = saved.geojson;
+      const gj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+      // Validare minimă: există un LineString cu min. 2 puncte
+      const feat = gj?.features?.[0];
+      const ok =
+        feat?.geometry?.type === 'LineString' &&
+        Array.isArray(feat?.geometry?.coordinates) &&
+        feat.geometry.coordinates.length >= 2;
+
+      if (!ok) {
+        console.warn('GeoJSON invalid sau gol:', gj);
+        const link = getMapsLink(selected);
+        if (link) window.open(link, '_blank', 'noopener');
+        else alert('Ruta salvată e invalidă și nu există link Maps.');
+        return;
+      }
+
+      setPreviewRoute({ title: saved.name || 'Ruta', geojson: gj });
+    } catch (err) {
+      console.error(err);
+      alert(`Eroare la încărcarea rutei salvate: ${err.message || err}`);
+      const link = getMapsLink(selected);
+      if (link) window.open(link, '_blank', 'noopener');
+    }
+  }}
+>
+  Cómo llegar
+</button>
 
               <button className={styles.btn} onClick={()=> setSelected(null)}>Cerrar</button>
             </>
