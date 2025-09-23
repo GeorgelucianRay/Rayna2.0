@@ -1,116 +1,47 @@
 // src/components/GpsPro/NavOverlay.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import 'ol/ol.css';
-import Map from 'ol/Map';
-import View from 'ol/View';
-import TileLayer from 'ol/layer/Tile';
-import VectorLayer from 'ol/layer/Vector';
-import OSM from 'ol/source/OSM';
-import VectorSource from 'ol/source/Vector';
-import GeoJSON from 'ol/format/GeoJSON';
-import Feature from 'ol/Feature';
-import Point from 'ol/geom/Point';
-import LineString from 'ol/geom/LineString';
-import { fromLonLat } from 'ol/proj';
-import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import 'leaflet-geometryutil'; // Importăm pachetul ajutător
 
-const containerStyle = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 9999,
-  background: '#0b1220',
-  display: 'flex',
-  flexDirection: 'column',
-};
+// Repară problema iconițelor default din Leaflet cu bundlere moderne
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
-const headerStyle = {
-  height: 56,
-  padding: '0 12px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  color: '#fff',
-  borderBottom: '1px solid rgba(255,255,255,.08)',
-};
 
+// ===== Stiluri (rămân la fel) =====
+const containerStyle = { position: 'fixed', inset: 0, zIndex: 9999, background: '#0b1220', display: 'flex', flexDirection: 'column' };
+const headerStyle = { height: 56, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', borderBottom: '1px solid rgba(255,255,255,.08)' };
 const titleStyle = { fontSize: 16, fontWeight: 600 };
-const closeBtnStyle = {
-  appearance: 'none',
-  background: 'transparent',
-  color: '#fff',
-  border: '1px solid rgba(255,255,255,.25)',
-  borderRadius: 8,
-  padding: '6px 10px',
-  fontSize: 14,
-};
+const closeBtnStyle = { appearance: 'none', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.25)', borderRadius: 8, padding: '6px 10px', fontSize: 14 };
+const footerStyle = { padding: 10, color: '#fff', display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(180deg, rgba(11,18,32,0.5) 0%, rgba(11,18,32,1) 70%)', borderTop: '1px solid rgba(255,255,255,.08)' };
+const pillStyle = { padding: '6px 10px', borderRadius: 10, background: 'rgba(255,255,255,.08)', fontSize: 13 };
 
-const footerStyle = {
-  padding: 10,
-  color: '#fff',
-  display: 'flex',
-  gap: 10,
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  background: 'linear-gradient(180deg, rgba(11,18,32,0.5) 0%, rgba(11,18,32,1) 70%)',
-  borderTop: '1px solid rgba(255,255,255,.08)',
-};
+// ===== Helpers (adaptate pentru Leaflet) =====
 
-const pillStyle = {
-  padding: '6px 10px',
-  borderRadius: 10,
-  background: 'rgba(255,255,255,.08)',
-  fontSize: 13,
-};
-
-// ===== Helpers geo  =====
-
-// Equirectangular approx (bun pentru distanțe scurte)
-function dist2(lon1, lat1, lon2, lat2) {
-  const x = (lon2 - lon1) * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
-  const y = (lat2 - lat1);
-  return x * x + y * y; // în „grade pătrate”
-}
-
-// Proiecția punctului P pe segment AB (lon/lat), returnează t în [0..1] și coordonate
-function projectOnSegment(a, b, p) {
-  const [ax, ay] = a, [bx, by] = b, [px, py] = p;
-  const vx = bx - ax, vy = by - ay;
-  const wx = px - ax, wy = py - ay;
-  const vv = vx * vx + vy * vy || 1e-9;
-  let t = (wx * vx + wy * vy) / vv;
-  if (t < 0) t = 0;
-  else if (t > 1) t = 1;
-  return [ax + t * vx, ay + t * vy, t];
-}
-
-// Caută cel mai apropiat punct pe linie și segmentul (index) pentru coords = [[lon,lat]...]
-function closestOnPolyline(coords, pLon, pLat) {
-  if (!coords || coords.length < 2) return null;
-  let best = null;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const a = coords[i];
-    const b = coords[i + 1];
-    const [x, y, t] = projectOnSegment(a, b, [pLon, pLat]);
-    const d2 = dist2(x, y, pLon, pLat);
-    if (!best || d2 < best.d2) best = { i, t, coord: [x, y], d2 };
-  }
-  return best; // { i, t, coord:[lon,lat], d2 }
-}
-
-// Extrage primul LineString (sau concatenează) dintr-un FeatureCollection
+// Extrage coordonatele [lat, lon] din GeoJSON (Leaflet folosește [lat, lon])
 function extractRouteCoords(geojson) {
   try {
-    const f = (geojson?.features || []).find(
-      (ft) =>
-        (ft.geometry?.type === 'LineString' && Array.isArray(ft.geometry.coordinates)) ||
-        (ft.geometry?.type === 'MultiLineString' && Array.isArray(ft.geometry.coordinates))
+    const feature = (geojson?.features || []).find(
+      (ft) => ft.geometry?.type === 'LineString' || ft.geometry?.type === 'MultiLineString'
     );
-    if (!f) return [];
-    if (f.geometry.type === 'LineString') return f.geometry.coordinates.slice();
-    // MultiLineString → concatenăm liniile
+    if (!feature) return [];
+    
+    const coords = feature.geometry.coordinates;
+    // Leaflet vrea [lat, lon], GeoJSON are [lon, lat]. Inversăm.
+    if (feature.geometry.type === 'LineString') {
+        return coords.map(c => [c[1], c[0]]);
+    }
+    // MultiLineString
     const out = [];
-    for (const line of f.geometry.coordinates) {
-      for (const c of line) out.push(c);
+    for (const line of coords) {
+        for (const c of line) out.push([c[1], c[0]]);
     }
     return out;
   } catch {
@@ -118,34 +49,22 @@ function extractRouteCoords(geojson) {
   }
 }
 
-// Decupează traseul rămas de la „closest” (poate fi între puncte) până la final
-function sliceRemaining(coords, closest) {
-  if (!closest || !coords?.length) return [];
-  const { i, t, coord } = closest;
-  const out = [coord];
-  // dacă t>0, înseamnă că suntem pe segmentul [i,i+1]; începem după punctul proiectat
-  for (let k = i + 1; k < coords.length; k++) out.push(coords[k]);
-  return out;
+// Calculează lungimea unei polilinii (în km)
+function calculatePolylineLengthKm(latLngs) {
+    let totalDistance = 0;
+    if (!latLngs || latLngs.length < 2) return 0;
+    for (let i = 0; i < latLngs.length - 1; i++) {
+        totalDistance += latLngs[i].distanceTo(latLngs[i + 1]);
+    }
+    return totalDistance / 1000;
 }
 
-// Suma lungimii pentru coords (equirectangular → aproximare; suficient pentru ETA UI)
-function approxLengthKm(coords) {
-  if (!coords || coords.length < 2) return 0;
-  let sum = 0;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const a = coords[i], b = coords[i + 1];
-    // factor ~111km/grad
-    const d = Math.sqrt(dist2(a[0], a[1], b[0], b[1])) * 111;
-    sum += d;
-  }
-  return sum;
-}
 
-// ===== Componenta principală =====
+// ===== Componenta principală (rescrisă cu Leaflet) =====
 
 export default function NavOverlay({ title, geojson, onClose }) {
-  // Gărzi anti ecran alb
-  const valid = geojson && geojson.type === 'FeatureCollection' && Array.isArray(geojson.features) && geojson.features.length > 0;
+  const valid = geojson && geojson.type === 'FeatureCollection' && Array.isArray(geojson.features);
+  // Coordonatele sunt acum în format [lat, lon]
   const routeCoords = useMemo(() => (valid ? extractRouteCoords(geojson) : []), [valid, geojson]);
 
   const mapDiv = useRef(null);
@@ -160,124 +79,86 @@ export default function NavOverlay({ title, geojson, onClose }) {
 
   // Inițializează harta
   useEffect(() => {
-    if (!mapDiv.current) return;
-    if (!routeCoords.length) return;
+    if (!mapDiv.current || !routeCoords.length || mapRef.current) return;
 
-    // Map + OSM
-    const map = new Map({
-      target: mapDiv.current,
-      layers: [new TileLayer({ source: new OSM() })],
-      view: new View({
-        center: fromLonLat(routeCoords[0]),
-        zoom: 14,
-      }),
-    });
+    // Creăm harta Leaflet
+    const map = L.map(mapDiv.current).setView(routeCoords[0], 14);
     mapRef.current = map;
 
+    // Adăugăm stratul de la OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
     // Stratul întregii rute (gri)
-    const routeSrc = new VectorSource();
-    const routeLayer = new VectorLayer({
-      source: routeSrc,
-      style: new Style({
-        stroke: new Stroke({ color: 'rgba(255,255,255,0.35)', width: 6 }),
-      }),
-    });
-    map.addLayer(routeLayer);
-    routeLayerRef.current = routeLayer;
+    const fullRoute = L.polyline(routeCoords, { color: 'rgba(255,255,255,0.35)', weight: 6 }).addTo(map);
+    routeLayerRef.current = fullRoute;
 
-    // Stratul „remaining” (albastru)
-    const remainSrc = new VectorSource();
-    const remainLayer = new VectorLayer({
-      source: remainSrc,
-      style: new Style({
-        stroke: new Stroke({ color: '#3fb0ff', width: 6 }),
-      }),
-    });
-    map.addLayer(remainLayer);
-    remainLayerRef.current = remainLayer;
-
-    // Marker „eu”
-    const meSrc = new VectorSource();
-    const meLayer = new VectorLayer({
-      source: meSrc,
-      style: new Style({
-        image: new CircleStyle({
-          radius: 6,
-          fill: new Fill({ color: '#3fb0ff' }),
-          stroke: new Stroke({ color: '#ffffff', width: 2 }),
-        }),
-      }),
-    });
-    map.addLayer(meLayer);
-    meLayerRef.current = meLayer;
-
-    // Desenează linia integrală
-    const fullLine = new LineString(routeCoords.map((c) => fromLonLat(c)));
-    routeSrc.addFeature(new Feature({ geometry: fullLine }));
-
-    // Fit to route
-    map.getView().fit(fullLine, { padding: [80, 40, 120, 40], maxZoom: 16, duration: 300 });
+    // Zoom pentru a încadra toată ruta
+    map.fitBounds(fullRoute.getBounds(), { padding: [40, 40] });
 
     return () => {
-      map.setTarget(null);
+      map.remove();
       mapRef.current = null;
     };
   }, [routeCoords]);
 
-  // Urmărire GPS + snap & decupare
+  // Urmărire GPS
   useEffect(() => {
-    if (!routeCoords.length) return;
+    if (!routeCoords.length || !mapRef.current) return;
     let watchId = null;
+    const map = mapRef.current;
 
     function updateWithPosition(pos) {
-      const lon = pos.coords.longitude;
-      const lat = pos.coords.latitude;
+      const userLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
-      // snap pe linie
-      const closest = closestOnPolyline(routeCoords, lon, lat);
-      if (!closest) return;
+      // Găsim cel mai apropiat punct pe rută folosind 'leaflet-geometryutil'
+      const closestPointResult = L.GeometryUtil.closest(map, routeLayerRef.current, userLatLng);
+      if (!closestPointResult) return;
 
-      // dacă e prea departe de rută (> ~150m), marcăm off-route
-      // prag în grade ~ 150m/111km ≈ 0.00135 (equirectangular aprox)
-      const tooFar = Math.sqrt(closest.d2) * 111 > 0.15;
-      setOffRoute(tooFar);
+      const closestLatLng = closestPointResult.latlng;
+      const closestIndex = closestPointResult.predecessor;
 
-      // „remaining”
-      const rem = sliceRemaining(routeCoords, closest);
-      setRemainKm(approxLengthKm(rem));
+      // Verificăm dacă suntem prea departe de rută (> 150m)
+      const distanceToRoute = userLatLng.distanceTo(closestLatLng);
+      setOffRoute(distanceToRoute > 150);
 
-      // redă pe hartă
-      const map = mapRef.current;
-      const remainLayer = remainLayerRef.current;
-      const meLayer = meLayerRef.current;
-      if (!map || !remainLayer || !meLayer) return;
+      // Decupăm traseul rămas
+      const remainingCoords = [closestLatLng, ...routeCoords.slice(closestIndex + 1)];
+      const remainingLatLngs = remainingCoords.map(c => L.latLng(c));
+      
+      setRemainKm(calculatePolylineLengthKm(remainingLatLngs));
 
-      // actualizează stratul remaining
-      const remainSrc = remainLayer.getSource();
-      remainSrc.clear();
-      if (rem.length >= 2) {
-        const ls = new LineString(rem.map((c) => fromLonLat(c)));
-        remainSrc.addFeature(new Feature({ geometry: ls }));
+      // Actualizăm stratul "remaining" (albastru)
+      if (!remainLayerRef.current) {
+        remainLayerRef.current = L.polyline(remainingLatLngs, { color: '#3fb0ff', weight: 6 }).addTo(map);
+      } else {
+        remainLayerRef.current.setLatLngs(remainingLatLngs);
       }
 
-      // marker eu
-      const meSrc = meLayer.getSource();
-      meSrc.clear();
-      meSrc.addFeature(new Feature({ geometry: new Point(fromLonLat([lon, lat])) }));
+      // Actualizăm marker-ul "eu"
+      if (!meLayerRef.current) {
+        const customIcon = L.divIcon({
+            className: 'custom-gps-marker',
+            html: `<div style="background-color:#3fb0ff; width:12px; height:12px; border-radius:50%; border: 2px solid #fff;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        });
+        meLayerRef.current = L.marker(userLatLng, { icon: customIcon }).addTo(map);
+      } else {
+        meLayerRef.current.setLatLng(userLatLng);
+      }
 
-      // center follow
-      map.getView().animate({ center: fromLonLat([lon, lat]), zoom: Math.max(15, map.getView().getZoom() || 15), duration: 250 });
+      // Centram harta pe utilizator
+      map.setView(userLatLng, Math.max(15, map.getZoom()), { animate: true, pan: { duration: 0.5 } });
     }
 
     if ('geolocation' in navigator) {
       setGpsOn(true);
       watchId = navigator.geolocation.watchPosition(
         updateWithPosition,
-        (err) => {
-          console.warn('GPS error', err);
-          setGpsOn(false);
-        },
-        { enableHighAccuracy: true, maximumAge: 1500, timeout: 10000 }
+        (err) => { console.warn('GPS error', err); setGpsOn(false); },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1500 }
       );
     } else {
       setGpsOn(false);
@@ -289,16 +170,13 @@ export default function NavOverlay({ title, geojson, onClose }) {
   }, [routeCoords]);
 
   if (!valid || !routeCoords.length) {
-    // Pentru orice motiv – nu crăpăm UI
     return (
       <div style={containerStyle}>
         <div style={headerStyle}>
           <div style={titleStyle}>{title || 'Navigare'}</div>
           <button style={closeBtnStyle} onClick={onClose}>Închide</button>
         </div>
-        <div style={{ color: '#fff', padding: 16 }}>
-          Ruta nu este disponibilă sau este invalidă.
-        </div>
+        <div style={{ color: '#fff', padding: 16 }}>Ruta nu este disponibilă sau este invalidă.</div>
       </div>
     );
   }
@@ -309,9 +187,7 @@ export default function NavOverlay({ title, geojson, onClose }) {
         <div style={titleStyle}>{title || 'Navigare'}</div>
         <button style={closeBtnStyle} onClick={onClose}>Închide</button>
       </div>
-
-      <div ref={mapDiv} style={{ flex: 1 }} />
-
+      <div ref={mapDiv} style={{ flex: 1, backgroundColor: '#0b1220' }} />
       <div style={footerStyle}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={pillStyle}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
