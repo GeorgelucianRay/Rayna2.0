@@ -433,37 +433,35 @@ const LocationList = ({ tableName, title }) => {
             </div>
 
             <div className={styles.modalFooter}>
-              {/* 🔵 Navigare pe harta noastră (dacă există rută salvată), cu fallback sigur */}
-              <button
-                className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
-                onClick={async () => {
-                  try {
-                    const saved = await findSavedRouteForClient(selectedLocation.id);
-                    if (!saved?.geojson) {
-                      const link = getMapsLink(selectedLocation);
-                      if (link) return window.open(link, '_blank', 'noopener');
-                      return alert('Nu există rută salvată și nici link de Google Maps.');
-                    }
+{/* 🔵 Navigare pe harta noastră (dacă există rută salvată) cu fallback sigur */}
+<button
+  className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+  onClick={async () => {
+    try {
+      const saved = await findSavedRouteForClient(selectedLocation.id);
+      if (!saved?.geojson) {
+        const link = getMapsLink(selectedLocation);
+        if (link) return window.open(link, '_blank', 'noopener');
+        return alert('Nu există rută salvată și nici link de Google Maps.');
+      }
 
-                    const normalized = normalizeGeoJSON(saved.geojson);
-                    if (!normalized || !Array.isArray(normalized.features) || normalized.features.length === 0) {
-                      // GeoJSON invalid sau gol -> fallback
-                      const link = getMapsLink(selectedLocation);
-                      if (link) return window.open(link, '_blank', 'noopener');
-                      return alert('Ruta salvată este invalidă.');
-                    }
+      // ✅ parse string dacă vine din DB ca text
+      let gj = saved.geojson;
+      if (typeof gj === 'string') {
+        try { gj = JSON.parse(gj); } catch {}
+      }
 
-                    setNavData({ title: saved.name || selectedLocation.nombre, geojson: normalized });
-                  } catch (err) {
-                    console.error(err);
-                    const link = getMapsLink(selectedLocation);
-                    if (link) window.open(link, '_blank', 'noopener');
-                    else alert('Eroare la deschiderea navigației.');
-                  }
-                }}
-              >
-                Navigar
-              </button>
+      setNavData({ title: saved.name || selectedLocation.nombre, geojson: gj });
+    } catch (err) {
+      console.error(err);
+      const link = getMapsLink(selectedLocation);
+      if (link) window.open(link, '_blank', 'noopener');
+      else alert('Eroare la deschiderea navigației.');
+    }
+  }}
+>
+  Navigar
+</button>
 
               {/* 🔷 Google Maps mereu disponibil dacă avem link/coords */}
               {getMapsLink(selectedLocation) ? (
