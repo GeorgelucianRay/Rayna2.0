@@ -1,43 +1,37 @@
-// src/components/GpsPro/utils/dbRoutes.js
 import { supabase } from '../../../supabaseClient';
 
-// Constraint-ul tău: CHECK (mode IN ('manual','service'))
 export const ROUTE_MODE = {
   MANUAL: 'manual',
   SERVICE: 'service',
 };
 
 /**
- * Salvează ruta în gps_routes. Atenție:
- *  - client_id NU poate fi null (dacă tabela ta cere asta).
- *  - mode TREBUIE să fie 'manual' sau 'service'.
+ * Acceptă atât `client_id` cât și `clientId`. Dacă ambele lipsesc, salvează cu NULL
+ * (funcționează doar dacă coloana permite NULL în schema ta).
  */
-export async function saveRouteToDb({
-  clientId,                 // number (recomandat obligatoriu)
-  originTerminalId = null,  // number | null
-  name,
-  mode = ROUTE_MODE.SERVICE,
-  provider = 'ors',         // 'ors' | 'user' etc
-  geojson = null,
-  points = null,
-  distance_m = null,
-  duration_s = null,
-  round_trip = false,
-  sampling = null,
-  meta = null,
-}) {
-  if (clientId == null) {
-    throw new Error('saveRouteToDb: clientId este obligatoriu.');
-  }
-  if (mode !== ROUTE_MODE.MANUAL && mode !== ROUTE_MODE.SERVICE) {
-    throw new Error(`saveRouteToDb: mode invalid (${mode}). Folosește 'manual' sau 'service'.`);
-  }
-
-  const payload = {
-    client_id: clientId,
-    origin_terminal_id: originTerminalId,
+export async function saveRouteToDb(args = {}) {
+  const {
+    client_id, clientId,           // <- acceptăm ambele
+    origin_terminal_id = null,
     name,
-    mode,
+    mode = ROUTE_MODE.SERVICE,     // 'service' pentru rute din API
+    provider = 'ors',
+    geojson = null,
+    points = null,
+    distance_m = null,
+    duration_s = null,
+    round_trip = false,
+    sampling = null,
+    meta = null,
+    created_by = null,
+  } = args;
+
+  // mapăm către payload exact pe numele coloanelor din DB
+  const payload = {
+    client_id: client_id ?? clientId ?? null,
+    origin_terminal_id,
+    name,
+    mode,          // <- atenție: doar 'manual' sau 'service' (constraint-ul tău)
     provider,
     geojson,
     points,
@@ -46,6 +40,7 @@ export async function saveRouteToDb({
     round_trip,
     sampling,
     meta,
+    created_by,
   };
 
   const { error } = await supabase.from('gps_routes').insert([payload]);
@@ -53,9 +48,6 @@ export async function saveRouteToDb({
   return true;
 }
 
-/**
- * Ultima rută pentru un client.
- */
 export async function getLastRouteForClient(clientId) {
   const { data, error } = await supabase
     .from('gps_routes')
