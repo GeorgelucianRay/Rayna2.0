@@ -24,13 +24,19 @@ function toLonLat(input) {
     return [a, b];
   }
 
-  // object {lat, lon}
-  if (typeof input === 'object') {
-    const lat = Number(input.lat ?? input.latitude);
-    const lon = Number(input.lon ?? input.lng ?? input.longitude);
-    if (Number.isNaN(lat) || Number.isNaN(lon)) throw new Error(`Coordonate invalide (object): ${JSON.stringify(input)}`);
-    return [lon, lat];
+  // object: acceptăm și {coords: "..."} / {coordenadas: "..."} / {lat, lon}
+if (typeof input === 'object') {
+  // dacă obiectul are câmp coords sau coordenadas, îl parsez recursiv
+  if (input.coords != null) return toLonLat(input.coords);
+  if (input.coordenadas != null) return toLonLat(input.coordenadas);
+
+  const lat = Number(input.lat ?? input.latitude);
+  const lon = Number(input.lon ?? input.lng ?? input.longitude);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    throw new Error(`Coordonate invalide (object): ${JSON.stringify(input)}`);
   }
+  return [lon, lat];
+}
 
   throw new Error(`Tip de coordonate necunoscut: ${typeof input}`);
 }
