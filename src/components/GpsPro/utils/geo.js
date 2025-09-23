@@ -1,64 +1,120 @@
-// src/components/GpsPro/map/utils/geo.js
+// src/components/GpsPro/utils/geo.js
 
-/** Acceptă string/object și întoarce un FeatureCollection valid (sau null) */
-export function normalizeGeoJSON(input) {
-  if (!input) return null;
-
-  let gj = input;
-  if (typeof input === 'string') {
-    try { gj = JSON.parse(input); } catch { return null; }
-  }
-
-  // dacă e LineString simplu -> îl împachetăm într-un FeatureCollection
-  if (gj?.type === 'LineString') {
-    return {
-      type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: {}, geometry: gj }],
-    };
-  }
-
-  // dacă e Feature cu LineString
-  if (gj?.type === 'Feature' && gj?.geometry?.type === 'LineString') {
-    return {
-      type: 'FeatureCollection',
-      features: [gj],
-    };
-  }
-
-  // dacă e FeatureCollection
-  if (gj?.type === 'FeatureCollection' && Array.isArray(gj.features)) {
-    // filtrăm doar geometrii lineare
-    const feats = gj.features.filter(f => f?.geometry?.type === 'LineString' || f?.geometry?.type === 'MultiLineString');
-    if (feats.length === 0) return null;
-    return { type: 'FeatureCollection', features: feats };
-  }
-
-  return null;
+/**
+ * Returnează true dacă array-ul arată ca [lon, lat] în intervale valide.
+ */
+export function isLonLat(a) {
+  return (
+    Array.isArray(a) &&
+    a.length === 2 &&
+    Number.isFinite(a[0]) &&
+    Number.isFinite(a[1]) &&
+    a[0] >= -180 && a[0] <= 180 &&
+    a[1] >= -90 && a[1] <= 90
+  );
 }
 
-/** Bounds pentru orice FeatureCollection (LineString/MultiLineString) */
-export function geojsonBounds(gj) {
-  if (!gj || gj.type !== 'FeatureCollection') return null;
-  const coords = [];
+/**
+ * Acceptă coordonate în mai multe formate și returnează [lon, lat]
+ * - string "lat,lon"  -> parsează și inversează
+ * - array [lat,lon] sau [lon,lat] -> detectează cu intervale
+ * - object {lat, lon} | {latitude, longitude}
+ */
+export function toLonLat(input) {
+  if (input == null) throw new Error('Coordonate lipsă.');
 
-  gj.features.forEach(f => {
-    if (!f?.geometry) return;
-    const g = f.geometry;
-    if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
-      g.coordinates.forEach(c => coords.push(c));
-    } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
-      g.coordinates.forEach(arr => arr.forEach(c => coords.push(c)));
+  // string "lat,lon"
+  if (typeof input === 'string') {
+    const parts = input.split(',').map(s => s.trim());
+    if (parts.length !== 2) throw new Error(`Coordonate invalide: "${input}"`);
+    const a = Number(parts[0]);
+    const b = Number(parts[1]);
+    if (Number.isNaN(a) || Number.isNaN(b)) throw new Error(`Coordonate invalide: "${input}"`);
+    // string e de forma lat,lon → întoarcem [lon,lat]
+    return [b, a];
+  }
+
+  // array: poate fi [lat,lon] sau [lon,lat]
+  if (Array.isArray(input)) {
+    if (input.length !== 2) throw new Error(`Coordonate invalide (array): ${JSON.stringify(input)}`);
+    const A = Number(input[0]);
+    const B = Number(input[1]);
+    if (Number.isNaN(A) || Number.isNaN(B)) throw new Error(`Coordonate invalide (array): ${JSON.stringify(input)}`);
+    // Heuristic: dacă prima e în -90..90 și a doua în -180..180 → [lat,lon] → inversează
+    if (A >= -90 && A <= 90 && B >= -180 && B <= 180) return [B, A];
+    return [A, B];
+  }
+
+  // object {lat, lon} | { latitude, longitude } | { lng }
+  if (typeof input === 'object') {
+    const lat = Number(input.lat ?? input.latitude);
+    const lon = Number(input.lon ?? input.lng ?? input.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error(`Coordonate invalide (object): ${JSON.stringify(input)}`);
     }
-  });
+    return [lon, lat];
+  }
 
-  if (coords.length === 0) return null;
+  throw new Error(`Tip de coordonate necunoscut: ${typeof input}`);
+}
 
-  const lats = coords.map(c => c[1]);
-  const lons = coords.map(c => c[0]);
-  const south = Math.min(...lats);
-  const north = Math.max(...lats);
-  const west  = Math.min(...lons);
-  const east  = Math.max(...lons);
+/**
+ * Convertește o listă de puncte la un FeatureCollection cu un singur LineString.
+ * Acceptă puncte în formate mixte (vezi toLonLat). Returnează null dacă sunt < 2.
+ *
+ * @param {Array} points - ex: [[lon,lat], "lat,lon", {lat,lon}, ...]
+ */
+export function pointsToGeoJSON(points) {
+  if (!Array.isArray(points)) return null;
 
-  return [[south, west], [north, east]];
+  const coords = [];
+  for (const p of points) {
+    try {
+      const ll = toLonLat(p);
+      if (isLonLat(ll)) coords.push(ll);
+    } catch {
+      // ignoră punct invalid
+    }
+  }
+  if (coords.length < 2) return null;
+
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: coords, // [ [lon,lat], ... ]
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Normalizează diverse forme (string/Geometry/Feature) într-un FeatureCollection valid.
+ */
+export function ensureFeatureCollection(input) {
+  if (!input) return null;
+
+  let obj = input;
+  if (typeof obj === 'string') {
+    try { obj = JSON.parse(obj); } catch { return null; }
+  }
+
+  if (obj?.type === 'FeatureCollection' && Array.isArray(obj.features)) return obj;
+
+  if (obj?.type === 'Feature' && obj.geometry) {
+    return { type: 'FeatureCollection', features: [obj] };
+  }
+
+  if (obj?.type && obj?.coordinates) {
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: obj }],
+    };
+  }
+  return null;
 }
