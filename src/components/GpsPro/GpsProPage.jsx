@@ -5,6 +5,7 @@ import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
 
 import MapPanelCore from './map/MapPanelCore';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 // 🔁 rute
 import RouteWizard from './RouteWizard';
