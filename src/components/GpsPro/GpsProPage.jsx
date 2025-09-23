@@ -1,3 +1,4 @@
+// src/components/GpsPro/GpsProPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -12,7 +13,7 @@ import RouteWizard from './RouteWizard';
 import RoutePreview from './RoutePreview';
 import DrawRouteModal from './DrawRouteModal';
 import { fetchTruckRouteORS } from './utils/routeService';
-import { saveRouteToDb } from './utils/dbRoutes';   // ✅ nou
+import { saveRouteToDb } from './utils/dbRoutes';
 
 // --- Iconos ---
 const SearchIcon = () => (
@@ -32,6 +33,25 @@ const CloseIcon = () => (
 );
 
 const ITEMS_PER_PAGE = 24;
+
+/** Inversare coordonate pentru a salva și ruta B→A din GeoJSON-ul A→B */
+function reverseRouteGeoJSON(fc) {
+  try {
+    const copy = JSON.parse(JSON.stringify(fc));
+    (copy.features || []).forEach((f) => {
+      const g = f.geometry;
+      if (!g) return;
+      if (g.type === 'LineString') {
+        g.coordinates = [...g.coordinates].reverse();
+      } else if (g.type === 'MultiLineString') {
+        g.coordinates = g.coordinates.map((line) => [...line].reverse()).reverse();
+      }
+    });
+    return copy;
+  } catch {
+    return fc;
+  }
+}
 
 /** Toolbar: search + Añadir + Planificar ruta (API) */
 function Toolbar({ canEdit, searchTerm, onSearch, onAdd, onPlan, title }) {
@@ -282,48 +302,46 @@ function ListView({ tableName, title }) {
               </button>
 
               {/* 4) Cómo llegar (preferă ruta salvată) */}
-<button
-  className={styles.btn}
-  onClick={async () => {
-    try {
-      const saved = await findLastRouteForSubject(selected.id);
-      if (!saved) {
-        const link = getMapsLink(selected);
-        if (link) window.open(link, '_blank', 'noopener');
-        else alert('Nu există rută salvată și nici link Maps.');
-        return;
-      }
+              <button
+                className={styles.btn}
+                onClick={async () => {
+                  try {
+                    const saved = await findLastRouteForSubject(selected.id);
+                    if (!saved) {
+                      const link = getMapsLink(selected);
+                      if (link) window.open(link, '_blank', 'noopener');
+                      else alert('Nu există rută salvată și nici link Maps.');
+                      return;
+                    }
 
-      // Asigură GeoJSON obiect chiar dacă în DB e string
-      const raw = saved.geojson;
-      const gj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    const raw = saved.geojson;
+                    const gj = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
-      // Validare minimă: există un LineString cu min. 2 puncte
-      const feat = gj?.features?.[0];
-      const ok =
-        feat?.geometry?.type === 'LineString' &&
-        Array.isArray(feat?.geometry?.coordinates) &&
-        feat.geometry.coordinates.length >= 2;
+                    const feat = gj?.features?.[0];
+                    const ok =
+                      feat?.geometry?.type === 'LineString' &&
+                      Array.isArray(feat?.geometry?.coordinates) &&
+                      feat.geometry.coordinates.length >= 2;
 
-      if (!ok) {
-        console.warn('GeoJSON invalid sau gol:', gj);
-        const link = getMapsLink(selected);
-        if (link) window.open(link, '_blank', 'noopener');
-        else alert('Ruta salvată e invalidă și nu există link Maps.');
-        return;
-      }
+                    if (!ok) {
+                      console.warn('GeoJSON invalid sau gol:', gj);
+                      const link = getMapsLink(selected);
+                      if (link) window.open(link, '_blank', 'noopener');
+                      else alert('Ruta salvată e invalidă și nu există link Maps.');
+                      return;
+                    }
 
-      setPreviewRoute({ title: saved.name || 'Ruta', geojson: gj });
-    } catch (err) {
-      console.error(err);
-      alert(`Eroare la încărcarea rutei salvate: ${err.message || err}`);
-      const link = getMapsLink(selected);
-      if (link) window.open(link, '_blank', 'noopener');
-    }
-  }}
->
-  Cómo llegar
-</button>
+                    setPreviewRoute({ title: saved.name || 'Ruta', geojson: gj });
+                  } catch (err) {
+                    console.error(err);
+                    alert(`Eroare la încărcarea rutei salvate: ${err.message || err}`);
+                    const link = getMapsLink(selected);
+                    if (link) window.open(link, '_blank', 'noopener');
+                  }
+                }}
+              >
+                Cómo llegar
+              </button>
 
               <button className={styles.btn} onClick={()=> setSelected(null)}>Cerrar</button>
             </>
@@ -395,18 +413,27 @@ function ListView({ tableName, title }) {
           onDone={async (origin, destination) => {
             try {
               const apiKey = import.meta.env.VITE_ORS_KEY;
-              if (!apiKey) { alert('Lipsește VITE_ORS_KEY în Vercel → Project → Settings → Environment Variables'); return; }
+              if (!apiKey) {
+                alert('Lipsește VITE_ORS_KEY în Vercel → Project → Settings → Environment Variables');
+                return;
+              }
 
+              // 1) Ruta A→B de la ORS
               const { geojson, distance_m, duration_s } =
                 await fetchTruckRouteORS({ origin, destination, apiKey });
 
-              const name = `Ruta ${origin.label} → ${destination.label} · ${new Date().toLocaleString()}`;
+              const now = new Date().toLocaleString();
+              const baseName = `${origin.label} → ${destination.label}`;
+              const nameAB = `Ruta ${baseName} · ${now}`;
 
-              // ✅ folosește helperul (mode devine 'service')
+              // Doar în „clientes” legăm FK-ul client_id
+              const clientId = (currentType === 'clientes' ? (selected?.id ?? null) : null);
+
+              // 2) Salvăm A→B
               await saveRouteToDb({
-                client_id: selected?.id ?? null,
+                client_id: clientId,
                 origin_terminal_id: null,
-                name,
+                name: nameAB,
                 mode: 'service',
                 provider: 'ors',
                 geojson,
@@ -415,11 +442,32 @@ function ListView({ tableName, title }) {
                 duration_s,
                 round_trip: false,
                 sampling: { mode: 'api', threshold_m: null },
-                meta: { origin, destination },
+                meta: { origin, destination, direction: 'A→B' },
                 created_by: null,
               });
 
-              setPreviewRoute({ title: name, geojson });
+              // 3) (opțional) Salvăm și B→A
+              const nameBA = `Ruta ${destination.label} → ${origin.label} · ${now}`;
+              const geojsonBA = reverseRouteGeoJSON(geojson);
+
+              await saveRouteToDb({
+                client_id: clientId,
+                origin_terminal_id: null,
+                name: nameBA,
+                mode: 'service',
+                provider: 'ors',
+                geojson: geojsonBA,
+                points: null,
+                distance_m,
+                duration_s,
+                round_trip: false,
+                sampling: { mode: 'api', threshold_m: null },
+                meta: { origin: destination, destination: origin, direction: 'B→A' },
+                created_by: null,
+              });
+
+              // 4) Preview pe hartă pentru A→B
+              setPreviewRoute({ title: nameAB, geojson });
               setOpenWizard(false);
             } catch (e) {
               console.error(e);
@@ -447,7 +495,6 @@ function ListView({ tableName, title }) {
             try {
               const name = `Ruta (dibujar) · ${selected?.nombre || drawingFor?.label || ''} · ${new Date().toLocaleString()}`;
 
-              // ✅ helper (mode devine 'manual')
               await saveRouteToDb({
                 client_id: selected?.id ?? null,
                 origin_terminal_id: null,
