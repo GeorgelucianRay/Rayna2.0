@@ -1,9 +1,13 @@
+// src/components/GpsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import Layout from './Layout';
 import styles from './GpsPage.module.css';
 import depotStyles from './DepotPage.module.css';
+
+// 🔹 Harta noastră full-screen (OSM + GPS follow)
+import NavOverlay from './GpsPro/NavOverlay';
 
 // === SUBIDA a imgbb (usa la variable VITE_IMGBB_API_KEY) ===
 const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
@@ -45,7 +49,7 @@ async function uploadToImgbb(file) {
   return url;
 }
 
-// --- Iconos SVG (sin cambios) ---
+// --- Iconos SVG ---
 const SearchIcon = () => ( <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> );
 const PlusIcon = () => ( <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/></svg> );
 const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" /></svg> );
@@ -53,6 +57,18 @@ const GpsFixedIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" 
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg> );
 
 const ITEMS_PER_PAGE = 25;
+
+// 🔎 caută ultima rută salvată pentru client
+async function findSavedRouteForClient(clientId) {
+  const { data, error } = await supabase
+    .from('gps_routes')
+    .select('id,name,geojson')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return data[0];
+}
 
 const LocationList = ({ tableName, title }) => {
   const { profile } = useAuth();
@@ -66,6 +82,9 @@ const LocationList = ({ tableName, title }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
+
+  // 🧭 overlay „Navigar” pe harta noastră
+  const [navData, setNavData] = useState(null); // { title, geojson }
 
   // Estado de subida
   const [uploadingAdd, setUploadingAdd] = useState(false);
@@ -94,8 +113,9 @@ const LocationList = ({ tableName, title }) => {
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // Especificamos columnas para evitar errores
-      const selectColumns = 'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' + (tableName === 'gps_clientes' ? ', tiempo_espera' : '');
+      const selectColumns =
+        'id, created_at, nombre, direccion, link_maps, coordenadas, link_foto, detalles' +
+        (tableName === 'gps_clientes' ? ', tiempo_espera' : '');
 
       let query = supabase.from(tableName).select(selectColumns, { count: 'exact' });
       if (term) { query = query.ilike('nombre', `%${term}%`); }
@@ -138,8 +158,7 @@ const LocationList = ({ tableName, title }) => {
 
   }, [fetchLocations, currentPage, searchTerm]);
 
-
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -367,6 +386,7 @@ const LocationList = ({ tableName, title }) => {
                 </button>
               </div>
             </div>
+
             <div className={styles.modalBody}>
               <img
                 src={selectedLocation.link_foto || 'https://placehold.co/600x400/cccccc/ffffff?text=Sin+Foto'}
@@ -379,31 +399,43 @@ const LocationList = ({ tableName, title }) => {
               />
               <div className={styles.locationDetails}>
                 {selectedLocation.direccion && (
-                  <p>
-                    <strong>Dirección:</strong> {selectedLocation.direccion}
-                  </p>
+                  <p><strong>Dirección:</strong> {selectedLocation.direccion}</p>
                 )}
                 {selectedLocation.tiempo_espera && tableName === 'gps_clientes' && (
-                  <p>
-                    <strong>Tiempo de Espera:</strong> {selectedLocation.tiempo_espera}
-                  </p>
+                  <p><strong>Tiempo de Espera:</strong> {selectedLocation.tiempo_espera}</p>
                 )}
                 {selectedLocation.detalles && (
-                  <p>
-                    <strong>Detalles:</strong> {selectedLocation.detalles}
-                  </p>
+                  <p><strong>Detalles:</strong> {selectedLocation.detalles}</p>
                 )}
               </div>
             </div>
+
             <div className={styles.modalFooter}>
+              {/* 🔵 Navigare pe harta noastră (dacă există rută salvată) cu fallback Google Maps */}
+              <button
+                className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+                onClick={async () => {
+                  const saved = await findSavedRouteForClient(selectedLocation.id);
+                  if (saved?.geojson) {
+                    setNavData({ title: saved.name || selectedLocation.nombre, geojson: saved.geojson });
+                  } else {
+                    const link = getMapsLink(selectedLocation);
+                    if (link) window.open(link, '_blank', 'noopener');
+                    else alert('Nu există rută salvată și nici link de Google Maps.');
+                  }
+                }}
+              >
+                Navigar
+              </button>
+
               {getMapsLink(selectedLocation) ? (
                 <a
                   href={getMapsLink(selectedLocation)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`${styles.modalButton} ${styles.modalButtonPrimary} ${styles.irButton}`}
+                  className={`${styles.modalButton} ${styles.modalButtonSecondary} ${styles.irButton}`}
                 >
-                  Cómo llegar
+                  Google Maps
                 </a>
               ) : (
                 <button
@@ -417,7 +449,17 @@ const LocationList = ({ tableName, title }) => {
           </div>
         </div>
       )}
-      
+
+      {/* ➤ Overlay-ul de navigație full-screen pe „harta noastră” */}
+      {navData && (
+        <NavOverlay
+          title={navData.title}
+          geojson={navData.geojson}
+          onClose={() => setNavData(null)}
+        />
+      )}
+
+      {/* Add modal */}
       {isAddModalOpen && (
         <div className={styles.modalOverlay} onClick={closeAddModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -562,6 +604,7 @@ const LocationList = ({ tableName, title }) => {
         </div>
       )}
       
+      {/* Edit modal */}
       {isEditModalOpen && editingLocation && (
         <div className={styles.modalOverlay} onClick={closeEditModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
