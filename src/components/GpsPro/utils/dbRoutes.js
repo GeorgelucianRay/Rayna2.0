@@ -1,35 +1,36 @@
 // src/components/GpsPro/utils/dbRoutes.js
 import { supabase } from '../../../supabaseClient';
 
-// valorile permise de constraint-ul tău: gps_routes_mode_check
+// Constraint-ul tău: CHECK (mode IN ('manual','service'))
 export const ROUTE_MODE = {
   MANUAL: 'manual',
   SERVICE: 'service',
 };
 
 /**
- * Salvează o rută în gps_routes.
- * NOTĂ: `mode` trebuie să fie 'manual' sau 'service' (altfel dă eroare).
+ * Salvează ruta în gps_routes. Atenție:
+ *  - client_id NU poate fi null (dacă tabela ta cere asta).
+ *  - mode TREBUIE să fie 'manual' sau 'service'.
  */
-export async function insertRoute({
-  clientId,                 // number (obligatoriu!)
+export async function saveRouteToDb({
+  clientId,                 // number (recomandat obligatoriu)
   originTerminalId = null,  // number | null
-  name,                     // string
+  name,
   mode = ROUTE_MODE.SERVICE,
-  provider = 'ors',         // 'ors' | 'user' | etc (liber text)
-  geojson = null,           // obiect GeoJSON sau string JSON
-  points = null,            // pentru rutele desenate (array de [lat,lon])
-  distance_m = null,        // number | null
-  duration_s = null,        // number | null
-  round_trip = false,       // boolean
-  sampling = null,          // ex: { mode:'api' } sau { mode:'dibujar' }
-  meta = null,              // orice metadate (origin/destination etc)
+  provider = 'ors',         // 'ors' | 'user' etc
+  geojson = null,
+  points = null,
+  distance_m = null,
+  duration_s = null,
+  round_trip = false,
+  sampling = null,
+  meta = null,
 }) {
   if (clientId == null) {
-    throw new Error('insertRoute: clientId este obligatoriu (nu poate fi NULL).');
+    throw new Error('saveRouteToDb: clientId este obligatoriu.');
   }
   if (mode !== ROUTE_MODE.MANUAL && mode !== ROUTE_MODE.SERVICE) {
-    throw new Error(`insertRoute: mode invalid (${mode}). Folosește 'manual' sau 'service'.`);
+    throw new Error(`saveRouteToDb: mode invalid (${mode}). Folosește 'manual' sau 'service'.`);
   }
 
   const payload = {
@@ -53,7 +54,7 @@ export async function insertRoute({
 }
 
 /**
- * Ultima rută salvată pentru un client (după created_at desc).
+ * Ultima rută pentru un client.
  */
 export async function getLastRouteForClient(clientId) {
   const { data, error } = await supabase
