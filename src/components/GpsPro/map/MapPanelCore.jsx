@@ -1,237 +1,371 @@
 // src/components/GpsPro/map/MapPanelCore.jsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import styles from '../GpsPro.module.css';
 
-import MapControls from './MapControls';
-import useRouteRecorder, { parseCoords } from '../hooks/useRouteRecorder';
-import { createBaseLayers } from '../tiles/baseLayers';
-import { supabase } from '../../../supabaseClient';
-import { useAuth } from '../../../AuthContext';
+// IMPORTANT: ai nevoie de CSS-ul Leaflet undeva global (index.html sau main CSS):
+// <link
+//  rel="stylesheet"
+//  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+//  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+//  crossOrigin=""
+// />
 
-// wake lock strict cross-platform + overlay (fără npm)
-import useWakeLockStrict, { WakePrompt } from '../hooks/useWakeLockStrict';
+// icon fix pt. Leaflet pe bundlere moderne
+const defaultIcon = new L.Icon({
+  iconUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = defaultIcon;
 
-// Fix Leaflet icons
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-const DefaultIcon = new L.Icon({ iconUrl, shadowUrl: iconShadow, iconAnchor: [12, 41] });
-L.Marker.prototype.options.icon = DefaultIcon;
+const WRAP_STYLE = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 9999,
+  background: '#0b1320',
+  display: 'flex',
+  flexDirection: 'column',
+};
 
-export default function MapPanelCore({ client, destination, autoStart = false, onClose }) {
-  const mapRef = useRef(null);
-  const basesRef = useRef({});
-  const routeLayerRef = useRef(null);
-  const vehicleMarkerRef = useRef(null);
+const TOPBAR_STYLE = {
+  position: 'absolute',
+  top: 8,
+  left: 8,
+  right: 8,
+  zIndex: 1000,
+  display: 'flex',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  pointerEvents: 'none',
+};
 
-  const { user, profile } = useAuth();
-  const isDispecer = profile?.role === 'dispecer';
+const BTN_ROW_STYLE = {
+  display: 'flex',
+  gap: 8,
+  pointerEvents: 'auto',
+  flexWrap: 'wrap',
+};
 
-  const [baseName, setBaseName] = useState('normal');
-  const [saving, setSaving] = useState(false);
+const BTN_STYLE = {
+  appearance: 'none',
+  border: '1px solid #2c3f66',
+  background: 'rgba(15,25,45,.9)',
+  color: 'white',
+  padding: '10px 12px',
+  borderRadius: 10,
+  fontSize: 14,
+  lineHeight: 1,
+  cursor: 'pointer',
+  backdropFilter: 'blur(6px)',
+};
 
-  const { active, precision, setPrecision, points, distanceM, start, stop, reset, toGeoJSON } = useRouteRecorder();
-  const wake = useWakeLockStrict();
+const BADGE_STYLE = {
+  pointerEvents: 'auto',
+  border: '1px solid #2c3f66',
+  background: 'rgba(15,25,45,.85)',
+  color: '#9fc4ff',
+  padding: '8px 10px',
+  borderRadius: 10,
+  fontSize: 13,
+};
 
-  // destinații pentru centrare / pin
-  const clientDest = useMemo(() => parseCoords(client?.dest_coords || client?.coordenadas || null), [client]);
-  const pickedDest = useMemo(() => (destination?.coords ? parseCoords(destination.coords) : null), [destination]);
+const FOOTER_STYLE = {
+  position: 'absolute',
+  bottom: 8,
+  left: 8,
+  right: 8,
+  zIndex: 1000,
+  display: 'flex',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  pointerEvents: 'none',
+};
 
-  // init hartă (safe)
+const INFO_STYLE = {
+  ...BADGE_STYLE,
+};
+
+const SAMPLING_STEPS = [80, 100, 200, 500, 1000]; // metri
+
+function haversine(a, b) {
+  const R = 6371000; // Earth radius (m)
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/** Centrează harta pe coord. date */
+function FlyTo({ center, zoom = 16 }) {
+  const map = useMap();
   useEffect(() => {
-    if (mapRef.current) return;
-    const container = document.getElementById('gpspro-map');
-    if (!container) return;
+    if (!center) return;
+    map.flyTo(center, zoom, { animate: true, duration: 0.6 });
+  }, [center, zoom, map]);
+  return null;
+}
 
-    const startCenter = pickedDest || clientDest;
-    const center = startCenter ? [startCenter.lat, startCenter.lng] : [41.390205, 2.154007]; // Barcelona fallback
-    const zoom = startCenter ? 12 : 6;
+export default function MapPanelCore({
+  // compat props vechi
+  client,
+  destination,
+  autoStart = false,
+  onClose,
 
-    try {
-      const map = L.map(container, { center, zoom, zoomControl: false });
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-      mapRef.current = map;
+  // extensii moderne
+  subject, // {type,id,label,coords?} – dacă există, e preferat față de client
+  onSaveSegment, // (payload) => void | Promise<void>
+}) {
+  const subj = subject || (client ? {
+    type: client._subject?.type || 'custom',
+    id: client._subject?.id || client.id,
+    label: client._subject?.label || client.nombre || 'Subiect',
+    coords: client._subject?.coords || client.coordenadas || null,
+  } : null);
 
-      // straturi de bază
-      basesRef.current = createBaseLayers();
-      (basesRef.current.normal)?.addTo(map);
+  const [watchId, setWatchId] = useState(null);
+  const [hasPermission, setHasPermission] = useState(null); // null/true/false
+  const [gpsError, setGpsError] = useState(null);
 
-      // marker destinație
-      if (pickedDest) {
-        L.marker([pickedDest.lat, pickedDest.lng]).addTo(map).bindPopup(`<b>${destination?.label || 'Destino'}</b>`);
-      } else if (clientDest) {
-        L.marker([clientDest.lat, clientDest.lng]).addTo(map).bindPopup(`<b>${client?.nombre || 'Cliente'}</b>`);
-      }
+  const [isRecording, setIsRecording] = useState(!!autoStart);
+  const [points, setPoints] = useState([]); // [{lat,lng,ts}]
+  const [distance, setDistance] = useState(0); // m
+  const [samplingIdx, setSamplingIdx] = useState(1); // pornește la 100m
+  const samplingThreshold = SAMPLING_STEPS[samplingIdx];
 
-      // straturi pentru ruta curentă
-      routeLayerRef.current = L.polyline([], { color: '#00e5ff', weight: 5, opacity: 0.9 }).addTo(map);
-      vehicleMarkerRef.current = L.marker([0, 0], { opacity: 0 }).addTo(map);
-    } catch (err) {
-      console.error('Leaflet init error:', err);
+  const [center, setCenter] = useState(
+    // dacă avem coordonate la subiect, centrează inițial acolo
+    subj?.coords
+      ? strToLatLng(subj.coords) || null
+      : null
+  );
+
+  function strToLatLng(str) {
+    if (!str || typeof str !== 'string') return null;
+    const parts = str.split(',').map(s => s.trim());
+    if (parts.length !== 2) return null;
+    const lat = Number(parts[0]);
+    const lng = Number(parts[1]);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+    return { lat, lng };
+  }
+
+  // schimbă sampling din mers
+  const cycleSampling = useCallback(() => {
+    setSamplingIdx((i) => (i + 1) % SAMPLING_STEPS.length);
+  }, []);
+
+  // adaugă punct respectând sampling-ul
+  const pushPoint = useCallback((p) => {
+    setPoints((prev) => {
+      if (prev.length === 0) return [p];
+
+      const last = prev[prev.length - 1];
+      const d = haversine(last, p);
+      if (d < samplingThreshold) return prev; // prea aproape – skip
+
+      return [...prev, p];
+    });
+  }, [samplingThreshold]);
+
+  // calc distanță când se schimbă punctele
+  useEffect(() => {
+    if (points.length < 2) return setDistance(0);
+    let d = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      d += haversine(points[i - 1], points[i]);
     }
-  }, [client, clientDest, pickedDest, destination?.label]);
+    setDistance(d);
+  }, [points]);
 
-  // comutare strat bază
+  // pornește/închide watchPosition
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !basesRef.current) return;
-    try {
-      Object.values(basesRef.current).forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
-      (basesRef.current[baseName] || basesRef.current.normal)?.addTo(map);
-    } catch (err) {
-      console.error('Layer switch error:', err);
-    }
-  }, [baseName]);
-
-  // update traseu în timp real
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !routeLayerRef.current || !vehicleMarkerRef.current) return;
-
-    if (!points || points.length === 0) {
-      routeLayerRef.current.setLatLngs([]);
-      vehicleMarkerRef.current.setOpacity(0);
+    if (!navigator.geolocation) {
+      setHasPermission(false);
+      setGpsError('Geolocația nu este disponibilă în acest browser.');
       return;
     }
 
-    const latlngs = points.map(p => [p.lat, p.lng]);
-    routeLayerRef.current.setLatLngs(latlngs);
-
-    const last = latlngs[latlngs.length - 1];
-    vehicleMarkerRef.current.setLatLng(last);
-    vehicleMarkerRef.current.setOpacity(1);
-
-    map.panTo(last, { animate: true });
-  }, [points]);
-
-  // autoStart: cere wake-lock (fără gest) ca să afișeze overlay; pornirea efectivă se face la primul tap Start
-  useEffect(() => {
-    if (!autoStart) return;
-    reset();
-    // acesta va seta needsPrompt=true dacă nu e din gest
-    wake.enable(false);
-    // nu chemăm start() aici; se va porni la buton sau automat imediat după ce wake devine activ (vezi efectul de mai jos)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart]);
-
-  // dacă ai venit cu autoStart și userul confirmă wake (devine activ) iar recorderul nu e pornit → pornește automat
-  useEffect(() => {
-    if (autoStart && wake.active && !active) {
-      // nu mai chemăm wake.enable aici (deja e activ), doar pornim înregistrarea
-      reset();
-      start();
+    if (!isRecording && watchId) {
+      navigator.geolocation.clearWatch(watchId);
+      setWatchId(null);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, wake.active]);
 
-  // start/stop din buton — IMPORTANT: wake.enable(true) în același gest, înainte de start()
-  const onStartStop = () => {
-    if (active) {
-      stop();
-      wake.disable();
-    } else {
-      wake.enable(true);   // în gestul utilizatorului
-      reset();
-      start();
-    }
-  };
-
-  const onSave = async () => {
-    if (!isDispecer) return alert('Solo el dispecer puede guardar rutas.');
-    const geojson = toGeoJSON();
-    if (!geojson) return alert('Ruta es demasiado corta para guardar.');
-
-    setSaving(true);
-    try {
-      const payload = {
-        client_id: client?.id || null,
-        origin_terminal_id: null,
-        name: `Ruta ${client?.nombre || destination?.label || 'sin nombre'} · ${new Date().toLocaleString()}`,
-        mode: 'manual',
-        provider: null,
-        geojson,
-        points,
-        distance_m: Number.isFinite(distanceM) ? distanceM : null,
-        duration_s: null,
-        round_trip: true,
-        sampling: { mode: precision ? 'precision' : 'normal', threshold_m: precision ? 100 : 20000 },
-        meta: destination ? { picked_destination: destination } : null,
-        created_by: user?.id || null,
-      };
-      const { error } = await supabase.from('gps_routes').insert([payload]);
-      if (error) throw error;
-      alert('¡Ruta guardada con éxito!');
-      reset();
-      wake.disable();
-    } catch (e) {
-      console.error(e);
-      alert(`Error al guardar la ruta: ${e.message || e}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // închidere sigură
-  const safeClose = () => {
-    if (active) {
-      const ok = window.confirm('La grabación está en curso. ¿Cerrar el mapa?');
-      if (!ok) return;
-    }
-    wake.disable();
-    onClose();
-  };
-
-  // cleanup complet
-  useEffect(() => {
-    return () => {
-      try { stop?.(); } catch {}
-      try { wake.disable?.(); } catch {}
+    if (isRecording && !watchId) {
       try {
-        routeLayerRef.current?.remove();
-        vehicleMarkerRef.current?.remove();
-        routeLayerRef.current = null;
-        vehicleMarkerRef.current = null;
-      } catch {}
-      try { mapRef.current?.remove(); mapRef.current = null; } catch {}
+        const id = navigator.geolocation.watchPosition(
+          (pos) => {
+            setHasPermission(true);
+            setGpsError(null);
+            const { latitude, longitude } = pos.coords;
+            const now = Date.now();
+            const p = { lat: latitude, lng: longitude, ts: now };
+            setCenter((c) => c || { lat: latitude, lng: longitude }); // setează prima centrare
+            pushPoint(p);
+          },
+          (err) => {
+            setHasPermission(false);
+            setGpsError(err?.message || 'Eroare GPS.');
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 1000,
+            timeout: 15000,
+          }
+        );
+        setWatchId(id);
+      } catch (e) {
+        setHasPermission(false);
+        setGpsError(e?.message || 'Eroare inițializare GPS.');
+      }
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecording, watchId, pushPoint]);
+
+  // START/STOP/UNDO/FINALIZE
+  const handleStart = useCallback(() => {
+    setIsRecording(true);
+    // nu resetăm punctele automat – poți continua
   }, []);
 
+  const handleStop = useCallback(() => {
+    setIsRecording(false);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setPoints((prev) => (prev.length ? prev.slice(0, -1) : prev));
+  }, []);
+
+  const handleFinalize = useCallback(async () => {
+    if (points.length < 2) {
+      alert('Ai nevoie de minim două puncte pentru o rută.');
+      return;
+    }
+
+    const payload = {
+      subject: subj ? { type: subj.type, id: subj.id, label: subj.label || '' } : null,
+      points,
+      distance_m: Math.round(distance),
+      sampling_threshold_m: samplingThreshold,
+      created_at: new Date().toISOString(),
+    };
+
+    try {
+      if (typeof onSaveSegment === 'function') {
+        await onSaveSegment(payload);
+      } else {
+        // fallback: doar afișează sumar
+        alert(
+          `Segment salvat local:\n` +
+          `Puncte: ${points.length}\n` +
+          `Distanță: ${(distance/1000).toFixed(2)} km\n` +
+          `Sampling: ${samplingThreshold} m`
+        );
+      }
+      // după salvare curățăm
+      setIsRecording(false);
+      setPoints([]);
+      setDistance(0);
+    } catch (e) {
+      console.error(e);
+      alert(`Eroare la salvare: ${e.message || e}`);
+    }
+  }, [points, distance, samplingThreshold, onSaveSegment, subj]);
+
+  // linii & markere
+  const polyPositions = useMemo(() => points.map(p => [p.lat, p.lng]), [points]);
+  const startPos = points[0] ? [points[0].lat, points[0].lng] : null;
+  const lastPos = points.length ? [points[points.length - 1].lat, points[points.length - 1].lng] : null;
+
   return (
-    <div
-      className={styles.mapPanelBackdrop}
-      onClick={wake.needsPrompt ? undefined : safeClose}
-    >
-      <div className={styles.mapPanel} onClick={(e)=> e.stopPropagation()}>
-        <div className={styles.mapHeader}>
-          <div className={styles.mapTitle}>
-            <span className={styles.dotGlow}/> GPS<span className={styles.brandAccent}>Pro</span> · {client?.nombre || destination?.label || 'Mapa'}
+    <div style={WRAP_STYLE}>
+      {/* Harta */}
+      <div style={{ position: 'relative', flex: 1 }}>
+        <MapContainer
+          center={center || [45.9432, 24.9668]} // fallback România
+          zoom={center ? 16 : 6}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {center && <FlyTo center={center} zoom={16} />}
+
+          {polyPositions.length >= 2 && (
+            <Polyline positions={polyPositions} weight={6} opacity={0.9} />
+          )}
+
+          {startPos && <Marker position={startPos} />}
+          {lastPos && <Marker position={lastPos} />}
+
+        </MapContainer>
+
+        {/* Top bar – stânga: controale | dreapta: închidere */}
+        <div style={TOPBAR_STYLE}>
+          <div style={BTN_ROW_STYLE}>
+            {!isRecording ? (
+              <button style={BTN_STYLE} onClick={handleStart}>⏺ Start</button>
+            ) : (
+              <button style={BTN_STYLE} onClick={handleStop}>⏹ Pauză</button>
+            )}
+
+            <button style={BTN_STYLE} onClick={handleUndo} disabled={points.length === 0}>
+              ↩ Undo
+            </button>
+
+            <button style={BTN_STYLE} onClick={cycleSampling}>
+              📏 {samplingThreshold >= 1000 ? `${(samplingThreshold/1000).toFixed(0)} km` : `${samplingThreshold} m`}
+            </button>
+
+            <button
+              style={{ ...BTN_STYLE, borderColor: '#2b9158', background: 'rgba(25,45,25,.9)' }}
+              onClick={handleFinalize}
+              disabled={points.length < 2}
+              title={points.length < 2 ? 'Ai nevoie de minim 2 puncte' : 'Salvează segment'}
+            >
+              ✅ Finalizare
+            </button>
           </div>
-          <button className={styles.iconBtn} onClick={safeClose}>✕</button>
+
+          <div style={BTN_ROW_STYLE}>
+            <button style={BTN_STYLE} onClick={() => onClose && onClose()}>
+              ✕ Închide
+            </button>
+          </div>
         </div>
 
-        <MapControls
-          baseName={baseName}
-          setBaseName={setBaseName}
-          active={active}
-          onStartStop={onStartStop}
-          precision={precision}
-          setPrecision={setPrecision}
-          onSave={onSave}
-          saving={saving}
-          pointsCount={points?.length || 0}
-          distanceM={distanceM || 0}
-        />
-
-        <div id="gpspro-map" className={styles.mapCanvas}/>
-
-        {/* Overlay pentru confirmare wake-lock pe iOS/Android */}
-        <WakePrompt
-          visible={wake.needsPrompt}
-          onConfirm={() => wake.confirmEnable()}
-          onCancel={() => wake.disable()}
-        />
+        {/* Footer info */}
+        <div style={FOOTER_STYLE}>
+          <div style={INFO_STYLE}>
+            {isRecording ? 'Înregistrare activă' : 'Înregistrare oprită'} • Puncte: {points.length} • Distanță: {(distance/1000).toFixed(2)} km
+          </div>
+          <div style={INFO_STYLE}>
+            {hasPermission === false
+              ? (gpsError || 'Permisiune GPS refuzată')
+              : hasPermission === null
+              ? 'Aștept permisiunea GPS…'
+              : 'GPS OK'}
+          </div>
+        </div>
       </div>
     </div>
   );
