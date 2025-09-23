@@ -1,9 +1,9 @@
 // RouteWizard.jsx
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { fetchTruckRouteORS } from '../utils/routeService';
-import { saveRouteToDb } from '../utils/dbRoutes';
-import reverseRouteGeoJSON from '../utils/reverseRouteGeoJSON';
+import { fetchTruckRouteORS } from './utils/routeService';
+import { saveRouteToDb } from './utils/dbRoutes';
+import reverseRouteGeoJSON from './utils/reverseRouteGeoJSON';
 import styles from './GpsPro.module.css';
 
 // meniul de tab-uri conține și varianta „current” pentru poziția curentă
