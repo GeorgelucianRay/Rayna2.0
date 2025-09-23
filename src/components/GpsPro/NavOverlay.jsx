@@ -1,22 +1,41 @@
-// src/components/GpsPro/NavOverlay.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ---------- UI inline ----------
-const wrap = { position:'fixed', inset:0, zIndex:9999, background:'#0b1220', display:'flex', flexDirection:'column' };
-const header = { height:56, padding:'0 12px', display:'flex', alignItems:'center', justifyContent:'space-between',
-  color:'#fff', borderBottom:'1px solid rgba(255,255,255,.08)' };
-const titleSt = { fontSize:16, fontWeight:700 };
-const headerBtns = { display:'flex', gap:8 };
-const btn = { background:'rgba(255,255,255,.08)', color:'#fff', border:'1px solid rgba(255,255,255,.20)',
-  borderRadius:10, padding:'8px 12px', fontSize:14, cursor:'pointer' };
-const btnPrimary = { ...btn, background:'#2563eb', border:'1px solid #1d4ed8' };
-const footer = { padding:10, color:'#fff', display:'flex', gap:10, alignItems:'center', justifyContent:'space-between',
-  background:'linear-gradient(180deg, rgba(11,18,32,0.5) 0%, rgba(11,18,32,1) 70%)', borderTop:'1px solid rgba(255,255,255,.08)' };
-const pill = { padding:'6px 10px', borderRadius:10, background:'rgba(255,255,255,.08)', fontSize:13 };
+/** ========= UI styles (inline, fără CSS extern) ========= */
+const Z = 2147483000;
+const Wrap = {
+  position: 'fixed', inset: 0, zIndex: Z, background: '#0b1220', overflow: 'hidden'
+};
+const mapBox = { position: 'absolute', inset: 0 };
+const TopBar = {
+  position: 'absolute', left: 0, right: 0, top: 0, zIndex: Z + 2,
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  padding: 'calc(env(safe-area-inset-top,0px) + 8px) 10px 8px 10px',
+  background: 'linear-gradient(180deg, rgba(11,18,32,.95) 0%, rgba(11,18,32,.55) 70%, rgba(11,18,32,0) 100%)',
+  color: '#fff'
+};
+const Title = { fontWeight: 700, fontSize: 16, textShadow: '0 1px 2px rgba(0,0,0,.6)' };
+const Btn = {
+  background: 'rgba(255,255,255,.12)', color:'#fff', border:'1px solid rgba(255,255,255,.25)',
+  borderRadius: 10, padding: '8px 12px', fontSize: 14, cursor: 'pointer'
+};
+const BtnGhost = { ...Btn };
+const BtnPrimary = { ...Btn, background: '#2563eb', borderColor: '#1d4ed8' };
+const FabCol = {
+  position: 'absolute', right: 10, bottom: 'calc(env(safe-area-inset-bottom,0px) + 12px)',
+  display: 'flex', flexDirection: 'column', gap: 10, zIndex: Z + 2
+};
+const InfoRow = {
+  position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom,0px) + 12px)',
+  display: 'flex', gap: 8, zIndex: Z + 2
+};
+const Pill = {
+  background: 'rgba(255,255,255,.14)', color:'#fff', border:'1px solid rgba(255,255,255,.25)',
+  borderRadius: 999, padding: '6px 10px', fontSize: 13
+};
 
-// ---------- Geo helpers (în [lon,lat]) ----------
+/** ========= Helpers (coords în [lon,lat]) ========= */
 function dist2(lon1, lat1, lon2, lat2) {
   const x = (lon2 - lon1) * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
   const y = (lat2 - lat1);
@@ -42,20 +61,6 @@ function closestOnPolyline(coords, pLon, pLat) {
   }
   return best;
 }
-function extractRouteCoords(geojson) {
-  try {
-    const f = (geojson?.features || []).find(
-      (ft) =>
-        (ft.geometry?.type === 'LineString' && Array.isArray(ft.geometry.coordinates)) ||
-        (ft.geometry?.type === 'MultiLineString' && Array.isArray(ft.geometry.coordinates))
-    );
-    if (!f) return [];
-    if (f.geometry.type === 'LineString') return f.geometry.coordinates.slice();
-    const out = [];
-    for (const line of f.geometry.coordinates) for (const c of line) out.push(c);
-    return out;
-  } catch { return []; }
-}
 function sliceRemaining(coords, closest) {
   if (!closest || !coords?.length) return [];
   const { i, coord } = closest;
@@ -72,9 +77,23 @@ function approxLengthKm(coords) {
   }
   return sum;
 }
+function extractRouteCoords(geojson) {
+  try {
+    const f = (geojson?.features || []).find(
+      (ft) =>
+        (ft.geometry?.type === 'LineString' && Array.isArray(ft.geometry.coordinates)) ||
+        (ft.geometry?.type === 'MultiLineString' && Array.isArray(ft.geometry.coordinates))
+    );
+    if (!f) return [];
+    if (f.geometry.type === 'LineString') return f.geometry.coordinates.slice();
+    const out = [];
+    for (const line of f.geometry.coordinates) for (const c of line) out.push(c);
+    return out;
+  } catch { return []; }
+}
 
 export default function NavOverlay({ title, geojson, onClose }) {
-  // Acceptă și string (de siguranță)
+  // acceptă și string din DB
   const parsed = useMemo(() => {
     if (!geojson) return null;
     if (typeof geojson === 'string') {
@@ -84,7 +103,6 @@ export default function NavOverlay({ title, geojson, onClose }) {
   }, [geojson]);
 
   const valid = parsed && parsed.type === 'FeatureCollection' && Array.isArray(parsed.features) && parsed.features.length > 0;
-
   const routeLonLat = useMemo(() => (valid ? extractRouteCoords(parsed) : []), [valid, parsed]);
   const routeLatLng = useMemo(() => routeLonLat.map(([lon, lat]) => [lat, lon]), [routeLonLat]);
 
@@ -93,58 +111,44 @@ export default function NavOverlay({ title, geojson, onClose }) {
   const fullRef = useRef(null);
   const remainRef = useRef(null);
   const meRef = useRef(null);
-  const startMarkRef = useRef(null);
-  const endMarkRef = useRef(null);
+  const startRef = useRef(null);
+  const endRef = useRef(null);
 
   const [remainKm, setRemainKm] = useState(0);
   const [gpsOn, setGpsOn] = useState(false);
-  const [running, setRunning] = useState(false); // ▶️/⏹
+  const [running, setRunning] = useState(false);
   const [offRoute, setOffRoute] = useState(false);
 
-  // Init hartă și layere
+  // ====== init Leaflet + layere
   useEffect(() => {
     if (!mapEl.current || !routeLatLng.length) return;
 
-    const map = L.map(mapEl.current, { center: routeLatLng[0], zoom: 14 });
+    const map = L.map(mapEl.current, { zoomControl: true, center: routeLatLng[0], zoom: 14 });
     mapRef.current = map;
 
+    // tiles OSM
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
       maxZoom: 19,
     }).addTo(map);
 
-    // start/end markers
-    const start = L.circleMarker(routeLatLng[0], { radius:7, color:'#22c55e', weight:3, fillColor:'#22c55e', fillOpacity:0.7 }).addTo(map);
-    startMarkRef.current = start;
-    const end = L.circleMarker(routeLatLng[routeLatLng.length-1], { radius:7, color:'#ef4444', weight:3, fillColor:'#ef4444', fillOpacity:0.7 }).addTo(map);
-    endMarkRef.current = end;
+    // markers start / end
+    startRef.current = L.circleMarker(routeLatLng[0], { radius: 7, color:'#22c55e', weight:3, fillColor:'#22c55e', fillOpacity:.8 }).addTo(map);
+    endRef.current   = L.circleMarker(routeLatLng[routeLatLng.length - 1], { radius: 7, color:'#ef4444', weight:3, fillColor:'#ef4444', fillOpacity:.8 }).addTo(map);
 
-    // traseu complet (gri deschis)
-    const full = L.polyline(routeLatLng, { color:'#d1d5db', opacity:0.9, weight:8 }).addTo(map);
-    fullRef.current = full;
-
-    // traseu rămas (albastru aprins)
-    const remain = L.polyline([], { color:'#3b82f6', weight:8 }).addTo(map);
-    remainRef.current = remain;
+    // traseu complet + rămas
+    fullRef.current = L.polyline(routeLatLng, { color:'#d1d5db', weight:8, opacity:.9 }).addTo(map);
+    remainRef.current = L.polyline([], { color:'#3b82f6', weight:8 }).addTo(map);
 
     // marker „eu”
-    const me = L.circleMarker(routeLatLng[0], { radius:6, color:'#fff', weight:2, fillColor:'#3b82f6', fillOpacity:1 }).addTo(map);
-    meRef.current = me;
+    meRef.current = L.circleMarker(routeLatLng[0], { radius:6, color:'#fff', weight:2, fillColor:'#3b82f6', fillOpacity:1 }).addTo(map);
 
-    map.fitBounds(full.getBounds(), { padding:[80,40], maxZoom:16 });
+    map.fitBounds(fullRef.current.getBounds(), { padding:[90,40], maxZoom:16 });
 
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      fullRef.current = null;
-      remainRef.current = null;
-      meRef.current = null;
-      startMarkRef.current = null;
-      endMarkRef.current = null;
-    };
+    return () => { map.remove(); };
   }, [routeLatLng]);
 
-  // GPS watch pornește doar când „running” este true
+  // ====== GPS watch (doar când e „running”)
   useEffect(() => {
     if (!routeLonLat.length) return;
     let watchId = null;
@@ -153,35 +157,32 @@ export default function NavOverlay({ title, geojson, onClose }) {
       setGpsOn(true);
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          try {
-            const lon = pos.coords.longitude;
-            const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const lat = pos.coords.latitude;
 
-            const closest = closestOnPolyline(routeLonLat, lon, lat);
-            if (!closest) return;
+          const closest = closestOnPolyline(routeLonLat, lon, lat);
+          if (!closest) return;
 
-            const tooFar = Math.sqrt(closest.d2) * 111 > 0.15; // ~150m
-            setOffRoute(tooFar);
+          const tooFar = Math.sqrt(closest.d2) * 111 > 0.15; // >150 m de traseu
+          setOffRoute(tooFar);
 
-            const rem = sliceRemaining(routeLonLat, closest);
-            setRemainKm(approxLengthKm(rem));
+          const rem = sliceRemaining(routeLonLat, closest);
+          setRemainKm(approxLengthKm(rem));
+          const remLatLng = rem.map(([LON, LAT]) => [LAT, LON]);
 
-            const remLatLng = rem.map(([LON, LAT]) => [LAT, LON]);
+          const map = mapRef.current;
+          const me = meRef.current;
+          const remain = remainRef.current;
+          if (!map || !me || !remain) return;
 
-            const map = mapRef.current;
-            const remain = remainRef.current;
-            const me = meRef.current;
-            if (!map || !remain || !me) return;
+          me.setLatLng([lat, lon]);
+          remain.setLatLngs(remLatLng);
 
-            remain.setLatLngs(remLatLng);
-            me.setLatLng([lat, lon]);
-            map.panTo([lat, lon], { animate:true });
-          } catch (e) {
-            console.warn('GPS update error:', e);
-          }
+          // urmează poziția (ca pe Maps)
+          map.panTo([lat, lon], { animate: true });
         },
-        (err) => { console.warn('GPS error:', err); setGpsOn(false); },
-        { enableHighAccuracy:true, maximumAge:1500, timeout:10000 }
+        (err) => { console.warn('GPS error', err); setGpsOn(false); },
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 12000 }
       );
     } else {
       setGpsOn(false);
@@ -192,48 +193,66 @@ export default function NavOverlay({ title, geojson, onClose }) {
 
   const fitAll = () => {
     const map = mapRef.current, full = fullRef.current;
-    if (map && full) map.fitBounds(full.getBounds(), { padding:[80,40], maxZoom:16 });
+    if (map && full) map.fitBounds(full.getBounds(), { padding:[90,40], maxZoom:16 });
+  };
+  const centerMe = () => {
+    if (!('geolocation' in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude:lat, longitude:lon } = pos.coords;
+        const map = mapRef.current, me = meRef.current;
+        if (map && me) { me.setLatLng([lat, lon]); map.setView([lat, lon], Math.max(map.getZoom(), 15)); }
+      },
+      () => {},
+      { enableHighAccuracy:true, maximumAge:0, timeout:8000 }
+    );
   };
 
   if (!valid || !routeLatLng.length) {
     return (
-      <div style={wrap}>
-        <div style={header}>
-          <div style={titleSt}>{title || 'Navigare'}</div>
-          <div style={headerBtns}>
-            <button style={btn} onClick={onClose}>Închide</button>
-          </div>
+      <div style={Wrap}>
+        <div style={TopBar}>
+          <div style={Title}>{title || 'Navigare'}</div>
+          <button style={BtnGhost} onClick={onClose}>Închide</button>
         </div>
-        <div style={{ color:'#fff', padding:16 }}>Ruta nu este disponibilă sau este invalidă.</div>
+        <div style={{ position:'absolute', inset:0, display:'grid', placeItems:'center', color:'#fff' }}>
+          Ruta nu este disponibilă sau este invalidă.
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={wrap}>
-      <div style={header}>
-        <div style={titleSt}>{title || 'Navigare'}</div>
-        <div style={headerBtns}>
-          <button style={btn} onClick={fitAll}>Potrivește traseu</button>
-          <button
-            style={running ? btn : btnPrimary}
-            onClick={() => setRunning(v => !v)}
-            title={running ? 'Oprește navigarea' : 'Pornește navigarea'}
-          >
-            {running ? '⏹ Oprește' : '▶ Pornește'}
-          </button>
-          <button style={btn} onClick={onClose}>Închide</button>
+    <div style={Wrap}>
+      {/* bara de sus */}
+      <div style={TopBar}>
+        <div style={Title}>{title || 'Navigare'}</div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button style={BtnGhost} onClick={fitAll}>Potrivește traseu</button>
+          <button style={BtnGhost} onClick={onClose}>Închide</button>
         </div>
       </div>
 
-      <div ref={mapEl} style={{ flex:1 }} />
+      {/* harta */}
+      <div ref={mapEl} style={mapBox} />
 
-      <div style={footer}>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <span style={pill}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
-          {offRoute && <span style={{ ...pill, background:'rgba(255,99,71,.25)', border:'1px solid rgba(255,99,71,.6)' }}>În afara rutei</span>}
-        </div>
-        <div><span style={pill}>Rămas: {remainKm.toFixed(1)} km</span></div>
+      {/* info jos-stânga */}
+      <div style={InfoRow}>
+        <span style={Pill}>GPS: {gpsOn ? 'ON' : 'OFF'}</span>
+        <span style={Pill}>Rămas: {remainKm.toFixed(1)} km</span>
+        {offRoute && <span style={{ ...Pill, background:'rgba(255,99,71,.25)', border:'1px solid rgba(255,99,71,.55)' }}>În afara rutei</span>}
+      </div>
+
+      {/* butoane flotante jos-dreapta */}
+      <div style={FabCol}>
+        <button
+          style={running ? BtnGhost : BtnPrimary}
+          onClick={() => setRunning(v => !v)}
+          title={running ? 'Oprește navigarea' : 'Pornește navigarea'}
+        >
+          {running ? '⏹ Oprește' : '▶ Pornește'}
+        </button>
+        <button style={BtnGhost} onClick={centerMe}>Centrează pe mine</button>
       </div>
     </div>
   );
