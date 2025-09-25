@@ -1,238 +1,86 @@
-// src/components/GpsPro/RouteWizard.jsx
+// src/components/GpsPro/RoutePreview.jsx
+// VARIANTĂ ÎMBUNĂTĂȚITĂ
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient'; // Asigură-te că calea este corectă
-import { fetchTruckRouteORS } from './utils/routeService'; // Asigură-te că calea este corectă
-import { saveRouteToDb } from './utils/dbRoutes'; // Asigură-te că calea este corectă
-import reverseRouteGeoJSON from './utils/reverseRouteGeoJSON'; // Asigură-te că calea este corectă
-import styles from './GpsPro.module.css'; // Asigură-te că calea este corectă
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import styles from './GpsPro.module.css'; // Presupunând că folosește stilurile comune
 
-// Meniul de tab-uri: 'current' este pentru locația GPS curentă
-const TABS = ['clientes', 'parkings', 'servicios', 'terminale', 'current'];
-const TAB_NAMES = {
-  clientes: 'Clienți',
-  parkings: 'Parkinguri',
-  servicios: 'Servicii',
-  terminale: 'Terminale',
-  current: 'Poziție Curentă',
-};
-
-// Componentă internă pentru a afișa lista de locații dintr-un tab
-function List({ table, term, onPick }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    async function run() {
-      setLoading(true);
-      if (table === 'current') {
-        // Obține locația GPS a utilizatorului
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const { latitude, longitude } = pos.coords;
-              setItems([
-                {
-                  id: 'current_location', // Un ID unic pentru a evita conflicte
-                  nombre: 'Poziția mea curentă',
-                  coordenadas: `${latitude},${longitude}`,
-                  detalles: 'Detectată prin GPS',
-                },
-              ]);
-              setLoading(false);
-            },
-            (err) => {
-              console.error(err);
-              alert('Nu am putut obține locația GPS. Vă rugăm activați permisiunile.');
-              setItems([]);
-              setLoading(false);
-            }
-          );
-        }
-        return;
-      }
-      // Încarcă datele din tabela Supabase corespunzătoare
-      const { data, error } = await supabase
-        .from(`gps_${table}`)
-        .select('id, nombre, coordenadas, detalles')
-        .ilike('nombre', term ? `%${term}%` : '%')
-        .order('nombre', { ascending: true })
-        .limit(100); // Limitează numărul de rezultate pentru performanță
-
-      setItems(error ? [] : data || []);
-      setLoading(false);
-    }
-    run();
-  }, [table, term]);
-
-  if (loading) {
-    return <div className={styles.loading}>Se încarcă...</div>;
-  }
-
-  return (
-    <ul className={styles.destList}>
-      {items.map((it) => (
-        <li key={it.id}>
-          <button
-            className={styles.destItem}
-            onClick={() => onPick({ type: table, id: it.id, label: it.nombre, coords: it.coordenadas })}
-          >
-            <div className={styles.destTitle}>{it.nombre}</div>
-            {it.detalles && <div className={styles.destSub}>{it.detalles}</div>}
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
+// O funcție ajutătoare pentru a normaliza GeoJSON (poate o ai deja într-un fișier utilitar)
+function normalizeGeoJSON(input) {
+  if (!input) return null;
+  let obj = typeof input === 'string' ? JSON.parse(input) : input;
+  if (obj?.type === 'FeatureCollection') return obj;
+  if (obj?.type === 'Feature') return { type: 'FeatureCollection', features: [obj] };
+  if (obj?.type && obj.coordinates) return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: obj, properties: {} }] };
+  return null;
 }
 
-// Componenta principală RouteWizard
-export default function RouteWizard({ onClose }) {
-  const [step, setStep] = useState(1); // 1 = alege origine, 2 = alege destinație
-  const [tab, setTab] = useState('clientes');
-  const [term, setTerm] = useState('');
-  const [origin, setOrigin] = useState(null);
-  const [destination, setDestination] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+// Repară iconițele default din Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
-  const handleGenerateAndSaveRoutes = useCallback(async (origin, destination) => {
-    if (!origin || !destination) {
-      alert('Vă rugăm selectați atât o origine, cât și o destinație.');
-      return;
-    }
-    setIsSaving(true);
+export default function RoutePreview({ title = 'Previzualizare Rută', geojson, onClose }) {
+  const mapEl = useRef(null); // Folosim useRef pentru elementul hărții
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    // Verificăm dacă elementul există și dacă harta nu a fost deja inițializată
+    if (!mapEl.current || mapRef.current) return;
+
+    const map = L.map(mapEl.current, {
+      center: [46.8, 24.9], // Centrat pe România
+      zoom: 7,
+      zoomControl: true,
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    
+    mapRef.current = map;
 
     try {
-      const apiKey = import.meta.env.VITE_ORS_KEY;
-      if (!apiKey) {
-        alert('Lipsește cheia VITE_ORS_KEY. Seteaz-o în variabilele de mediu ale proiectului.');
-        setIsSaving(false);
-        return;
+      const normalized = normalizeGeoJSON(geojson);
+      if (normalized) {
+        const layer = L.geoJSON(normalized, {
+          style: { color: '#007bff', weight: 6, opacity: 0.8 },
+        }).addTo(map);
+
+        // Centrează harta pe traseu
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        }
       }
-
-      // 1. Cere ruta pentru camioane de la OpenRouteService (A -> B)
-      const { geojson, distance_m, duration_s } = await fetchTruckRouteORS({
-        origin,
-        destination,
-        apiKey,
-      });
-
-      const now = new Date().toLocaleString('ro-RO');
-      const baseName = `${origin.label} → ${destination.label}`;
-      const nameAB = `Ruta ${baseName} · ${now}`;
-
-      // 2. Salvează ruta A -> B în baza de date folosind NOUA STRUCTURĂ
-      await saveRouteToDb({
-        name: nameAB,
-        origin_type: origin.type,
-        origin_id: origin.id,
-        destination_type: destination.type,
-        destination_id: destination.id,
-        mode: 'service',
-        provider: 'ors',
-        geojson,
-        points: null,
-        distance_m,
-        duration_s,
-        round_trip: false,
-        sampling: { mode: 'api', threshold_m: null },
-        meta: { origin, destination, direction: 'A→B' },
-      });
-
-      // 3. (Opțional) Generează și salvează ruta inversă (B -> A)
-      const nameBA = `Ruta ${destination.label} → ${origin.label} · ${now}`;
-      const geojsonBA = reverseRouteGeoJSON(geojson);
-
-      await saveRouteToDb({
-        name: nameBA,
-        origin_type: destination.type, // Acum originea este vechea destinație
-        origin_id: destination.id,
-        destination_type: origin.type, // Și destinația este vechea origine
-        destination_id: origin.id,
-        mode: 'service',
-        provider: 'ors',
-        geojson: geojsonBA,
-        points: null,
-        distance_m,
-        duration_s,
-        round_trip: false,
-        sampling: { mode: 'api', threshold_m: null },
-        meta: { origin: destination, destination: origin, direction: 'B→A' },
-      });
-
-      alert('Rutele (directă și inversă) au fost salvate cu succes!');
-      onClose(); // Închide fereastra modală după ce s-a terminat
     } catch (e) {
-      console.error(e);
-      alert(`A apărut o eroare la generarea rutei (API): ${e.message || e}`);
-      setIsSaving(false);
+      console.error("GeoJSON invalid:", e);
     }
-  }, [onClose]);
-
-  const handlePick = (item) => {
-    if (step === 1) {
-      setOrigin(item);
-      setStep(2); // Trece automat la pasul 2 după selectarea originii
-      setTab('clientes'); // Resetează tab-ul pentru destinație
-      setTerm(''); // Resetează termenul de căutare
-    } else {
-      setDestination(item);
-    }
-  };
+    
+    // Funcția de curățare
+    return () => {
+        map.remove();
+        mapRef.current = null;
+    };
+  }, [geojson]);
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>{step === 1 ? 'Pasul 1: Alege Originea' : 'Pasul 2: Alege Destinația'}</h3>
-          <button className={styles.iconBtn} onClick={onClose} disabled={isSaving}>
-            ✕
-          </button>
+          <h3>{title}</h3>
+          <button className={styles.iconBtn} onClick={onClose}>✕</button>
         </div>
-        <div className={styles.modalBody}>
-          {/* Navigare prin Tab-uri */}
-          <div className={styles.destTabs}>
-            {TABS.map((t) => (
-              <button
-                key={t}
-                className={`${styles.navBtn} ${tab === t ? styles.navBtnActive : ''}`}
-                onClick={() => setTab(t)}
-              >
-                {TAB_NAMES[t]}
-              </button>
-            ))}
-          </div>
-          {/* Căutare și Listă */}
-          {tab !== 'current' && (
-            <div className={styles.search} style={{ marginTop: 8 }}>
-              <input
-                placeholder="Caută după nume…"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-              />
-            </div>
-          )}
-          <List table={tab} term={term} onPick={handlePick} />
+        <div className={styles.modalBody} style={{ height: '60vh', padding: 0 }}>
+          {/* Legăm elementul div de ref-ul nostru, în loc de a folosi un ID */}
+          <div ref={mapEl} className={styles.mapCanvas} style={{ height: '100%', width: '100%' }} />
         </div>
-        <div className={styles.modalFooter} style={{ justifyContent: 'space-between' }}>
-          <div style={{ color: 'var(--muted)', maxWidth: '50%', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            {origin ? <>Origine: <strong style={{ color: 'var(--text)' }}>{origin.label}</strong></> : '...'}
-            {destination && <> · Dest.: <strong style={{ color: 'var(--text)' }}>{destination.label}</strong></>}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {step === 2 && (
-              <button className={styles.btn} onClick={() => { setStep(1); setDestination(null); }} disabled={isSaving}>
-                Înapoi
-              </button>
-            )}
-            <button
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              disabled={!origin || !destination || isSaving}
-              onClick={() => handleGenerateAndSaveRoutes(origin, destination)}
-            >
-              {isSaving ? 'Se salvează...' : 'Generează Ruta'}
-            </button>
-          </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.btn} onClick={onClose}>Închide</button>
         </div>
       </div>
     </div>
