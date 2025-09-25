@@ -45,18 +45,27 @@ function normalizeGeoJSON(input) {
   return null;
 }
 
-// Caută ultima rută salvată pentru client
-async function findSavedRouteForClient(clientId) {
+// O funcție nouă și flexibilă care înlocuiește findSavedRouteForClient
+async function findSavedRouteForLocation(locationType, locationId) {
+  // Caută rute unde locația noastră este fie originea, FIE destinația
   const { data, error } = await supabase
     .from('gps_routes')
-    .select('id,name,geojson')
-    .eq('client_id', clientId)
+    .select('id, name, geojson')
+    .or(
+      `and(origin_type.eq.${locationType}, origin_id.eq.${locationId}), and(destination_type.eq.${locationType}, destination_id.eq.${locationId})`
+    )
     .order('created_at', { ascending: false })
     .limit(1);
 
-  if (error || !data?.length) return null;
+  if (error) {
+    console.error('Eroare la căutarea rutei:', error);
+    return null;
+  }
+  
+  if (!data?.length) return null;
   return data[0];
 }
+
 
 // Convierte File -> base64 (imgbb espera el campo "image" como base64)
 function fileToBase64(file) {
@@ -438,11 +447,15 @@ const LocationList = ({ tableName, title }) => {
   className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
   onClick={async () => {
     try {
-      const saved = await findSavedRouteForClient(selectedLocation.id);
+      // --- MODIFICAREA ESTE AICI ---
+      const locationType = tableName.replace('gps_', '');
+      const saved = await findSavedRouteForLocation(locationType, selectedLocation.id);
+      // --- SFÂRȘITUL MODIFICĂRII ---
+
       if (!saved?.geojson) {
         const link = getMapsLink(selectedLocation);
         if (link) return window.open(link, '_blank', 'noopener');
-        return alert('Nu există rută salvată și nici link de Google Maps.');
+        return alert('Nu există rută salvată pentru această locație.');
       }
 
       // ✅ parse string dacă vine din DB ca text
@@ -462,6 +475,7 @@ const LocationList = ({ tableName, title }) => {
 >
   Navigar
 </button>
+
 
               {/* 🔷 Google Maps mereu disponibil dacă avem link/coords */}
               {getMapsLink(selectedLocation) ? (
