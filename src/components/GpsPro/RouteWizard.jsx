@@ -1,8 +1,8 @@
 // src/components/GpsPro/views/ListView.jsx
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../../supabaseClient';
-import { useAuth } from '../../../AuthContext';
+import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../AuthContext';
 import styles from '../GpsPro.module.css';
 
 import Toolbar from '../ui/Toolbar';
