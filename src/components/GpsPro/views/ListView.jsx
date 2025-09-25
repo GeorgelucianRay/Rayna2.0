@@ -11,7 +11,7 @@ import ItemCard from '../ui/ItemCard';
 import AppModal from '../ui/AppModal';
 import RouteWizard from '../RouteWizard';
 import DrawRouteModal from '../DrawRouteModal';
-import RoutePreview from '../map/RoutePreview'; // Am corectat calea dacă e nevoie
+import RoutePreview from '../RoutePreview.jsx';
 import { saveRouteToDb } from '../utils/dbRoutes';
 
 const ITEMS_PER_PAGE = 24;
