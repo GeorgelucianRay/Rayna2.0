@@ -6,13 +6,13 @@ import { useAuth } from '../../AuthContext';
 import styles from './GpsPro.module.css';
 
 
-import Toolbar from '../ui/Toolbar';
-import ItemCard from '../ui/ItemCard';
-import AppModal from '../ui/AppModal';
-import RouteWizard from '../RouteWizard';
-import DrawRouteModal from '../DrawRouteModal';
-import RoutePreview from '../RoutePreview.jsx'; // Calea corectată
-import { saveRouteToDb } from '../utils/dbRoutes';
+import Toolbar from './ui/Toolbar';
+import ItemCard from './ui/ItemCard';
+import AppModal from './ui/AppModal';
+import RouteWizard from './RouteWizard';
+import DrawRouteModal from './DrawRouteModal';
+import RoutePreview from './RoutePreview.jsx'; // Calea corectată
+import { saveRouteToDb } from './utils/dbRoutes';
 
 const ITEMS_PER_PAGE = 24;
 
