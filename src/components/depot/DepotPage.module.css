@@ -268,3 +268,16 @@
   transform: scale(1.1);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+/* =============================================== */
+/* FIX PENTRU ZOOM AUTOMAT PE INPUT-URI ÎN iOS     */
+/* =============================================== */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="tel"],
+textarea,
+select {
+  font-size: 16px;
+}
