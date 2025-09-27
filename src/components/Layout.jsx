@@ -47,7 +47,7 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const { pathname } = location;
 
-  /* accente neon per rută (pentru highlight activ) */
+  /* accente neon per rută */
   const accentMap = {
     '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
     '/sofer-homepage': ['#22d3ee', '#06b6d4'],
@@ -57,8 +57,8 @@ const Layout = ({ children }) => {
     '/depot': ['#34d399', '#10b981'],
     '/calculadora-nomina': ['#f59e0b', '#d97706'],
     '/mi-perfil': ['#f472b6', '#ec4899'],
-    '/admin/utilizatori': ['#facc15', '#eab308'], // admin Utilizatori
-    '/gps-pro': ['#00e5ff', '#60a5fa'], // doar admin
+    '/admin/utilizatori': ['#facc15', '#eab308'],
+    '/gps-pro': ['#00e5ff', '#60a5fa'],
   };
   const getAccent = (routeId) => {
     const [from, to] = accentMap[routeId] || ['#60a5fa', '#3b82f6'];
@@ -111,22 +111,29 @@ const Layout = ({ children }) => {
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
   ];
-  const adminMenu = [
-    { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
-    { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
-    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
-    { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
-    { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
-    { id: '/gps-pro', icon: <GpsIcon />, text: 'GPS Pro' }, // doar admin
-    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
-    { id: '/admin/utilizatori', icon: <UsersIcon />, text: 'Utilizatori' }, // doar admin
-  ];
 
+  // --- alege linkurile din meniu, robust ---
   let navLinksData = [];
-  if (profile?.role === 'sofer') navLinksData = soferMenu;
-  else if (profile?.role === 'mecanic') navLinksData = mecanicMenu;
-  else if (profile?.role === 'dispecer') navLinksData = dispecerMenu;
-  else if (profile?.role === 'admin') navLinksData = adminMenu;
+  switch (profile?.role) {
+    case 'sofer':
+      navLinksData = soferMenu;
+      break;
+    case 'mecanic':
+      navLinksData = mecanicMenu;
+      break;
+    case 'dispecer':
+      navLinksData = dispecerMenu;
+      break;
+    case 'admin':
+      navLinksData = [
+        ...dispecerMenu,
+        { id: '/gps-pro', icon: <GpsIcon />, text: 'GPS Pro' },
+        { id: '/admin/utilizatori', icon: <UsersIcon />, text: 'Utilizatori' },
+      ];
+      break;
+    default:
+      navLinksData = [];
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -149,7 +156,6 @@ const Layout = ({ children }) => {
       )}
 
       <aside className={styles.navMenu}>
-        {/* HEADER MENIU: buton RaynaHub + iconițe */}
         <div className={styles.navHeader}>
           <Link
             to={HUB_ROUTE}
@@ -157,12 +163,7 @@ const Layout = ({ children }) => {
             onClick={() => setIsMenuOpen(false)}
             aria-label="Rayna Hub"
           >
-            <img
-              src={HUB_IMG}
-              alt="Rayna Hub"
-              className={styles.hubLogo}
-              draggable="false"
-            />
+            <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubLogo} draggable="false" />
           </Link>
           <div className={styles.headerIcons}>
             {alarms.length > 0 && (
@@ -177,12 +178,10 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
-        {/* Numele utilizatorului sub butonul Hub */}
         <div className={styles.userBlock}>
           <div className={styles.userName}>{profile?.nombre_completo || user?.email || 'Usuario'}</div>
         </div>
 
-        {/* LINKURI MENIU */}
         <nav className={styles.navLinks}>
           {navLinksData.map(link => {
             const isActive = pathname.startsWith(link.id);
@@ -200,9 +199,7 @@ const Layout = ({ children }) => {
               />
             );
           })}
-
           <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
-
           <NavLink
             to="#"
             icon={<LogoutIcon />}
@@ -222,7 +219,6 @@ const Layout = ({ children }) => {
             <MenuIcon />
           </button>
         </header>
-
         <main className={styles.mainContent}>{children}</main>
       </div>
 
