@@ -1,3 +1,4 @@
+// src/pages/admin/AdminFeedback.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import styles from './AdminFeedback.module.css';
@@ -5,15 +6,15 @@ import styles from './AdminFeedback.module.css';
 const PAGE_SIZE = 20;
 
 export default function AdminFeedback() {
-  const [rows, setRows] = useState([]);        // feedback + profil atașat
+  const [rows, setRows] = useState([]);        // feedback + perfil del usuario
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(null);
-  const [q, setQ] = useState('');              // căutare client-side
+  const [q, setQ] = useState('');              // búsqueda client-side
   const [exporting, setExporting] = useState(false);
 
-  // 1) Citește feedback-urile paginat
+  // Cargar feedback paginado
   const fetchFeedbackPage = async (pageNum = 1) => {
     setLoading(true);
     setErr(null);
@@ -21,7 +22,6 @@ export default function AdminFeedback() {
       const from = (pageNum - 1) * PAGE_SIZE;
       const to   = from + PAGE_SIZE - 1;
 
-      // feedback de bază
       const { data: feedback, error, count } = await supabase
         .from('feedback_utilizatori')
         .select('id, user_id, continut, created_at', { count: 'exact' })
@@ -30,7 +30,7 @@ export default function AdminFeedback() {
 
       if (error) throw error;
 
-      // ia profilele pentru user_id-uri unice
+      // Obtener perfiles para los user_id únicos
       const userIds = [...new Set((feedback || []).map(r => r.user_id))];
       let profilesById = {};
       if (userIds.length > 0) {
@@ -42,7 +42,7 @@ export default function AdminFeedback() {
         profilesById = (profiles || []).reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
       }
 
-      // combină
+      // Combinar feedback con perfil
       const combined = (feedback || []).map(f => ({
         ...f,
         profile: profilesById[f.user_id] || null,
@@ -52,7 +52,7 @@ export default function AdminFeedback() {
       setTotalCount(count ?? null);
       setPage(pageNum);
     } catch (e) {
-      setErr(e.message || 'Eroare la încărcare.');
+      setErr(e.message || 'Error al cargar los datos.');
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ export default function AdminFeedback() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) Filtru client-side
+  // Filtro client-side
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return rows;
@@ -76,11 +76,10 @@ export default function AdminFeedback() {
     });
   }, [q, rows]);
 
-  // 3) Export CSV
+  // Exportar CSV (todos los registros)
   const handleExport = async () => {
     try {
       setExporting(true);
-      // scoatem TOATE rândurile (nu doar pagina), pentru CSV
       const { data: allFeedback, error } = await supabase
         .from('feedback_utilizatori')
         .select('id, user_id, continut, created_at')
@@ -121,7 +120,7 @@ export default function AdminFeedback() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setErr(e.message || 'Eroare la export.');
+      setErr(e.message || 'Error al exportar.');
     } finally {
       setExporting(false);
     }
@@ -189,7 +188,7 @@ export default function AdminFeedback() {
             <span>Página {page}{totalPages ? ` de ${totalPages}` : ''}</span>
             <button
               onClick={() => fetchFeedbackPage(page + 1)}
-              disabled={totalPages && page >= totalPages || loading}
+              disabled={(totalPages && page >= totalPages) || loading}
             >
               Siguiente »
             </button>
