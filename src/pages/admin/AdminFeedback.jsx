@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import './AdminFeedback.css';
+import './AdminFeedback.module.css';
 
 export default function AdminFeedback() {
   const [feedbacks, setFeedbacks] = useState([]);
