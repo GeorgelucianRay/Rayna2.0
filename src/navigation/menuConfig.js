@@ -31,6 +31,7 @@ const dispecerMenu = [
   { id: '/calculadora-nomina',  text: 'Calculadora Nómina',  icon: 'calc'  },
   { id: '/gps',                 text: 'GPS',                 icon: 'gps'   },
   { id: '/taller',              text: 'Taller',              icon: 'wrench'},
+  { id: '/admin/feedback',    text: 'Feedback', icon: 'users' },
 ];
 const adminExtra = [
   { id: '/gps-pro',             text: 'GPS Pro',             icon: 'gps'   },
