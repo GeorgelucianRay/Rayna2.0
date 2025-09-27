@@ -176,3 +176,21 @@
   .search { width: 100%; min-width: 0; }
   .table td, .table th { padding: 12px; }
 }
+.closeBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #dc2626; /* roșu */
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.closeBtn:hover {
+  background: #b91c1c; /* roșu mai închis la hover */
+}
