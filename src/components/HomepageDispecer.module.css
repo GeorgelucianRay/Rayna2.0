@@ -1,294 +1,289 @@
-/* Cardul de anunțuri */
+/* =========================================================
+   HomepageDispecer.module.css — versiune curățată & coerentă
+   ========================================================= */
+
+/* Paletă rapidă (îți poți ajusta nuanțele aici) */
+:root {
+  --c-bg-card: rgba(31,41,55,.6);       /* slate-800/60 */
+  --c-bg-elev: rgba(255,255,255,.08);
+  --c-border: rgba(255,255,255,.22);
+  --c-border-strong: rgba(255,255,255,.3);
+  --c-text: #e5e7eb;                    /* gray-200 */
+  --c-text-weak: #cbd5e1;               /* slate-300 */
+  --c-white: #fff;
+
+  --c-primary-1: #fb923c;               /* orange-400 */
+  --c-primary-2: #f97316;               /* orange-500 */
+  --c-primary-3: #ea580c;               /* orange-600 */
+
+  --c-ok: #22c55e;                      /* green-500 */
+  --c-info: #3b82f6;                    /* blue-500 */
+  --c-danger: #ef4444;                  /* red-500 */
+
+  --radius-lg: 1rem;
+  --radius-md: .75rem;
+  --radius-sm: .5rem;
+
+  --shadow-1: 0 4px 15px -5px rgba(0,0,0,.35);
+  --shadow-2: 0 8px 25px rgba(0,0,0,.35);
+}
+
+/* Utilitare */
+*:focus-visible { outline: 2px solid var(--c-primary-2); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ---------- Cardul de anunțuri ---------- */
 .announcementsCard {
-    background-color: rgba(31, 41, 55, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    color: #d1d5db;
-    margin-bottom: 2rem;
+  background: var(--c-bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  color: var(--c-text);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-1);
 }
 
 .announcementsHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: .75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--c-border);
 }
 
 .announcementsHeaderTitle {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--c-white);
 }
 
 .announcementsTitle {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
 }
+
+.headerButtons { display: flex; gap: .75rem; flex-wrap: wrap; }
 
 .announcementsContent {
-    font-size: 1rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
-/* Grup de butoane din header */
-.headerButtons {
-    display: flex;
-    gap: 0.75rem;
+/* ---------- Butoane (primar/secondary) ---------- */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--c-white);
+  background-image: linear-gradient(to right, var(--c-primary-1), var(--c-primary-2), var(--c-primary-3));
+  box-shadow: 0 4px 15px -5px rgba(249,115,22,.4);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 }
+.actionButton:hover { transform: translateY(-2px); box-shadow: 0 6px 20px -5px rgba(249,115,22,.5); filter: brightness(1.02); }
+.actionButton:active { transform: translateY(-1px); }
 
-/* Butonul principal de acțiune (cu gradient) */
-.actionButton, .saveButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-    color: white;
-    font-weight: 600;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
+.actionButtonSecondary,
+.cancelButton,
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border-strong);
+  background: rgba(255,255,255,.1);
+  color: var(--c-white);
+  cursor: pointer;
+  transition: background-color .15s ease, transform .15s ease;
 }
+.actionButtonSecondary:hover,
+.cancelButton:hover,
+.secondaryBtn:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); }
 
-.actionButton:hover, .saveButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
-}
-
-/* Butonul secundar (Refrescar) */
-.actionButtonSecondary, .cancelButton {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.actionButtonSecondary:hover, .cancelButton:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* --- Stiluri pentru Link-uri Externe (Stil nou, tip butoane) --- */
-.externalLinksContainer {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
+/* ---------- Link-uri Externe ---------- */
+.externalLinksContainer { display: flex; flex-direction: column; gap: 2rem; }
 
 .sectionTitle {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: white;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--c-white);
+  margin: 0 0 1rem 0;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--c-border);
 }
 
 .linksGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: .9rem;
 }
 
 .linkCard {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    border: 1px solid transparent;
-    color: white;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  padding: .75rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  color: var(--c-white);
+  text-decoration: none;
+  font-weight: 600;
+  text-align: center;
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  box-shadow: var(--shadow-1);
 }
+.linkCard:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.06); box-shadow: var(--shadow-2); }
 
-.linkCard:hover {
-    transform: scale(1.05) translateY(-2px);
-    filter: brightness(1.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
+.linkCard svg { width: 24px; height: 24px; flex-shrink: 0; }
 
-.linkCard svg {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-/* Stiluri specifice bazate pe URL pentru a colora butoanele */
+/* Colori contextuale după domeniu */
 .linkCard[href*="instagram"] {
-    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
 }
-
 .linkCard[href*="tiktok"] {
-    background: linear-gradient(45deg, #000000 0%, #222222 100%);
-    border: 1px solid #ff0050;
+  background: linear-gradient(45deg, #000 0%, #222 100%);
+  border: 1px solid #ff0050;
 }
-
 .linkCard[href*="whatsapp"] {
-    background: linear-gradient(45deg, #25D366 0%, #128C7E 100%);
+  background: linear-gradient(45deg, #25D366 0%, #128C7E 100%);
 }
-
-/* Stil generic pentru camere sau alte link-uri care nu sunt rețele sociale */
 .linkCard:not([href*="instagram"]):not([href*="tiktok"]):not([href*="whatsapp"]) {
-    background-color: rgba(31, 41, 55, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border-strong);
 }
 
-
-/* --- Stiluri pentru Modal (formular) --- */
+/* ---------- Modal edit anunț ---------- */
 .modalOverlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    z-index: 3000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(5px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
 }
 
 .modalContent {
-    background-color: #1f2937;
-    padding: 2rem;
-    border-radius: 1rem;
-    width: 100%;
-    max-width: 600px;
-    color: white;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  background: #1f2937;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 640px;
+  color: var(--c-white);
+  box-shadow: var(--shadow-2);
 }
 
 .modalTitle {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.5rem;
-    font-weight: 700;
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .modalTextarea {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #e5e7eb;
-    margin-bottom: 1.5rem;
-    resize: vertical;
-    min-height: 120px;
+  width: 100%;
+  padding: .75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.1);
+  color: var(--c-text);
+  margin-bottom: 1rem;
+  resize: vertical;
+  min-height: 140px;
 }
+.modalTextarea:focus { outline: none; border-color: rgba(249,115,22,.7); }
 
-.modalTextarea:focus {
-    outline: none;
-    border-color: rgba(249, 115, 22, 0.7);
-}
+.modalActions { display: flex; justify-content: flex-end; gap: .75rem; }
 
-.modalActions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-}
-/* editor anunț (admin) */
+/* ---------- Editor anunț inline (dacă îl folosești) ---------- */
 .textarea {
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   background: #fff;
-  font-size: 14px;
-}
-
-.saveBtn {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #2563eb;
-  background: #2563eb;
-  color: #fff;
-  cursor: pointer;
-}
-.saveBtn:disabled { opacity: .7; cursor: default; }
-
-.secondaryBtn {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #f8fafc;
   color: #0f172a;
-  cursor: pointer;
+  font-size: 14px;
 }
 
-/* admin – adăugare cameră */
+/* ---------- Panou Admin: adăugare/management link-uri ---------- */
 .adminPanel {
-  margin-top: 16px;
-  background: rgba(255,255,255,.8);
+  margin-top: 1rem;
+  background: rgba(255,255,255,.85);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 12px;
+  color: #0f172a;
 }
-.adminPanelTitle {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 700;
-}
-.formRow {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+
+.adminPanelTitle { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+
+.formRow { display: flex; gap: 8px; flex-wrap: wrap; }
+
 .input {
-  flex: 1 1 240px;
+  flex: 1 1 220px;
   padding: 10px 12px;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 14px;
   background: #fff;
+  color: #0f172a;
 }
+
 .addBtn {
   padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #22c55e;
-  background: #22c55e;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-ok);
+  background: var(--c-ok);
   color: #fff;
   cursor: pointer;
+  transition: transform .1s ease, filter .15s ease;
 }
+.addBtn:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
-/* buton ștergere cameră */
-.deleteBtn {
-  margin-left: 8px;
-  border: 1px solid #ef4444;
-  background: #ef4444;
-  color: #fff;
-  border-radius: 8px;
-  padding: 4px 8px;
+/* inline edit / acțiuni pe card */
+.inlineBtns { display: flex; gap: 6px; margin-left: 8px; }
+
+.editBtn,
+.deleteBtn,
+.saveBtnSm,
+.cancelBtnSm {
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
   cursor: pointer;
+  color: #fff;
+  border: 1px solid transparent;
+  transition: transform .1s ease, filter .15s ease;
 }
-/* edit inline link */
-.inlineBtns{display:flex;gap:6px;margin-left:8px}
-.editBtn{border:1px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer}
-.deleteBtn{border:1px solid #ef4444;background:#ef4444;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer}
-.editRow{display:flex;gap:8px;flex-wrap:wrap;width:100%}
-.saveBtnSm{border:1px solid #22c55e;background:#22c55e;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
-.cancelBtnSm{border:1px solid #e5e7eb;background:#f8fafc;color:#0f172a;border-radius:8px;padding:6px 10px;cursor:pointer}
+.editBtn { background: var(--c-info);    border-color: var(--c-info); }
+.deleteBtn { background: var(--c-danger); border-color: var(--c-danger); }
+.saveBtnSm { background: var(--c-ok);     border-color: var(--c-ok); }
+.cancelBtnSm { background: #f8fafc; color: #0f172a; border-color: #e5e7eb; }
 
-/* admin panel */
-.adminPanel{margin-top:16px;background:rgba(255,255,255,.8);border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-.adminPanelTitle{margin:0 0 8px;font-size:16px;font-weight:700}
-.formRow{display:flex;gap:8px;flex-wrap:wrap}
-.input{flex:1 1 200px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff}
-.addBtn{padding:10px 12px;border-radius:10px;border:1px solid #22c55e;background:#22c55e;color:#fff;cursor:pointer}
+.editBtn:hover,
+.deleteBtn:hover,
+.saveBtnSm:hover,
+.cancelBtnSm:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+.editRow { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+
+/* ---------- Responsive mici ajustări ---------- */
+@media (max-width: 640px) {
+  .linksGrid { grid-template-columns: 1fr; }
+  .announcementsHeader { align-items: flex-start; }
+}
