@@ -1,3 +1,4 @@
+// src/components/Layout.jsx
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -24,7 +25,6 @@ const CalculatorIcon = () => (<svg width="24" height="24" viewBox="0 0 24 24" fi
 const HUB_ROUTE = '/rayna-hub';
 const HUB_IMG   = '/A8CB7FEF-A63A-444E-8B70-B03426F25960.png';
 
-/* link de meniu cu accent neon când e activ */
 const NavLink = ({ to, icon, text, isLogout = false, onClick, isActive, accentFrom, accentTo }) => {
   const inlineStyle = isActive ? ({ '--accent': accentFrom, '--accent-strong': accentTo }) : undefined;
   const cls = [
@@ -47,7 +47,9 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const { pathname } = location;
 
-  /* accente neon per rută */
+  // 👉 schimbarea #1: luăm rolul o singură dată
+  const role = profile?.role;
+
   const accentMap = {
     '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
     '/sofer-homepage': ['#22d3ee', '#06b6d4'],
@@ -65,7 +67,6 @@ const Layout = ({ children }) => {
     return { from, to };
   };
 
-  /* fundaluri (nemodificate) */
   const backgroundMap = {
     '/sofer-homepage': styles.homepageSoferBackground,
     '/dispecer-homepage': styles.homepageSoferBackground,
@@ -92,7 +93,6 @@ const Layout = ({ children }) => {
   };
   const backgroundClassName = getBackgroundClass();
 
-  /* meniuri role-based */
   const soferMenu = [
     { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
@@ -107,14 +107,14 @@ const Layout = ({ children }) => {
     { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
   ];
+
   const mecanicMenu = [
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
   ];
 
-  // --- alege linkurile din meniu, robust ---
   let navLinksData = [];
-  switch (profile?.role) {
+  switch (role) {
     case 'sofer':
       navLinksData = soferMenu;
       break;
@@ -155,61 +155,64 @@ const Layout = ({ children }) => {
         </div>
       )}
 
-      <aside className={styles.navMenu}>
-        <div className={styles.navHeader}>
-          <Link
-            to={HUB_ROUTE}
-            className={styles.hubButton}
-            onClick={() => setIsMenuOpen(false)}
-            aria-label="Rayna Hub"
-          >
-            <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubLogo} draggable="false" />
-          </Link>
-          <div className={styles.headerIcons}>
-            {alarms.length > 0 && (
-              <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
-                <BellIcon />
-                <span className={styles.notificationBadge}>{alarms.length}</span>
+      {/* 👉 schimbarea #2: rendăm NAV doar când avem role */}
+      {role && (
+        <aside className={styles.navMenu}>
+          <div className={styles.navHeader}>
+            <Link
+              to={HUB_ROUTE}
+              className={styles.hubButton}
+              onClick={() => setIsMenuOpen(false)}
+              aria-label="Rayna Hub"
+            >
+              <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubLogo} draggable="false" />
+            </Link>
+            <div className={styles.headerIcons}>
+              {alarms.length > 0 && (
+                <button className={styles.notificationBell} onClick={() => setIsNotificationsOpen(true)}>
+                  <BellIcon />
+                  <span className={styles.notificationBadge}>{alarms.length}</span>
+                </button>
+              )}
+              <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>
+                <CloseIcon />
               </button>
-            )}
-            <button onClick={() => setIsMenuOpen(false)} className={styles.closeButtonMenu}>
-              <CloseIcon />
-            </button>
+            </div>
           </div>
-        </div>
 
-        <div className={styles.userBlock}>
-          <div className={styles.userName}>{profile?.nombre_completo || user?.email || 'Usuario'}</div>
-        </div>
+          <div className={styles.userBlock}>
+            <div className={styles.userName}>{profile?.nombre_completo || user?.email || 'Usuario'}</div>
+          </div>
 
-        <nav className={styles.navLinks}>
-          {navLinksData.map(link => {
-            const isActive = pathname.startsWith(link.id);
-            const { from, to } = getAccent(link.id);
-            return (
-              <NavLink
-                key={link.id}
-                to={link.id}
-                icon={link.icon}
-                text={link.text}
-                isActive={isActive}
-                onClick={() => setIsMenuOpen(false)}
-                accentFrom={from}
-                accentTo={to}
-              />
-            );
-          })}
-          <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
-          <NavLink
-            to="#"
-            icon={<LogoutIcon />}
-            text="Cerrar Sesión"
-            onClick={handleLogout}
-            isLogout={true}
-            isActive={false}
-          />
-        </nav>
-      </aside>
+          <nav className={styles.navLinks}>
+            {navLinksData.map(link => {
+              const isActive = pathname.startsWith(link.id);
+              const { from, to } = getAccent(link.id);
+              return (
+                <NavLink
+                  key={link.id}
+                  to={link.id}
+                  icon={link.icon}
+                  text={link.text}
+                  isActive={isActive}
+                  onClick={() => setIsMenuOpen(false)}
+                  accentFrom={from}
+                  accentTo={to}
+                />
+              );
+            })}
+            <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
+            <NavLink
+              to="#"
+              icon={<LogoutIcon />}
+              text="Cerrar Sesión"
+              onClick={handleLogout}
+              isLogout={true}
+              isActive={false}
+            />
+          </nav>
+        </aside>
+      )}
 
       {isMenuOpen && <div className={styles.navMenuOverlay} onClick={() => setIsMenuOpen(false)} />}
 
