@@ -278,3 +278,17 @@
   padding: 4px 8px;
   cursor: pointer;
 }
+/* edit inline link */
+.inlineBtns{display:flex;gap:6px;margin-left:8px}
+.editBtn{border:1px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer}
+.deleteBtn{border:1px solid #ef4444;background:#ef4444;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer}
+.editRow{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.saveBtnSm{border:1px solid #22c55e;background:#22c55e;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+.cancelBtnSm{border:1px solid #e5e7eb;background:#f8fafc;color:#0f172a;border-radius:8px;padding:6px 10px;cursor:pointer}
+
+/* admin panel */
+.adminPanel{margin-top:16px;background:rgba(255,255,255,.8);border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+.adminPanelTitle{margin:0 0 8px;font-size:16px;font-weight:700}
+.formRow{display:flex;gap:8px;flex-wrap:wrap}
+.input{flex:1 1 200px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff}
+.addBtn{padding:10px 12px;border-radius:10px;border:1px solid #22c55e;background:#22c55e;color:#fff;cursor:pointer}
