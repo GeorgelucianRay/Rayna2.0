@@ -32,6 +32,9 @@ import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
+// --- ✅ Admin: pagina Utilizatori ---
+import Utilizatori from './components/admin/Utilizatori.jsx';
+
 function App() {
   return (
     <Routes>
@@ -47,6 +50,9 @@ function App() {
       <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
       <Route path="/sofer-homepage" element={<HomepageSofer />} />
 
+      {/* ✅ Admin */}
+      <Route path="/admin/utilizatori" element={<Utilizatori />} />
+
       {/* DEPOT */}
       <Route path="/depot" element={<DepotPage />} />
       <Route path="/programacion" element={<SchedulerPage />} />
@@ -61,9 +67,7 @@ function App() {
 
       {/* Vacaciones */}
       <Route path="/vacaciones-standalone" element={<VacacionesStandalone />} />
-      {/* ➜ Ruta GLOBALĂ pentru admin (fără id) */}
       <Route path="/vacaciones-admin" element={<VacacionesAdminStandalone />} />
-      {/* ➜ Ruta per-șofer (cu id) */}
       <Route path="/vacaciones-admin/:id" element={<VacacionesAdminStandalone />} />
 
       {/* Vehicule */}
