@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import styles from './Layout.module.css';
-import { MENU_BY_ROLE, HUB_ROUTE, HUB_IMG, getAccent } from '../navigation/menuConfig';
+import { MENU_BY_ROLE, HUB_ROUTE, HUB_IMG, getAccent } from './components/navigation/menuConfig';
 
 /* --- simple SVG icon map --- */
 const Icons = {
