@@ -36,6 +36,10 @@ function IniciarSesion() {
 
                 if (profile.role === 'dispecer') {
                     navigate('/dispecer-homepage');
+                } else if (profile.role === 'admin') {
+                    // ✅ nou: admin are pagină/rută proprie
+                    // în loc de '/admin-homepage'
+                     navigate('/dispecer-homepage');
                 } else if (profile.role === 'sofer') {
                     navigate('/sofer-homepage');
                 } else if (profile.role === 'mecanic') {
