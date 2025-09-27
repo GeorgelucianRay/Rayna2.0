@@ -1,43 +1,37 @@
+// src/components/Layout.jsx
 import React from 'react';
 import styles from './Layout.module.css';
 import Navbar from './Navbar';
 import UpdatePrompt from './UpdatePrompt';
+
+const backgroundMap = {
+  '/sofer-homepage': 'homepageSoferBackground',
+  '/dispecer-homepage': 'homepageSoferBackground',
+  '/camion': 'camionBackground',
+  '/remorca': 'remorcaBackground',
+  '/taller': 'tallerBackground',
+  '/choferes-finder': 'choferesBackground',
+  '/choferes': 'choferesBackground',
+  '/mi-perfil': 'miPerfilBackground',
+  '/depot': 'depotBackground',
+  '/gps': 'gpsBackground',
+  '/reparatii': 'reparatiiBackground',
+  '/calculadora-nomina': 'calculadoraBackground',
+  '/vacaciones': 'miPerfilBackground',
+  '/vacaciones-admin': 'miPerfilBackground',
+  '/chofer': 'miPerfilBackground',
+  '/programacion': 'depotBackground',
+};
+
 import { useLocation } from 'react-router-dom';
 
-/* map de background – neschimbat; îl poți muta în config dacă vrei */
-const backgroundMap = (stylesArg) => ({
-  '/sofer-homepage': stylesArg.homepageSoferBackground,
-  '/dispecer-homepage': stylesArg.homepageSoferBackground,
-  '/camion': stylesArg.camionBackground,
-  '/remorca': stylesArg.remorcaBackground,
-  '/taller': stylesArg.tallerBackground,
-  '/choferes-finder': stylesArg.choferesBackground,
-  '/choferes': stylesArg.choferesBackground,
-  '/mi-perfil': stylesArg.miPerfilBackground,
-  '/depot': stylesArg.depotBackground,
-  '/gps': stylesArg.gpsBackground,
-  '/reparatii': stylesArg.reparatiiBackground,
-  '/calculadora-nomina': stylesArg.calculadoraBackground,
-  '/vacaciones': stylesArg.miPerfilBackground,
-  '/vacaciones-admin': stylesArg.miPerfilBackground,
-  '/chofer': stylesArg.miPerfilBackground,
-  '/programacion': stylesArg.depotBackground,
-});
-
-export default function Layout({ children }) {
+const Layout = ({ children }) => {
   const { pathname } = useLocation();
-
-  const map = backgroundMap(styles);
-  const bgKey = Object.keys(map).sort((a,b)=>b.length-a.length).find(k => pathname.startsWith(k));
-  const bgClass = bgKey ? map[bgKey] : null;
-
-  const wrapperClass = [
-    styles.layoutWrapper,
-    bgClass ? styles.hasBackground : '',
-  ].join(' ');
+  const match = Object.keys(backgroundMap).sort((a,b)=>b.length-a.length).find(p => pathname.startsWith(p));
+  const bgClass = match ? styles[backgroundMap[match]] : null;
 
   return (
-    <div className={wrapperClass}>
+    <div className={`${styles.layoutWrapper} ${bgClass ? styles.hasBackground : ''}`}>
       {bgClass && (
         <div className={styles.backgroundContainer}>
           <div className={`${styles.backgroundImage} ${bgClass}`} />
@@ -45,10 +39,10 @@ export default function Layout({ children }) {
         </div>
       )}
 
-      {/* navbar separat */}
+      {/* Navbar separat */}
       <Navbar />
 
-      {/* conținutul paginii */}
+      {/* Conținutul paginii */}
       <div className={styles.pageContentWrapper}>
         <main className={styles.mainContent}>{children}</main>
       </div>
@@ -56,4 +50,6 @@ export default function Layout({ children }) {
       <UpdatePrompt />
     </div>
   );
-}
+};
+
+export default Layout;
