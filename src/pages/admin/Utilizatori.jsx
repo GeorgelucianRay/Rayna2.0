@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext.jsx';
 import styles from './Utilizatori.module.css';
@@ -12,6 +13,7 @@ export default function Utilizatori() {
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   const notAllowed = !authLoading && profile?.role !== 'admin';
 
@@ -72,6 +74,9 @@ export default function Utilizatori() {
 
   return (
     <div className={styles.pageRoot}>
+      {/* buton închidere */}
+      <button className={styles.closeBtn} onClick={() => navigate(-1)}>✕</button>
+
       <div className={styles.wrapper}>
         <div className={styles.header}>
           <h2 className={styles.title}>Utilizatori (profiles)</h2>
