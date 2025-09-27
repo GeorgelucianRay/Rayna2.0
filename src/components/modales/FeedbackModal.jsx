@@ -1,6 +1,6 @@
 // src/components/modales/FeedbackModal.jsx
 import React, { useState } from 'react';
-import styles from './FeedbackModal.module.css'; // Creează și un fișier CSS pentru stilizare
+import styles from './FeedbackModal.module.css'; // Crea también un archivo CSS para los estilos
 
 export default function FeedbackModal({ isOpen, onClose, onSubmit }) {
   const [feedback, setFeedback] = useState('');
@@ -12,7 +12,7 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }) {
   const handleSubmit = () => {
     if (feedback.trim()) {
       onSubmit(feedback);
-      setFeedback(''); // Golește căsuța după trimitere
+      setFeedback(''); // Vacía el campo después de enviar
     }
   };
 
@@ -20,16 +20,16 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }) {
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <button className={styles.closeButton} onClick={onClose}>×</button>
-        <h3>Ajută-ne să extindem funcțiile!</h3>
-        <p>Spune-ne ce ai vrea să vezi în plus în aplicație.</p>
+        <h3>¡Ayúdanos a mejorar las funciones!</h3>
+        <p>Cuéntanos qué te gustaría ver añadido en la aplicación.</p>
         <textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Sugestia ta..."
+          placeholder="Tu sugerencia..."
           rows="5"
         />
         <button className={styles.submitButton} onClick={handleSubmit}>
-          Trimite
+          Enviar
         </button>
       </div>
     </div>
