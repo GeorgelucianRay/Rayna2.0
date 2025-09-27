@@ -1,9 +1,12 @@
+/* container */
 .wrapper {
   padding: 16px;
   max-width: 1100px;
   margin: 0 auto;
+  color: #0f172a;            /* slate-900 */
 }
 
+/* header */
 .header {
   display: flex;
   justify-content: space-between;
@@ -14,9 +17,10 @@
 
 .title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #222;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .actions {
@@ -24,92 +28,141 @@
   gap: 8px;
 }
 
+/* input + buton */
 .search {
-  padding: 8px 12px;
+  padding: 10px 12px;
   min-width: 280px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 10px;
   font-size: 14px;
+  background: #ffffff;
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.search:focus {
+  border-color: #60a5fa;      /* blue-400 */
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
 }
 
 .reloadBtn {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  background: #f8f8f8;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;        /* slate-50 */
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background .15s ease, transform .05s ease;
 }
+.reloadBtn:hover { background: #eef2f7; }
+.reloadBtn:active { transform: translateY(1px); }
 
-.reloadBtn:hover {
-  background: #eee;
-}
-
+/* mesaj eroare */
 .error {
-  background: #ffe5e5;
-  border: 1px solid #ffb3b3;
-  padding: 10px;
-  border-radius: 6px;
+  background: #fef2f2;        /* red-50 */
+  border: 1px solid #fecaca;  /* red-200 */
+  padding: 10px 12px;
+  border-radius: 10px;
   margin-bottom: 12px;
-  color: #b91c1c;
+  color: #b91c1c;             /* red-700 */
   font-size: 14px;
 }
 
+/* tabel */
 .tableWrapper {
   overflow-x: auto;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 1px rgba(0,0,0,.03),
+    0 6px 24px rgba(0,0,0,.05);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .table thead {
-  background: #fafafa;
+  background: #f8fafc;
 }
 
 .table th {
   text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid #eee;
-  font-weight: 600;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 700;
   font-size: 14px;
+  color: #111827;             /* gray-900 */
 }
 
 .table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f2f2f2;
-  font-size: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9; /* slate-100 */
+  font-size: 15px;
 }
 
+/* select – stilizat și pe iOS */
 .select {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  min-width: 140px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  min-width: 150px;
   font-size: 14px;
+  background: #ffffff;
+  outline: none;
+  appearance: none;           /* scoate stilul nativ */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 28px;        /* loc pt. „săgeată” */
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
 }
 
-.saving {
-  color: #2563eb;
-  font-weight: 500;
-}
+/* stări */
+.saving { color: #2563eb; font-weight: 600; }
+.muted  { color: #94a3b8; }
 
-.muted {
-  color: #999;
-}
-
+/* empty state */
 .noRecords {
   padding: 16px;
   text-align: center;
-  color: #666;
+  color: #64748b;
 }
 
+/* notă de subsol */
 .footerNote {
-  margin-top: 10px;
-  color: #888;
+  margin-top: 12px;
+  color: #94a3b8;
   font-size: 13px;
+}
+
+/* mobile – aliniază titlul și search pe două rânduri, lărgește inputul */
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .actions {
+    width: 100%;
+  }
+  .search {
+    width: 100%;
+    min-width: 0;
+  }
+  .table td, .table th {
+    padding: 12px;
+  }
 }
