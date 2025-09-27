@@ -188,3 +188,26 @@
   .linksGrid { grid-template-columns: 1fr; }
   .announcementsHeader { align-items: flex-start; }
 }
+/* Forțăm stilul ancorelor pe pagina dispecer, indiferent de global */
+.linkAnchor,
+.linkAnchor:visited,
+.linkCard a,
+.linkCard a:visited {
+  color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* hover curat, fără underline */
+.linkAnchor:hover,
+.linkCard a:hover {
+  color: #fff !important;
+  text-decoration: none !important;
+  filter: brightness(1.06);
+}
+
+/* (opțional) dacă ai global Tailwind/Preflight care colorează <a>,
+   această regulă suplimentară asigură prioritate maximă */
+:where(.linkCard) :where(a) {
+  color: #fff !important;
+  text-decoration: none !important;
+}
