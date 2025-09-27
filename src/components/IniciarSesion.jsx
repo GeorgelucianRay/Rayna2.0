@@ -16,45 +16,40 @@ function IniciarSesion() {
     setError(null);
 
     try {
-      // autentificare simplă
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
       if (loginError) throw loginError;
-      const user = data?.user;
       if (!user) throw new Error('Autentificare eșuată.');
 
-      // citire rol (dar nu mai blocăm dacă lipsesc date)
-      let role = 'sofer'; // fallback implicit
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      // Citește rolul DIN DB. Nu mai facem niciun fallback.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('id', user.id)
+        .maybeSingle();
 
-        if (profileError) {
-          console.warn('Eroare la citirea profilului:', profileError.message);
-        }
-        if (profile?.role) {
-          role = profile.role;
-        }
-      } catch (err) {
-        console.warn('Nu s-a putut încărca profilul:', err.message);
-      }
+      if (profileError) throw new Error('Nu s-a putut citi profilul. (RLS?)');
+      if (!profile?.role) throw new Error('Profilul nu are rol setat. Contactează admin.');
 
-      // navigare după rol
-      if (role === 'dispecer' || role === 'admin') {
-        navigate('/dispecer-homepage');
-      } else if (role === 'mecanic') {
-        navigate('/taller');
-      } else {
-        navigate('/sofer-homepage');
+      // Navighează strict după rolul real
+      switch (profile.role) {
+        case 'admin':
+        case 'dispecer':
+          navigate('/dispecer-homepage');
+          break;
+        case 'mecanic':
+          navigate('/taller');
+          break;
+        case 'sofer':
+          navigate('/sofer-homepage');
+          break;
+        default:
+          throw new Error(`Rol necunoscut: ${profile.role}`);
       }
     } catch (err) {
-      console.error('Eroare la login:', err.message);
+      console.error(err);
       setError(err.message || 'Eroare la autentificare.');
     } finally {
       setLoading(false);
