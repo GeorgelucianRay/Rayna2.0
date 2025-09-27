@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useAuth } from '../../AuthProvider';
+import { useAuth } from '../../AuthContext.jsx';
 
 // 🔒 Lista de roluri acceptate (ține-o sincronă cu CHECK-ul din DB)
 const ROLE_OPTIONS = ['sofer', 'dispecer', 'mecanic', 'admin'];
