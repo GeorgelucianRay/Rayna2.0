@@ -1,24 +1,18 @@
-/* =========================================================
-   HomepageDispecer.module.css — versiune curățată & coerentă
-   ========================================================= */
-
-/* Paletă rapidă (îți poți ajusta nuanțele aici) */
+/* ================== Paletă & utilitare ================== */
 :root {
-  --c-bg-card: rgba(31,41,55,.6);       /* slate-800/60 */
-  --c-bg-elev: rgba(255,255,255,.08);
+  --c-bg-card: rgba(31,41,55,.6);
   --c-border: rgba(255,255,255,.22);
   --c-border-strong: rgba(255,255,255,.3);
-  --c-text: #e5e7eb;                    /* gray-200 */
-  --c-text-weak: #cbd5e1;               /* slate-300 */
+  --c-text: #e5e7eb;
   --c-white: #fff;
 
-  --c-primary-1: #fb923c;               /* orange-400 */
-  --c-primary-2: #f97316;               /* orange-500 */
-  --c-primary-3: #ea580c;               /* orange-600 */
+  --c-primary-1: #fb923c;
+  --c-primary-2: #f97316;
+  --c-primary-3: #ea580c;
 
-  --c-ok: #22c55e;                      /* green-500 */
-  --c-info: #3b82f6;                    /* blue-500 */
-  --c-danger: #ef4444;                  /* red-500 */
+  --c-ok: #22c55e;
+  --c-info: #3b82f6;
+  --c-danger: #ef4444;
 
   --radius-lg: 1rem;
   --radius-md: .75rem;
@@ -28,13 +22,12 @@
   --shadow-2: 0 8px 25px rgba(0,0,0,.35);
 }
 
-/* Utilitare */
 *:focus-visible { outline: 2px solid var(--c-primary-2); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
 
-/* ---------- Cardul de anunțuri ---------- */
+/* ================== Card anunțuri ================== */
 .announcementsCard {
   background: var(--c-bg-card);
   backdrop-filter: blur(10px);
@@ -45,7 +38,6 @@
   margin-bottom: 2rem;
   box-shadow: var(--shadow-1);
 }
-
 .announcementsHeader {
   display: flex;
   justify-content: space-between;
@@ -56,38 +48,16 @@
   margin-bottom: 1rem;
   border-bottom: 1px solid var(--c-border);
 }
-
-.announcementsHeaderTitle {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  color: var(--c-white);
-}
-
-.announcementsTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-}
-
+.announcementsHeaderTitle { display: flex; align-items: center; gap: .75rem; color: var(--c-white); }
+.announcementsTitle { font-size: 1.25rem; font-weight: 700; margin: 0; }
 .headerButtons { display: flex; gap: .75rem; flex-wrap: wrap; }
+.announcementsContent { font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
 
-.announcementsContent {
-  font-size: 1rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-/* ---------- Butoane (primar/secondary) ---------- */
+/* ================== Butoane ================== */
 .actionButton {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .6rem 1.25rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--c-white);
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .6rem 1.25rem; border: none; border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--c-white);
   background-image: linear-gradient(to right, var(--c-primary-1), var(--c-primary-2), var(--c-primary-3));
   box-shadow: 0 4px 15px -5px rgba(249,115,22,.4);
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
@@ -95,194 +65,125 @@
 .actionButton:hover { transform: translateY(-2px); box-shadow: 0 6px 20px -5px rgba(249,115,22,.5); filter: brightness(1.02); }
 .actionButton:active { transform: translateY(-1px); }
 
-.actionButtonSecondary,
-.cancelButton,
-.secondaryBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .6rem 1.25rem;
-  border-radius: var(--radius-sm);
+.actionButtonSecondary {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .6rem 1.25rem; border-radius: var(--radius-sm);
   border: 1px solid var(--c-border-strong);
   background: rgba(255,255,255,.1);
-  color: var(--c-white);
-  cursor: pointer;
+  color: var(--c-white); cursor: pointer;
   transition: background-color .15s ease, transform .15s ease;
 }
-.actionButtonSecondary:hover,
-.cancelButton:hover,
-.secondaryBtn:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); }
+.actionButtonSecondary:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); }
 
-/* ---------- Link-uri Externe ---------- */
+/* ================== Link-uri Externe ================== */
 .externalLinksContainer { display: flex; flex-direction: column; gap: 2rem; }
-
 .sectionTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--c-white);
-  margin: 0 0 1rem 0;
-  padding-bottom: .5rem;
-  border-bottom: 1px solid var(--c-border);
+  font-size: 1.25rem; font-weight: 700; color: var(--c-white);
+  margin: 0 0 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--c-border);
 }
+.linksGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .9rem; }
 
-.linksGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: .9rem;
-}
-
+/* card container */
 .linkCard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .75rem;
-  padding: .75rem 1.25rem;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  color: var(--c-white);
-  text-decoration: none;
-  font-weight: 600;
-  text-align: center;
-  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; padding: .9rem 1.1rem;
+  border-radius: .9rem; background: var(--c-bg-card);
+  border: 1px solid var(--c-border-strong);
   box-shadow: var(--shadow-1);
 }
-.linkCard:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.06); box-shadow: var(--shadow-2); }
 
-.linkCard svg { width: 24px; height: 24px; flex-shrink: 0; }
+/* ancora (stânga) – fără underline/albastru */
+.linkAnchor {
+  display: inline-flex; align-items: center; gap: .65rem;
+  text-decoration: none; color: var(--c-white); font-weight: 700; letter-spacing: .2px;
+  flex: 1 1 auto; min-width: 0;
+}
+.linkAnchor:hover { filter: brightness(1.06); }
+.linkAnchor:visited { color: var(--c-white); }
+.linkTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linkAnchor svg { width: 22px; height: 22px; flex-shrink: 0; }
 
-/* Colori contextuale după domeniu */
-.linkCard[href*="instagram"] {
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+/* acțiuni (dreapta) */
+.cardActions { display: inline-flex; gap: .5rem; flex-shrink: 0; }
+.iconBtnInfo, .iconBtnDanger {
+  width: 38px; height: 38px; border-radius: 999px; border: 1px solid transparent;
+  color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .1s ease, filter .15s ease, box-shadow .15s ease; box-shadow: var(--shadow-1);
 }
-.linkCard[href*="tiktok"] {
-  background: linear-gradient(45deg, #000 0%, #222 100%);
-  border: 1px solid #ff0050;
-}
-.linkCard[href*="whatsapp"] {
-  background: linear-gradient(45deg, #25D366 0%, #128C7E 100%);
-}
-.linkCard:not([href*="instagram"]):not([href*="tiktok"]):not([href*="whatsapp"]) {
-  background: var(--c-bg-card);
-  border: 1px solid var(--c-border-strong);
-}
+.iconBtnInfo  { background: var(--c-info);   border-color: var(--c-info); }
+.iconBtnDanger{ background: var(--c-danger); border-color: var(--c-danger); }
+.iconBtnInfo:hover, .iconBtnDanger:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
-/* ---------- Modal edit anunț ---------- */
+/* social card (păstrează culorile din anchor, dar fără underline) */
+.socialCard a { color: var(--c-white); text-decoration: none; }
+
+/* ================== Modal edit anunț ================== */
 .modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.7);
-  backdrop-filter: blur(5px);
-  z-index: 3000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
+  position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(5px);
+  z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 1rem;
 }
-
 .modalContent {
-  background: #1f2937;
-  padding: 1.5rem;
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 640px;
-  color: var(--c-white);
-  box-shadow: var(--shadow-2);
+  background: #1f2937; padding: 1.5rem; border-radius: var(--radius-lg);
+  width: 100%; max-width: 640px; color: var(--c-white); box-shadow: var(--shadow-2);
 }
-
-.modalTitle {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  font-weight: 800;
-}
-
+.modalTitle { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 800; }
 .modalTextarea {
-  width: 100%;
-  padding: .75rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(255,255,255,.1);
-  color: var(--c-text);
-  margin-bottom: 1rem;
-  resize: vertical;
-  min-height: 140px;
+  width: 100%; padding: .75rem; border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.1);
+  color: var(--c-text); margin-bottom: 1rem; resize: vertical; min-height: 140px;
 }
 .modalTextarea:focus { outline: none; border-color: rgba(249,115,22,.7); }
-
 .modalActions { display: flex; justify-content: flex-end; gap: .75rem; }
 
-/* ---------- Editor anunț inline (dacă îl folosești) ---------- */
+/* editor inline (fallback) */
 .textarea {
-  width: 100%;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  background: #fff;
-  color: #0f172a;
-  font-size: 14px;
+  width: 100%; border: 1px solid #e5e7eb; border-radius: var(--radius-md);
+  padding: 10px 12px; background: #fff; color: #0f172a; font-size: 14px;
 }
 
-/* ---------- Panou Admin: adăugare/management link-uri ---------- */
+/* ================== Panou Admin (formular Adaugă) ================== */
 .adminPanel {
   margin-top: 1rem;
-  background: rgba(255,255,255,.85);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-lg);
-  padding: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86));
+  border: 1px solid rgba(17,24,39,.08);
+  border-radius: 1rem;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
   color: #0f172a;
 }
-
 .adminPanelTitle { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
 
-.formRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.formRow { display: grid; grid-template-columns: 160px 1fr 1fr 130px; gap: 10px; }
+@media (max-width: 720px) { .formRow { grid-template-columns: 1fr; } }
 
-.input {
-  flex: 1 1 220px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  background: #fff;
-  color: #0f172a;
+.input, .select {
+  width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 12px;
+  font-size: 14px; background: #fff; color: #0f172a;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+.input:focus, .select:focus { border-color: var(--c-info); box-shadow: 0 0 0 3px rgba(59,130,246,.15); outline: none; }
 
 .addBtn {
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
+  padding: 12px 14px; border-radius: 12px;
   border: 1px solid var(--c-ok);
-  background: var(--c-ok);
-  color: #fff;
-  cursor: pointer;
-  transition: transform .1s ease, filter .15s ease;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  color: #fff; font-weight: 700; cursor: pointer;
+  transition: transform .12s ease, filter .15s ease, box-shadow .15s ease;
+  box-shadow: 0 8px 18px rgba(34,197,94,.25);
 }
-.addBtn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.addBtn:hover { transform: translateY(-1px); filter: brightness(1.04); }
 
-/* inline edit / acțiuni pe card */
-.inlineBtns { display: flex; gap: 6px; margin-left: 8px; }
-
-.editBtn,
-.deleteBtn,
-.saveBtnSm,
-.cancelBtnSm {
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  cursor: pointer;
-  color: #fff;
-  border: 1px solid transparent;
-  transition: transform .1s ease, filter .15s ease;
+/* ================== Edit inline pe card ================== */
+.editRow { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: .4rem; }
+.saveBtnSm, .cancelBtnSm {
+  border-radius: 10px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid transparent; transition: transform .1s ease, filter .15s ease;
 }
-.editBtn { background: var(--c-info);    border-color: var(--c-info); }
-.deleteBtn { background: var(--c-danger); border-color: var(--c-danger); }
-.saveBtnSm { background: var(--c-ok);     border-color: var(--c-ok); }
-.cancelBtnSm { background: #f8fafc; color: #0f172a; border-color: #e5e7eb; }
+.saveBtnSm { background: var(--c-ok); color:#fff; border-color: var(--c-ok); }
+.cancelBtnSm { background:#f8fafc; color:#0f172a; border-color:#e5e7eb; }
+.saveBtnSm:hover, .cancelBtnSm:hover { transform: translateY(-1px); }
 
-.editBtn:hover,
-.deleteBtn:hover,
-.saveBtnSm:hover,
-.cancelBtnSm:hover { transform: translateY(-1px); filter: brightness(1.05); }
-
-.editRow { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
-
-/* ---------- Responsive mici ajustări ---------- */
+/* ================== Responsive mici ================== */
 @media (max-width: 640px) {
   .linksGrid { grid-template-columns: 1fr; }
   .announcementsHeader { align-items: flex-start; }
