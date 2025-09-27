@@ -1,0 +1,77 @@
+.wrapper {
+  padding: 16px;
+}
+
+.headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.headerBar h2 {
+  margin: 0;
+  color: #111827;
+}
+
+.headerActions {
+  display: flex; gap: 8px; align-items: center;
+}
+
+.search {
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-width: 260px;
+  background: #fff;
+}
+
+.exportBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+.error { color: #b91c1c; margin-bottom: 8px; }
+.loading { color: #374151; padding: 16px 0; }
+.empty { text-align: center; color: #6b7280; }
+
+.tableWrap {
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th, .table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.table th { background: #f8fafc; text-align: left; color: #0f172a; }
+.feedbackCell { white-space: pre-wrap; }
+
+.pagination {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  margin-top: 12px;
+}
+
+.pagination button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  cursor: pointer;
+}
+.pagination button:disabled { opacity: .6; cursor: default; }
