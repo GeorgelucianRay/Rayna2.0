@@ -16,37 +16,45 @@ function IniciarSesion() {
     setError(null);
 
     try {
-      const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
+      // autentificare simplă
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (loginError) throw loginError;
+      const user = data?.user;
       if (!user) throw new Error('Autentificare eșuată.');
 
-      // NU mai blocăm login-ul dacă profilul nu este returnat (RLS/alte motive)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
+      // citire rol (dar nu mai blocăm dacă lipsesc date)
+      let role = 'sofer'; // fallback implicit
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      if (profileError) {
-        // logăm, dar NU aruncăm (navigăm cu fallback)
-        console.warn('profiles select error:', profileError.message);
+        if (profileError) {
+          console.warn('Eroare la citirea profilului:', profileError.message);
+        }
+        if (profile?.role) {
+          role = profile.role;
+        }
+      } catch (err) {
+        console.warn('Nu s-a putut încărca profilul:', err.message);
       }
 
-      const role = profile?.role ?? 'sofer'; // fallback sigur
-
+      // navigare după rol
       if (role === 'dispecer' || role === 'admin') {
         navigate('/dispecer-homepage');
       } else if (role === 'mecanic') {
         navigate('/taller');
       } else {
-        // sofer sau rol necunoscut -> sofer
         navigate('/sofer-homepage');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Eroare la login:', err.message);
       setError(err.message || 'Eroare la autentificare.');
     } finally {
       setLoading(false);
