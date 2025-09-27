@@ -211,3 +211,143 @@
   color: #fff !important;
   text-decoration: none !important;
 }
+/* ======= Add Link – Glass Card modern ======= */
+.addCard {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  color: #0f172a;
+}
+
+.addCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.addTitle {
+  margin: 0;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: .2px;
+}
+
+.addSubtitle {
+  margin: 2px 0 0 0;
+  font-size: .9rem;
+  color: rgba(255,255,255,.75);
+}
+
+/* grid adaptiv */
+.addForm {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.fieldWide { grid-column: 1 / -1; position: relative; }
+@media (max-width: 720px) {
+  .addForm { grid-template-columns: 1fr; }
+  .fieldWide { grid-column: auto; }
+}
+
+/* câmp + icon + etichetă plutitoare */
+.field { position: relative; }
+.iconLeft {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; opacity: .9; pointer-events: none; color: #374151;
+}
+.inputBase, .selectBase {
+  width: 100%;
+  padding: 14px 14px 12px 40px;        /* loc pentru icon */
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.9);
+  color: #0f172a;
+  font-size: 14px;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.selectBase { appearance: none; background-image: linear-gradient(180deg, transparent, transparent); }
+.inputBase::placeholder { color: transparent; } /* pentru label plutitor */
+
+.inputBase:focus,
+.selectBase:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
+  background: #fff;
+}
+
+/* floating label */
+.floatingLabel {
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #6b7280;
+  pointer-events: none;
+  transition: all .15s ease;
+}
+.inputBase:not(:placeholder-shown) ~ .floatingLabel,
+.inputBase:focus ~ .floatingLabel,
+.selectBase:focus ~ .floatingLabel {
+  top: 0;
+  transform: translateY(-55%);
+  font-size: 12px;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: #2563eb;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 0 0 1px rgba(37,99,235,.15);
+}
+
+/* hint */
+.hint {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255,255,255,.75);
+  font-size: 12px;
+}
+
+/* acțiuni */
+.actionsRow {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.btnPrimary {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #22c55e;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(34,197,94,.25);
+  transition: transform .12s ease, filter .15s ease;
+}
+.btnPrimary:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btnPrimary:disabled { opacity: .7; cursor: default; }
+
+.btnGhost {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, transform .12s ease;
+}
+.btnGhost:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); }
