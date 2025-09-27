@@ -267,25 +267,76 @@ function HomepageDispecer() {
         )}
       </div>
 
-      {/* --- Admin: Adaugă link --- */}
       {isAdmin && (
-        <div className={styles.adminPanel}>
-          <h3 className={styles.adminPanelTitle}>Adaugă link</h3>
-          <form className={styles.formRow} onSubmit={handleAddLink}>
-            <select className={styles.select} value={newType} onChange={e => setNewType(e.target.value)}>
-              <option value="camera">Cameră</option>
-              <option value="instagram">Instagram</option>
-              <option value="tiktok">TikTok</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
-            <input type="text" className={styles.input} placeholder="Nume" value={newName} onChange={e => setNewName(e.target.value)} required />
-            <input type="url"  className={styles.input} placeholder="URL (https://…)" value={newUrl} onChange={e => setNewUrl(e.target.value)} required />
-            <button className={styles.addBtn} type="submit" disabled={savingNew}>
-              {savingNew ? 'Se adaugă…' : 'Adaugă'}
-            </button>
-          </form>
-        </div>
-      )}
+  <section className={styles.addCard}>
+    <div className={styles.addCardHeader}>
+      <div>
+        <h3 className={styles.addTitle}>Adaugă link</h3>
+        <p className={styles.addSubtitle}>Creează rapid o cameră sau un link social.</p>
+      </div>
+    </div>
+
+    <form className={styles.addForm} onSubmit={handleAddLink}>
+      {/* Tip */}
+      <div className={styles.field}>
+        <span className={styles.iconLeft}>📂</span>
+        <select
+          className={`${styles.inputBase} ${styles.selectBase}`}
+          value={newType}
+          onChange={(e) => setNewType(e.target.value)}
+          aria-label="Tip link"
+        >
+          <option value="camera">Cameră</option>
+          <option value="instagram">Instagram</option>
+          <option value="tiktok">TikTok</option>
+          <option value="whatsapp">WhatsApp</option>
+        </select>
+        <label className={styles.floatingLabel}>Tip</label>
+      </div>
+
+      {/* Nume */}
+      <div className={styles.field}>
+        <span className={styles.iconLeft}>🏷️</span>
+        <input
+          type="text"
+          className={styles.inputBase}
+          placeholder=" "
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          required
+        />
+        <label className={styles.floatingLabel}>Nume</label>
+      </div>
+
+      {/* URL */}
+      <div className={styles.fieldWide}>
+        <span className={styles.iconLeft}>🔗</span>
+        <input
+          type="url"
+          className={styles.inputBase}
+          placeholder=" "
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          inputMode="url"
+          pattern="https?://.*"
+          required
+        />
+        <label className={styles.floatingLabel}>URL (https://…)</label>
+        <small className={styles.hint}>Folosește un URL complet (ex.: https://exemplu.com)</small>
+      </div>
+
+      {/* Actiune */}
+      <div className={styles.actionsRow}>
+        <button className={styles.btnGhost} type="button" onClick={() => { setNewName(''); setNewUrl(''); }}>
+          Resetează
+        </button>
+        <button className={styles.btnPrimary} type="submit" disabled={savingNew}>
+          {savingNew ? 'Se adaugă…' : 'Adaugă'}
+        </button>
+      </div>
+    </form>
+  </section>
+)}
 
       <EditAnnouncementModal
         isOpen={isModalOpen}
