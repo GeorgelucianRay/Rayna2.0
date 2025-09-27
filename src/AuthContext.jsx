@@ -129,11 +129,15 @@ export const AuthProvider = ({ children }) => {
             let remorciToProcess = [];
             let mantenimientoAlertsToProcess = [];
 
-            if (userProfile?.role === 'dispecer') {
+            // ✅ MODIFICARE MINIMĂ: admin are aceleași date/vizibilitate ca dispecer
+            if (['dispecer', 'admin'].includes(userProfile?.role)) {
                 const { data: allProfiles } = await supabase.from('profiles').select('*');
                 const { data: allCamioane } = await supabase.from('camioane').select('*');
                 const { data: allRemorci } = await supabase.from('remorci').select('*');
-                const { data: allMantenimiento } = await supabase.from('mantenimiento_alertas').select('*').eq('activa', true);
+                const { data: allMantenimiento } = await supabase
+                    .from('mantenimiento_alertas')
+                    .select('*')
+                    .eq('activa', true);
 
                 profilesToProcess = allProfiles || [];
                 camioaneToProcess = allCamioane || [];
