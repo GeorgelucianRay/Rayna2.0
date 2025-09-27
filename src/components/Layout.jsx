@@ -49,17 +49,17 @@ const Layout = ({ children }) => {
 
   /* accente neon per rută (pentru highlight activ) */
   const accentMap = {
-  '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
-  '/sofer-homepage': ['#22d3ee', '#06b6d4'],
-  '/choferes-finder': ['#a78bfa', '#8b5cf6'],
-  '/gps': ['#fb923c', '#f97316'],
-  // 👇 nou:
-  '/gps-pro': ['#00e5ff', '#60a5fa'],
-  '/taller': ['#38bdf8', '#0ea5e9'],
-  '/depot': ['#34d399', '#10b981'],
-  '/calculadora-nomina': ['#f59e0b', '#d97706'],
-  '/mi-perfil': ['#f472b6', '#ec4899'],
-};
+    '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
+    '/sofer-homepage': ['#22d3ee', '#06b6d4'],
+    '/choferes-finder': ['#a78bfa', '#8b5cf6'],
+    '/gps': ['#fb923c', '#f97316'],
+    '/taller': ['#38bdf8', '#0ea5e9'],
+    '/depot': ['#34d399', '#10b981'],
+    '/calculadora-nomina': ['#f59e0b', '#d97706'],
+    '/mi-perfil': ['#f472b6', '#ec4899'],
+    '/admin/utilizatori': ['#facc15', '#eab308'], // admin Utilizatori
+    '/gps-pro': ['#00e5ff', '#60a5fa'], // doar admin
+  };
   const getAccent = (routeId) => {
     const [from, to] = accentMap[routeId] || ['#60a5fa', '#3b82f6'];
     return { from, to };
@@ -92,7 +92,7 @@ const Layout = ({ children }) => {
   };
   const backgroundClassName = getBackgroundClass();
 
-  /* meniuri role-based — FĂRĂ Rayna Hub aici (e sus, în header) */
+  /* meniuri role-based */
   const soferMenu = [
     { id: '/sofer-homepage', icon: <HomeIcon />, text: 'Homepage' },
     { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
@@ -100,24 +100,33 @@ const Layout = ({ children }) => {
     { id: '/mi-perfil', icon: <ProfileIcon />, text: 'Mi Perfil' },
   ];
   const dispecerMenu = [
-  { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
-  { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
-  { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
-  { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
-  { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
-  // 👇 nou:
-  { id: '/gps-pro', icon: <GpsIcon />, text: 'GPS Pro' },
-  { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
-];
+    { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
+    { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
+    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
+    { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
+    { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
+    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
+  ];
   const mecanicMenu = [
     { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
     { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
+  ];
+  const adminMenu = [
+    { id: '/dispecer-homepage', icon: <HomeIcon />, text: 'Homepage' },
+    { id: '/depot', icon: <DepotIcon />, text: 'Depot' },
+    { id: '/choferes-finder', icon: <UsersIcon />, text: 'Choferes' },
+    { id: '/calculadora-nomina', icon: <CalculatorIcon />, text: 'Calculadora Nómina' },
+    { id: '/gps', icon: <GpsIcon />, text: 'GPS' },
+    { id: '/gps-pro', icon: <GpsIcon />, text: 'GPS Pro' }, // doar admin
+    { id: '/taller', icon: <WrenchIcon />, text: 'Taller' },
+    { id: '/admin/utilizatori', icon: <UsersIcon />, text: 'Utilizatori' }, // doar admin
   ];
 
   let navLinksData = [];
   if (profile?.role === 'sofer') navLinksData = soferMenu;
   else if (profile?.role === 'mecanic') navLinksData = mecanicMenu;
   else if (profile?.role === 'dispecer') navLinksData = dispecerMenu;
+  else if (profile?.role === 'admin') navLinksData = adminMenu;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
