@@ -33,7 +33,7 @@ import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.js
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 
 // --- ✅ Admin: pagina Utilizatori ---
-import Utilizatori from './page/admin/Utilizatori.jsx';
+import Utilizatori from './pages/admin/Utilizatori.jsx';
 
 function App() {
   return (
