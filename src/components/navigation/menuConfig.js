@@ -1,41 +1,38 @@
-// Un singur loc pentru meniuri + accente
+// src/navigation/menuConfig.js
 export const HUB_ROUTE = '/rayna-hub';
 export const HUB_IMG   = '/A8CB7FEF-A63A-444E-8B70-B03426F25960.png';
 
-// ce linkuri vede fiecare rol
 export const MENU_BY_ROLE = {
   sofer: [
-    { id: '/sofer-homepage', text: 'Homepage',     icon: 'home' },
+    { id: '/sofer-homepage', text: 'Homepage', icon: 'home' },
     { id: '/calculadora-nomina', text: 'Calculadora Nómina', icon: 'calc' },
-    { id: '/gps',              text: 'GPS',         icon: 'gps' },
-    { id: '/mi-perfil',        text: 'Mi Perfil',   icon: 'profile' },
+    { id: '/gps', text: 'GPS', icon: 'gps' },
+    { id: '/mi-perfil', text: 'Mi Perfil', icon: 'profile' },
   ],
   dispecer: [
-    { id: '/dispecer-homepage', text: 'Homepage',   icon: 'home' },
-    { id: '/depot',             text: 'Depot',      icon: 'depot' },
-    { id: '/choferes-finder',   text: 'Choferes',   icon: 'users' },
-    { id: '/calculadora-nomina',text: 'Calculadora Nómina', icon: 'calc' },
-    { id: '/gps',               text: 'GPS',        icon: 'gps' },
-    { id: '/taller',            text: 'Taller',     icon: 'wrench' },
+    { id: '/dispecer-homepage', text: 'Homepage', icon: 'home' },
+    { id: '/depot', text: 'Depot', icon: 'depot' },
+    { id: '/choferes-finder', text: 'Choferes', icon: 'users' },
+    { id: '/calculadora-nomina', text: 'Calculadora Nómina', icon: 'calc' },
+    { id: '/gps', text: 'GPS', icon: 'gps' },
+    { id: '/taller', text: 'Taller', icon: 'wrench' },
   ],
   mecanic: [
     { id: '/taller', text: 'Taller', icon: 'wrench' },
-    { id: '/depot',  text: 'Depot',  icon: 'depot'  },
+    { id: '/depot', text: 'Depot', icon: 'depot' },
   ],
   admin: [
-    // admin moștenește meniul dispecer + iteme extra
-    { id: '/dispecer-homepage', text: 'Homepage',   icon: 'home' },
-    { id: '/depot',             text: 'Depot',      icon: 'depot' },
-    { id: '/choferes-finder',   text: 'Choferes',   icon: 'users' },
-    { id: '/calculadora-nomina',text: 'Calculadora Nómina', icon: 'calc' },
-    { id: '/gps',               text: 'GPS',        icon: 'gps' },
-    { id: '/gps-pro',           text: 'GPS Pro',    icon: 'gps' },
-    { id: '/taller',            text: 'Taller',     icon: 'wrench' },
-    { id: '/admin/utilizatori', text: 'Utilizatori',icon: 'users' },
+    { id: '/dispecer-homepage', text: 'Homepage', icon: 'home' },
+    { id: '/depot', text: 'Depot', icon: 'depot' },
+    { id: '/choferes-finder', text: 'Choferes', icon: 'users' },
+    { id: '/calculadora-nomina', text: 'Calculadora Nómina', icon: 'calc' },
+    { id: '/gps', text: 'GPS', icon: 'gps' },
+    { id: '/gps-pro', text: 'GPS Pro', icon: 'gps' },
+    { id: '/taller', text: 'Taller', icon: 'wrench' },
+    { id: '/admin/utilizatori', text: 'Utilizatori', icon: 'users' },
   ],
 };
 
-// culori neon per rută (doar daca vrei highlight)
 export const ACCENT_BY_ROUTE = {
   '/dispecer-homepage': ['#22d3ee', '#06b6d4'],
   '/sofer-homepage':    ['#22d3ee', '#06b6d4'],
