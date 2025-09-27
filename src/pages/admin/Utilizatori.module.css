@@ -11,6 +11,13 @@
   /* dacă layout are un fundal, pag. noastră îl acoperă oricum */
   isolation: isolate;
 }
+.pageRoot {
+  position: relative;
+  z-index: 10;              /* peste overlay-ul Layout */
+  min-height: 100vh;
+  padding: 24px 16px;
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+}
 
 /* ====== CONȚINUT ====== */
 .wrapper {
