@@ -1,9 +1,22 @@
-/* container */
+/* ====== FUNDAL PROPRIU PAGINĂ (independent de Layout) ====== */
+.pageRoot {
+  position: relative;
+  min-height: calc(100vh - 0px);
+  padding: 24px 16px;
+  /* gradient + “glow” discret */
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.18), transparent),
+    radial-gradient(1000px 500px at 100% 0%, rgba(250,204,21,.12), transparent),
+    linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+  /* dacă layout are un fundal, pag. noastră îl acoperă oricum */
+  isolation: isolate;
+}
+
+/* ====== CONȚINUT ====== */
 .wrapper {
-  padding: 16px;
   max-width: 1100px;
   margin: 0 auto;
-  color: #0f172a;            /* slate-900 */
+  color: #e5e7eb;                /* text deschis */
 }
 
 /* header */
@@ -14,15 +27,13 @@
   gap: 12px;
   margin-bottom: 16px;
 }
-
 .title {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
-
 .actions {
   display: flex;
   gap: 8px;
@@ -32,49 +43,52 @@
 .search {
   padding: 10px 12px;
   min-width: 280px;
-  border: 1px solid #e5e7eb; /* gray-200 */
+  border: 1px solid rgba(148, 163, 184, .35);  /* slate-400/35 */
   border-radius: 10px;
   font-size: 14px;
-  background: #ffffff;
+  background: rgba(15, 23, 42, .6);           /* slate-900/60 */
+  color: #e5e7eb;
   outline: none;
   transition: box-shadow .15s ease, border-color .15s ease;
 }
+.search::placeholder { color: #94a3b8; }
 .search:focus {
-  border-color: #60a5fa;      /* blue-400 */
+  border-color: #60a5fa;                        /* blue-400 */
   box-shadow: 0 0 0 3px rgba(96,165,250,.25);
 }
 
 .reloadBtn {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #f8fafc;        /* slate-50 */
+  border: 1px solid rgba(148, 163, 184, .35);
+  background: rgba(148, 163, 184, .12);
+  color: #e5e7eb;
   cursor: pointer;
-  transition: background .15s ease, transform .05s ease;
+  transition: background .15s ease, transform .05s ease, border-color .15s ease;
 }
-.reloadBtn:hover { background: #eef2f7; }
+.reloadBtn:hover { background: rgba(148,163,184,.2); border-color: rgba(148,163,184,.5); }
 .reloadBtn:active { transform: translateY(1px); }
 
-/* mesaj eroare */
+/* eroare */
 .error {
-  background: #fef2f2;        /* red-50 */
-  border: 1px solid #fecaca;  /* red-200 */
+  background: rgba(239, 68, 68, .12);        /* red-500/12 */
+  border: 1px solid rgba(239, 68, 68, .35);
   padding: 10px 12px;
   border-radius: 10px;
   margin-bottom: 12px;
-  color: #b91c1c;             /* red-700 */
+  color: #fecaca;                             /* red-200 */
   font-size: 14px;
 }
 
-/* tabel */
+/* tabel ca un card */
 .tableWrapper {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, .25);
   border-radius: 12px;
-  background: #ffffff;
+  background: rgba(15, 23, 42, 0.6);
   box-shadow:
-    0 1px 1px rgba(0,0,0,.03),
-    0 6px 24px rgba(0,0,0,.05);
+    0 1px 1px rgba(0,0,0,.12),
+    0 6px 24px rgba(2,6,23,.35);
 }
 
 .table {
@@ -82,47 +96,46 @@
   border-collapse: collapse;
   font-size: 15px;
 }
-
 .table thead {
-  background: #f8fafc;
+  background: rgba(148, 163, 184, .12);
 }
-
 .table th {
   text-align: left;
   padding: 12px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(148, 163, 184, .25);
   font-weight: 700;
   font-size: 14px;
-  color: #111827;             /* gray-900 */
+  color: #e5e7eb;
 }
-
 .table td {
   padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9; /* slate-100 */
+  border-bottom: 1px solid rgba(148, 163, 184, .15);
   font-size: 15px;
+  color: #e5e7eb;
 }
 
-/* select – stilizat și pe iOS */
+/* select (stilizat, inclusiv pe iOS) */
 .select {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, .35);
   min-width: 150px;
   font-size: 14px;
-  background: #ffffff;
+  background: rgba(15, 23, 42, .6);
+  color: #e5e7eb;
   outline: none;
-  appearance: none;           /* scoate stilul nativ */
+  appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
   background-image:
-    linear-gradient(45deg, transparent 50%, #64748b 50%),
-    linear-gradient(135deg, #64748b 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
   background-position:
     calc(100% - 18px) calc(50% - 3px),
     calc(100% - 12px) calc(50% - 3px);
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
-  padding-right: 28px;        /* loc pt. „săgeată” */
+  padding-right: 28px;
   transition: box-shadow .15s ease, border-color .15s ease;
 }
 .select:focus {
@@ -130,39 +143,29 @@
   box-shadow: 0 0 0 3px rgba(96,165,250,.25);
 }
 
-/* stări */
-.saving { color: #2563eb; font-weight: 600; }
+.saving { color: #60a5fa; font-weight: 600; }
 .muted  { color: #94a3b8; }
 
-/* empty state */
 .noRecords {
   padding: 16px;
   text-align: center;
-  color: #64748b;
+  color: #94a3b8;
 }
 
-/* notă de subsol */
 .footerNote {
   margin-top: 12px;
   color: #94a3b8;
   font-size: 13px;
 }
 
-/* mobile – aliniază titlul și search pe două rânduri, lărgește inputul */
+/* responsive */
 @media (max-width: 640px) {
   .header {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
-  .actions {
-    width: 100%;
-  }
-  .search {
-    width: 100%;
-    min-width: 0;
-  }
-  .table td, .table th {
-    padding: 12px;
-  }
+  .actions { width: 100%; }
+  .search { width: 100%; min-width: 0; }
+  .table td, .table th { padding: 12px; }
 }
