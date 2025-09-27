@@ -1,32 +1,127 @@
-.container { min-height:100vh; padding:1.25rem; background:#f6fbfd; display:flex; flex-direction:column; }
-.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-.title { font-size:2rem; font-weight:800; color:#0f172a; }
-.closeBtn { width:48px; height:48px; border:none; border-radius:9999px; background:#ef4444; color:#fff; font-size:1.5rem; font-weight:700; cursor:pointer; }
-.closeBtn:hover { background:#dc2626; }
+.admin-feedback-container {
+  padding: 2rem;
+  background: linear-gradient(135deg, #1a202c, #2d3748);
+  min-height: 100vh;
+  color: #f9fafb;
+}
 
-.error { color:#dc2626; font-weight:600; margin-bottom:1rem; }
+.admin-feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
 
-.toolbar { display:flex; gap:.75rem; margin-bottom:1rem; }
-.search { flex:1; border:1px solid #e5e7eb; border-radius:.6rem; padding:.7rem 1rem; background:#fff; }
-.exportBtn { background:#0f172a; color:#fff; border:none; border-radius:.6rem; padding:.7rem 1rem; cursor:pointer; }
-.exportBtn:hover { background:#1f2937; }
+.admin-feedback-header h2 {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
 
-.card { background:#fff; border:1px solid #e5e7eb; border-radius:.9rem; overflow:hidden; }
-.table { width:100%; border-collapse:collapse; }
-.table th { text-align:left; padding:.8rem 1rem; background:#eef2f7; border-bottom:1px solid #e5e7eb; color:#0f172a; }
-.table td { padding:.8rem 1rem; border-bottom:1px solid #f1f5f9; color:#334155; vertical-align:top; }
-.row:hover { background:#f8fafc; }
-.clickable { cursor:pointer; }
-.ellipsis { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:0; }
+.error {
+  color: #f56565;
+  margin-bottom: 1rem;
+}
 
-.modalOverlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:1rem; z-index:9999; }
-.modal { width:100%; max-width:640px; background:#fff; border-radius:1rem; border:1px solid #e5e7eb; box-shadow:0 20px 50px rgba(0,0,0,.2); padding:1rem 1rem 1.25rem; }
-.modalHeader { display:flex; justify-content:space-between; align-items:center; padding:.25rem .25rem .75rem; border-bottom:1px solid #eef2f7; }
-.modalTitle { font-size:1.25rem; font-weight:700; color:#0f172a; }
-.modalClose { border:none; background:#ef4444; color:#fff; width:36px; height:36px; border-radius:9999px; font-size:1.25rem; cursor:pointer; }
-.modalClose:hover { background:#dc2626; }
+.feedback-list {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
 
-.detailGrid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0.75rem 1rem; padding:1rem 0; }
-.label { font-size:.85rem; color:#64748b; }
-.value { font-weight:600; color:#0f172a; }
-.messageBox { margin-top:.25rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:.6rem; padding:1rem; color:#111827; white-space:pre-wrap; }
+.feedback-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.feedback-table th, .feedback-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.feedback-table th {
+  font-weight: bold;
+  color: #fbbf24;
+}
+
+.feedback-table tr:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #cbd5e0;
+}
+
+.view-btn {
+  background: #3182ce;
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.view-btn:hover {
+  background: #2b6cb0;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: #2d3748;
+  padding: 2rem;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 100%;
+  color: #f9fafb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #fbbf24;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.close-btn:hover {
+  background: #c53030;
+}
+
+.feedback-text {
+  margin-top: 1rem;
+  white-space: pre-wrap;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+}
