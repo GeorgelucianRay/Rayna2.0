@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './HomepageDispecer.module.css';
 import EditAnnouncementModal from './EditAnnouncementModal';
+import { useAuth } from '../AuthContext.jsx';
 
 // --- Iconițe SVG ---
 const RssIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>;
@@ -12,122 +13,323 @@ const WhatsappIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" he
 const CameraIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>;
 
 const renderIcon = (iconType) => {
-    switch (iconType) {
-        case 'instagram': return <InstagramIcon />;
-        case 'tiktok': return <TiktokIcon />;
-        case 'whatsapp': return <WhatsappIcon />;
-        case 'camera': return <CameraIcon />;
-        default: return null;
-    }
+  switch (iconType) {
+    case 'instagram': return <InstagramIcon />;
+    case 'tiktok':    return <TiktokIcon />;
+    case 'whatsapp':  return <WhatsappIcon />;
+    case 'camera':    return <CameraIcon />;
+    default:          return null;
+  }
 };
 
 function HomepageDispecer() {
+  const { profile } = useAuth();
+  const isAdmin     = profile?.role === 'admin';
+  const isDispecer  = profile?.role === 'dispecer';
+  const canEditAnnouncement = isAdmin || isDispecer;
+
   const [announcementText, setAnnouncementText] = useState("Cargando anuncios...");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cameraLinks, setCameraLinks] = useState([]);
-  const [socialLinks, setSocialLinks] = useState([]);
+
+  const [links, setLinks] = useState([]);
+  const [loadingLinks, setLoadingLinks] = useState(true);
+
+  // form adăugare link (doar admin)
+  const [newName, setNewName] = useState('');
+  const [newUrl,  setNewUrl]  = useState('');
+  const [newType, setNewType] = useState('camera'); // camera | instagram | tiktok | whatsapp
+  const [savingNew, setSavingNew] = useState(false);
+
+  // edit inline (doar admin)
+  const [editId, setEditId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editUrl,  setEditUrl]  = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const cameraLinks  = useMemo(() => links.filter(l => l.icon_type === 'camera'), [links]);
+  const socialLinks  = useMemo(() => links.filter(l => l.icon_type !== 'camera'), [links]);
 
   const fetchAnnouncements = useCallback(async () => {
     setAnnouncementText("Actualizando anuncios...");
     try {
-        const { data, error } = await supabase.from('anuncios').select('content').eq('id', 1).single();
-        if (error) throw error;
-        if (data) setAnnouncementText(data.content);
+      const { data, error } = await supabase
+        .from('anuncios')
+        .select('content')
+        .eq('id', 1)
+        .single();
+      if (error) throw error;
+      setAnnouncementText(data?.content ?? '');
     } catch (error) {
-        setAnnouncementText('No se pudieron cargar los anuncios.');
-        console.error("Error fetching announcements:", error);
+      setAnnouncementText('No se pudieron cargar los anuncios.');
+      console.error("Error fetching announcements:", error);
+    }
+  }, []);
+
+  const fetchLinks = useCallback(async () => {
+    try {
+      setLoadingLinks(true);
+      const { data, error } = await supabase
+        .from('external_links')
+        .select('*')
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      setLinks(data || []);
+    } catch (error) {
+      console.error("Error fetching links:", error);
+    } finally {
+      setLoadingLinks(false);
     }
   }, []);
 
   const handleSaveAnnouncement = async (newContent) => {
+    if (!canEditAnnouncement) return;
     if (newContent.trim() === announcementText.trim()) {
-        setIsModalOpen(false);
-        return;
+      setIsModalOpen(false);
+      return;
     }
     try {
-        const { error } = await supabase.from('anuncios').update({ content: newContent }).eq('id', 1);
-        if (error) throw error;
-        alert('¡Anuncio actualizado con éxito!');
-        setAnnouncementText(newContent);
-        setIsModalOpen(false);
+      const { error } = await supabase
+        .from('anuncios')
+        .update({ content: newContent })
+        .eq('id', 1);
+      if (error) throw error;
+      alert('¡Anuncio actualizado con éxito!');
+      setAnnouncementText(newContent);
+      setIsModalOpen(false);
     } catch (error) {
-        alert('Error: No se pudieron guardar los cambios.');
-        console.error("Error updating announcement:", error);
+      alert('Error: No se pudieron guardar los cambios.');
+      console.error("Error updating announcement:", error);
+    }
+  };
+
+  // --- ADMIN: adăugare link (cameră sau social)
+  const handleAddLink = async (e) => {
+    e?.preventDefault?.();
+    if (!isAdmin) return;
+    if (!newName.trim() || !newUrl.trim()) return;
+
+    setSavingNew(true);
+    const isCamera = newType === 'camera';
+    const subset = isCamera ? cameraLinks : socialLinks;
+    const nextOrder = (subset[subset.length - 1]?.display_order ?? 0) + 1;
+
+    const newRow = {
+      name: newName.trim(),
+      url: newUrl.trim(),
+      icon_type: newType,
+      display_order: nextOrder
+    };
+
+    // optimist
+    const tempId = `tmp_${Date.now()}`;
+    setLinks((cur) => [...cur, { id: tempId, ...newRow }]);
+
+    const { data, error } = await supabase
+      .from('external_links')
+      .insert(newRow)
+      .select()
+      .single();
+
+    if (error) {
+      setLinks((cur) => cur.filter(l => l.id !== tempId));
+      alert(error.message || 'Nu am putut adăuga linkul.');
+    } else {
+      setLinks((cur) => cur.map(l => (l.id === tempId ? data : l)));
+      setNewName(''); setNewUrl(''); setNewType('camera');
+    }
+    setSavingNew(false);
+  };
+
+  // --- ADMIN: start/cancel/save edit
+  const startEdit = (row) => {
+    if (!isAdmin) return;
+    setEditId(row.id);
+    setEditName(row.name);
+    setEditUrl(row.url);
+  };
+  const cancelEdit = () => {
+    setEditId(null); setEditName(''); setEditUrl('');
+  };
+  const saveEdit = async () => {
+    if (!isAdmin || !editId) return;
+    setEditSaving(true);
+    const prev = links;
+    setLinks((cur) => cur.map(l => (l.id === editId ? { ...l, name: editName, url: editUrl } : l)));
+
+    const { error } = await supabase
+      .from('external_links')
+      .update({ name: editName, url: editUrl })
+      .eq('id', editId);
+
+    if (error) {
+      setLinks(prev);
+      alert(error.message || 'Editarea a eșuat.');
+    }
+    setEditSaving(false);
+    cancelEdit();
+  };
+
+  // --- ADMIN: delete link
+  const handleDeleteLink = async (id) => {
+    if (!isAdmin) return;
+    if (!confirm('Sigur vrei să ștergi acest link?')) return;
+
+    const prev = links;
+    setLinks((cur) => cur.filter(l => l.id !== id));
+
+    const { error } = await supabase
+      .from('external_links')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      setLinks(prev);
+      alert(error.message || 'Ștergerea a eșuat.');
     }
   };
 
   useEffect(() => {
-    const fetchLinks = async () => {
-        try {
-            const { data, error } = await supabase.from('external_links').select('*').order('display_order');
-            if (error) throw error;
-            setCameraLinks(data.filter(link => link.icon_type === 'camera'));
-            setSocialLinks(data.filter(link => link.icon_type !== 'camera'));
-        } catch (error) {
-            console.error("Error fetching links:", error);
-        }
-    };
     fetchAnnouncements();
     fetchLinks();
-  }, [fetchAnnouncements]);
+  }, [fetchAnnouncements, fetchLinks]);
 
   return (
     <Layout backgroundClassName="homepageBackground">
-        <div className={styles.announcementsCard}>
-          <div className={styles.announcementsHeader}>
-            <div className={styles.announcementsHeaderTitle}>
-              <RssIcon />
-              <h2 className={styles.announcementsTitle}>Anuncios Importantes</h2>
-            </div>
-            <div className={styles.headerButtons}>
-                <button onClick={() => setIsModalOpen(true)} className={styles.actionButton}>
-                  Editar Anuncio
-                </button>
-                <button onClick={fetchAnnouncements} className={styles.actionButtonSecondary}>
-                  Refrescar
-                </button>
-            </div>
+      {/* ANUNȚURI */}
+      <div className={styles.announcementsCard}>
+        <div className={styles.announcementsHeader}>
+          <div className={styles.announcementsHeaderTitle}>
+            <RssIcon />
+            <h2 className={styles.announcementsTitle}>Anuncios Importantes</h2>
           </div>
-          <div className={styles.announcementsContent}>{announcementText}</div>
+          <div className={styles.headerButtons}>
+            {canEditAnnouncement && (
+              <button onClick={() => setIsModalOpen(true)} className={styles.actionButton}>
+                Editar Anuncio
+              </button>
+            )}
+            <button onClick={fetchAnnouncements} className={styles.actionButtonSecondary}>
+              Refrescar
+            </button>
+          </div>
         </div>
+        <div className={styles.announcementsContent}>{announcementText}</div>
+      </div>
 
-        <div className={styles.externalLinksContainer}>
-            {cameraLinks.length > 0 && (
-                <section>
-                    <h2 className={styles.sectionTitle}>Cámaras de Vigilancia</h2>
-                    <div className={styles.linksGrid}>
-                        {cameraLinks.map(link => (
-                            <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={styles.linkCard}>
-                                {renderIcon(link.icon_type)}
-                                {/* MODIFICARE: Folosim link.name pentru a afișa textul */}
-                                <span>{link.name}</span>
-                            </a>
-                        ))}
+      {/* LINKURI */}
+      <div className={styles.externalLinksContainer}>
+        {/* CAMERE */}
+        {cameraLinks.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Cámaras de Vigilancia</h2>
+            <div className={styles.linksGrid}>
+              {cameraLinks.map(link => (
+                <div key={link.id} className={styles.linkCard}>
+                  {renderIcon('camera')}
+                  {editId === link.id ? (
+                    <div className={styles.editRow}>
+                      <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nume" />
+                      <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
+                      <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving}>Salvează</button>
+                      <button className={styles.cancelBtnSm} onClick={cancelEdit}>Anulează</button>
                     </div>
-                </section>
-            )}
-            {socialLinks.length > 0 && (
-                <section>
-                    <h2 className={styles.sectionTitle}>Redes Sociales y Contacto</h2>
-                    <div className={styles.linksGrid}>
-                        {socialLinks.map(link => (
-                            <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={styles.linkCard}>
-                                {renderIcon(link.icon_type)}
-                                {/* MODIFICARE: Folosim link.name pentru a afișa textul */}
-                                <span>{link.name}</span>
-                            </a>
-                        ))}
-                    </div>
-                </section>
-            )}
+                  ) : (
+                    <>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer">
+                        <span>{link.name}</span>
+                      </a>
+                      {isAdmin && (
+                        <div className={styles.inlineBtns}>
+                          <button className={styles.editBtn} onClick={() => startEdit(link)} title="Editează">✎</button>
+                          <button className={styles.deleteBtn} onClick={() => handleDeleteLink(link.id)} title="Șterge">✕</button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SOCIAL */}
+        {socialLinks.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Redes Sociales y Contacto</h2>
+            <div className={styles.linksGrid}>
+              {socialLinks.map(link => {
+                const icon = renderIcon(link.icon_type);
+                return (
+                  <div key={link.id} className={styles.linkCard}>
+                    {icon}
+                    {editId === link.id ? (
+                      <div className={styles.editRow}>
+                        <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nume" />
+                        <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
+                        <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving}>Salvează</button>
+                        <button className={styles.cancelBtnSm} onClick={cancelEdit}>Anulează</button>
+                      </div>
+                    ) : (
+                      <>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer">
+                          <span>{link.name}</span>
+                        </a>
+                        {isAdmin && (
+                          <div className={styles.inlineBtns}>
+                            <button className={styles.editBtn} onClick={() => startEdit(link)} title="Editează">✎</button>
+                            <button className={styles.deleteBtn} onClick={() => handleDeleteLink(link.id)} title="Șterge">✕</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ADMIN: adăugare link */}
+      {isAdmin && (
+        <div className={styles.adminPanel}>
+          <h3 className={styles.adminPanelTitle}>Adaugă link</h3>
+          <form className={styles.formRow} onSubmit={handleAddLink}>
+            <select className={styles.input} value={newType} onChange={e => setNewType(e.target.value)}>
+              <option value="camera">Cameră</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+              <option value="whatsapp">WhatsApp</option>
+            </select>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="Nume"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              required
+            />
+            <input
+              type="url"
+              className={styles.input}
+              placeholder="URL (https://...)"
+              value={newUrl}
+              onChange={e => setNewUrl(e.target.value)}
+              required
+            />
+            <button className={styles.addBtn} type="submit" disabled={savingNew}>
+              {savingNew ? 'Se adaugă…' : 'Adaugă'}
+            </button>
+          </form>
         </div>
-        
-        <EditAnnouncementModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            currentContent={announcementText}
-            onSave={handleSaveAnnouncement}
-        />
+      )}
+
+      <EditAnnouncementModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        currentContent={announcementText}
+        onSave={handleSaveAnnouncement}
+      />
     </Layout>
   );
 }
