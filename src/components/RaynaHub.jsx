@@ -27,14 +27,32 @@ function BotBubble({ reply_text, children }) {
   );
 }
 
-function ActionsRenderer({ card }) {
+/* ——— templating simplu {{a.b}} ——— */
+function tpl(str, ctx) {
+  return (str||"").replace(/\{\{([^}]+)\}\}/g, (_,k)=> {
+    const path = k.trim().split(".");
+    return path.reduce((acc, key)=> (acc && acc[key] != null ? acc[key] : ""), ctx);
+  });
+}
+
+/* 🔧 ActionsRenderer cu suport de context + "if" */
+function ActionsRenderer({ card, ctx = {} }) {
+  const actions = (card.actions || [])
+    .filter(a => !a.if || !!ctx[tpl(a.if, ctx)] || !!tpl(a.if, ctx)) // dacă "if" e setat, cere valoare truthy în ctx
+    .map(a => ({
+      ...a,
+      label: tpl(a.label || "", ctx),
+      route: tpl(a.route || "", ctx)
+    }));
+
   return (
     <div className={styles.card}>
-      {card.title && <div className={styles.cardTitle}>{card.title}</div>}
-      {card.subtitle && <div className={styles.cardSubtitle}>{card.subtitle}</div>}
+      {card.title && <div className={styles.cardTitle}>{tpl(card.title, ctx)}</div>}
+      {card.subtitle && <div className={styles.cardSubtitle}>{tpl(card.subtitle, ctx)}</div>}
       <div className={styles.cardActions}>
-        {(card.actions||[]).map((a,i)=>(
-          <button key={i} className={styles.actionBtn} onClick={()=>window.open(a.route, a.newTab?"_blank":"_self","noopener,noreferrer")}>
+        {actions.map((a,i)=>(
+          <button key={i} className={styles.actionBtn}
+            onClick={()=>window.open(a.route, a.newTab?"_blank":"_self","noopener,noreferrer")}>
             {a.label}
           </button>
         ))}
@@ -63,7 +81,7 @@ function AddCameraInline({ onSubmit, saving }) {
   );
 }
 
-/* Card info loc, cu butoane Maps / Cámara */
+/* Card info loc, cu butoane Maps / Cámara – rămâne util */
 function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
   return (
     <div className={styles.card}>
@@ -86,7 +104,25 @@ function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
   );
 }
 
-/* Listă simplă de locuri (terminales/parkings/servicios) */
+/* InfoBox pentru obiectul "info" din JSON */
+function InfoBox({ fields = [], ctx = {} }) {
+  return (
+    <div className={styles.card}>
+      {fields.map((f, i) => {
+        const label = tpl(f.label || "", ctx);
+        const value = tpl(f.value || "", ctx);
+        if (!value) return null;
+        return (
+          <p key={i} style={{margin: "4px 0"}}>
+            <strong>{label}:</strong> {value}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Listă simplă de locuri (terminales/parkings/servicios) – păstrată */
 function SimpleList({ title, items }) {
   return (
     <div className={styles.card}>
@@ -106,28 +142,21 @@ function SimpleList({ title, items }) {
   );
 }
 
-/* —— helpers de templating simplu {{place}} —— */
-function tpl(str, ctx) {
-  return (str||"").replace(/\{\{([^}]+)\}\}/g, (_,k)=> {
-    const path = k.trim().split(".");
-    return path.reduce((acc, key)=> (acc && acc[key] != null ? acc[key] : ""), ctx);
-  });
-}
-
 /* ===== Helpers GPS ===== */
 function getMapsLinkFromRecord(rec){
   if (!rec) return null;
   if (rec.link_maps) return rec.link_maps;
   if (rec.coordenadas) return `https://maps.google.com/?q=${encodeURIComponent(rec.coordenadas)}`;
+  if (rec.direccion) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rec.direccion)}`;
   return null;
 }
 
 // caută în tabelele GPS, întoarce primul match + denumirea tabelului
 async function findPlaceByName(name){
-  const tables = ["gps_clientes","gps_parkings","gps_servicios","gps_terminale"];
+  const tables = ["gps_terminale","gps_parkings","gps_servicios","gps_clientes"]; // prioritate: terminale/parkings/servicios, apoi clienti
   for (const t of tables){
     const { data, error } = await supabase.from(t)
-      .select("id, nombre, direccion, detalles, link_maps, coordenadas")
+      .select("id, nombre, direccion, detalles, link_maps, coordenadas, tiempo_espera")
       .ilike("nombre", `%${name}%`)
       .limit(1)
       .maybeSingle();
@@ -285,8 +314,8 @@ export default function RaynaHub(){
       return;
     }
 
-    /* ==== ACȚIUNI: GPS – NAVEGAR A ==== */
-    if (intent.type === "action" && intent.action === "gps_navegar_a") {
+    /* ==== ACȚIUNI: GPS – NAVEGAR A (JSON: gps_route_preview) ==== */
+    if (intent.type === "action" && intent.action === "gps_route_preview") {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
         setMessages(m=>[...m, {from:"bot", reply_text:"Dime el destino (por ejemplo: TCB)."}]);
@@ -294,38 +323,47 @@ export default function RaynaHub(){
       }
       const place = await findPlaceByName(placeName);
       if (!place) {
-        setMessages(m=>[...m, {from:"bot", reply_text:`No he encontrado «${placeName}».`}]);
+        setMessages(m=>[...m, {from:"bot", reply_text: tpl(intent.not_found.text, {query: placeName}) }]);
         return;
       }
       const mapsUrl = getMapsLinkFromRecord(place);
+
+      // pregătim context pentru templatingul din JSON (place.name)
+      const ctx = { place: { ...place, name: place.nombre }, maps_link: mapsUrl, route: {} };
+
+      const text = tpl(intent.response.text, ctx);
+      const objs = intent.response.objects || [];
+
       setMessages(m=>[...m, {
         from:"bot",
-        reply_text: `Claro, aquí tienes la ruta a **${place.nombre}**. Toca el mapa para abrir Google Maps.`,
+        reply_text: text,
         render: () => (
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>{place.nombre}</div>
-            <div style={{marginTop:8}}>
-              <MiniMap
-                center={place.coordenadas ? place.coordenadas.split(",").map(Number) : undefined}
-                markerTitle={place.nombre}
-                onClick={()=> mapsUrl && window.open(mapsUrl,"_blank","noopener")}
-              />
-            </div>
-            {mapsUrl && (
-              <div className={styles.cardActions} style={{marginTop:8}}>
-                <button className={styles.actionBtn} onClick={()=>window.open(mapsUrl,"_blank","noopener")}>
-                  Abrir en Google Maps
-                </button>
+          <>
+            {objs.find(o=>o.type==="mini_map") && (
+              <div className={styles.card} onClick={()=> mapsUrl && window.open(mapsUrl,"_blank","noopener")} style={{cursor:"pointer"}}>
+                <div className={styles.cardTitle}>{tpl(objs.find(o=>o.type==="mini_map").title, ctx)}</div>
+                {/* MiniMap real */}
+                <div style={{marginTop:8}}>
+                  <MiniMap
+                    center={place.coordenadas ? place.coordenadas.split(",").map(Number) : undefined}
+                    markerTitle={place.nombre}
+                    onClick={()=> mapsUrl && window.open(mapsUrl,"_blank","noopener")}
+                  />
+                </div>
+                <div className={styles.cardSubtitle} style={{marginTop:6}}>Toca para abrir en Google Maps</div>
               </div>
             )}
-          </div>
+            {objs.find(o=>o.type==="card") && (
+              <ActionsRenderer card={objs.find(o=>o.type==="card")} ctx={ctx}/>
+            )}
+          </>
         )
       }]);
       return;
     }
 
-    /* ==== ACȚIUNI: GPS – INFO DE ==== */
-    if (intent.type === "action" && intent.action === "gps_info_de") {
+    /* ==== ACȚIUNI: GPS – INFO DE (JSON: gps_place_info) ==== */
+    if (intent.type === "action" && intent.action === "gps_place_info") {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
         setMessages(m=>[...m, {from:"bot", reply_text:"¿De qué sitio quieres información?"}]);
@@ -333,53 +371,50 @@ export default function RaynaHub(){
       }
       const place = await findPlaceByName(placeName);
       if (!place) {
-        setMessages(m=>[...m, {from:"bot", reply_text:`No he encontrado «${placeName}».`}]);
+        setMessages(m=>[...m, {from:"bot", reply_text: tpl(intent.not_found.text, {query: placeName}) }]);
         return;
       }
-      const mapsUrl = getMapsLinkFromRecord(place);
-      const cam = await findCameraFor(place.nombre);
+      const maps_link = getMapsLinkFromRecord(place);
+      const camera_url = (await findCameraFor(place.nombre))?.url || null;
+
+      const ctx = { place: { ...place, name: place.nombre }, maps_link, camera_url };
+      const text = tpl(intent.response.text, ctx);
+      const infoObj = (intent.response.objects || []).find(o=>o.type==="info");
+      const cardObj = (intent.response.objects || []).find(o=>o.type==="card");
+
       setMessages(m=>[...m, {
         from:"bot",
-        reply_text: `Esto es lo que tengo de **${place.nombre}**:`,
-        render: () => <PlaceInfoCard place={place} mapsUrl={mapsUrl} cameraUrl={cam?.url}/>
+        reply_text: text,
+        render: () => (
+          <>
+            {infoObj && <InfoBox fields={infoObj.fields} ctx={ctx} />}
+            {cardObj && <ActionsRenderer card={cardObj} ctx={ctx} />}
+          </>
+        )
       }]);
       return;
     }
 
-    /* ==== ACȚIUNI: GPS – LISTAS ==== */
-    if (intent.type === "action" && intent.action === "gps_listar_terminales") {
-      const { data } = await supabase.from("gps_terminale").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
-      const items = (data||[]).map(d => ({...d, _table:"gps_terminale", _mapsUrl:getMapsLinkFromRecord(d)}));
-      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los terminales disponibles:",
-        render: () => <SimpleList title="Terminales" items={items}/> }]);
-      return;
-    }
-    if (intent.type === "action" && intent.action === "gps_listar_parkings") {
-      const { data } = await supabase.from("gps_parkings").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
-      const items = (data||[]).map(d => ({...d, _table:"gps_parkings", _mapsUrl:getMapsLinkFromRecord(d)}));
-      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los parkings disponibles:",
-        render: () => <SimpleList title="Parkings" items={items}/> }]);
-      return;
-    }
-    if (intent.type === "action" && intent.action === "gps_listar_servicios") {
-      const { data } = await supabase.from("gps_servicios").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
-      const items = (data||[]).map(d => ({...d, _table:"gps_servicios", _mapsUrl:getMapsLinkFromRecord(d)}));
-      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los servicios disponibles:",
-        render: () => <SimpleList title="Servicios" items={items}/> }]);
-      return;
-    }
-    if (intent.type === "action" && intent.action === "gps_ver_clientes") {
+    /* ==== ACȚIUNI: GPS – LISTE (JSON: gps_list, cu meta.table/label) ==== */
+    if (intent.type === "action" && intent.action === "gps_list") {
+      const table = intent.meta?.table;
+      const label = intent.meta?.label || "Items";
+      let items = [];
+      if (table) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("id, nombre, link_maps, coordenadas")
+          .order("nombre", { ascending: true })
+          .limit(200);
+        if (!error && data) {
+          items = data.map(d => ({...d, _table: table, _mapsUrl: getMapsLinkFromRecord(d)}));
+        }
+      }
+      const text = tpl(intent.response?.text || `Lista ${label}:`, {});
       setMessages(m=>[...m, {
         from:"bot",
-        reply_text:"Hay muchos clientes. Pulsa el botón para abrir la lista completa.",
-        render: () => (
-          <ActionsRenderer
-            card={{
-              title:"Clientes",
-              actions:[{ label:"Ver clientes", route:"/gps?tab=clientes", newTab:false }]
-            }}
-          />
-        )
+        reply_text: text,
+        render: () => <SimpleList title={label} items={items}/>
       }]);
       return;
     }
