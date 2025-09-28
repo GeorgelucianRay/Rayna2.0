@@ -223,151 +223,148 @@
     }
   },
   {
+    "id": "gps_navegar_a",
+    "priority": 88,
+    "type": "action",
+    "patterns_any": [
+      "quiero llegar a",
+      "llevar a",
+      "ir a",
+      "navegar a",
+      "como llego a",
+      "cómo llego a",
+      "vreau sa ajung la",
+      "vreau să ajung la",
+      "vreau sa merg la",
+      "vreau să merg la"
+    ],
+    "stopwords": ["a", "la", "al", "el", "către", "pe"],
+    "slots": {
+      "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
+    },
+    "action": "gps_route_preview",
+    "response": {
+      "text": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
+      "objects": [
+        {
+          "type": "mini_map",
+          "title": "{{place.name}}",
+          "geojson": "{{route.geojson}}",
+          "maps_link": "{{maps_link}}"
+        },
+        {
+          "type": "card",
+          "title": "{{place.name}}",
+          "actions": [
+            { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true }
+          ]
+        }
+      ]
+    },
+    "not_found": { "text": "No he encontrado la ubicación \"{{query}}\"." }
+  },
+  {
+    "id": "gps_info_de",
+    "priority": 87,
+    "type": "action",
+    "patterns_any": [
+      "que me puedes decir de",
+      "qué me puedes decir de",
+      "info de",
+      "informacion de",
+      "información de",
+      "donde esta",
+      "dónde está",
+      "ce poti spune despre",
+      "ce poți spune despre"
+    ],
+    "stopwords": ["de", "la", "el", "despre", "pe"],
+    "slots": {
+      "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
+    },
+    "action": "gps_place_info",
+    "response": {
+      "text": "Esto es lo que tengo de **{{place.name}}**:",
+      "objects": [
+        {
+          "type": "info",
+          "fields": [
+            { "label": "Dirección", "value": "{{place.direccion}}" },
+            { "label": "Detalles", "value": "{{place.detalles}}" },
+            { "label": "Tiempo de espera", "value": "{{place.tiempo_espera}}" }
+          ]
+        },
+        {
+          "type": "card",
+          "title": "Acciones",
+          "actions": [
+            { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true },
+            { "type": "open", "label": "Ver en GPS", "route": "/gps", "newTab": false },
+            { "type": "open", "label": "Ver cámara", "route": "{{camera_url}}", "newTab": true, "if": "camera_url" }
+          ]
+        }
+      ]
+    },
+    "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
+  },
+  {
+    "id": "gps_list_terminale",
+    "priority": 62,
+    "type": "action",
+    "patterns_any": ["que terminales hay", "qué terminales hay", "lista terminales", "ver terminales"],
+    "action": "gps_list",
+    "meta": { "table": "gps_terminale", "label": "Terminales" },
+    "response": {
+      "text": "Estas son las terminales disponibles:",
+      "objects": [{ "type": "list", "items": "{{items}}" }]
+    }
+  },
+  {
+    "id": "gps_list_parkings",
+    "priority": 61,
+    "type": "action",
+    "patterns_any": ["que parkings hay", "qué parkings hay", "lista parkings", "ver parkings"],
+    "action": "gps_list",
+    "meta": { "table": "gps_parkings", "label": "Parkings" },
+    "response": {
+      "text": "Estos son los parkings disponibles:",
+      "objects": [{ "type": "list", "items": "{{items}}" }]
+    }
+  },
+  {
+    "id": "gps_list_servicios",
+    "priority": 60,
+    "type": "action",
+    "patterns_any": ["que servicios hay", "qué servicios hay", "lista servicios", "ver servicios"],
+    "action": "gps_list",
+    "meta": { "table": "gps_servicios", "label": "Servicios" },
+    "response": {
+      "text": "Estos son los servicios disponibles:",
+      "objects": [{ "type": "list", "items": "{{items}}" }]
+    }
+  },
+  {
+    "id": "gps_atajos_clientes",
+    "priority": 59,
+    "type": "static",
+    "patterns_any": ["que clientes hay", "lista clientes", "ver clientes"],
+    "response": {
+      "text": "Hay muchos clientes. Abre la sección para verlos.",
+      "objects": [
+        {
+          "type": "card",
+          "title": "Clientes",
+          "actions": [{ "type": "open", "label": "Ver clientes en GPS", "route": "/gps", "newTab": false }]
+        }
+      ]
+    }
+  },
+  {
     "id": "fallback",
     "priority": 0,
     "type": "static",
     "response": {
       "text": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
     }
-  },
-{
-  "id": "gps_navegar_a",
-  "priority": 88,
-  "type": "action",
-  "patterns_any": [
-    "quiero llegar a",
-    "llevar a",
-    "ir a",
-    "navegar a",
-    "como llego a",
-    "cómo llego a",
-    "vreau sa ajung la",
-    "vreau să ajung la",
-    "vreau sa merg la",
-    "vreau să merg la"
-  ],
-  "stopwords": ["a","la","al","la","el","la","către","la","pe","la"],
-  "slots": {
-    "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
-  },
-  "action": "gps_route_preview",
-  "response": {
-    "text": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
-    "objects": [
-      {
-        "type": "mini_map",
-        "title": "{{place.name}}",
-        "geojson": "{{route.geojson}}",
-        "maps_link": "{{maps_link}}"
-      },
-      {
-        "type": "card",
-        "title": "{{place.name}}",
-        "actions": [
-          { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true }
-        ]
-      }
-    ]
-  },
-  "not_found": { "text": "No he encontrado la ubicación \"{{query}}\"." }
-},
-
-{
-  "id": "gps_info_de",
-  "priority": 87,
-  "type": "action",
-  "patterns_any": [
-    "que me puedes decir de",
-    "qué me puedes decir de",
-    "info de",
-    "informacion de",
-    "información de",
-    "donde esta",
-    "dónde está",
-    "ce poti spune despre",
-    "ce poți spune despre"
-  ],
-  "stopwords": ["de","la","el","despre","pe","la"],
-  "slots": {
-    "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
-  },
-  "action": "gps_place_info",
-  "response": {
-    "text": "Esto es lo que tengo de **{{place.name}}**:",
-    "objects": [
-      { "type": "info", "fields": [
-        { "label": "Dirección", "value": "{{place.direccion}}" },
-        { "label": "Detalles",  "value": "{{place.detalles}}" },
-        { "label": "Tiempo de espera", "value": "{{place.tiempo_espera}}" }
-      ]},
-      { "type": "card", "title": "Acciones",
-        "actions": [
-          { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true },
-          { "type": "open", "label": "Ver en GPS", "route": "/gps", "newTab": false },
-          { "type": "open", "label": "Ver cámara", "route": "{{camera_url}}", "newTab": true, "if": "camera_url" }
-        ]
-      }
-    ]
-  },
-  "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
-},
-
-{
-  "id": "gps_list_terminale",
-  "priority": 62,
-  "type": "action",
-  "patterns_any": ["que terminales hay","qué terminales hay","lista terminales","ver terminales"],
-  "action": "gps_list",
-  "meta": { "table": "gps_terminale", "label": "Terminales" },
-  "response": {
-    "text": "Estas son las terminales disponibles:",
-    "objects": [
-      { "type": "list", "items": "{{items}}" }
-    ]
   }
-},
-
-{
-  "id": "gps_list_parkings",
-  "priority": 61,
-  "type": "action",
-  "patterns_any": ["que parkings hay","qué parkings hay","lista parkings","ver parkings"],
-  "action": "gps_list",
-  "meta": { "table": "gps_parkings", "label": "Parkings" },
-  "response": {
-    "text": "Estos son los parkings disponibles:",
-    "objects": [
-      { "type": "list", "items": "{{items}}" }
-    ]
-  }
-},
-
-{
-  "id": "gps_list_servicios",
-  "priority": 60,
-  "type": "action",
-  "patterns_any": ["que servicios hay","qué servicios hay","lista servicios","ver servicios"],
-  "action": "gps_list",
-  "meta": { "table": "gps_servicios", "label": "Servicios" },
-  "response": {
-    "text": "Estos son los servicios disponibles:",
-    "objects": [
-      { "type": "list", "items": "{{items}}" }
-    ]
-  }
-},
-
-{
-  "id": "gps_atajos_clientes",
-  "priority": 59,
-  "type": "static",
-  "patterns_any": ["que clientes hay","lista clientes","ver clientes"],
-  "response": {
-    "text": "Hay muchos clientes. Abre la sección para verlos.",
-    "objects": [
-      { "type": "card", "title": "Clientes",
-        "actions": [ { "type": "open", "label": "Ver clientes en GPS", "route": "/gps", "newTab": false } ]
-      }
-    ]
-  }
-}
+]
