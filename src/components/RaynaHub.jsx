@@ -201,7 +201,7 @@ export default function RaynaHub(){
     }
 
     // ——— detect intent din JSON
-    const { intent, slots } = detectIntent(userText, intsentsData);
+    const { intent, slots } = detectIntent(userText, intentsData);
 
     /* ==== STATICE ==== */
     if (intent.type === "static") {
