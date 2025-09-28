@@ -229,8 +229,7 @@
     "response": {
       "text": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
     }
-  }
-]
+  },
 {
   "id": "gps_navegar_a",
   "priority": 88,
