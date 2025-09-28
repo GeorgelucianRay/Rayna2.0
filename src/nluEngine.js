@@ -40,18 +40,38 @@ function captureCameraName(raw, stopwords=[]) {
 }
 
 export function detectIntent(message, intentsJson) {
-  const text = message;
-  // ordonăm după priority desc
-  const intents = [...intentsJson].sort((a,b)=> (b.priority||0)-(a.priority||0));
-  for (const it of intents) {
-    if (it.id === "fallback") continue;
+   const text = message;
+   const intents = [...intentsJson].sort((a,b)=> (b.priority||0)-(a.priority||0));
+   for (const it of intents) {
+     if (it.id === "fallback") continue;
 
-    const ok =
-      includesAny(text, it.patterns_any) ||
-      hasToken(text, it.patterns_any) ||
-      (it.id === "ver_camara" && /^[A-Za-z0-9._ -]{2,}\??$/.test(text.trim()));
+    let ok = includesAny(text, it.patterns_any) || hasToken(text, it.patterns_any);
 
-    if (!ok) continue;
+    // Pentru ver_camara, permitem și:
+    //  a) indicii explicite (cuvânt „camara/cámara/camera” sau verbe „abre/ver/…”)
+    //  b) mesaj foarte scurt (≤2 tokens), ex. "TCB?"
+    if (!ok && it.id === "ver_camara") {
+      const tokens = normalize(text).split(" ").filter(Boolean);
+      const hasCameraCue =
+        includesAny(text, ["camara","cámara","camera","abre","abrir","ver","muestra","desplegar","deschide"]);
+      if (hasCameraCue || tokens.length <= 2) ok = true;
+    }
+
+     if (!ok) continue;
+
+     // slots
+     const slots = {};
+     if (it.slots?.cameraName) {
+       const name = captureCameraName(text, it.stopwords);
+       if (name) slots.cameraName = name;
+     }
+
+     return { intent: it, slots };
+   }
+
+   const fb = intents.find(i=>i.id==="fallback");
+   return { intent: fb, slots:{} };
+}
 
     // slots
     const slots = {};
