@@ -268,16 +268,21 @@
     "priority": 87,
     "type": "action",
     "patterns_any": [
-      "que me puedes decir de",
-      "qué me puedes decir de",
-      "info de",
-      "informacion de",
-      "información de",
-      "donde esta",
-      "dónde está",
-      "ce poti spune despre",
-      "ce poți spune despre"
-    ],
+  "que me puedes decir de",
+  "qué me puedes decir de",
+  "que sabes de",
+  "qué sabes de",
+  "que tienes de",
+  "qué tienes de",
+  "info de",
+  "informacion de",
+  "información de",
+  "info",
+  "donde esta",
+  "dónde está",
+  "ce poti spune despre",
+  "ce poți spune despre"
+]
     "stopwords": ["de", "la", "el", "despre", "pe"],
     "slots": {
       "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
