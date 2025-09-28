@@ -24,30 +24,21 @@ function normalizeGeoJSON(input) {
     try { obj = JSON.parse(input); } catch { return null; }
   }
 
-  // Dacă e deja FeatureCollection
-  if (obj?.type === 'FeatureCollection' && Array.isArray(obj.features)) {
-    return obj;
-  }
-
-  // Dacă e Feature singur -> îl punem într-o colecție
+  if (obj?.type === 'FeatureCollection' && Array.isArray(obj.features)) return obj;
   if (obj?.type === 'Feature' && obj.geometry) {
     return { type: 'FeatureCollection', features: [obj] };
   }
-
-  // Dacă e Geometry simplu -> îl transformăm în Feature
   if (obj?.type && obj.coordinates) {
     return {
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: obj, properties: {} }],
     };
   }
-
   return null;
 }
 
-// O funcție nouă și flexibilă care înlocuiește findSavedRouteForClient
+// Caută rute unde locația noastră este fie originea, FIE destinația
 async function findSavedRouteForLocation(locationType, locationId) {
-  // Caută rute unde locația noastră este fie originea, FIE destinația
   const { data, error } = await supabase
     .from('gps_routes')
     .select('id, name, geojson')
@@ -61,11 +52,9 @@ async function findSavedRouteForLocation(locationType, locationId) {
     console.error('Eroare la căutarea rutei:', error);
     return null;
   }
-  
   if (!data?.length) return null;
   return data[0];
 }
-
 
 // Convierte File -> base64 (imgbb espera el campo "image" como base64)
 function fileToBase64(file) {
@@ -111,7 +100,8 @@ const ITEMS_PER_PAGE = 25;
 
 /* ----------------------- Lista locații ------------------------- */
 const LocationList = ({ tableName, title }) => {
-  const { profile } = useAuth();
+  const { profile, session, sessionReady } = useAuth();
+
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -176,6 +166,7 @@ const LocationList = ({ tableName, title }) => {
     [tableName, title]
   );
 
+  // — 1) Restore doar formularele din localStorage (fără fetch DB)
   useEffect(() => {
     try {
       const savedAddForm = localStorage.getItem(addFormStorageKey);
@@ -191,14 +182,20 @@ const LocationList = ({ tableName, title }) => {
     } catch {
       // ignore localStorage errors
     }
+  }, [addFormStorageKey, editFormStorageKey]);
+
+  // — 2) Fetch din DB doar când sesiunea e gata și există
+  useEffect(() => {
+    if (!sessionReady) return;       // așteaptă restaurarea JWT
+    if (!session) return;            // nu e logat -> nu query-ui
     fetchLocations(currentPage, searchTerm);
-  }, [fetchLocations, currentPage, searchTerm]);
+  }, [sessionReady, session, currentPage, searchTerm, fetchLocations]);
 
   const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const handleGetLocation = (setter, stateUpdater) => {
@@ -223,6 +220,10 @@ const LocationList = ({ tableName, title }) => {
 
   const handleAddLocation = async (e) => {
     e.preventDefault();
+    if (!sessionReady || !session) {
+      alert('Necesitas iniciar sesión.');
+      return;
+    }
     const locationToInsert = {};
     Object.keys(newLocation).forEach((key) => {
       locationToInsert[key] = newLocation[key] === '' ? null : newLocation[key];
@@ -246,6 +247,10 @@ const LocationList = ({ tableName, title }) => {
 
   const handleUpdateLocation = async (e) => {
     e.preventDefault();
+    if (!sessionReady || !session) {
+      alert('Necesitas iniciar sesión.');
+      return;
+    }
     const { id, ...updateData } = editingLocation;
     const { error } = await supabase.from(tableName).update(updateData).eq('id', id);
     if (error) {
@@ -268,7 +273,7 @@ const LocationList = ({ tableName, title }) => {
     try { localStorage.removeItem(editFormStorageKey); } catch {}
     setEditingLocation(null);
   };
-  
+
   const getMapsLink = (location) => {
     if (location.link_maps) return location.link_maps;
     if (location.coordenadas) return `https://maps.google.com/?q=${location.coordenadas}`;
@@ -311,6 +316,14 @@ const LocationList = ({ tableName, title }) => {
       e.target.value = '';
     }
   };
+
+  // Stări intermediare prietenoase
+  if (!sessionReady) {
+    return <p style={{ color: 'white', textAlign: 'center' }}>Conectando…</p>;
+  }
+  if (!session) {
+    return <p style={{ color: 'white', textAlign: 'center' }}>Inicia sesión para ver {title.toLowerCase()}s.</p>;
+  }
 
   return (
     <>
@@ -442,40 +455,36 @@ const LocationList = ({ tableName, title }) => {
             </div>
 
             <div className={styles.modalFooter}>
-{/* 🔵 Navigare pe harta noastră (dacă există rută salvată) cu fallback sigur */}
-<button
-  className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
-  onClick={async () => {
-    try {
-      // --- MODIFICAREA ESTE AICI ---
-      const locationType = tableName.replace('gps_', '');
-      const saved = await findSavedRouteForLocation(locationType, selectedLocation.id);
-      // --- SFÂRȘITUL MODIFICĂRII ---
+              {/* 🔵 Navigare pe harta noastră (dacă există rută salvată) cu fallback sigur */}
+              <button
+                className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+                onClick={async () => {
+                  try {
+                    const locationType = tableName.replace('gps_', '');
+                    const saved = await findSavedRouteForLocation(locationType, selectedLocation.id);
 
-      if (!saved?.geojson) {
-        const link = getMapsLink(selectedLocation);
-        if (link) return window.open(link, '_blank', 'noopener');
-        return alert('Nu există rută salvată pentru această locație.');
-      }
+                    if (!saved?.geojson) {
+                      const link = getMapsLink(selectedLocation);
+                      if (link) return window.open(link, '_blank', 'noopener');
+                      return alert('Nu există rută salvată pentru această locație.');
+                    }
 
-      // ✅ parse string dacă vine din DB ca text
-      let gj = saved.geojson;
-      if (typeof gj === 'string') {
-        try { gj = JSON.parse(gj); } catch {}
-      }
+                    let gj = saved.geojson;
+                    if (typeof gj === 'string') {
+                      try { gj = JSON.parse(gj); } catch {}
+                    }
 
-      setNavData({ title: saved.name || selectedLocation.nombre, geojson: gj });
-    } catch (err) {
-      console.error(err);
-      const link = getMapsLink(selectedLocation);
-      if (link) window.open(link, '_blank', 'noopener');
-      else alert('Eroare la deschiderea navigației.');
-    }
-  }}
->
-  Navigar
-</button>
-
+                    setNavData({ title: saved.name || selectedLocation.nombre, geojson: gj });
+                  } catch (err) {
+                    console.error(err);
+                    const link = getMapsLink(selectedLocation);
+                    if (link) window.open(link, '_blank', 'noopener');
+                    else alert('Eroare la deschiderea navigației.');
+                  }
+                }}
+              >
+                Navigar
+              </button>
 
               {/* 🔷 Google Maps mereu disponibil dacă avem link/coords */}
               {getMapsLink(selectedLocation) ? (
@@ -653,7 +662,7 @@ const LocationList = ({ tableName, title }) => {
           </div>
         </div>
       )}
-      
+
       {/* Edit modal */}
       {isEditModalOpen && editingLocation && (
         <div className={styles.modalOverlay} onClick={closeEditModal}>
