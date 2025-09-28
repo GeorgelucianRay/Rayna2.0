@@ -1,5 +1,26 @@
 [
   {
+  "id": "saludo_dias",
+  "priority": 103,
+  "type": "static",
+  "patterns_any": ["buenos dias","buenos días","buen dia","buen día"],
+  "response": { "text": "¡Buenos días! Soy **Rayna**. ¿Qué necesitas hoy?" }
+},
+{
+  "id": "saludo_tardes",
+  "priority": 102,
+  "type": "static",
+  "patterns_any": ["buenas tardes"],
+  "response": { "text": "¡Buenas tardes! Aquí **Rayna**. ¿En qué te ayudo?" }
+},
+{
+  "id": "saludo_noches",
+  "priority": 101,
+  "type": "static",
+  "patterns_any": ["buenas noches"],
+  "response": { "text": "¡Buenas noches! Soy **Rayna**. ¿Te echo una mano con algo?" }
+}
+  {
     "id": "saludo",
     "priority": 100,
     "type": "static",
@@ -70,19 +91,31 @@
     "priority": 86,
     "type": "dialog",
     "patterns_any": [
-      "quiero añadir una camara",
-      "quiero anadir una camara",
-      "añadir camara",
-      "agregar camara",
-      "crear camara",
-      "nueva camara",
-      "adaugă cameră",
-      "adauga camera",
-      "adaug camera",
-      "vreau să adaug o cameră",
-      "vreau sa adaug o camera",
-      "add camera"
-    ],
+  "quiero añadir una camara",
+  "quiero anadir una camara",
+  "añadir camara",
+  "agregar camara",
+  "crear camara",
+  "nueva camara",
+
+  "adaugă cameră",
+  "adaugă camera",
+  "adauga camera",
+  "adaug camera",
+
+  "adăuga cameră",
+  "adăuga camera",
+  "adauga cameră",
+  "adaugare cameră",
+  "adaugare camera",
+
+  "vreau să adaug o cameră",
+  "vreau sa adaug o camera",
+  "vreau să adăuga o cameră",
+  "vreau sa adauga o camera",
+
+  "add camera"
+]
     "roles_allowed": ["admin"],
     "dialog": {
       "form": "add_camera_inline",
@@ -133,19 +166,10 @@
       "camera"
     ],
     "negative_any": [
-      "añadir",
-      "anadir",
-      "agregar",
-      "crear",
-      "nueva",
-      "nuevo",
-      "adauga",
-      "adaugă",
-      "adaug",
-      "add",
-      "poner",
-      "publicar"
-    ],
+  "añadir","anadir","agregar","crear","nueva","nuevo",
+  "adauga","adaugă","adaug","adăuga","adaugare","adaugă",
+  "add","poner","publicar","alta","crear nueva","nueva camara"
+]
     "stopwords": [
       "entonces",
       "por",
