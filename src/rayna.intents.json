@@ -67,7 +67,7 @@
   },
   {
     "id": "set_anuncio",
-    "priority": 65,
+    "priority": 85,
     "type": "dialog",
     "patterns_any": ["quiero poner un anuncio", "poner anuncio", "publicar anuncio"],
     "roles_allowed": ["admin","dispecer"],
@@ -81,7 +81,7 @@
   },
   {
     "id": "admin_add_camara",
-    "priority": 60,
+    "priority": 82,
     "type": "dialog",
     "patterns_any": ["quiero anadir una camara", "quiero añadir una camara", "quiero añadir una cámara", "agregar camara", "agregar cámara"],
     "roles_allowed": ["admin"],
