@@ -5,7 +5,9 @@ import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext.jsx";
 import intentsData from "../rayna.intents.json";
 import { detectIntent } from "../nluEngine";
-import MiniMap from "./GpsPro/MiniMap";
+
+// 🔴 Schimbat importul MiniMap -> ChatMiniMap (și calea corectă)
+import ChatMiniMap from "./chat/ChatMiniMap";
 
 /* ============== UI mici ============== */
 function BotBubble({ reply_text, children }) {
@@ -120,6 +122,25 @@ function getMapsLinkFromRecord(rec){
   return null;
 }
 
+// construiește un GeoJSON Point din stringul "lat,lon" (Leaflet/GeoJSON → [lon,lat])
+function pointGeoJSONFromCoords(coordsString){
+  if (!coordsString) return null;
+  const [latStr, lonStr] = String(coordsString).split(",").map(s=>s.trim());
+  const lat = Number(latStr), lon = Number(lonStr);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    return {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [lon, lat] },
+        properties: {}
+      }]
+    };
+  }
+  return null;
+}
+
+// caută în tabelele GPS
 async function findPlaceByName(name){
   const tables = ["gps_clientes","gps_parkings","gps_servicios","gps_terminale"];
   for (const t of tables){
@@ -133,6 +154,7 @@ async function findPlaceByName(name){
   return null;
 }
 
+// caută o cameră similară
 async function findCameraFor(placeName){
   const { data } = await supabase
     .from("external_links")
@@ -179,17 +201,15 @@ export default function RaynaHub(){
     }
 
     // ——— detect intent din JSON
-    const { intent, slots } = detectIntent(userText, intentsData);
+    const { intent, slots } = detectIntent(userText, intsentsData);
 
     /* ==== STATICE ==== */
     if (intent.type === "static") {
-      // dacă există obiecte (ex: card pentru gps_atajos_clientes), randează-le
       const objs = intent.response?.objects || [];
       if (!objs.length) {
         setMessages(m=>[...m, {from:"bot", reply_text: intent.response.text}]);
         return;
       }
-      // deocamdată suportăm doar primul obiect de tip "card"
       const first = objs[0];
       if (first?.type === "card") {
         const card = {
@@ -209,7 +229,6 @@ export default function RaynaHub(){
         }]);
         return;
       }
-      // fallback: doar text
       setMessages(m=>[...m, {from:"bot", reply_text: intent.response.text}]);
       return;
     }
@@ -221,7 +240,6 @@ export default function RaynaHub(){
         setMessages(m=>[...m, {from:"bot", reply_text:"No tienes permiso para esta acción."}]);
         return;
       }
-      // add camera
       if (intent.dialog.form === "add_camera_inline") {
         setMessages(m=>[...m, {
           from:"bot",
@@ -243,7 +261,6 @@ export default function RaynaHub(){
         }]);
         return;
       }
-      // set anuncio
       if (intent.dialog.await_key === "anuncio_text") {
         setAwaiting("anuncio_text");
         setMessages(m=>[...m, {from:"bot", reply_text: intent.dialog.ask_text}]);
@@ -309,7 +326,6 @@ export default function RaynaHub(){
     }
 
     /* ==== ACȚIUNI: GPS – NAVEGAR A ==== */
-    // aliniază cu JSON: id = "gps_navegar_a", action = "gps_route_preview"
     if (intent.type === "action" && (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")) {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
@@ -322,6 +338,8 @@ export default function RaynaHub(){
         return;
       }
       const mapsUrl = getMapsLinkFromRecord(place);
+      const geojson = pointGeoJSONFromCoords(place.coordenadas);
+
       setMessages(m=>[...m, {
         from:"bot",
         reply_text: `Claro, aquí tienes la ruta a **${place.nombre}**. Toca el mapa para abrir Google Maps.`,
@@ -329,10 +347,11 @@ export default function RaynaHub(){
           <div className={styles.card}>
             <div className={styles.cardTitle}>{place.nombre}</div>
             <div style={{marginTop:8}}>
-              <MiniMap
-                center={place.coordenadas ? place.coordenadas.split(",").map(Number) : undefined}
-                markerTitle={place.nombre}
-                onClick={()=> mapsUrl && window.open(mapsUrl,"_blank","noopener")}
+              <ChatMiniMap
+                id={`chatmap-${place._table}-${place.id}`}
+                geojson={geojson}
+                mapsLink={mapsUrl}
+                title={place.nombre}
               />
             </div>
             {mapsUrl && (
@@ -370,7 +389,7 @@ export default function RaynaHub(){
       return;
     }
 
-    /* ==== ACȚIUNI: GPS – LISTAS (folosesc action="gps_list" + id-uri specifice) ==== */
+    /* ==== ACȚIUNI: GPS – LISTAS ==== */
     if (intent.type === "action" && intent.action === "gps_list" && intent.id === "gps_list_terminale") {
       const { data } = await supabase.from("gps_terminale").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
       const items = (data||[]).map(d => ({...d, _table:"gps_terminale", _mapsUrl:getMapsLinkFromRecord(d)}));
