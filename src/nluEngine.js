@@ -2,7 +2,7 @@
 
 // ——— Normalize: minuscul, fără diacritice, doar [a-z0-9 spațiu]
 export function normalize(s) {
-  if (!s) return "";
+  if (s == null) return "";
   const DIAC = {
     // ES
     "á":"a","é":"e","í":"i","ó":"o","ú":"u","ü":"u","ñ":"n",
@@ -13,7 +13,7 @@ export function normalize(s) {
   };
   let out = String(s).replace(/[\s\S]/g, c => DIAC[c] ?? c);
   out = out.toLowerCase();
-  // elimină tot ce nu e a-z, 0-9 sau spațiu (evităm \p{L} ca să meargă pe Safari vechi)
+  // doar litere englezești/ cifre / spații – evităm \p{L} pentru compat Safari
   out = out.replace(/[^a-z0-9\s]/g, " ");
   out = out.replace(/\s+/g, " ").trim();
   return out;
@@ -45,12 +45,12 @@ const fuzzyEq = (a, b) => {
 };
 
 function includesAny(text, arr) {
-  if (!arr || !arr.length) return false;
+  if (!Array.isArray(arr) || !arr.length) return false;
   const n = normalize(text);
   return arr.some(p => n.includes(normalize(p)));
 }
 function hasToken(text, list) {
-  if (!list || !list.length) return false;
+  if (!Array.isArray(list) || !list.length) return false;
   const toks = normalize(text).split(" ").filter(Boolean);
   return list.some(w => toks.some(tk => fuzzyEq(tk, w)));
 }
@@ -59,6 +59,7 @@ function hasToken(text, list) {
 function captureCameraName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
+
     "la","el","una","un","de","del","al",
     "camara","cámara","camera","camaras","cámaras",
     "abre","abrir","abreme","ábreme","ver","muestra","mostrar","desplegar",
@@ -70,12 +71,14 @@ function captureCameraName(raw, stopwords = []) {
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
-    const candidate = toks.slice(-3).join(" ").trim();
-    if (!candidate || ["camara","cámara","camera"].includes(candidate)) return null;
+    const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte utile
+    // respinge „camara/camera” simplu
+    const generic = new Set(["camara","camera"]);
+    if (!candidate || generic.has(candidate)) return null;
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
   }
   const trimmed = String(raw).trim().replace(/[?!.]+$/, "");
-  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return trimmed;
+  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return normalize(trimmed);
   return null;
 }
 
@@ -96,7 +99,7 @@ function capturePlaceName(raw, stopwords = []) {
     if (/^[a-z0-9._ -]{2,}$/i.test(cand)) return cand;
   }
   const trimmed = String(raw).trim().replace(/[?!.]+$/, "");
-  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return trimmed;
+  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return normalize(trimmed);
   return null;
 }
 
@@ -121,7 +124,7 @@ export function detectIntent(message, intentsJson) {
       if (negHit) ok = false;
     }
 
-    // 2) Heuristică ver_camara (scurt sau indicii cameră fără "crear")
+    // 2) Heuristică ver_camara (mesaj scurt sau indicii de „cameră”, fără „crear”)
     if (!ok && it.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasCameraCue = includesAny(text, [
@@ -135,7 +138,7 @@ export function detectIntent(message, intentsJson) {
       if ((hasCameraCue && !createCue) || tokens.length <= 2) ok = true;
     }
 
-    // 3) Heuristică GPS (mesaj foarte scurt)
+    // 3) Heuristică GPS (mesaj foarte scurt: doar numele)
     if (!ok && (it.id === "gps_navegar_a" || it.id === "gps_info_de")) {
       const tokens = normalize(text).split(" ").filter(Boolean);
       if (tokens.length <= 2) ok = true;
