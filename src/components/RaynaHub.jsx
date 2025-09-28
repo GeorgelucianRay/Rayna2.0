@@ -1,3 +1,4 @@
+// src/components/RaynaHub.jsx
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./Chatbot.module.css";
 import { supabase } from "../supabaseClient";
@@ -5,7 +6,10 @@ import { useAuth } from "../AuthContext.jsx";
 import intentsData from "../rayna.intents.json";
 import { detectIntent } from "../nluEngine";
 
-// —— UI mici ——
+// ⬇️ mini-hartă (clickabilă) – schimbă calea dacă ai altă locație
+import MiniMap from "./GpsPro/MiniMap";
+
+/* ============== UI mici ============== */
 function BotBubble({ reply_text, children }) {
   const [shown,setShown]=useState("");
   const idx=useRef(0);
@@ -22,6 +26,7 @@ function BotBubble({ reply_text, children }) {
     </div>
   );
 }
+
 function ActionsRenderer({ card }) {
   return (
     <div className={styles.card}>
@@ -37,6 +42,7 @@ function ActionsRenderer({ card }) {
     </div>
   );
 }
+
 function AnnouncementBox({ content }) {
   return (
     <div className={styles.annBox}>
@@ -45,6 +51,7 @@ function AnnouncementBox({ content }) {
     </div>
   );
 }
+
 function AddCameraInline({ onSubmit, saving }) {
   const [name,setName]=useState(""); const [url,setUrl]=useState("");
   return (
@@ -56,12 +63,88 @@ function AddCameraInline({ onSubmit, saving }) {
   );
 }
 
-// —— helpers de templating simplu {{place}} ——
+/* Card info loc, cu butoane Maps / Cámara */
+function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardTitle}>{place.nombre}</div>
+      {place.direccion && <div className={styles.cardSubtitle}>{place.direccion}</div>}
+      {place.detalles && <div style={{marginTop:6}}>{place.detalles}</div>}
+      <div className={styles.cardActions} style={{marginTop:8}}>
+        {mapsUrl && (
+          <button className={styles.actionBtn} onClick={()=>window.open(mapsUrl, "_blank","noopener")}>
+            Abrir en Google Maps
+          </button>
+        )}
+        {cameraUrl && (
+          <button className={styles.actionBtn} onClick={()=>window.open(cameraUrl, "_blank","noopener")}>
+            Ver cámara
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Listă simplă de locuri (terminales/parkings/servicios) */
+function SimpleList({ title, items }) {
+  return (
+    <div className={styles.card}>
+      {title && <div className={styles.cardTitle}>{title}</div>}
+      <div style={{display:"flex", flexDirection:"column", gap:8, marginTop:8}}>
+        {(items||[]).map((it)=>(
+          <button
+            key={`${it._table}-${it.id}`}
+            className={styles.actionBtn}
+            onClick={()=> window.open(it._mapsUrl, "_blank", "noopener")}
+          >
+            {it.nombre}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* —— helpers de templating simplu {{place}} —— */
 function tpl(str, ctx) {
   return (str||"").replace(/\{\{([^}]+)\}\}/g, (_,k)=> {
     const path = k.trim().split(".");
     return path.reduce((acc, key)=> (acc && acc[key] != null ? acc[key] : ""), ctx);
   });
+}
+
+/* ===== Helpers GPS ===== */
+function getMapsLinkFromRecord(rec){
+  if (!rec) return null;
+  if (rec.link_maps) return rec.link_maps;
+  if (rec.coordenadas) return `https://maps.google.com/?q=${encodeURIComponent(rec.coordenadas)}`;
+  return null;
+}
+
+// caută în tabelele GPS, întoarce primul match + denumirea tabelului
+async function findPlaceByName(name){
+  const tables = ["gps_clientes","gps_parkings","gps_servicios","gps_terminale"];
+  for (const t of tables){
+    const { data, error } = await supabase.from(t)
+      .select("id, nombre, direccion, detalles, link_maps, coordenadas")
+      .ilike("nombre", `%${name}%`)
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) return { ...data, _table: t };
+  }
+  return null;
+}
+
+// caută o cameră cu nume similar
+async function findCameraFor(placeName){
+  const { data } = await supabase
+    .from("external_links")
+    .select("id,name,url,icon_type")
+    .eq("icon_type","camera")
+    .ilike("name", `%${placeName}%`)
+    .limit(1);
+  return data?.[0] || null;
 }
 
 export default function RaynaHub(){
@@ -72,7 +155,7 @@ export default function RaynaHub(){
     { from:"bot", reply_text: intentsData.find(i=>i.id==="saludo")?.response?.text || "¡Hola!" }
   ]);
   const [text,setText]=useState("");
-  const [awaiting,setAwaiting]=useState(null); // ex.: "anuncio_text"
+  const [awaiting,setAwaiting]=useState(null);
   const [saving,setSaving]=useState(false);
   const endRef=useRef(null);
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[messages]);
@@ -83,7 +166,7 @@ export default function RaynaHub(){
     setMessages(m=>[...m, {from:"user", text:userText}]);
     setText("");
 
-    // dialog deschis pentru anunț (din JSON)
+    // === dialog anunț ===
     if (awaiting === "anuncio_text") {
       const di = intentsData.find(i=>i.id==="set_anuncio")?.dialog;
       if (!(role==="admin" || role==="dispecer")) {
@@ -102,21 +185,20 @@ export default function RaynaHub(){
     // ——— detect intent din JSON
     const { intent, slots } = detectIntent(userText, intentsData);
 
-    // 1) tip static
+    /* ==== STATICE ==== */
     if (intent.type === "static") {
       setMessages(m=>[...m, {from:"bot", reply_text: intent.response.text}]);
       return;
     }
 
-    // 2) dialog (set anuncio / add camara)
+    /* ==== DIALOG (add camera / set anuncio) ==== */
     if (intent.type === "dialog") {
-      // roluri
       const allowed = intent.roles_allowed ? intent.roles_allowed.includes(role) : true;
       if (!allowed) {
         setMessages(m=>[...m, {from:"bot", reply_text:"No tienes permiso para esta acción."}]);
         return;
       }
-      // add camera (form inline)
+      // add camera
       if (intent.dialog.form === "add_camera_inline") {
         setMessages(m=>[...m, {
           from:"bot",
@@ -138,7 +220,7 @@ export default function RaynaHub(){
         }]);
         return;
       }
-      // set anuncio (await text)
+      // set anuncio
       if (intent.dialog.await_key === "anuncio_text") {
         setAwaiting("anuncio_text");
         setMessages(m=>[...m, {from:"bot", reply_text: intent.dialog.ask_text}]);
@@ -146,14 +228,13 @@ export default function RaynaHub(){
       }
     }
 
-    // 3) acțiuni (consultă DB și randează după template)
+    /* ==== ACȚIUNI EXISTENTE: CAMERĂ ==== */
     if (intent.type === "action" && intent.action === "open_camera") {
       const queryName = (slots.cameraName || "").trim();
       if (!queryName) {
         setMessages(m=>[...m, {from:"bot", reply_text:"Dime el nombre de la cámara (por ejemplo: TCB)."}]);
         return;
       }
-      // căutare: match mare + fallback pe tokeni
       let { data, error } = await supabase
         .from("external_links")
         .select("id,name,url,icon_type")
@@ -171,7 +252,6 @@ export default function RaynaHub(){
         setMessages(m=>[...m, {from:"bot", reply_text: tpl(intent.not_found.text, {query: queryName}) }]);
         return;
       }
-      // rander după template JSON
       const text = tpl(intent.response.text, { camera: data });
       const card = intent.response.objects?.[0];
       setMessages(m=>[...m, {
@@ -192,6 +272,7 @@ export default function RaynaHub(){
       return;
     }
 
+    /* ==== ACȚIUNI: ANUNȚ ==== */
     if (intent.type === "action" && intent.action === "show_announcement") {
       const { data, error } = await supabase.from("anuncios").select("content").eq("id",1).maybeSingle();
       const text = intent.response.text;
@@ -204,7 +285,106 @@ export default function RaynaHub(){
       return;
     }
 
-    // 4) fallback din JSON
+    /* ==== ACȚIUNI: GPS – NAVEGAR A ==== */
+    if (intent.type === "action" && intent.action === "gps_navegar_a") {
+      const placeName = (slots.placeName || "").trim();
+      if (!placeName) {
+        setMessages(m=>[...m, {from:"bot", reply_text:"Dime el destino (por ejemplo: TCB)."}]);
+        return;
+      }
+      const place = await findPlaceByName(placeName);
+      if (!place) {
+        setMessages(m=>[...m, {from:"bot", reply_text:`No he encontrado «${placeName}».`}]);
+        return;
+      }
+      const mapsUrl = getMapsLinkFromRecord(place);
+      setMessages(m=>[...m, {
+        from:"bot",
+        reply_text: `Claro, aquí tienes la ruta a **${place.nombre}**. Toca el mapa para abrir Google Maps.`,
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>{place.nombre}</div>
+            <div style={{marginTop:8}}>
+              <MiniMap
+                center={place.coordenadas ? place.coordenadas.split(",").map(Number) : undefined}
+                markerTitle={place.nombre}
+                onClick={()=> mapsUrl && window.open(mapsUrl,"_blank","noopener")}
+              />
+            </div>
+            {mapsUrl && (
+              <div className={styles.cardActions} style={{marginTop:8}}>
+                <button className={styles.actionBtn} onClick={()=>window.open(mapsUrl,"_blank","noopener")}>
+                  Abrir en Google Maps
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      }]);
+      return;
+    }
+
+    /* ==== ACȚIUNI: GPS – INFO DE ==== */
+    if (intent.type === "action" && intent.action === "gps_info_de") {
+      const placeName = (slots.placeName || "").trim();
+      if (!placeName) {
+        setMessages(m=>[...m, {from:"bot", reply_text:"¿De qué sitio quieres información?"}]);
+        return;
+      }
+      const place = await findPlaceByName(placeName);
+      if (!place) {
+        setMessages(m=>[...m, {from:"bot", reply_text:`No he encontrado «${placeName}».`}]);
+        return;
+      }
+      const mapsUrl = getMapsLinkFromRecord(place);
+      const cam = await findCameraFor(place.nombre);
+      setMessages(m=>[...m, {
+        from:"bot",
+        reply_text: `Esto es lo que tengo de **${place.nombre}**:`,
+        render: () => <PlaceInfoCard place={place} mapsUrl={mapsUrl} cameraUrl={cam?.url}/>
+      }]);
+      return;
+    }
+
+    /* ==== ACȚIUNI: GPS – LISTAS ==== */
+    if (intent.type === "action" && intent.action === "gps_listar_terminales") {
+      const { data } = await supabase.from("gps_terminale").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
+      const items = (data||[]).map(d => ({...d, _table:"gps_terminale", _mapsUrl:getMapsLinkFromRecord(d)}));
+      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los terminales disponibles:",
+        render: () => <SimpleList title="Terminales" items={items}/> }]);
+      return;
+    }
+    if (intent.type === "action" && intent.action === "gps_listar_parkings") {
+      const { data } = await supabase.from("gps_parkings").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
+      const items = (data||[]).map(d => ({...d, _table:"gps_parkings", _mapsUrl:getMapsLinkFromRecord(d)}));
+      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los parkings disponibles:",
+        render: () => <SimpleList title="Parkings" items={items}/> }]);
+      return;
+    }
+    if (intent.type === "action" && intent.action === "gps_listar_servicios") {
+      const { data } = await supabase.from("gps_servicios").select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
+      const items = (data||[]).map(d => ({...d, _table:"gps_servicios", _mapsUrl:getMapsLinkFromRecord(d)}));
+      setMessages(m=>[...m, { from:"bot", reply_text:"Estos son los servicios disponibles:",
+        render: () => <SimpleList title="Servicios" items={items}/> }]);
+      return;
+    }
+    if (intent.type === "action" && intent.action === "gps_ver_clientes") {
+      setMessages(m=>[...m, {
+        from:"bot",
+        reply_text:"Hay muchos clientes. Pulsa el botón para abrir la lista completa.",
+        render: () => (
+          <ActionsRenderer
+            card={{
+              title:"Clientes",
+              actions:[{ label:"Ver clientes", route:"/gps?tab=clientes", newTab:false }]
+            }}
+          />
+        )
+      }]);
+      return;
+    }
+
+    /* ==== FALLBACK ==== */
     setMessages(m=>[...m, {from:"bot", reply_text: intentsData.find(i=>i.id==="fallback")?.response?.text || "No te he entendido."}]);
   };
 
@@ -230,7 +410,7 @@ export default function RaynaHub(){
       <footer className={styles.inputBar}>
         <input
           className={styles.input}
-          placeholder="Escribe aquí… (ej.: Abre TCB)"
+          placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
           value={text}
           onChange={e=>setText(e.target.value)}
           onKeyDown={e=> e.key==="Enter" ? send() : null}
