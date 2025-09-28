@@ -5,8 +5,6 @@ import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext.jsx";
 import intentsData from "../rayna.intents.json";
 import { detectIntent } from "../nluEngine";
-
-// folosește componenta noastră de mini-hartă
 import ChatMiniMap from "./chat/ChatMiniMap";
 
 /* ============== UI mici ============== */
@@ -40,17 +38,13 @@ function ActionsRenderer({ card }) {
   return (
     <div className={styles.card}>
       {card.title && <div className={styles.cardTitle}>{card.title}</div>}
-      {card.subtitle && (
-        <div className={styles.cardSubtitle}>{card.subtitle}</div>
-      )}
+      {card.subtitle && <div className={styles.cardSubtitle}>{card.subtitle}</div>}
       <div className={styles.cardActions}>
         {(card.actions || []).map((a, i) => (
           <button
             key={i}
             className={styles.actionBtn}
-            onClick={() =>
-              window.open(a.route, a.newTab ? "_blank" : "_self", "noopener,noreferrer")
-            }
+            onClick={() => window.open(a.route, a.newTab ? "_blank" : "_self", "noopener,noreferrer")}
           >
             {a.label}
           </button>
@@ -107,9 +101,7 @@ function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>{place.nombre}</div>
-      {place.direccion && (
-        <div className={styles.cardSubtitle}>{place.direccion}</div>
-      )}
+      {place.direccion && <div className={styles.cardSubtitle}>{place.direccion}</div>}
       {place.detalles && <div style={{ marginTop: 6 }}>{place.detalles}</div>}
       <div className={styles.cardActions} style={{ marginTop: 8 }}>
         {mapsUrl && (
@@ -133,8 +125,8 @@ function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
   );
 }
 
-/* Listă simplă de locuri (terminales/parkings/servicios) */
-function SimpleList({ title, items }) {
+/* Listă simplă – permite fie onPick (inserăm card în chat), fie fallback: deschide Maps */
+function SimpleList({ title, items, onPick }) {
   return (
     <div className={styles.card}>
       {title && <div className={styles.cardTitle}>{title}</div>}
@@ -143,7 +135,7 @@ function SimpleList({ title, items }) {
           <button
             key={`${it._table}-${it.id}`}
             className={styles.actionBtn}
-            onClick={() => window.open(it._mapsUrl, "_blank", "noopener")}
+            onClick={() => (onPick ? onPick(it) : window.open(it._mapsUrl, "_blank", "noopener"))}
           >
             {it.nombre}
           </button>
@@ -165,8 +157,7 @@ function tpl(str, ctx) {
 function getMapsLinkFromRecord(rec) {
   if (!rec) return null;
   if (rec.link_maps) return rec.link_maps;
-  if (rec.coordenadas)
-    return `https://maps.google.com/?q=${encodeURIComponent(rec.coordenadas)}`;
+  if (rec.coordenadas) return `https://maps.google.com/?q=${encodeURIComponent(rec.coordenadas)}`;
   return null;
 }
 
@@ -174,8 +165,8 @@ function getMapsLinkFromRecord(rec) {
 function pointGeoJSONFromCoords(coordsString) {
   if (!coordsString) return null;
   const [latStr, lonStr] = String(coordsString).split(",").map((s) => s.trim());
-  const lat = Number(latStr),
-    lon = Number(lonStr);
+  const lat = Number(latStr);
+  const lon = Number(lonStr);
   if (Number.isFinite(lat) && Number.isFinite(lon)) {
     return {
       type: "FeatureCollection",
@@ -191,7 +182,7 @@ function pointGeoJSONFromCoords(coordsString) {
   return null;
 }
 
-// ——— caută primul match (compat vechi)
+// caută primul match (compat vechi)
 async function findPlaceByName(name) {
   const tables = ["gps_clientes", "gps_parkings", "gps_servicios", "gps_terminale"];
   for (const t of tables) {
@@ -206,14 +197,14 @@ async function findPlaceByName(name) {
   return null;
 }
 
-// ——— caută TOATE potrivirile (pentru dezambiguizare)
+// caută TOATE potrivirile (pentru dezambiguizare)
 async function findPlacesByName(name, limitPerTable = 5) {
   const tables = ["gps_clientes", "gps_parkings", "gps_servicios", "gps_terminale"];
   const all = [];
   for (const t of tables) {
     const { data } = await supabase
       .from(t)
-      .select("id, nombre, link_maps, coordenadas")
+      .select("id, nombre, direccion, detalles, link_maps, coordenadas")
       .ilike("nombre", `%${name}%`)
       .order("nombre")
       .limit(limitPerTable);
@@ -224,7 +215,7 @@ async function findPlacesByName(name, limitPerTable = 5) {
   return all;
 }
 
-// ——— caută o cameră similară
+// caută o cameră similară
 async function findCameraFor(placeName) {
   const { data } = await supabase
     .from("external_links")
@@ -242,8 +233,7 @@ export default function RaynaHub() {
   const [messages, setMessages] = useState([
     {
       from: "bot",
-      reply_text:
-        intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!",
+      reply_text: intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!",
     },
   ]);
   const [text, setText] = useState("");
@@ -272,16 +262,10 @@ export default function RaynaHub() {
         return;
       }
       setSaving(true);
-      const { error } = await supabase
-        .from("anuncios")
-        .update({ content: userText })
-        .eq("id", 1);
+      const { error } = await supabase.from("anuncios").update({ content: userText }).eq("id", 1);
       setSaving(false);
       setAwaiting(null);
-      setMessages((m) => [
-        ...m,
-        { from: "bot", reply_text: error ? di.save_err : di.save_ok },
-      ]);
+      setMessages((m) => [...m, { from: "bot", reply_text: error ? di.save_err : di.save_ok }]);
       return;
     }
 
@@ -309,11 +293,7 @@ export default function RaynaHub() {
         };
         setMessages((m) => [
           ...m,
-          {
-            from: "bot",
-            reply_text: intent.response.text,
-            render: () => <ActionsRenderer card={card} />,
-          },
+          { from: "bot", reply_text: intent.response.text, render: () => <ActionsRenderer card={card} /> },
         ]);
         return;
       }
@@ -325,10 +305,7 @@ export default function RaynaHub() {
     if (intent.type === "dialog") {
       const allowed = intent.roles_allowed ? intent.roles_allowed.includes(role) : true;
       if (!allowed) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: "No tienes permiso para esta acción." },
-        ]);
+        setMessages((m) => [...m, { from: "bot", reply_text: "No tienes permiso para esta acción." }]);
         return;
       }
       if (intent.dialog.form === "add_camera_inline") {
@@ -366,10 +343,7 @@ export default function RaynaHub() {
       }
       if (intent.dialog.await_key === "anuncio_text") {
         setAwaiting("anuncio_text");
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: intent.dialog.ask_text },
-        ]);
+        setMessages((m) => [...m, { from: "bot", reply_text: intent.dialog.ask_text }]);
         return;
       }
     }
@@ -378,10 +352,7 @@ export default function RaynaHub() {
     if (intent.type === "action" && intent.action === "open_camera") {
       const queryName = (slots.cameraName || "").trim();
       if (!queryName) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: "Dime el nombre de la cámara (por ejemplo: TCB)." },
-        ]);
+        setMessages((m) => [...m, { from: "bot", reply_text: "Dime el nombre de la cámara (por ejemplo: TCB)." }]);
         return;
       }
       let { data, error } = await supabase
@@ -392,10 +363,7 @@ export default function RaynaHub() {
         .limit(1)
         .maybeSingle();
       if ((!data || error) && queryName.split(" ").length > 1) {
-        let q = supabase
-          .from("external_links")
-          .select("id,name,url,icon_type")
-          .eq("icon_type", "camera");
+        let q = supabase.from("external_links").select("id,name,url,icon_type").eq("icon_type", "camera");
         queryName.split(" ").forEach((tok) => {
           q = q.ilike("name", `%${tok}%`);
         });
@@ -404,10 +372,7 @@ export default function RaynaHub() {
         error = r.error;
       }
       if (error || !data) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: tpl(intent.not_found.text, { query: queryName }) },
-        ]);
+        setMessages((m) => [...m, { from: "bot", reply_text: tpl(intent.not_found.text, { query: queryName }) }]);
         return;
       }
       const text = tpl(intent.response.text, { camera: data });
@@ -437,11 +402,7 @@ export default function RaynaHub() {
 
     /* ==== ACȚIUNI: ANUNȚ ==== */
     if (intent.type === "action" && intent.action === "show_announcement") {
-      const { data, error } = await supabase
-        .from("anuncios")
-        .select("content")
-        .eq("id", 1)
-        .maybeSingle();
+      const { data, error } = await supabase.from("anuncios").select("content").eq("id", 1).maybeSingle();
       const text = intent.response.text;
       const content = error ? "No se pudo cargar el anuncio." : data?.content || "Sin contenido.";
       setMessages((m) => [
@@ -450,11 +411,7 @@ export default function RaynaHub() {
           from: "bot",
           reply_text: text,
           render: () => (
-            <AnnouncementBox
-              content={tpl(intent.response.objects[0].content, {
-                announcement: { content },
-              })}
-            />
+            <AnnouncementBox content={tpl(intent.response.objects[0].content, { announcement: { content } })} />
           ),
         },
       ]);
@@ -469,30 +426,58 @@ export default function RaynaHub() {
         return;
       }
 
-      // dezambiguizare: caută toate opțiunile
       const options = await findPlacesByName(placeName);
+      if (!options.length) {
+        setMessages((m) => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]);
+        return;
+      }
+
       if (options.length > 1) {
         setMessages((m) => [
           ...m,
           {
             from: "bot",
             reply_text: `He encontrado varios sitios para «${placeName}». Elige uno:`,
-            render: () => <SimpleList title="Resultados" items={options} />,
+            render: () => (
+              <SimpleList
+                title="Resultados"
+                items={options}
+                onPick={(p) => {
+                  const mapsUrl = getMapsLinkFromRecord(p);
+                  const geojson = pointGeoJSONFromCoords(p.coordenadas);
+                  setMessages((mm) => [
+                    ...mm,
+                    {
+                      from: "bot",
+                      reply_text: `Claro, aquí tienes la ruta a **${p.nombre}**. Toca el mapa para abrir Google Maps.`,
+                      render: () => (
+                        <div className={styles.card}>
+                          <div className={styles.cardTitle}>{p.nombre}</div>
+                          <div style={{ marginTop: 8 }}>
+                            <ChatMiniMap id={`chatmap-${p._table}-${p.id}`} geojson={geojson} mapsLink={mapsUrl} title={p.nombre} />
+                          </div>
+                          {mapsUrl && (
+                            <div className={styles.cardActions} style={{ marginTop: 8 }}>
+                              <button className={styles.actionBtn} onClick={() => window.open(mapsUrl, "_blank", "noopener")}>
+                                Abrir en Google Maps
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ),
+                    },
+                  ]);
+                }}
+              />
+            ),
           },
         ]);
         return;
       }
 
-      // fallback: primul match (compat)
       const place = options[0] || (await findPlaceByName(placeName));
-      if (!place) {
-        setMessages((m) => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]);
-        return;
-      }
-
       const mapsUrl = getMapsLinkFromRecord(place);
       const geojson = pointGeoJSONFromCoords(place.coordenadas);
-
       setMessages((m) => [
         ...m,
         {
@@ -502,19 +487,11 @@ export default function RaynaHub() {
             <div className={styles.card}>
               <div className={styles.cardTitle}>{place.nombre}</div>
               <div style={{ marginTop: 8 }}>
-                <ChatMiniMap
-                  id={`chatmap-${place._table}-${place.id}`}
-                  geojson={geojson}
-                  mapsLink={mapsUrl}
-                  title={place.nombre}
-                />
+                <ChatMiniMap id={`chatmap-${place._table}-${place.id}`} geojson={geojson} mapsLink={mapsUrl} title={place.nombre} />
               </div>
               {mapsUrl && (
                 <div className={styles.cardActions} style={{ marginTop: 8 }}>
-                  <button
-                    className={styles.actionBtn}
-                    onClick={() => window.open(mapsUrl, "_blank", "noopener")}
-                  >
+                  <button className={styles.actionBtn} onClick={() => window.open(mapsUrl, "_blank", "noopener")}>
                     Abrir en Google Maps
                   </button>
                 </div>
@@ -530,35 +507,46 @@ export default function RaynaHub() {
     if (intent.type === "action" && intent.id === "gps_info_de") {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: "¿De qué sitio quieres información?" },
-        ]);
+        setMessages((m) => [...m, { from: "bot", reply_text: "¿De qué sitio quieres información?" }]);
         return;
       }
 
-      // dezambiguizare info
       const options = await findPlacesByName(placeName);
+      if (!options.length) {
+        setMessages((m) => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]);
+        return;
+      }
+
       if (options.length > 1) {
         setMessages((m) => [
           ...m,
           {
             from: "bot",
             reply_text: `He encontrado varios «${placeName}». Elige uno:`,
-            render: () => <SimpleList title="Resultados" items={options} />,
+            render: () => (
+              <SimpleList
+                title="Resultados"
+                items={options}
+                onPick={async (p) => {
+                  const cam = await findCameraFor(p.nombre);
+                  const mapsUrl = getMapsLinkFromRecord(p);
+                  setMessages((mm) => [
+                    ...mm,
+                    {
+                      from: "bot",
+                      reply_text: `Esto es lo que tengo de **${p.nombre}**:`,
+                      render: () => <PlaceInfoCard place={p} mapsUrl={mapsUrl} cameraUrl={cam?.url} />,
+                    },
+                  ]);
+                }}
+              />
+            ),
           },
         ]);
         return;
       }
 
       const place = options[0] || (await findPlaceByName(placeName));
-      if (!place) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: `No he encontrado «${placeName}».` },
-        ]);
-        return;
-      }
       const mapsUrl = getMapsLinkFromRecord(place);
       const cam = await findCameraFor(place.nombre);
       setMessages((m) => [
@@ -579,18 +567,10 @@ export default function RaynaHub() {
         .select("id,nombre,link_maps,coordenadas")
         .order("nombre")
         .limit(50);
-      const items = (data || []).map((d) => ({
-        ...d,
-        _table: "gps_terminale",
-        _mapsUrl: getMapsLinkFromRecord(d),
-      }));
+      const items = (data || []).map((d) => ({ ...d, _table: "gps_terminale", _mapsUrl: getMapsLinkFromRecord(d) }));
       setMessages((m) => [
         ...m,
-        {
-          from: "bot",
-          reply_text: intent.response?.text || "Terminales:",
-          render: () => <SimpleList title="Terminales" items={items} />,
-        },
+        { from: "bot", reply_text: intent.response?.text || "Terminales:", render: () => <SimpleList title="Terminales" items={items} /> },
       ]);
       return;
     }
@@ -600,18 +580,10 @@ export default function RaynaHub() {
         .select("id,nombre,link_maps,coordenadas")
         .order("nombre")
         .limit(50);
-      const items = (data || []).map((d) => ({
-        ...d,
-        _table: "gps_parkings",
-        _mapsUrl: getMapsLinkFromRecord(d),
-      }));
+      const items = (data || []).map((d) => ({ ...d, _table: "gps_parkings", _mapsUrl: getMapsLinkFromRecord(d) }));
       setMessages((m) => [
         ...m,
-        {
-          from: "bot",
-          reply_text: intent.response?.text || "Parkings:",
-          render: () => <SimpleList title="Parkings" items={items} />,
-        },
+        { from: "bot", reply_text: intent.response?.text || "Parkings:", render: () => <SimpleList title="Parkings" items={items} /> },
       ]);
       return;
     }
@@ -621,18 +593,10 @@ export default function RaynaHub() {
         .select("id,nombre,link_maps,coordenadas")
         .order("nombre")
         .limit(50);
-      const items = (data || []).map((d) => ({
-        ...d,
-        _table: "gps_servicios",
-        _mapsUrl: getMapsLinkFromRecord(d),
-      }));
+      const items = (data || []).map((d) => ({ ...d, _table: "gps_servicios", _mapsUrl: getMapsLinkFromRecord(d) }));
       setMessages((m) => [
         ...m,
-        {
-          from: "bot",
-          reply_text: intent.response?.text || "Servicios:",
-          render: () => <SimpleList title="Servicios" items={items} />,
-        },
+        { from: "bot", reply_text: intent.response?.text || "Servicios:", render: () => <SimpleList title="Servicios" items={items} /> },
       ]);
       return;
     }
@@ -642,9 +606,7 @@ export default function RaynaHub() {
       ...m,
       {
         from: "bot",
-        reply_text:
-          intentsData.find((i) => i.id === "fallback")?.response?.text ||
-          "No te he entendido.",
+        reply_text: intentsData.find((i) => i.id === "fallback")?.response?.text || "No te he entendido.",
       },
     ]);
   };
@@ -665,13 +627,9 @@ export default function RaynaHub() {
       <main className={styles.chat}>
         {messages.map((m, i) =>
           m.from === "user" ? (
-            <div key={i} className={`${styles.bubble} ${styles.me}`}>
-              {m.text}
-            </div>
+            <div key={i} className={`${styles.bubble} ${styles.me}`}>{m.text}</div>
           ) : (
-            <BotBubble key={i} reply_text={m.reply_text}>
-              {m.render ? m.render() : null}
-            </BotBubble>
+            <BotBubble key={i} reply_text={m.reply_text}>{m.render ? m.render() : null}</BotBubble>
           )
         )}
         <div ref={endRef} />
@@ -685,9 +643,7 @@ export default function RaynaHub() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
         />
-        <button className={styles.sendBtn} onClick={send}>
-          Enviar
-        </button>
+        <button className={styles.sendBtn} onClick={send}>Enviar</button>
       </footer>
     </div>
   );
