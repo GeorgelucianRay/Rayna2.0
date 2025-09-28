@@ -27,28 +27,30 @@ const fuzzyEq=(a,b)=>{a=normalize(a);b=normalize(b); if(a===b) return true; cons
 function includesAny(text, arr){ const n=normalize(text); return (arr||[]).some(p=> n.includes(normalize(p))); }
 function hasToken(text, list){ const toks=normalize(text).split(" "); return (list||[]).some(w => toks.some(tk => fuzzyEq(tk,w))); }
 
-// ——— extrage numele camerei din mesaj (mai strict) ———
+// ——— extrage numele camerei din mesaj (strict, ignoră „cuvinte de serviciu”) ———
 function captureCameraName(raw, stopwords=[]) {
-  // cuvinte de serviciu pe care le ignorăm din extragere
   const service = new Set([
     ...(stopwords||[]),
-    "la","el","una","un","de","del","al","la",
+    // articole / legături
+    "la","el","una","un","de","del","al",
+    // cuvinte cameră/verb
     "camara","cámara","camera","camaras","cámaras",
     "abre","abrir","abreme","ábreme","ver","muestra","mostrar","desplegar",
-    "deschide","vreau","sa","să","vad","văd","quiero","por","favor","pf","pls",
-    "entonces","ok","vale","porfavor","please","la","el","una","un"
+    "deschide","vreau","sa","să","vad","văd","quiero",
+    "por","favor","pf","pls","porfavor","please","entonces","ok","vale",
+    // cuvinte de creare (pt. a nu rămâne ca nume)
+    "añadir","anadir","agregar","crear","nueva","nuevo",
+    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar"
   ]);
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
     const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte
-    // respinge dacă candidatul lipsește sau e doar „camara/cámara/camera”
     if (!candidate || ["camara","cámara","camera"].includes(candidate)) return null;
-    // acceptă doar dacă are min 2 caractere utile
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
   }
 
-  // fallback: mesaje scurte de tip "TCB?" / "TCB"
+  // fallback: mesaje scurte gen "TCB?" / "TCB"
   const trimmed = raw.trim().replace(/[?!.]+$/,"");
   if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return trimmed;
   return null;
@@ -61,22 +63,28 @@ export function detectIntent(message, intentsJson) {
   for (const it of intents) {
     if (it.id === "fallback") continue;
 
-    // 1) potrivire pe patterns
+    // 1) potrivire pe patterns (defensiv dacă lipsesc)
     let ok = includesAny(text, it.patterns_any) || hasToken(text, it.patterns_any);
 
-    // 1.1) negative_any — dacă apare, anulăm matchul (ex.: "añadir" inhibă ver_camara)
+    // 1.1) negative_any — dacă apare, anulăm matchul (ex.: „añadir” inhibă ver_camara)
     if (ok && it.negative_any) {
       const negHit = includesAny(text, it.negative_any) || hasToken(text, it.negative_any);
       if (negHit) ok = false;
     }
 
     // 2) Heuristică suplimentară doar pentru ver_camara:
-    //    - indicii de cameră (verbe/cuvinte dedicate), și să NU fie cuvinte de creare
-    //    - sau mesaj foarte scurt (≤2 tokens), ex. "TCB?"
+    //    - indicii de cameră (verbe/cuvinte dedicate) ȘI NU cuvinte de creare
+    //    - SAU mesaj foarte scurt (≤2 tokens), ex. "TCB?"
     if (!ok && it.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
-      const hasCameraCue = includesAny(text, ["camara","cámara","camera","abre","abrir","ver","muestra","mostrar","desplegar","deschide"]);
-      const createCue    = includesAny(text, ["añadir","anadir","agregar","crear","nueva","nuevo","adauga","adaugă","adaug","add","poner","publicar"]);
+      const hasCameraCue = includesAny(text, [
+        "camara","cámara","camera","abre","abrir","ver","muestra","mostrar","desplegar","deschide"
+      ]);
+      const createCue = includesAny(text, [
+        "añadir","anadir","agregar","crear","nueva","nuevo",
+        "adauga","adaugă","adaug","adăuga","adaugare","add",
+        "poner","publicar","alta"
+      ]);
       if ((hasCameraCue && !createCue) || tokens.length <= 2) ok = true;
     }
 
@@ -92,7 +100,7 @@ export function detectIntent(message, intentsJson) {
     return { intent: it, slots };
   }
 
-  // fallback
+  // 4) fallback
   const fb = intents.find(i=>i.id==="fallback");
   return { intent: fb, slots:{} };
 }
