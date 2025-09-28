@@ -9,15 +9,15 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100%;
-  background: radial-gradient(1200px 600px at 10% -10%, #143a66 0, transparent 60%),
-              radial-gradient(900px 500px at 120% 10%, #0f2d52 0, transparent 50%),
-              var(--bg);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #143a66 0, transparent 60%),
+    radial-gradient(900px 500px at 120% 10%, #0f2d52 0, transparent 50%),
+    var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
 }
 
-/* ... restul stilurilor tale existente ... */
-
+/* ————————————————— Header ————————————————— */
 .header {
   display: flex;
   align-items: center;
@@ -26,61 +26,39 @@
   background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-
-.headerTitleWrap { flex: 1; }  /* împinge butonul X la dreapta */
-
-.closeBtn {
-  width: 34px;
-  height: 34px;
-  line-height: 34px;
-  border-radius: 8px;
-  border: none;
-  background: #ff3b30;          /* roșu iOS-like */
-  color: #fff;
-  font-size: 22px;
-  cursor: pointer;
-  transition: transform .08s ease, filter .12s ease;
-}
-.closeBtn:hover { filter: brightness(1.05); }
-.closeBtn:active { transform: translateY(1px) scale(0.98); }
-
-/* cursorul animat pentru efectul de scriere */
-.cursor {
-  display: inline-block;
-  margin-left: 2px;
-  animation: blink 1s steps(1) infinite;
-}
-@keyframes blink { 50% { opacity: 0; } }
-
-/* restul claselor rămân la fel ca în versiunea anterioară:
-   .shell, .logoDot, .brand, .tagline, .chat, .bubble, .bot, .me,
-   .botText, .card, .cardTitle, .cardSubtitle, .cardActions,
-   .actionBtn, .suggested, .suggestedBtn, .inputBar, .input, .sendBtn
-*/
+.headerTitleWrap { flex: 1; } /* împinge butonul X la dreapta */
 
 .logoDot {
   width: 14px; height: 14px; border-radius: 50%;
   background: linear-gradient(135deg, #4ee1ff, #a9ff9c);
   box-shadow: 0 0 12px rgba(120,240,255,0.8);
 }
+.brand { font-weight: 700; letter-spacing: .3px; }
+.tagline { font-size: 12px; color: var(--muted); }
 
-.brand {
-  font-weight: 700;
-  letter-spacing: .3px;
+.closeBtn {
+  width: 34px; height: 34px; line-height: 34px;
+  border-radius: 8px; border: none;
+  background: #ff3b30; /* roșu iOS-like */
+  color: #fff; font-size: 22px; cursor: pointer;
+  transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
 }
+.closeBtn:hover { filter: brightness(1.05); }
+.closeBtn:active { transform: translateY(1px) scale(0.98); }
+.closeBtn:focus-visible { outline: 2px solid #ffe1de; outline-offset: 2px; }
 
-.tagline {
-  font-size: 12px;
-  color: var(--muted);
-}
-
+/* ————————————————— Zona de chat ————————————————— */
 .chat {
   padding: 16px;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.25) transparent;
 }
+.chat::-webkit-scrollbar { height: 8px; width: 8px; }
+.chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 8px; }
 
 .bubble {
   max-width: min(700px, 90%);
@@ -88,25 +66,30 @@
   border-radius: 14px;
   line-height: 1.35;
   box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  word-break: break-word;
 }
-
 .bot {
   align-self: flex-start;
   background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
   border: 1px solid rgba(255,255,255,0.06);
   backdrop-filter: blur(6px);
 }
-
 .me {
   align-self: flex-end;
   background: var(--me);
 }
 
-.botText {
-  white-space: pre-wrap;
-}
+.botText { white-space: pre-wrap; }
 
-/* Cards / acciones */
+/* cursor animat pentru efectul de scriere */
+.cursor {
+  display: inline-block;
+  margin-left: 2px;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ————————————————— Carduri / acțiuni ————————————————— */
 .card {
   margin-top: 10px;
   padding: 10px;
@@ -114,16 +97,8 @@
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
 }
-
-.cardTitle {
-  font-weight: 600;
-}
-
-.cardSubtitle {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
-}
+.cardTitle { font-weight: 600; }
+.cardSubtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
 .cardActions {
   margin-top: 8px;
@@ -132,6 +107,7 @@
   gap: 8px;
 }
 
+/* butoane generice (acțiuni, sugestii, send) */
 .actionBtn,
 .suggestedBtn,
 .sendBtn {
@@ -141,6 +117,19 @@
   cursor: pointer;
   color: #0b1522;
   background: #a7e0ff;
+  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
+}
+.actionBtn:hover,
+.suggestedBtn:hover,
+.sendBtn:hover { filter: brightness(1.05); }
+.actionBtn:active,
+.suggestedBtn:active,
+.sendBtn:active { transform: translateY(1px) scale(0.98); }
+.actionBtn:focus-visible,
+.suggestedBtn:focus-visible,
+.sendBtn:focus-visible {
+  outline: 2px solid #c9ebff;
+  outline-offset: 2px;
 }
 
 .suggested {
@@ -150,6 +139,7 @@
   flex-wrap: wrap;
 }
 
+/* ————————————————— Input bar ————————————————— */
 .inputBar {
   display: flex;
   gap: 8px;
@@ -157,7 +147,6 @@
   background: linear-gradient(0deg, rgba(255,255,255,0.04), transparent);
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-
 .input {
   flex: 1;
   border-radius: 12px;
@@ -167,5 +156,46 @@
   color: var(--text);
   outline: none;
 }
-
+.input::placeholder { color: rgba(230,240,255,0.6); }
 .sendBtn { background: #8df2b4; }
+
+/* ————————————————— Caja Anuncio (pentru „¿qué anuncio hay?”) ————————————————— */
+.annBox {
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+}
+.annHead {
+  padding: 8px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.annBody {
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+/* ————————————————— Formular inline „Añadir cámara” ————————————————— */
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+.formRow .input {
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e6f0ff;
+}
+.formRow .sendBtn { min-width: 110px; }
+
+/* ————————————————— Mică responsivitate ————————————————— */
+@media (max-width: 640px) {
+  .chat { padding: 12px; }
+  .bubble { max-width: 96%; }
+  .formRow { grid-template-columns: 1fr; }
+  .closeBtn { width: 32px; height: 32px; line-height: 32px; }
+}
