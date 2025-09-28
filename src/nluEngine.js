@@ -24,38 +24,55 @@ function ed(a,b){ // Damerau–Levenshtein simplu
 }
 const fuzzyEq=(a,b)=>{a=normalize(a);b=normalize(b); if(a===b) return true; const L=Math.max(a.length,b.length); const tol=L<=4?1:2; return ed(a,b)<=tol;};
 
-function includesAny(text, arr){ const n=normalize(text); return (arr||[]).some(p=> n.includes(normalize(p))); }
-function hasToken(text, list){ const toks=normalize(text).split(" "); return (list||[]).some(w => toks.some(tk => fuzzyEq(tk,w))); }
+function includesAny(text, arr){ if(!arr?.length) return false; const n=normalize(text); return arr.some(p=> n.includes(normalize(p))); }
+function hasToken(text, list){ if(!list?.length) return false; const toks=normalize(text).split(" ").filter(Boolean); return list.some(w => toks.some(tk => fuzzyEq(tk,w))); }
 
-// ——— extrage numele camerei din mesaj (strict, ignoră „cuvinte de serviciu”) ———
+/* -------------------- Capture: cameraName -------------------- */
 function captureCameraName(raw, stopwords=[]) {
   const service = new Set([
     ...(stopwords||[]),
-    // articole / legături
     "la","el","una","un","de","del","al",
-    // cuvinte cameră/verb
     "camara","cámara","camera","camaras","cámaras",
     "abre","abrir","abreme","ábreme","ver","muestra","mostrar","desplegar",
     "deschide","vreau","sa","să","vad","văd","quiero",
     "por","favor","pf","pls","porfavor","please","entonces","ok","vale",
-    // cuvinte de creare (pt. a nu rămâne ca nume)
     "añadir","anadir","agregar","crear","nueva","nuevo",
     "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar"
   ]);
-
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
-    const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte
+    const candidate = toks.slice(-3).join(" ").trim();
     if (!candidate || ["camara","cámara","camera"].includes(candidate)) return null;
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
   }
-
-  // fallback: mesaje scurte gen "TCB?" / "TCB"
   const trimmed = raw.trim().replace(/[?!.]+$/,"");
   if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return trimmed;
   return null;
 }
 
+/* -------------------- Capture: placeName --------------------- */
+function capturePlaceName(raw, stopwords = []) {
+  const service = new Set([
+    ...(stopwords||[]),
+    // articole / legături
+    "a","al","la","el","de","del","pe","către",
+    // verbe/întrebări tip GPS
+    "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
+    "vreau","sa","să","ajung","merg",
+    "info","informacion","información","donde","dónde","esta","está",
+    "despre"
+  ]);
+  const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
+  if (toks.length >= 1) {
+    const cand = toks.slice(-4).join(" ").trim();
+    if (/^[a-z0-9._ -]{2,}$/i.test(cand)) return cand;
+  }
+  const trimmed = raw.trim().replace(/[?!.]+$/,"");
+  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+/* ---------------------- Intent detect ------------------------ */
 export function detectIntent(message, intentsJson) {
   const text = message;
   const intents = [...intentsJson].sort((a,b)=> (b.priority||0)-(a.priority||0));
@@ -63,18 +80,16 @@ export function detectIntent(message, intentsJson) {
   for (const it of intents) {
     if (it.id === "fallback") continue;
 
-    // 1) potrivire pe patterns (defensiv dacă lipsesc)
+    // 1) potrivire pe patterns
     let ok = includesAny(text, it.patterns_any) || hasToken(text, it.patterns_any);
 
-    // 1.1) negative_any — dacă apare, anulăm matchul (ex.: „añadir” inhibă ver_camara)
+    // 1.1) negative_any — ex.: “añadir” inhibă ver_camara
     if (ok && it.negative_any) {
       const negHit = includesAny(text, it.negative_any) || hasToken(text, it.negative_any);
       if (negHit) ok = false;
     }
 
-    // 2) Heuristică suplimentară doar pentru ver_camara:
-    //    - indicii de cameră (verbe/cuvinte dedicate) ȘI NU cuvinte de creare
-    //    - SAU mesaj foarte scurt (≤2 tokens), ex. "TCB?"
+    // 2) Heuristică ver_camara (scurt sau indicii cameră fără "crear")
     if (!ok && it.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasCameraCue = includesAny(text, [
@@ -88,19 +103,30 @@ export function detectIntent(message, intentsJson) {
       if ((hasCameraCue && !createCue) || tokens.length <= 2) ok = true;
     }
 
+    // 3) Heuristică GPS: dacă userul scrie doar numele (1–2 tokens) și
+    //    intentul e de navigare sau info, acceptăm.
+    if (!ok && (it.id === "gps_navegar_a" || it.id === "gps_info_de")) {
+      const tokens = normalize(text).split(" ").filter(Boolean);
+      if (tokens.length <= 2) ok = true;
+    }
+
     if (!ok) continue;
 
-    // 3) slots
+    // 4) slots
     const slots = {};
     if (it.slots?.cameraName) {
       const name = captureCameraName(text, it.stopwords);
       if (name) slots.cameraName = name;
     }
+    if (it.slots?.placeName) {
+      const pname = capturePlaceName(text, it.stopwords);
+      if (pname) slots.placeName = pname;
+    }
 
     return { intent: it, slots };
   }
 
-  // 4) fallback
+  // 5) fallback
   const fb = intents.find(i=>i.id==="fallback");
   return { intent: fb, slots:{} };
 }
