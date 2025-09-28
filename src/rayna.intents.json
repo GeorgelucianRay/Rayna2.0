@@ -3,7 +3,15 @@
     "id": "saludo",
     "priority": 100,
     "type": "static",
-    "patterns_any": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hola rayna", "que tal"],
+    "patterns_any": [
+      "hola",
+      "buenas",
+      "buenos dias",
+      "buenas tardes",
+      "buenas noches",
+      "hola rayna",
+      "que tal"
+    ],
     "response": {
       "text": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?"
     }
@@ -12,7 +20,13 @@
     "id": "quien_eres",
     "priority": 95,
     "type": "static",
-    "patterns_any": ["quien eres", "quién eres", "quien es rayna", "quién es rayna", "que eres"],
+    "patterns_any": [
+      "quien eres",
+      "quién eres",
+      "quien es rayna",
+      "quién es rayna",
+      "que eres"
+    ],
     "response": {
       "text": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉."
     }
@@ -21,72 +35,28 @@
     "id": "help",
     "priority": 90,
     "type": "static",
-    "patterns_any": ["que puedes hacer", "qué puedes hacer", "ayuda", "help"],
+    "patterns_any": [
+      "que puedes hacer",
+      "qué puedes hacer",
+      "ayuda",
+      "help",
+      "que piedes hacer",
+      "que puedes acer"
+    ],
     "response": {
       "text": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio."
-    }
-  },
-  {
-  "id": "ver_camara",
-  "priority": 80,
-  "type": "action",
-  "patterns_any": ["abre", "abrir", "ver", "muestra", "desplegar", "deschide", "vreau sa vad", "vreau să văd", "cámara", "camara", "camera"],
-  "negative_any": ["añadir", "anadir", "agregar", "crear", "nueva", "adauga", "adaugă", "adaug", "poner", "publicar"],
-  "stopwords": ["entonces","por","favor","la","el","una","un","pf","pls","ok","vale"],
-  "slots": {
-    "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
-  },
-  "action": "open_camera",
-  "response": {
-    "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
-    "objects": [
-      {
-        "type": "card",
-        "title": "{{camera.name}}",
-        "actions": [
-          { "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }
-        ]
-      }
-    ]
-  },
-  "not_found": { "text": "No he encontrado la cámara \"{{query}}\"." }
-}
-    "action": "open_camera",
-    "response": {
-      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
-      "objects": [
-        {
-          "type": "card",
-          "title": "{{camera.name}}",
-          "actions": [
-            { "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }
-          ]
-        }
-      ]
-    },
-    "not_found": {
-      "text": "No he encontrado la cámara \"{{query}}\"."
-    }
-  },
-  {
-    "id": "ver_anuncio",
-    "priority": 70,
-    "type": "action",
-    "patterns_any": ["que anuncio hay", "qué anuncio hay", "ver anuncio", "anuncios", "ce anunț avem", "ce anunt avem"],
-    "action": "show_announcement",
-    "response": {
-      "text": "Este es el anuncio vigente:",
-      "objects": [
-        { "type": "announcement_box", "content": "{{announcement.content}}" }
-      ]
     }
   },
   {
     "id": "set_anuncio",
     "priority": 85,
     "type": "dialog",
-    "patterns_any": ["quiero poner un anuncio", "poner anuncio", "publicar anuncio"],
-    "roles_allowed": ["admin","dispecer"],
+    "patterns_any": [
+      "quiero poner un anuncio",
+      "poner anuncio",
+      "publicar anuncio"
+    ],
+    "roles_allowed": ["admin", "dispecer"],
     "dialog": {
       "await_key": "anuncio_text",
       "ask_text": "Claro, ¿qué anuncio quieres?",
@@ -96,31 +66,126 @@
     }
   },
   {
-  "id": "admin_add_camara",
-  "priority": 86,
-  "type": "dialog",
-  "patterns_any": [
-    "quiero añadir una camara",
-    "quiero anadir una camara",
-    "añadir camara",
-    "agregar camara",
-    "crear camara",
-    "nueva camara",
-    "adaugă cameră",
-    "adauga camera",
-    "adaug camera",
-    "vreau să adaug o cameră",
-    "vreau sa adaug o camera",
-    "add camera"
-  ],
-  "roles_allowed": ["admin"],
-  "dialog": {
-    "form": "add_camera_inline",
-    "save_action": "insert_camera",
-    "save_ok": "¡Listo! Cámara **{{camera.name}}** añadida.",
-    "save_err": "No pude añadir la cámara. Revisa el URL."
-  }
-}
+    "id": "admin_add_camara",
+    "priority": 86,
+    "type": "dialog",
+    "patterns_any": [
+      "quiero añadir una camara",
+      "quiero anadir una camara",
+      "añadir camara",
+      "agregar camara",
+      "crear camara",
+      "nueva camara",
+      "adaugă cameră",
+      "adauga camera",
+      "adaug camera",
+      "vreau să adaug o cameră",
+      "vreau sa adaug o camera",
+      "add camera"
+    ],
+    "roles_allowed": ["admin"],
+    "dialog": {
+      "form": "add_camera_inline",
+      "save_action": "insert_camera",
+      "save_ok": "¡Listo! Cámara **{{camera.name}}** añadida.",
+      "save_err": "No pude añadir la cámara. Revisa el URL."
+    }
+  },
+  {
+    "id": "ver_anuncio",
+    "priority": 70,
+    "type": "action",
+    "patterns_any": [
+      "que anuncio hay",
+      "qué anuncio hay",
+      "ver anuncio",
+      "anuncios",
+      "ce anunț avem",
+      "ce anunt avem"
+    ],
+    "action": "show_announcement",
+    "response": {
+      "text": "Este es el anuncio vigente:",
+      "objects": [
+        {
+          "type": "announcement_box",
+          "content": "{{announcement.content}}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ver_camara",
+    "priority": 80,
+    "type": "action",
+    "patterns_any": [
+      "abre",
+      "abrir",
+      "ver",
+      "muestra",
+      "mostrar",
+      "desplegar",
+      "deschide",
+      "vreau sa vad",
+      "vreau să văd",
+      "cámara",
+      "camara",
+      "camera"
+    ],
+    "negative_any": [
+      "añadir",
+      "anadir",
+      "agregar",
+      "crear",
+      "nueva",
+      "nuevo",
+      "adauga",
+      "adaugă",
+      "adaug",
+      "add",
+      "poner",
+      "publicar"
+    ],
+    "stopwords": [
+      "entonces",
+      "por",
+      "favor",
+      "la",
+      "el",
+      "una",
+      "un",
+      "pf",
+      "pls",
+      "ok",
+      "vale"
+    ],
+    "slots": {
+      "cameraName": {
+        "from": "tail_after_patterns_or_single_token",
+        "min_len": 2
+      }
+    },
+    "action": "open_camera",
+    "response": {
+      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
+      "objects": [
+        {
+          "type": "card",
+          "title": "{{camera.name}}",
+          "actions": [
+            {
+              "type": "open",
+              "label": "Abrir cámara",
+              "route": "{{camera.url}}",
+              "newTab": true
+            }
+          ]
+        }
+      ]
+    },
+    "not_found": {
+      "text": "No he encontrado la cámara \"{{query}}\"."
+    }
   },
   {
     "id": "fallback",
