@@ -44,22 +44,42 @@ const fuzzyEq = (a, b) => {
   return ed(a, b) <= tol;
 };
 
+// ——— Potrivire corectă (fără sub-șiruri accidentale)
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * includesAny:
+ * - dacă pattern-ul are spații -> căutăm fraza cu margini (start/spațiu ... spațiu/sfârșit)
+ * - dacă e un singur cuvânt -> comparăm pe token-uri (fuzzy)
+ */
 function includesAny(text, arr) {
   if (!Array.isArray(arr) || !arr.length) return false;
   const n = normalize(text);
-  return arr.some(p => n.includes(normalize(p)));
+  const toks = n.split(" ").filter(Boolean);
+
+  return arr.some(p => {
+    const np = normalize(p);
+    if (!np) return false;
+
+    if (np.includes(" ")) { // frază
+      const re = new RegExp(`(?:^|\\s)${esc(np)}(?:\\s|$)`);
+      return re.test(n);
+    } else { // cuvânt
+      return toks.some(tk => fuzzyEq(tk, np));
+    }
+  });
 }
+
 function hasToken(text, list) {
   if (!Array.isArray(list) || !list.length) return false;
   const toks = normalize(text).split(" ").filter(Boolean);
-  return list.some(w => toks.some(tk => fuzzyEq(tk, w)));
+  return list.some(w => toks.some(tk => fuzzyEq(tk, normalize(w))));
 }
 
 /* -------------------- Capture: cameraName -------------------- */
 function captureCameraName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
-
     "la","el","una","un","de","del","al",
     "camara","cámara","camera","camaras","cámaras",
     "abre","abrir","abreme","ábreme","ver","muestra","mostrar","desplegar",
@@ -72,7 +92,6 @@ function captureCameraName(raw, stopwords = []) {
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
     const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte utile
-    // respinge „camara/camera” simplu
     const generic = new Set(["camara","camera"]);
     if (!candidate || generic.has(candidate)) return null;
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
