@@ -205,5 +205,40 @@
     "priority": 0,
     "type": "static",
     "response": { "text": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS." }
+  }, 
+  {
+  "id": "gps_add_location",
+  "priority": 82,
+  "type": "dialog",
+  "patterns_any": [
+    "quiero añadir nueva ubicacion",
+    "quiero añadir ubicacion",
+    "añadir ubicacion",
+    "agregar ubicacion",
+    "crear ubicacion",
+    "nueva ubicacion",
+    "adauga locatie",
+    "adauga locație",
+    "adaugă locație"
+  ],
+  "roles_allowed": ["admin", "dispecer", "sofer"],
+  "dialog": {
+    "steps": [
+      "gps_add.type",
+      "gps_add.name",
+      "gps_add.coords_or_link",
+      "gps_add.photo",
+      "gps_add.details",
+      "gps_add.confirm"
+    ],
+    "ask_type": "Claro. ¿Qué tipo de ubicación es?",
+    "ask_name": "Perfecto, ¿cómo se llama?",
+    "ask_coords": "Ok. Pulsa el botón para usar tu ubicación actual, o envíame el enlace de Google Maps, o escríbeme las coordenadas (lat,lon).",
+    "ask_photo": "¿Tienes alguna foto del lugar? Sube una o haz una ahora.",
+    "ask_details": "Añade detalles (dirección, notas útiles, tiempo de espera si aplica).",
+    "ask_confirm": "¿Guardamos la ubicación?",
+    "save_ok": "¡Perfecto! La ubicación ha sido guardada. ¿Quieres verla ahora?",
+    "save_err": "No pude guardar la ubicación, revisa los datos."
   }
+}
 ]
