@@ -9,7 +9,9 @@ export function normalize(s) {
     "Á":"a","É":"e","Í":"i","Ó":"o","Ú":"u","Ü":"u","Ñ":"n",
     // RO
     "ă":"a","â":"a","î":"i","ș":"s","ş":"s","ț":"t","ţ":"t",
-    "Ă":"a","Â":"a","Î":"i","Ș":"s","Ş":"s","Ț":"t","Ţ":"t"
+    "Ă":"a","Â":"a","Î":"i","Ș":"s","Ş":"s","Ț":"t","Ţ":"t",
+    // CA (uzuale)
+    "à":"a","À":"a","ç":"c","Ç":"c","è":"e","È":"e","ï":"i","Ï":"i"
   };
   let out = String(s).replace(/[\s\S]/g, c => DIAC[c] ?? c);
   out = out.toLowerCase();
@@ -76,6 +78,15 @@ function hasToken(text, list) {
   return list.some(w => toks.some(tk => fuzzyEq(tk, normalize(w))));
 }
 
+/* -------------------- Strip greeting prefix ------------------- */
+// Taie saluturile de la început: "hola, ...", "buenas, ...", "salut, ...", "bon dia, ..." etc.
+function stripGreetingPrefix(s) {
+  if (!s) return "";
+  // tolerant, acoperă ES/RO/CA uzual + semne de punctuație/ spații după
+  const re = /^(hola|buenas|buenos dias|buenos dias|buen dia|buen dia|que tal|qué tal|salut|buna|bună|hei|hey|alo|bon dia|bona tarda|bona nit|oli|bones)[,!\s-]+/i;
+  return String(s).replace(re, "");
+}
+
 /* -------------------- Capture: cameraName -------------------- */
 // extrage numele camerei din coadă, eliminând verbe/umpluturi
 function captureCameraName(raw, stopwords = []) {
@@ -93,7 +104,10 @@ function captureCameraName(raw, stopwords = []) {
     // creare / administrativ
     "añadir","anadir","agregar","crear","nueva","nuevo",
     "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar",
-    "lista","listado","todas","tutti","todes"
+    "lista","listado","todas","tutti","todes",
+    // saluturi – să nu intre în nume
+    "hola","buenas","buenos","dias","días","tardes","noches",
+    "salut","buna","bună","bon","dia","bona","tarda","nit"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -119,7 +133,10 @@ function capturePlaceName(raw, stopwords = []) {
     "vreau","sa","să","ajung","merg",
     "info","informacion","información","detalii",
     "donde","dónde","esta","está","despre",
-    "cliente","client","clientul","que","qué","pasa","hay"
+    "cliente","client","clientul","que","qué","pasa","hay",
+    // saluturi – să nu intre în nume
+    "hola","buenas","buenos","dias","días","tardes","noches",
+    "salut","buna","bună","bon","dia","bona","tarda","nit"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -135,6 +152,7 @@ function capturePlaceName(raw, stopwords = []) {
 /* ---------------------- Intent detect ------------------------ */
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
+  const pre = stripGreetingPrefix(text); // ← ignorăm salutul de la început
   const list = Array.isArray(intentsJson) ? intentsJson : [];
 
   // sortare defensivă după priority (desc)
@@ -144,52 +162,46 @@ export function detectIntent(message, intentsJson) {
     if (!it) continue;
     if (it.id === "fallback") continue;
 
-    // 1) potrivire pe patterns
-    let ok = includesAny(text, it.patterns_any) || hasToken(text, it.patterns_any);
+    // 1) potrivire pe patterns — folosim textul curățat
+    let ok = includesAny(pre, it.patterns_any) || hasToken(pre, it.patterns_any);
 
     // 1.1) negative_any — inhibit
     if (ok && it.negative_any) {
-      const negHit = includesAny(text, it.negative_any) || hasToken(text, it.negative_any);
+      const negHit = includesAny(pre, it.negative_any) || hasToken(pre, it.negative_any);
       if (negHit) ok = false;
     }
 
-    // 2) Heuristica pentru ver_camara: cere substantiv + frază scurtă, NU „lista/qué … hay”
+    // 2) Heuristica pentru ver_camara (fraze scurte cu „abre/ver/cámara” etc.)
     if (!ok && it.id === "ver_camara") {
-      const tokens = normalize(text).split(" ").filter(Boolean);
-      const hasNoun = includesAny(text, ["camara","cámara","camera","camere"]);
-      const isListy = includesAny(text, ["que camaras hay","qué camaras hay","qué cámaras hay","lista camaras","listado camaras","ver todas las camaras"]);
-      if (hasNoun && !isListy && tokens.length <= 4) ok = true;
+      const tokens = normalize(pre).split(" ").filter(Boolean);
+      const hasNounCue = includesAny(pre, ["camara","cámara","camera","camere"]);
+      const hasVerbCue = includesAny(pre, ["abre","abrir","abreme","ver","muestra","mostrar","desplegar","deschide"]);
+      const isListy = includesAny(pre, [
+        "que camaras hay","qué camaras hay","qué cámaras hay",
+        "lista camaras","listado camaras","ver todas las camaras"
+      ]);
+      if ((hasNounCue || hasVerbCue) && !isListy && tokens.length <= 7) {
+        ok = true;
+      }
     }
-
-    // 3) Heuristică specială pentru ver_camara:
-if (!ok && it.id === "ver_camara") {
-  const tokens = normalize(text).split(" ").filter(Boolean);
-  const hasNounCue = includesAny(text, ["camara","cámara","camera","camere"]);
-  const hasVerbCue = includesAny(text, ["abre","abrir","ver","muestra","mostrar","desplegar","deschide"]);
-
-  // acceptă fie substantiv, fie verb + frază scurtă
-  if ((hasNounCue || hasVerbCue) && tokens.length <= 5) {
-    ok = true;
-  }
-}
 
     if (!ok) continue;
 
-    // 4) slots
+    // 3) slots — din textul curățat (fără salut)
     const slots = {};
     if (it.slots?.cameraName) {
-      const name = captureCameraName(text, it.stopwords);
+      const name = captureCameraName(pre, it.stopwords);
       if (name) slots.cameraName = name;
     }
     if (it.slots?.placeName) {
-      const pname = capturePlaceName(text, it.stopwords);
+      const pname = capturePlaceName(pre, it.stopwords);
       if (pname) slots.placeName = pname;
     }
 
     return { intent: it, slots };
   }
 
-  // 5) fallback
+  // 4) fallback
   const fb = intents.find(i => i?.id === "fallback");
   return { intent: fb || { id: "fallback", type: "static", response: { text: "No te he entendido." } }, slots: {} };
 }
