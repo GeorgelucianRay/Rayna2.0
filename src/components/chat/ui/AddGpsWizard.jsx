@@ -1,371 +1,429 @@
+// src/components/chat/wizards/AddGpsModalWizard.jsx
 import React, { useEffect, useRef, useState } from "react";
-import styles from "./Chatbot.module.css";
+import styles from "../Chatbot.module.css"; // folosim aceleași bubbles/carduri ca Rayna
+import { supabase } from "../../../supabaseClient";
 
-// hook anti-zoom iOS (ajustează calea dacă folderul e altul)
-import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
+// 🔹 UI inline deja create de tine
+import GeoCaptureButton from "../ui/GeoCaptureButton";
+import PhotoUploadInline from "../ui/PhotoUploadInline";
 
-import { supabase } from "../../supabaseClient";
-import { useAuth } from "../../AuthContext.jsx";
-import intentsData from "../../rayna.intents.json";
-import { detectIntent } from "../../nluEngine";
-import ChatMiniMap from "./ChatMiniMap";
+// ——— Utils mici
+const TYPE_OPTIONS = [
+  { key: "cliente",   label: "Cliente",   table: "gps_clientes"   },
+  { key: "parking",   label: "Parking",   table: "gps_parkings"   },
+  { key: "servicio",  label: "Servicio",  table: "gps_servicios"  },
+  { key: "terminal",  label: "Terminal",  table: "gps_terminale"  },
+];
 
-import {
-  findPlaceByName,
-  findPlacesByName,
-  findCameraFor,
-  getMapsLinkFromRecord,
-  pointGeoJSONFromCoords,
-  loadGpsList,
-} from "./gpsHelpers";
+const getTableByType = (tkey) => TYPE_OPTIONS.find(t => t.key === tkey)?.table || null;
 
-import BotBubble from "./ui/BotBubble";
-import ActionCard from "./ui/ActionCard";
-import AnnouncementBox from "./ui/AnnouncementBox";
-import AddCameraInline from "./ui/AddCameraInline";
-import PlaceInfoCard from "./ui/PlaceInfoCard";
-import SimpleList from "./ui/SimpleList";
-import AddGpsWizard from "./ui/AddGpsWizard"; // ✅ import corect
+// ——— Un „bubble” de bot reutilizabil
+function BotBubble({ children }) {
+  return <div className={`${styles.bubble} ${styles.bot}`}>{children}</div>;
+}
+function MeBubble({ children }) {
+  return <div className={`${styles.bubble} ${styles.me}`}>{children}</div>;
+}
 
-export default function RaynaHub() {
-  // 👉 apelează hook-ul anti-zoom la MOUNT
-  useIOSNoInputZoom();
-
-  const { profile } = useAuth();
-  const role = profile?.role || "driver";
-
-  const [messages, setMessages] = useState([
-    { from: "bot", reply_text: intentsData.find(i => i.id === "saludo")?.response?.text || "¡Hola!" }
+export default function AddGpsModalWizard({ onDone, onCancel }) {
+  // starea „chat”
+  const [flow, setFlow] = useState([
+    { role: "bot", text: "Quiero añadir nueva ubicación.\n¡Claro! ¿Qué tipo de ubicación es?" }
   ]);
-  const [text, setText] = useState("");
-  const [awaiting, setAwaiting] = useState(null);
-  const [saving, setSaving] = useState(false);
   const endRef = useRef(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [flow]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // formularul „invizibil” care se umple pas cu pas
+  const [form, setForm] = useState({
+    tipo: "",            // cliente/parking/servicio/terminal
+    nombre: "",
+    direccion: "",
+    link_maps: "",
+    coordenadas: "",
+    tiempo_espera: "",   // doar pentru clientes
+    detalles: "",
+    link_foto: "",
+  });
+  const [stage, setStage] = useState("type");   // type -> name -> location_method -> location_fill -> optional_extras -> photo -> details -> confirm -> saving -> done
+  const [saving, setSaving] = useState(false);
 
-  // helper: pune întrebarea „qué me puedes decir de X” și o trimite prin același flux
-  const askInfoNow = (name) => {
-    const q = `qué me puedes decir de ${name}`;
-    setText(q);
-    setTimeout(() => { send(); }, 0);
-  };
+  // helpers pt. push mesaje
+  const pushBot  = (text, render) => setFlow(f => [...f, { role: "bot", text, render }]);
+  const pushUser = (text) => setFlow(f => [...f, { role: "me",  text }]);
 
-  async function send() {
-    const userText = text.trim();
-    if (!userText) return;
-    setMessages(m => [...m, { from: "user", text: userText }]);
-    setText("");
-
-    // ——— dialog "anuncio"
-    if (awaiting === "anuncio_text") {
-      const di = intentsData.find(i => i.id === "set_anuncio")?.dialog;
-      if (!(role === "admin" || role === "dispecer")) {
-        setMessages(m => [...m, { from: "bot", reply_text: "No tienes permiso para actualizar anuncios." }]);
-        setAwaiting(null);
-        return;
-      }
-      setSaving(true);
-      const { error } = await supabase.from("anuncios").update({ content: userText }).eq("id", 1);
-      setSaving(false);
-      setAwaiting(null);
-      setMessages(m => [...m, { from: "bot", reply_text: error ? di.save_err : di.save_ok }]);
-      return;
-    }
-
-    // ——— detect intent
-    const { intent, slots } = detectIntent(userText, intentsData);
-
-    // ==== STATIC
-    if (intent.type === "static") {
-      const objs = intent.response?.objects || [];
-      if (!objs.length) {
-        setMessages(m => [...m, { from: "bot", reply_text: intent.response.text }]);
-        return;
-      }
-      const first = objs[0];
-      if (first?.type === "card") {
-        const card = {
-          title: first.title || "",
-          subtitle: first.subtitle || "",
-          actions: (first.actions || []).map(a => ({ ...a, label: a.label, route: a.route, newTab: a.newTab }))
-        };
-        setMessages(m => [...m, { from: "bot", reply_text: intent.response.text, render: () => <ActionCard card={card} /> }]);
-        return;
-      }
-      setMessages(m => [...m, { from: "bot", reply_text: intent.response.text }]);
-      return;
-    }
-
-    // ==== DIALOG
-    if (intent.type === "dialog") {
-      const allowed = intent.roles_allowed ? intent.roles_allowed.includes(role) : true;
-      if (!allowed) {
-        setMessages(m => [...m, { from: "bot", reply_text: "No tienes permiso para esta acción." }]);
-        return;
-      }
-
-      // ——— flux existent: add camera inline
-      if (intent.dialog.form === "add_camera_inline") {
-        setMessages(m => [...m, {
-          from: "bot",
-          reply_text: "Perfecto. Añadamos una cámara:",
-          render: () => (
-            <AddCameraInline
-              saving={saving}
-              onSubmit={async ({ name, url }) => {
-                setSaving(true);
-                const { data, error } = await supabase
-                  .from("external_links")
-                  .insert({ name, url, icon_type: "camera", display_order: 9999 })
-                  .select()
-                  .single();
-                setSaving(false);
-                setMessages(mm => [...mm, { from: "bot", reply_text: error ? intent.dialog.save_err : `¡Listo! Cámara ${data?.name} añadida.` }]);
-              }}
-            />
-          )
-        }]);
-        return;
-      }
-
-      if (intent.dialog.await_key === "anuncio_text") {
-        setAwaiting("anuncio_text");
-        setMessages(m => [...m, { from: "bot", reply_text: intent.dialog.ask_text }]);
-        return;
-      }
-    } // ← închidere dialog
-
-    // ==== NOU: ACTION – pornește wizard-ul conversațional de adăugare locație
-    if (intent.type === "action" && intent.action === "start_gps_add_chat") {
-      setMessages(m => [...m, {
-        from: "bot",
-        reply_text: "Vale, iniciamos el alta de ubicación:",
-        render: () => (
-          <AddGpsWizard
-            onDone={({ openPreviewOf }) => {
-              if (openPreviewOf) {
-                // injectează automat întrebarea de info pt. card
-                setMessages(mm => [...mm, { from: "user", text: `que me puedes decir de ${openPreviewOf}` }]);
-              }
+  // ——— 1) ALEGERE TIP
+  const TypeSelector = () => (
+    <div className={styles.card} style={{ marginTop: 8 }}>
+      <div className={styles.cardTitle}>Elige el tipo:</div>
+      <div className={styles.cardActions}>
+        {TYPE_OPTIONS.map(opt => (
+          <button
+            key={opt.key}
+            className={styles.actionBtn}
+            onClick={() => {
+              pushUser(opt.label);
+              setForm(v => ({ ...v, tipo: opt.key }));
+              setStage("name");
+              pushBot("¿Cómo se llama esta ubicación?");
             }}
-            onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: "Cancelado. ¿Algo más?" }])}
-          />
-        )
-      }]);
-      return;
-    }
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
-    // ==== ACTION: list_all_cameras
-    if (intent.type === "action" && intent.action === "list_all_cameras") {
-      const { data } = await supabase
-        .from("external_links")
-        .select("id,name,url,icon_type")
-        .eq("icon_type", "camera")
-        .order("name");
-      const items = (data || []).map(d => ({ ...d, _table: "external_links", nombre: d.name }));
-      setMessages(m => [...m, {
-        from: "bot",
-        reply_text: intent.response?.text || "Cámaras:",
-        render: () => (
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Cámaras</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-              {items.map(it => (
-                <button key={it.id} className={styles.actionBtn} onClick={() => window.open(it.url, "_blank", "noopener")}>
-                  {it.name}
-                </button>
-              ))}
+  // ——— 2) NUME
+  const NameInput = () => {
+    const [value, setValue] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardTitle}>Nombre</div>
+        <div className={styles.cardActions}>
+          <input
+            className={styles.input}
+            placeholder="Ej.: Tercat"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={(e)=>{ if(e.key==="Enter") submit(); }}
+          />
+          <button className={styles.actionBtn} onClick={submit}>Continuar</button>
+        </div>
+      </div>
+    );
+    function submit() {
+      const v = value.trim();
+      if (!v) return;
+      pushUser(v);
+      setForm(f => ({ ...f, nombre: v }));
+      setStage("location_method");
+      pushBot(
+        "Ok. ¿Cómo nos das la ubicación?\n• Pulsa el botón para usar tu posición\n• Pega el enlace de Google Maps\n• Escribe las coordenadas (lat,lon)",
+        () => (
+          <div className={styles.card} style={{ marginTop: 8 }}>
+            <div className={styles.cardActions}>
+              <button className={styles.actionBtn} onClick={() => { pushUser("Usar mi ubicación"); setStage("location_fill_geo"); }}>
+                Usar mi ubicación
+              </button>
+              <button className={styles.actionBtn} onClick={() => { pushUser("Te paso un enlace de Maps"); setStage("location_fill_link"); }}>
+                Pegar enlace Maps
+              </button>
+              <button className={styles.actionBtn} onClick={() => { pushUser("Te doy coordenadas"); setStage("location_fill_coords"); }}>
+                Escribir coordenadas
+              </button>
             </div>
           </div>
         )
-      }]);
-      return;
+      );
     }
+  };
 
-    // ==== ACTION: open_camera
-    if (intent.type === "action" && intent.action === "open_camera") {
-      const queryName = (slots.cameraName || "").trim();
-      if (!queryName) {
-        setMessages(m => [...m, { from: "bot", reply_text: "Dime el nombre de la cámara (por ejemplo: TCB)." }]);
-        return;
-      }
-      let { data, error } = await supabase
-        .from("external_links")
-        .select("id,name,url,icon_type")
-        .eq("icon_type", "camera")
-        .ilike("name", `%${queryName}%`)
-        .limit(1)
-        .maybeSingle();
+  // ——— 3A) „GeoCapture” – luăm coordonate
+  const LocationFillGeo = () => (
+    <div className={styles.card} style={{ marginTop: 8 }}>
+      <div className={styles.cardTitle}>Pulsa para capturar tu ubicación</div>
+      <div className={styles.cardActions}>
+        <GeoCaptureButton
+          onGotCoords={(coords) => {
+            pushUser(coords);
+            setForm(f => ({ ...f, coordenadas: coords, link_maps: f.link_maps || `https://maps.google.com/?q=${coords}` }));
+            askOptionalExtras();
+          }}
+          onError={(msg) => pushBot(`Error al obtener ubicación: ${msg}`)}
+        />
+      </div>
+    </div>
+  );
 
-      if ((!data || error) && queryName.split(" ").length > 1) {
-        let q = supabase.from("external_links").select("id,name,url,icon_type").eq("icon_type", "camera");
-        queryName.split(" ").forEach(tok => { q = q.ilike("name", `%${tok}%`); });
-        const r = await q.limit(1);
-        data = r.data?.[0]; error = r.error;
-      }
-      if (error || !data) {
-        setMessages(m => [...m, { from: "bot", reply_text: intent.not_found?.text?.replace("{{query}}", queryName) || `No he encontrado "${queryName}".` }]);
-        return;
-      }
-      const cardDef = intent.response.objects?.[0];
-      setMessages(m => [...m, {
-        from: "bot",
-        reply_text: intent.response.text.replace("{{camera.name}}", data.name),
-        render: () => <ActionCard card={{
-          title: (cardDef?.title || "").replace("{{camera.name}}", data.name),
-          actions: (cardDef?.actions || []).map(a => ({ ...a, route: (a.route || "").replace("{{camera.url}}", data.url) }))
-        }} />
-      }]);
-      return;
+  // ——— 3B) Link Maps
+  const LocationFillLink = () => {
+    const [link, setLink] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardTitle}>Pega enlace de Google Maps</div>
+        <div className={styles.cardActions}>
+          <input
+            className={styles.input}
+            placeholder="https://maps.google.com/..."
+            value={link}
+            onChange={e => setLink(e.target.value)}
+            onKeyDown={(e)=>{ if(e.key==="Enter") submit(); }}
+          />
+          <button className={styles.actionBtn} onClick={submit}>Continuar</button>
+        </div>
+      </div>
+    );
+    function submit(){
+      const v = link.trim();
+      if (!v) return;
+      pushUser(v);
+      setForm(f => ({ ...f, link_maps: v }));
+      askOptionalExtras();
     }
+  };
 
-    // ==== ACTION: show_announcement
-    if (intent.type === "action" && intent.action === "show_announcement") {
-      const { data, error } = await supabase.from("anuncios").select("content").eq("id", 1).maybeSingle();
-      const content = error ? "No se pudo cargar el anuncio." : (data?.content || "Sin contenido.");
-      setMessages(m => [...m, {
-        from: "bot",
-        reply_text: intent.response?.text || "Este es el anuncio vigente:",
-        render: () => <AnnouncementBox content={content} />
-      }]);
-      return;
+  // ——— 3C) Coordonate
+  const LocationFillCoords = () => {
+    const [coords, setCoords] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardTitle}>Escribe coordenadas</div>
+        <div className={styles.cardActions}>
+          <input
+            className={styles.input}
+            placeholder="Ej.: 41.15, 1.10"
+            value={coords}
+            onChange={e => setCoords(e.target.value)}
+            onKeyDown={(e)=>{ if(e.key==="Enter") submit(); }}
+          />
+          <button className={styles.actionBtn} onClick={submit}>Continuar</button>
+        </div>
+      </div>
+    );
+    function submit(){
+      const v = coords.trim();
+      if (!v) return;
+      pushUser(v);
+      setForm(f => ({ ...f, coordenadas: v, link_maps: f.link_maps || `https://maps.google.com/?q=${v}` }));
+      askOptionalExtras();
     }
+  };
 
-    // ==== ACTION: GPS – navegar a
-    if (intent.type === "action" && (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")) {
-      const placeName = (slots.placeName || "").trim();
-      if (!placeName) { setMessages(m => [...m, { from: "bot", reply_text: "Dime el destino (por ejemplo: TCB)." }]); return; }
-
-      const options = await findPlacesByName(placeName);
-      if (!options.length) { setMessages(m => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]); return; }
-
-      const showRoute = (p) => {
-        const mapsUrl = getMapsLinkFromRecord(p);
-        const geojson = pointGeoJSONFromCoords(p.coordenadas);
-        setMessages(mm => [...mm, {
-          from: "bot",
-          reply_text: `Claro, aquí tienes la ruta a **${p.nombre}**. Toca el mapa para abrir Google Maps.`,
-          render: () => (
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>{p.nombre}</div>
-              <div style={{ marginTop: 8 }}>
-                <ChatMiniMap id={`chatmap-${p._table}-${p.id}`} geojson={geojson} mapsLink={mapsUrl} title={p.nombre} />
-              </div>
-              {mapsUrl && (
-                <div className={styles.cardActions} style={{ marginTop: 8 }}>
-                  <button className={styles.actionBtn} onClick={() => window.open(mapsUrl, "_blank", "noopener")}>
-                    Abrir en Google Maps
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        }]);
-      };
-
-      if (options.length > 1) {
-        setMessages(m => [...m, {
-          from: "bot",
-          reply_text: `He encontrado varios sitios para «${placeName}». Elige uno:`,
-          render: () => <SimpleList title="Resultados" items={options} onPick={showRoute} />
-        }]);
-        return;
-      }
-
-      showRoute(options[0]);
-      return;
-    }
-
-    // ==== ACTION: GPS – info de
-    if (intent.type === "action" && intent.id === "gps_info_de") {
-      const placeName = (slots.placeName || "").trim();
-      if (!placeName) { setMessages(m => [...m, { from: "bot", reply_text: "¿De qué sitio quieres información?" }]); return; }
-
-      const options = await findPlacesByName(placeName);
-      if (!options.length) { setMessages(m => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]); return; }
-
-      const showInfo = async (p) => {
-        const cam = await findCameraFor(p.nombre);
-        const mapsUrl = getMapsLinkFromRecord(p);
-        setMessages(mm => [...mm, {
-          from: "bot",
-          reply_text: `Esto es lo que tengo de **${p.nombre}**:`,
-          render: () => <PlaceInfoCard place={p} mapsUrl={mapsUrl} cameraUrl={cam?.url} />
-        }]);
-      };
-
-      if (options.length > 1) {
-        setMessages(m => [...m, {
-          from: "bot",
-          reply_text: `He encontrado varios «${placeName}». Elige uno:`,
-          render: () => <SimpleList title="Resultados" items={options} onPick={showInfo} />
-        }]);
-        return;
-      }
-
-      await showInfo(options[0]);
-      return;
-    }
-
-    // ==== ACTION: GPS – LISTE GENERICE
-    if (intent.type === "action" && intent.action === "gps_list") {
-      const id = intent.id;
-      const tables = {
-        "gps_list_terminale": { table: "gps_terminale", label: "Terminales" },
-        "gps_list_parkings":  { table: "gps_parkings",  label: "Parkings"  },
-        "gps_list_servicios": { table: "gps_servicios", label: "Servicios" }
-      };
-      const cfg = tables[id];
-      if (cfg) {
-        const items = await loadGpsList(cfg.table);
-        setMessages(m => [...m, {
-          from: "bot",
-          reply_text: intent.response?.text || `Estas son las ${cfg.label.toLowerCase()}:`,
-          render: () => <SimpleList title={cfg.label} items={items} />
-        }]);
-        return;
-      }
-    }
-
-    // ==== fallback
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: intentsData.find(i => i.id === "fallback")?.response?.text ||
-        "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
-    }]);
+  function askOptionalExtras() {
+    setStage("optional_extras");
+    pushBot(
+      "¿Quieres añadir dirección o tiempo de espera (si es Cliente)?",
+      () => (
+        <div className={styles.card} style={{ marginTop: 8 }}>
+          <div className={styles.cardActions}>
+            <button className={styles.actionBtn} onClick={() => { pushUser("Añadir dirección"); setStage("ask_address"); }}>
+              Añadir dirección
+            </button>
+            {form.tipo === "cliente" && (
+              <button className={styles.actionBtn} onClick={() => { pushUser("Añadir tiempo de espera"); setStage("ask_wait"); }}>
+                Tiempo de espera
+              </button>
+            )}
+            <button className={styles.actionBtn} onClick={() => { pushUser("Saltar"); setStage("photo"); askPhoto(); }}>
+              Saltar
+            </button>
+          </div>
+        </div>
+      )
+    );
   }
 
-  return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <div className={styles.logoDot} />
-        <div className={styles.headerTitleWrap}>
-          <div className={styles.brand}>Rayna 2.0</div>
-          <div className={styles.tagline}>Tu transportista virtual</div>
+  const AskAddress = () => {
+    const [v, setV] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardTitle}>Dirección</div>
+        <div className={styles.cardActions}>
+          <input className={styles.input} value={v} onChange={e=>setV(e.target.value)} placeholder="Calle…" onKeyDown={(e)=>{ if(e.key==="Enter") submit(); }} />
+          <button className={styles.actionBtn} onClick={submit}>OK</button>
         </div>
-        <button className={styles.closeBtn} onClick={() => window.history.back()} aria-label="Cerrar">×</button>
-      </header>
+      </div>
+    );
+    function submit(){
+      pushUser(v || "(vacío)");
+      setForm(f => ({ ...f, direccion: v }));
+      setStage("optional_extras");
+      askOptionalExtras();
+    }
+  };
 
-      <main className={styles.chat}>
-        {messages.map((m, i) =>
-          m.from === "user"
-            ? <div key={i} className={`${styles.bubble} ${styles.me}`}>{m.text}</div>
-            : <BotBubble key={i} reply_text={m.reply_text}>{m.render ? m.render() : null}</BotBubble>
-        )}
-        <div ref={endRef} />
-      </main>
+  const AskWait = () => {
+    const [v, setV] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardTitle}>Tiempo de espera</div>
+        <div className={styles.cardActions}>
+          <input className={styles.input} value={v} onChange={e=>setV(e.target.value)} placeholder="Ej.: 30-45 min" onKeyDown={(e)=>{ if(e.key==="Enter") submit(); }} />
+          <button className={styles.actionBtn} onClick={submit}>OK</button>
+        </div>
+      </div>
+    );
+    function submit(){
+      pushUser(v || "(vacío)");
+      setForm(f => ({ ...f, tiempo_espera: v }));
+      setStage("optional_extras");
+      askOptionalExtras();
+    }
+  };
 
-      <footer className={styles.inputBar}>
-        <input
+  function askPhoto() {
+    pushBot(
+      "¿Tienes alguna foto del lugar? Súbela o haz una ahora:",
+      () => (
+        <div className={styles.card} style={{ marginTop: 8 }}>
+          <PhotoUploadInline
+            value={form.link_foto}
+            onUploaded={(url) => {
+              pushUser("(Foto subida)");
+              setForm(f => ({ ...f, link_foto: url }));
+            }}
+          />
+          <div className={styles.cardActions} style={{ marginTop: 8 }}>
+            <button className={styles.actionBtn} onClick={() => { pushUser("No tengo foto"); setStage("details"); askDetails(); }}>
+              Saltar
+            </button>
+            <button className={styles.actionBtn} onClick={() => { pushUser("Listo"); setStage("details"); askDetails(); }}>
+              Continuar
+            </button>
+          </div>
+        </div>
+      )
+    );
+  }
+
+  function askDetails() {
+    pushBot("¿Algún detalle que debamos saber?");
+  }
+
+  const DetailsInput = () => {
+    const [v, setV] = useState("");
+    return (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <textarea
           className={styles.input}
-          placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
+          rows={3}
+          placeholder="Horarios, puertas, notas…"
+          value={v}
+          onChange={e=>setV(e.target.value)}
+          onKeyDown={(e)=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
         />
-        <button className={styles.sendBtn} onClick={send}>Enviar</button>
-      </footer>
+        <div className={styles.cardActions} style={{ marginTop: 8 }}>
+          <button className={styles.actionBtn} onClick={submit}>Continuar</button>
+        </div>
+      </div>
+    );
+    function submit(){
+      pushUser(v || "(sin detalles)");
+      setForm(f => ({ ...f, detalles: v }));
+      setStage("confirm");
+      confirmStep();
+    }
+  };
+
+  function confirmStep() {
+    const tbl = getTableByType(form.tipo);
+    const summary = [
+      `Tipo: ${TYPE_OPTIONS.find(t=>t.key===form.tipo)?.label || "-"}`,
+      `Nombre: ${form.nombre || "-"}`,
+      `Dirección: ${form.direccion || "-"}`,
+      `Coordenadas: ${form.coordenadas || "-"}`,
+      `Link Maps: ${form.link_maps || "-"}`,
+      ...(tbl === "gps_clientes" ? [`Tiempo de espera: ${form.tiempo_espera || "-"}`] : []),
+      `Foto: ${form.link_foto ? "Sí" : "No"}`
+    ].join("\n");
+
+    pushBot(
+      `Revisa y confirma:\n\n${summary}`,
+      () => (
+        <div className={styles.card} style={{ marginTop: 8 }}>
+          <div className={styles.cardActions}>
+            <button className={styles.actionBtn} onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+            <button className={styles.actionBtn} onClick={() => { pushUser("Cancelar"); onCancel?.(); }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )
+    );
+  }
+
+  async function handleSave() {
+    const table = getTableByType(form.tipo);
+    if (!table) {
+      pushBot("Tipo inválido. Cancelo.");
+      return onCancel?.();
+    }
+    if (!form.nombre) {
+      pushBot("Falta el nombre.");
+      return;
+    }
+    if (!form.coordenadas && !form.link_maps) {
+      pushBot("Faltan coordenadas o enlace de Maps.");
+      return;
+    }
+
+    setSaving(true);
+    // construim payload; câmpurile goale devin null
+    const payload = {};
+    Object.entries(form).forEach(([k, v]) => {
+      if (k === "tipo") return;
+      payload[k] = v === "" ? null : v;
+    });
+
+    const { error } = await supabase.from(table).insert([payload]);
+    setSaving(false);
+
+    if (error) {
+      pushBot(`Error al guardar: ${error.message}`);
+      return;
+    }
+
+    pushBot("¡Perfecto! La ubicación ha sido guardada con éxito. ¿Quieres verla ahora?", () => (
+      <div className={styles.card} style={{ marginTop: 8 }}>
+        <div className={styles.cardActions}>
+          <button
+            className={styles.actionBtn}
+            onClick={() => {
+              pushUser("Sí");
+              onDone?.({ openPreviewOf: form.nombre });
+            }}
+          >
+            Sí
+          </button>
+          <button
+            className={styles.actionBtn}
+            onClick={() => {
+              pushUser("No");
+              // rămânem în chat
+              pushBot("¿En qué te puedo ayudar más?");
+              onDone?.({ openPreviewOf: null });
+            }}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    ));
+
+    setStage("done");
+  }
+
+  // ——— Render „conversație” (bubbles + mini-inputuri pe etape)
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {flow.map((m, i) =>
+        m.role === "bot" ? (
+          <BotBubble key={i}>
+            <div className={styles.botText}>{m.text}</div>
+            {m.render ? <div style={{ marginTop: 8 }}>{m.render()}</div> : null}
+          </BotBubble>
+        ) : (
+          <MeBubble key={i}>{m.text}</MeBubble>
+        )
+      )}
+
+      {/* Etapele active afișează „bula” cu UI */}
+      {stage === "type" && <BotBubble><TypeSelector /></BotBubble>}
+      {stage === "name" && <BotBubble><NameInput /></BotBubble>}
+      {stage === "location_method" && null /* butoanele sunt împinse în flux în NameInput */}
+      {stage === "location_fill_geo" && <BotBubble><LocationFillGeo /></BotBubble>}
+      {stage === "location_fill_link" && <BotBubble><LocationFillLink /></BotBubble>}
+      {stage === "location_fill_coords" && <BotBubble><LocationFillCoords /></BotBubble>}
+      {stage === "ask_address" && <BotBubble><AskAddress /></BotBubble>}
+      {stage === "ask_wait" && <BotBubble><AskWait /></BotBubble>}
+      {stage === "photo" && null /* askPhoto împinge UI în flux */}
+      {stage === "details" && <BotBubble><DetailsInput /></BotBubble>}
+      {/* confirm pasul injectează card cu butoane în flux */}
+
+      <div ref={endRef} />
     </div>
   );
 }
