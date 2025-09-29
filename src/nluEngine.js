@@ -161,11 +161,17 @@ export function detectIntent(message, intentsJson) {
       if (hasNoun && !isListy && tokens.length <= 4) ok = true;
     }
 
-    // 3) Heuristică GPS: mesaje foarte scurte → încearcă
-    if (!ok && (it.id === "gps_navegar_a" || it.id === "gps_info_de")) {
-      const tokens = normalize(text).split(" ").filter(Boolean);
-      if (tokens.length <= 2) ok = true;
-    }
+    // 3) Heuristică specială pentru ver_camara:
+if (!ok && it.id === "ver_camara") {
+  const tokens = normalize(text).split(" ").filter(Boolean);
+  const hasNounCue = includesAny(text, ["camara","cámara","camera","camere"]);
+  const hasVerbCue = includesAny(text, ["abre","abrir","ver","muestra","mostrar","desplegar","deschide"]);
+
+  // acceptă fie substantiv, fie verb + frază scurtă
+  if ((hasNounCue || hasVerbCue) && tokens.length <= 5) {
+    ok = true;
+  }
+}
 
     if (!ok) continue;
 
