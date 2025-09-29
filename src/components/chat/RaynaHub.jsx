@@ -452,7 +452,170 @@ export default function RaynaHub() {
         return;
       }
     }
+// ==== ACTION: driver_self_info (STRICT self-only)
+if (intent.type === "action" && intent.action === "driver_self_info") {
+  // 0) Safety: doar despre tine, nu alte ID-uri/nume
+  // (Intențiile sunt formulate generic; dacă adaugi în viitor ceva cu alt user, pune aici verificări.)
 
+  // 1) Info din profil – disponibil imediat
+  const truck = {
+    itv: profile?.camioane?.fecha_itv || "—",
+    plate: profile?.camioane?.matricula || "—",
+    km: profile?.camioane?.kilometros ?? null,
+  };
+  const trailer = {
+    itv: profile?.remorci?.fecha_itv || "—",
+    plate: profile?.remorci?.matricula || "—",
+  };
+  const driver = {
+    cap: profile?.cap_expirare || "—",
+    lic: profile?.carnet_caducidad || "—",
+    adr: profile?.tiene_adr ? (profile?.adr_caducidad || "Sí") : "No",
+  };
+
+  const topic = intent?.meta?.topic;
+
+  // 2) Răspunsuri simple (fără DB extra)
+  if (topic === "truck_itv") {
+    setMessages(m => [...m, { from: "bot", reply_text: intent.response?.text?.replace("{{truck.itv}}", String(truck.itv)) }]);
+    return;
+  }
+  if (topic === "trailer_itv") {
+    setMessages(m => [...m, { from: "bot", reply_text: intent.response?.text?.replace("{{trailer.itv}}", String(trailer.itv)) }]);
+    return;
+  }
+  if (topic === "plates") {
+    const txt = intent.response?.text
+      ?.replace("{{truck.plate}}", String(truck.plate))
+      ?.replace("{{trailer.plate}}", String(trailer.plate));
+    setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+    return;
+  }
+  if (topic === "driver_credentials") {
+    const txt = intent.response?.text
+      ?.replace("{{driver.cap}}", String(driver.cap))
+      ?.replace("{{driver.lic}}", String(driver.lic))
+      ?.replace("{{driver.adr}}", String(driver.adr));
+    setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+    return;
+  }
+
+  // 3) Răspunsuri cu DB (payroll & vacanțe) – replică logică din MiPerfilPage
+  if (topic === "payroll_summary") {
+    try {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const { data } = await supabase
+        .from("pontaje_curente")
+        .select("pontaj_complet")
+        .eq("user_id", profile?.id)
+        .eq("an", y)
+        .eq("mes", m)
+        .maybeSingle();
+
+      const zile = data?.pontaj_complet?.zilePontaj || [];
+      let D = 0, C = 0, P = 0, KM = 0, CT = 0;
+      const marks = new Set();
+      zile.forEach((zi, idx) => {
+        if (!zi) return;
+        const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+        if (zi.desayuno) D++;
+        if (zi.cena) C++;
+        if (zi.procena) P++;
+        if (kmZi > 0) KM += kmZi;
+        if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
+        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
+          marks.add(idx + 1);
+        }
+      });
+      const txt = intent.response?.text
+        ?.replace("{{payroll.dias}}", String(marks.size))
+        ?.replace("{{payroll.km}}", String(Math.round(KM)))
+        ?.replace("{{payroll.conts}}", String(CT))
+        ?.replace("{{payroll.desayunos}}", String(D))
+        ?.replace("{{payroll.cenas}}", String(C))
+        ?.replace("{{payroll.procenas}}", String(P));
+      setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+    } catch (e) {
+      setMessages(m => [...m, { from: "bot", reply_text: "No he podido leer tu nómina ahora mismo." }]);
+    }
+    return;
+  }
+
+  if (topic === "vacation_balance") {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const yearStart = `${year}-01-01`;
+      const yearEnd = `${year}-12-31`;
+
+      const { data: cfg } = await supabase
+        .from("vacaciones_parametros_anio")
+        .select("*")
+        .eq("anio", year)
+        .maybeSingle();
+
+      const dias_base = cfg?.dias_base ?? 23;
+      const dias_personales = cfg?.dias_personales ?? 2;
+      const dias_pueblo = cfg?.dias_pueblo ?? 0;
+
+      const { data: ex } = await supabase
+        .from("vacaciones_asignaciones_extra")
+        .select("dias_extra")
+        .eq("user_id", profile?.id)
+        .eq("anio", year)
+        .maybeSingle();
+      const dias_extra = ex?.dias_extra ?? 0;
+
+      const total = (dias_base || 0) + (dias_personales || 0) + (dias_pueblo || 0) + (dias_extra || 0);
+
+      const { data: evs } = await supabase
+        .from("vacaciones_eventos")
+        .select("id,tipo,state,start_date,end_date")
+        .eq("user_id", profile?.id)
+        .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
+
+      const fmt = (d) => {
+        const x = new Date(d);
+        const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
+        return z.toISOString().slice(0, 10);
+      };
+      const daysBetween = (a, b) => {
+        const A = new Date(fmt(a)), B = new Date(fmt(b));
+        return Math.floor((B - A) / 86400000) + 1;
+      };
+      const overlapDaysWithinYear = (ev) => {
+        const yStart = new Date(`${year}-01-01T00:00:00`);
+        const yEnd = new Date(`${year}-12-31T23:59:59`);
+        const s0 = new Date(ev.start_date);
+        const e0 = new Date(ev.end_date);
+        const s = s0 < yStart ? yStart : s0;
+        const e = e0 > yEnd ? yEnd : e0;
+        if (e < s) return 0;
+        return daysBetween(s, e);
+      };
+
+      const usadas = (evs || []).filter(e => e.state === "aprobado").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+      const pendientes = (evs || []).filter(e => e.state === "pendiente" || e.state === "conflicto").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+      const disponibles = Math.max(total - usadas - pendientes, 0);
+
+      const txt = intent.response?.text
+        ?.replace("{{vac.total}}", String(total))
+        ?.replace("{{vac.usadas}}", String(usadas))
+        ?.replace("{{vac.pendientes}}", String(pendientes))
+        ?.replace("{{vac.disponibles}}", String(disponibles));
+      setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+    } catch (e) {
+      setMessages(m => [...m, { from: "bot", reply_text: "Nu am putut calcula acum concediul tău." }]);
+    }
+    return;
+  }
+
+  // fallback pentru driver_self_info necunoscut
+  setMessages(m => [...m, { from: "bot", reply_text: "Nu găsesc informația cerută din profilul tău." }]);
+  return;
+}
     // ==== fallback
     const fbText = pickText(
       intentsData.find(i => i.id === "fallback")?.response?.text,
