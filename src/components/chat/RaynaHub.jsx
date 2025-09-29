@@ -161,6 +161,44 @@ export default function RaynaHub() {
       }]);
       return;
     }
+    // LISTA CAMERAS
+if (intent.type === "action" && intent.action === "list_all_cameras") {
+  const { data } = await supabase
+    .from("external_links")
+    .select("id,name,url,icon_type")
+    .eq("icon_type", "camera")
+    .order("name");
+  const items = (data || []).map(d => ({
+    ...d,
+    _table: "external_links",
+    _mapsUrl: d.url, // doar ca să avem ceva de deschis
+    nombre: d.name
+  }));
+  setMessages(m => [
+    ...m,
+    {
+      from: "bot",
+      reply_text: intent.response?.text || "Cámaras:",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Cámaras</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {items.map(it => (
+              <button
+                key={it.id}
+                className={styles.actionBtn}
+                onClick={() => window.open(it.url, "_blank", "noopener")}
+              >
+                {it.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )
+    }
+  ]);
+  return;
+}
 
     // ==== ACTION: GPS – navegar a
     if (intent.type === "action" && (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")) {
