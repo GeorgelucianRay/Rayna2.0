@@ -25,7 +25,7 @@ import AnnouncementBox from "./ui/AnnouncementBox";
 import AddCameraInline from "./ui/AddCameraInline";
 import PlaceInfoCard from "./ui/PlaceInfoCard";
 import SimpleList from "./ui/SimpleList";
-import AddGpsWizard from "./ui/AddGpsWizard"; // 👈 nou
+import AddGpsModalWizard from "./wizards/AddGpsModalWizard"; // ✅ import corect
 
 export default function RaynaHub() {
   // 👉 apelează hook-ul anti-zoom la MOUNT
@@ -48,14 +48,7 @@ export default function RaynaHub() {
   const askInfoNow = (name) => {
     const q = `qué me puedes decir de ${name}`;
     setText(q);
-    // simulăm enter
-    setTimeout(() => {
-      // protecție: dacă între timp user-ul a tastat altceva, nu override-ui
-      if (document.activeElement?.tagName?.toLowerCase() !== "input") {
-        // nimic special
-      }
-      send(); // folosește text-ul curent (q)
-    }, 0);
+    setTimeout(() => { send(); }, 0);
   };
 
   async function send() {
@@ -141,26 +134,27 @@ export default function RaynaHub() {
         setMessages(m => [...m, { from: "bot", reply_text: intent.dialog.ask_text }]);
         return;
       }
+    } // ← ✅ aici se închide corect blocul de dialog
 
-      // ——— NOU: wizard adăugare locație GPS din chat
-      if (intent.type === "action" && intent.action === "start_gps_add_chat") {
-  setMessages(m => [...m, {
-    from: "bot",
-    reply_text: "Vale, iniciamos el alta de ubicación:",
-    render: () => (
-      <AddGpsModalWizard
-        onDone={({ openPreviewOf }) => {
-          if (openPreviewOf) {
-            // injectează automat întrebarea de info pt. card
-            setMessages(mm => [...mm, { from: "user", text: `que me puedes decir de ${openPreviewOf}` }]);
-          }
-        }}
-        onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: "Cancelado. ¿Algo más?" }])}
-      />
-    )
-  }]);
-  return;
-}
+    // ==== NOU: ACTION – pornește wizard-ul conversațional de adăugare locație
+    if (intent.type === "action" && intent.action === "start_gps_add_chat") {
+      setMessages(m => [...m, {
+        from: "bot",
+        reply_text: "Vale, iniciamos el alta de ubicación:",
+        render: () => (
+          <AddGpsModalWizard
+            onDone={({ openPreviewOf }) => {
+              if (openPreviewOf) {
+                // injectează automat întrebarea de info pt. card
+                setMessages(mm => [...mm, { from: "user", text: `que me puedes decir de ${openPreviewOf}` }]);
+              }
+            }}
+            onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: "Cancelado. ¿Algo más?" }])}
+          />
+        )
+      }]);
+      return;
+    }
 
     // ==== ACTION: list_all_cameras
     if (intent.type === "action" && intent.action === "list_all_cameras") {
