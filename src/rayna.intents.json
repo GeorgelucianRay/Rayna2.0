@@ -3,22 +3,52 @@
     "id": "saludo_dias",
     "priority": 103,
     "type": "static",
-    "patterns_any": ["buenos dias","buenos días","buen dia","buen día","bon dia"],
-    "response": { "text": "¡Buenos días! Soy **Rayna**. ¿Qué necesitas hoy?" }
+    "patterns_any": [
+      "buenos dias","buenos días","buen dia","buen día",
+      "buna dimineata","bună dimineața","buna dimineața","bună dimineata",
+      "bon dia"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenos días! Soy **Rayna**. ¿Qué necesitas hoy?",
+        "ro": "Bună dimineața! Sunt **Rayna**. Cu ce te pot ajuta azi?",
+        "ca": "Bon dia! Sóc **Rayna**. Què necessites avui?"
+      }
+    }
   },
   {
     "id": "saludo_tardes",
     "priority": 102,
     "type": "static",
-    "patterns_any": ["buenas tardes","bona tarda"],
-    "response": { "text": "¡Buenas tardes! Aquí **Rayna**. ¿En qué te ayudo?" }
+    "patterns_any": [
+      "buenas tardes",
+      "buna ziua","bună ziua",
+      "bona tarda","bones tardes"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenas tardes! Aquí **Rayna**. ¿En qué te ayudo?",
+        "ro": "Bună ziua! Aici **Rayna**. Cu ce te ajut?",
+        "ca": "Bona tarda! Sóc **Rayna**. En què t'ajudo?"
+      }
+    }
   },
   {
     "id": "saludo_noches",
     "priority": 101,
     "type": "static",
-    "patterns_any": ["buenas noches","bona nit"],
-    "response": { "text": "¡Buenas noches! Soy **Rayna**. ¿Te echo una mano con algo?" }
+    "patterns_any": [
+      "buenas noches",
+      "buna seara","bună seara",
+      "bona nit","bona nit!"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenas noches! Soy **Rayna**. ¿Te echo una mano con algo?",
+        "ro": "Bună seara! Sunt **Rayna**. Te pot ajuta cu ceva?",
+        "ca": "Bona nit! Sóc **Rayna**. Et puc ajudar en alguna cosa?"
+      }
+    }
   },
   {
     "id": "saludo",
@@ -26,18 +56,33 @@
     "type": "static",
     "patterns_any": [
       "hola","buenas","hola rayna","que tal","qué tal",
-      "salut","bună","buna",
-      "hola,","buenas,","salut,","bună,","buna,",
-      "holaa","holaaa","oli","bones"
+      "salut","buna","bună",
+      "hola què tal","ei","ei rayna"
     ],
-    "response": { "text": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?" }
+    "response": {
+      "text": {
+        "es": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?",
+        "ro": "Salut! Sunt **Rayna**, transportistul tău virtual. Cu ce te pot ajuta?",
+        "ca": "Hola! Sóc **Rayna**, la teva transportista virtual. En què t'ajudo?"
+      }
+    }
   },
   {
     "id": "quien_eres",
     "priority": 95,
     "type": "static",
-    "patterns_any": ["quien eres","quién eres","quien es rayna","quién es rayna","que eres","qué eres","cine ești","cine esti","qui ets"],
-    "response": { "text": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉." }
+    "patterns_any": [
+      "quien eres","quién eres","quien es rayna","quién es rayna","que eres","qué eres",
+      "cine esti","cine ești","ce ești","ce esti","cine este rayna",
+      "qui ets","qui és","qui és rayna","què ets"
+    ],
+    "response": {
+      "text": {
+        "es": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉.",
+        "ro": "Sunt Rayna: **R**ute • **A.I.** Asistent • **N**avigare • **A**jutor. Formală, prietenoasă și rapidă 😉.",
+        "ca": "Sóc Rayna: **R**utes • **I.A.** • **N**avegar • **A**ssistent. Formal, propera i ràpida 😉."
+      }
+    }
   },
   {
     "id": "help",
@@ -45,23 +90,45 @@
     "type": "static",
     "patterns_any": [
       "que puedes hacer","qué puedes hacer","ayuda","help","que piedes hacer","que puedes acer",
-      "ce poți face","ce poti face","ajutor","ajuda",
-      "què pots fer","ajuda'm"
+      "cu ce ma poti ajuta","cu ce mă poți ajuta","ajutor","help me",
+      "què pots fer","ajuda","ajudame","ajuda'm"
     ],
-    "response": { "text": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio." }
+    "response": {
+      "text": {
+        "es": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio.",
+        "ro": "Pot deschide **camere** după nume (ex.: „Deschide TCB”), pot afișa **anunțul** curent sau te pot ajuta cu **depozit/GPS**. Admin: adaugă cameră. Dispecer/Admin: publică anunț.",
+        "ca": "Puc obrir **càmeres** pel nom (ex.: «Obre TCB»), mostrar **l'anunci** vigent o ajudar-te amb **dipòsit/GPS**. Admin: afegir càmera. Dispatcher/Admin: publicar anunci."
+      }
+    }
   },
   {
     "id": "set_anuncio",
     "priority": 85,
     "type": "dialog",
-    "patterns_any": ["quiero poner un anuncio","poner anuncio","publicar anuncio","vreau să pun un anunț","vreau sa pun un anunt","vull posar un anunci"],
-    "roles_allowed": ["admin","dispecer"],
+    "patterns_any": [
+      "quiero poner un anuncio","poner anuncio","publicar anuncio",
+      "vreau sa pun un anunt","vreau să pun un anunț","publica anunt","publică anunț",
+      "vull posar un anunci","publicar anunci"
+    ],
+    "roles_allowed": ["admin", "dispecer"],
     "dialog": {
       "await_key": "anuncio_text",
-      "ask_text": "Claro, ¿qué anuncio quieres?",
+      "ask_text": {
+        "es": "Claro, ¿qué anuncio quieres?",
+        "ro": "Sigur, ce anunț vrei?",
+        "ca": "És clar, quin anunci vols?"
+      },
       "save_action": "save_announcement",
-      "save_ok": "¡Anuncio actualizado con éxito!",
-      "save_err": "Ha ocurrido un error al guardar el anuncio."
+      "save_ok": {
+        "es": "¡Anuncio actualizado con éxito!",
+        "ro": "Anunț actualizat cu succes!",
+        "ca": "Anunci actualitzat amb èxit!"
+      },
+      "save_err": {
+        "es": "Ha ocurrido un error al guardar el anuncio.",
+        "ro": "A apărut o eroare la salvarea anunțului.",
+        "ca": "S'ha produït un error en desar l'anunci."
+      }
     }
   },
   {
@@ -70,185 +137,293 @@
     "type": "dialog",
     "patterns_any": [
       "quiero añadir una camara","quiero anadir una camara","añadir camara","agregar camara","crear camara","nueva camara",
-      "adaugă cameră","adaugă camera","adauga camera","adaug camera","adăuga cameră","adăuga camera","adauga cameră",
-      "adaugare cameră","adaugare camera","vreau să adaug o cameră","vreau sa adaug o camera","vreau să adăuga o cameră",
-      "vreau sa adauga o camera","add camera"
+      "adaugă cameră","adaugă camera","adauga camera","adaug camera","adăuga cameră","adăuga camera","adaugare cameră","adaugare camera","vreau să adaug o cameră","vreau sa adaug o camera",
+      "vull afegir una càmera","afegir càmera","crear càmera","nova càmera","obre una càmera nova"
     ],
     "roles_allowed": ["admin"],
     "dialog": {
       "form": "add_camera_inline",
       "save_action": "insert_camera",
-      "save_ok": "¡Listo! Cámara **{{camera.name}}** añadida.",
-      "save_err": "No pude añadir la cámara. Revisa el URL."
+      "save_ok": {
+        "es": "¡Listo! Cámara **{{camera.name}}** añadida.",
+        "ro": "Gata! Camera **{{camera.name}}** a fost adăugată.",
+        "ca": "Fet! Càmera **{{camera.name}}** afegida."
+      },
+      "save_err": {
+        "es": "No pude añadir la cámara. Revisa el URL.",
+        "ro": "Nu am putut adăuga camera. Verifică URL-ul.",
+        "ca": "No he pogut afegir la càmera. Revisa l'URL."
+      }
     }
   },
   {
     "id": "ver_anuncio",
     "priority": 70,
     "type": "action",
-    "patterns_any": ["que anuncio hay","qué anuncio hay","ver anuncio","anuncios","ce anunț avem","ce anunt avem","quin anunci hi ha","veure anunci"],
+    "patterns_any": [
+      "que anuncio hay","qué anuncio hay","ver anuncio","anuncios",
+      "ce anunt avem","ce anunț avem","arata anuntul","arată anunțul",
+      "quin anunci hi ha","veure anunci","anuncis"
+    ],
     "action": "show_announcement",
     "response": {
-      "text": "Este es el anuncio vigente:",
-      "objects": [{ "type": "announcement_box", "content": "{{announcement.content}}" }]
+      "text": {
+        "es": "Este es el anuncio vigente:",
+        "ro": "Acesta este anunțul curent:",
+        "ca": "Aquest és l'anunci vigent:"
+      },
+      "objects": [
+        { "type": "announcement_box", "content": "{{announcement.content}}" }
+      ]
     }
   },
-
-  /* ---------- CÁMARAS: permite “Hola, abre TCB” ---------- */
   {
     "id": "ver_camara",
     "priority": 80,
     "type": "action",
     "patterns_any": [
-      "camara","cámara","camera","camere",
-      "abre","abrir","ábreme","abreme","abre la camara","abrir camara","abrir cámara",
-      "ver camara","ver cámara","muestra camara","mostrar camara",
-      "deschide camera","deschide"
+      "camara","cámara","camera","camere","càmera",
+      "abre","abrir","ver","muestra","mostrar","desplegar","deschide","obre",
+      "abre la camara","abre la cámara","abre camara","abre cámara",
+      "deschide camera","obre la càmera",
+      "hola abre","buenas abre","buenos dias abre","buenas tardes abre",
+      "salut deschide","buna deschide","bon dia obre"
     ],
-    "negative_any": ["lista","listado","todas","todes","tutti","todas las camaras","todas las cámaras","lista de camaras"],
+    "negative_any": [
+      "lista","listado","todas","todes","tutti",
+      "todas las camaras","todas las cámaras","lista camaras","listado camaras","ver todas las camaras",
+      "lista camere","toate camerele","veure totes les càmeres"
+    ],
     "stopwords": [
-      "abre","abrir","ábreme","abreme","ver","muestra","mostrar","desplegar","deschide",
-      "quiero","pf","pls","por","favor","la","el","una","un","ok","vale","de","del","al","en",
-      "hola","buenas","buenos","dias","días","tardes","noches","salut","bună","buna","bon","dia","bona","tarda","nit"
+      "abre","abrir","ver","muestra","mostrar","desplegar","deschide","obre",
+      "quiero","pf","pls","por","favor","la","el","una","un","ok","vale",
+      "de","del","al","en","a","pe","către","catre"
     ],
     "slots": { "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
     "action": "open_camera",
     "response": {
-      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
-      "objects": [{
-        "type": "card",
-        "title": "{{camera.name}}",
-        "actions": [{ "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }]
-      }]
+      "text": {
+        "es": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
+        "ro": "Uite **{{camera.name}}**. Apasă butonul ca să o deschizi.",
+        "ca": "Aquí tens **{{camera.name}}**. Prem el botó per obrir-la."
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "{{camera.name}}",
+          "actions": [
+            { "type": "open", "label": { "es":"Abrir cámara","ro":"Deschide camera","ca":"Obrir càmera" }, "route": "{{camera.url}}", "newTab": true }
+          ]
+        }
+      ]
     },
-    "not_found": { "text": "No he encontrado la cámara \"{{query}}\"." }
+    "not_found": {
+      "text": {
+        "es": "No he encontrado la cámara \"{{query}}\".",
+        "ro": "Nu am găsit camera „{{query}}”.",
+        "ca": "No he trobat la càmera \"{{query}}\"."
+      }
+    }
   },
-
   {
     "id": "gps_list_camaras",
     "priority": 81,
     "type": "action",
     "patterns_any": [
       "que camaras hay","qué camaras hay","qué cámaras hay",
-      "lista de camaras","listado camaras","ver todas las camaras",
-      "lista camaras","que cámaras hay","que camara hay"
+      "lista de camaras","listado camaras","ver todas las camaras","lista camaras","que camara hay",
+      "lista camere","ce camere sunt","toate camerele",
+      "llista de càmeres","veure totes les càmeres"
     ],
     "action": "list_all_cameras",
-    "response": { "text": "Aquí tienes todas las cámaras disponibles:" }
+    "response": {
+      "text": {
+        "es": "Aquí tienes todas las cámaras disponibles:",
+        "ro": "Aici sunt toate camerele disponibile:",
+        "ca": "Aquí tens totes les càmeres disponibles:"
+      }
+    }
   },
-
-  /* ---------- NAVEGAR / RUTE ---------- */
   {
     "id": "gps_navegar_a",
     "priority": 88,
     "type": "action",
     "patterns_any": [
-      "quiero llegar a","llevar a","llévame a","llevame a","ir a","navegar a","como llego a","cómo llego a",
-      "hasta","rumbo a","direccion a","dirección a",
-      "vreau sa ajung la","vreau să ajung la","vreau sa merg la","vreau să merg la","du-ma la","du mă la",
-      "vull anar a","porta'm a","portam a","anem a"
+      "quiero llegar a","llevar a","ir a","navegar a","como llego a","cómo llego a",
+      "vreau sa ajung la","vreau să ajung la","vreau sa merg la","vreau să merg la","navigheaza la","navighează la","cum ajung la",
+      "vull arribar a","portar a","anar a","navegar a","com arribo a"
     ],
-    "stopwords": ["a","la","al","el","către","pe","hasta","a la","a el","del","de","en"],
+    "stopwords": ["a","la","al","el","către","pe","en"],
     "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
     "action": "gps_route_preview",
     "response": {
-      "text": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
+      "text": {
+        "es": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
+        "ro": "Desigur, iată ruta către **{{place.name}}**. Apasă pe hartă sau pe buton pentru a o deschide în Google Maps.",
+        "ca": "És clar, aquí tens la ruta a **{{place.name}}**. Prem el mapa o el botó per obrir-la a Google Maps."
+      },
       "objects": [
         { "type": "mini_map", "title": "{{place.name}}", "geojson": "{{route.geojson}}", "maps_link": "{{maps_link}}" },
-        { "type": "card", "title": "{{place.name}}",
-          "actions": [{ "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true }]
+        {
+          "type": "card",
+          "title": "{{place.name}}",
+          "actions": [
+            { "type": "open", "label": { "es":"Abrir en Google Maps","ro":"Deschide în Google Maps","ca":"Obrir a Google Maps" }, "route": "{{maps_link}}", "newTab": true }
+          ]
         }
       ]
     },
-    "not_found": { "text": "No he encontrado la ubicación \"{{query}}\"." }
+    "not_found": {
+      "text": {
+        "es": "No he encontrado la ubicación \"{{query}}\".",
+        "ro": "Nu am găsit locația „{{query}}”.",
+        "ca": "No he trobat la ubicació \"{{query}}\"."
+      }
+    }
   },
-
-  /* ---------- INFO DE LUGAR ---------- */
   {
     "id": "gps_info_de",
     "priority": 87,
     "type": "action",
     "patterns_any": [
       "que hay en","qué hay en","que hay de","qué hay de","que pasa en","qué pasa en",
-      "que me puedes decir de","qué me puedes decir de",
-      "que sabes de","qué sabes de","que tienes de","qué tienes de",
-      "info","informacion","información","detalii",
-      "donde esta","dónde está",
-      "unde e","unde este","unde-i",
-      "on es","on és","on esta","on està","què hi ha a","informació de","informacio de",
-      "ce știi despre","ce stii despre","despre"
+      "que me puedes decir de","qué me puedes decir de","que sabes de","qué sabes de","que tienes de","qué tienes de",
+      "info","informacion","información","donde esta","dónde está",
+      "ce poți să-mi spui despre","ce poti sa-mi spui despre","ce poți spune despre","ce poti spune despre",
+      "ce știi despre","ce stii despre","ce ai despre","unde este","unde e",
+      "què hi ha a","què hi ha de","què passa a","què em pots dir de","què saps de","què tens de","on és","on es"
     ],
-    "stopwords": ["de","la","el","en","del","al","despre","pe","a","la","el"],
+    "stopwords": ["de","la","el","en","del","al","despre","pe","a"],
     "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
     "action": "gps_place_info",
-    "response": { "text": "Esto es lo que tengo de **{{place.name}}**:" },
-    "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
+    "response": {
+      "text": {
+        "es": "Esto es lo que tengo de **{{place.name}}**:",
+        "ro": "Iată ce am despre **{{place.name}}**:",
+        "ca": "Això és el que tinc de **{{place.name}}**:"
+      }
+    },
+    "not_found": {
+      "text": {
+        "es": "No he encontrado información de \"{{query}}\".",
+        "ro": "Nu am găsit informații despre „{{query}}”.",
+        "ca": "No he trobat informació de \"{{query}}\"."
+      }
+    }
   },
-
-  /* ---------- LISTE ---------- */
   {
     "id": "gps_list_terminale",
     "priority": 62,
     "type": "action",
-    "patterns_any": ["que terminales hay","qué terminales hay","lista terminales","ver terminales","quins terminals hi ha","veure terminals"],
+    "patterns_any": [
+      "que terminales hay","qué terminales hay","lista terminales","ver terminales",
+      "ce terminale sunt","lista terminale","vezi terminale",
+      "quins terminals hi ha","llista terminals","veure terminals"
+    ],
     "action": "gps_list",
     "meta": { "table": "gps_terminale", "label": "Terminales" },
-    "response": { "text": "Estas son las terminales disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
+    "response": {
+      "text": {
+        "es": "Estas son las terminales disponibles:",
+        "ro": "Acestea sunt terminalele disponibile:",
+        "ca": "Aquests són els terminals disponibles:"
+      },
+      "objects": [{ "type": "list", "items": "{{items}}" }]
+    }
   },
   {
     "id": "gps_list_parkings",
     "priority": 61,
     "type": "action",
     "patterns_any": [
-      "que parkings hay","qué parkings hay","lista parkings","ver parkings",
-      "que parking hay","qué parking hay","lista parking","ver parking",
-      "quins pàrquings hi ha","veure pàrquings"
+      "que parkings hay","qué parkings hay","lista parkings","ver parkings","que parking hay","qué parking hay","lista parking","ver parking",
+      "ce parcari sunt","lista parcari","vezi parcari",
+      "quins pàrquings hi ha","llista pàrquings","veure pàrquings"
     ],
     "action": "gps_list",
     "meta": { "table": "gps_parkings", "label": "Parkings" },
-    "response": { "text": "Estos son los parkings disponibles:" }
+    "response": {
+      "text": {
+        "es": "Estos son los parkings disponibles:",
+        "ro": "Acestea sunt parcările disponibile:",
+        "ca": "Aquests són els pàrquings disponibles:"
+      }
+    }
   },
   {
     "id": "gps_list_servicios",
     "priority": 60,
     "type": "action",
-    "patterns_any": ["que servicios hay","qué servicios hay","lista servicios","ver servicios","quins serveis hi ha","veure serveis"],
+    "patterns_any": [
+      "que servicios hay","qué servicios hay","lista servicios","ver servicios",
+      "ce servicii sunt","lista servicii","vezi servicii",
+      "quins serveis hi ha","llista serveis","veure serveis"
+    ],
     "action": "gps_list",
     "meta": { "table": "gps_servicios", "label": "Servicios" },
-    "response": { "text": "Estos son los servicios disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
+    "response": {
+      "text": {
+        "es": "Estos son los servicios disponibles:",
+        "ro": "Acestea sunt serviciile disponibile:",
+        "ca": "Aquests són els serveis disponibles:"
+      },
+      "objects": [{ "type": "list", "items": "{{items}}" }]
+    }
   },
-
-  /* ---------- ATAJOS ---------- */
   {
     "id": "gps_atajos_clientes",
     "priority": 59,
     "type": "static",
-    "patterns_any": ["que clientes hay","lista clientes","ver clientes","quins clients hi ha","veure clients"],
+    "patterns_any": [
+      "que clientes hay","lista clientes","ver clientes",
+      "ce clienti sunt","lista clienti","vezi clienti",
+      "quins clients hi ha","llista clients","veure clients"
+    ],
     "response": {
-      "text": "Hay muchos clientes. Abre la sección para verlos.",
+      "text": {
+        "es": "Hay muchos clientes. Abre la sección para verlos.",
+        "ro": "Sunt mulți clienți. Deschide secțiunea ca să-i vezi.",
+        "ca": "Hi ha molts clients. Obre la secció per veure'ls."
+      },
       "objects": [
-        { "type": "card", "title": "Clientes",
-          "actions": [{ "type": "open", "label": "Ver clientes en GPS", "route": "/gps", "newTab": false }]
+        {
+          "type": "card",
+          "title": "Clientes",
+          "actions": [
+            { "type": "open", "label": { "es":"Ver clientes en GPS","ro":"Vezi clienții în GPS","ca":"Veure clients al GPS" }, "route": "/gps", "newTab": false }
+          ]
         }
       ]
     }
   },
-
-  /* ---------- ALTA DE UBICACIÓN EN CHAT ---------- */
   {
     "id": "gps_add_location_chat",
     "priority": 89,
     "type": "action",
     "patterns_any": [
-      "quiero añadir nueva ubicacion","añadir ubicacion","crear ubicacion","nueva ubicacion",
-      "quiero añadir un cliente","añadir cliente","nuevo cliente",
-      "añadir terminal","nuevo terminal",
-      "añadir servicio","nuevo servicio",
-      "añadir parking","nuevo parking",
-      "vreau sa adaug client","vreau să adaug client","vreau sa adaug locatie","vreau să adaug locație",
-      "vull afegir client","vull afegir ubicació","vull afegir ubicacio"
+      "quiero añadir nueva ubicacion","añadir ubicacion","crear ubicacion","nueva ubicacion","añadir nueva ubicación","crear nueva ubicación",
+      "vreau sa adaug locatie","vreau să adaug locație","adauga locatie","adaugă locație","creeaza locatie","creează locație","locatie noua","locație nouă",
+      "vull afegir nova ubicacio","vull afegir nova ubicació","afegir ubicació","crear ubicació","nova ubicació"
     ],
     "action": "start_gps_add_chat",
-    "response": { "text": "Vamos a crearla paso a paso (chat)." }
+    "response": {
+      "text": {
+        "es": "Vamos a crearla paso a paso (chat).",
+        "ro": "Hai să o creăm pas cu pas (chat).",
+        "ca": "La creem pas a pas (xat)."
+      }
+    }
+  },
+  {
+    "id": "fallback",
+    "priority": 0,
+    "type": "static",
+    "response": {
+      "text": {
+        "es": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS.",
+        "ro": "Te ascult. Pot deschide camere după nume, pot arăta anunțul sau te pot ajuta cu depozitul și GPS-ul.",
+        "ca": "T'escolto. Puc obrir càmeres pel nom, mostrar l'anunci o ajudar-te amb el dipòsit i el GPS."
+      }
+    }
   }
 ]
