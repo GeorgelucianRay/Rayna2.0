@@ -7,7 +7,7 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import MiPerfilPage from './pages/MiPerfilPage.jsx';
 
 // --- Toate celelalte componente/pagini rămân în dosarul original 'components' ---
-import RaynaHub from './components/RaynaHub.jsx';
+import RaynaHub from './components/chat/RaynaHub.jsx';
 import IniciarSesion from './components/IniciarSesion.jsx';
 import Registrar from './components/Registrar.jsx';
 import RestaurarContrasena from './components/RestaurarContrasena.jsx';
