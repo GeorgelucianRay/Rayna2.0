@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import styles from "./Chatbot.module.css";
 
-// hook anti-zoom iOS (ajustează calea dacă folderul e altul)
+// hook anti-zoom iOS
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 
 import { supabase } from "../../supabaseClient";
@@ -25,7 +25,7 @@ import AnnouncementBox from "./ui/AnnouncementBox";
 import AddCameraInline from "./ui/AddCameraInline";
 import PlaceInfoCard from "./ui/PlaceInfoCard";
 import SimpleList from "./ui/SimpleList";
-import AddGpsWizard from "./ui/AddGpsWizard"; // ✅ wizard-ul conversațional
+import AddGpsWizard from "./ui/AddGpsWizard";
 
 /* -------------------- Helpers multilingve + templating -------------------- */
 
@@ -39,7 +39,7 @@ function detectLangFromText(text) {
   return null;
 }
 
-// Limbă implicită de interfață (navigator → es/ro/ca)
+// Limbă implicită a UI
 function defaultLang() {
   const nav = (typeof navigator !== "undefined" && navigator.language) ? navigator.language.toLowerCase() : "es";
   if (nav.startsWith("ro")) return "ro";
@@ -47,7 +47,7 @@ function defaultLang() {
   return "es";
 }
 
-// Extrage textul: poate fi string sau obiect { es, ro, ca }
+// Extrage textul: string sau obiect { es, ro, ca }
 function pickText(txt, lang) {
   if (txt == null) return "";
   if (typeof txt === "string") return txt;
@@ -75,13 +75,90 @@ function tpl(str, data = {}) {
   });
 }
 
+/* -------------------- Helpers întreținere (self-only) -------------------- */
+
+const OIL_INTERVAL_KM = 85000; // interval schimb ulei
+
+async function getMyTruck(profile) {
+  const camionId = profile?.camion_id;
+  if (!camionId) return { error: "no_truck" };
+  const { data, error } = await supabase.from("camioane").select("*").eq("id", camionId).maybeSingle();
+  if (error || !data) return { error: "truck_not_found" };
+  return { truck: data };
+}
+
+// medie km/lună din ultimele 3 luni din pontaje_curente
+async function getAvgMonthlyKm(userId) {
+  try {
+    if (!userId) return null;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const months = [
+      { y, m },
+      { y: m - 1 >= 1 ? y : y - 1, m: m - 1 >= 1 ? m - 1 : 12 },
+      { y: m - 2 >= 1 ? y : y - 1, m: m - 2 >= 1 ? m - 2 : 11 }
+    ];
+    let totalKm = 0, counted = 0;
+    for (const mm of months) {
+      const { data } = await supabase
+        .from("pontaje_curente")
+        .select("pontaj_complet")
+        .eq("user_id", userId)
+        .eq("an", mm.y)
+        .eq("mes", mm.m)
+        .maybeSingle();
+
+      const zile = data?.pontaj_complet?.zilePontaj || [];
+      let KM = 0;
+      for (const zi of zile) {
+        if (!zi) continue;
+        const dayKm = (parseFloat(zi?.km_final) || 0) - (parseFloat(zi?.km_iniciar) || 0);
+        if (dayKm > 0) KM += dayKm;
+      }
+      if (KM > 0) { totalKm += KM; counted++; }
+    }
+    if (!counted) return null;
+    return Math.round(totalKm / counted);
+  } catch {
+    return null;
+  }
+}
+
+async function findLastOilChange(camionId) {
+  const { data, error } = await supabase
+    .from("reparatii")
+    .select("id, created_at, nombre_operacion, detalii, kilometri")
+    .eq("camion_id", camionId)
+    .or("nombre_operacion.ilike.%aceite%,detalii.ilike.%aceite%,nombre_operacion.ilike.%ulei%,detalii.ilike.%ulei%,nombre_operacion.ilike.%oil%,detalii.ilike.%oil%")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return data[0];
+}
+
+async function findLastAdBlueFilter(camionId) {
+  const { data, error } = await supabase
+    .from("reparatii")
+    .select("id, created_at, nombre_operacion, detalii, kilometri")
+    .eq("camion_id", camionId)
+    .or("nombre_operacion.ilike.%adblue%,detalii.ilike.%adblue%")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return data[0];
+}
+
+function fmtDate(d) {
+  try { return new Date(d).toLocaleDateString("es-ES"); } catch { return d || "—"; }
+}
+
 /* ------------------------------------------------------------------------ */
 
 export default function RaynaHub() {
-  // 👉 anti-zoom iOS
   useIOSNoInputZoom();
 
-  const { profile } = useAuth();
+  const { user, profile } = useAuth(); // ← avem nevoie și de user.id
   const role = profile?.role || "driver";
 
   // limbă implicită UI
@@ -113,7 +190,7 @@ export default function RaynaHub() {
     const userText = text.trim();
     if (!userText) return;
 
-    // detectăm limba pentru acest mesaj (cu fallback pe ultima)
+    // limbă pentru mesajul curent (fallback pe ultima)
     const msgLang = detectLangFromText(userText) || lastLang || uiDefaultLang;
     if (msgLang !== lastLang) setLastLang(msgLang);
 
@@ -124,7 +201,7 @@ export default function RaynaHub() {
     if (awaiting === "anuncio_text") {
       const di = intentsData.find(i => i.id === "set_anuncio")?.dialog;
       if (!(role === "admin" || role === "dispecer")) {
-        setMessages(m => [...m, { from: "bot", reply_text: pickText("No tienes permiso para actualizar anuncios.", msgLang) }]);
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No tienes permiso para actualizar anuncios.", ro:"Nu ai permisiune să actualizezi anunțurile.", ca:"No tens permís per actualitzar anuncis."}, msgLang) }]);
         setAwaiting(null);
         return;
       }
@@ -142,7 +219,7 @@ export default function RaynaHub() {
     const det = detectIntent(userText, intentsData);
     const intent = det.intent;
     const slots  = det.slots || {};
-    const langFromDetect = det.lang || null;  // suport și pentru NLU care returnează lang
+    const langFromDetect = det.lang || null;
     const lang = langFromDetect || msgLang;
 
     // ==== STATIC
@@ -180,14 +257,14 @@ export default function RaynaHub() {
     if (intent.type === "dialog") {
       const allowed = intent.roles_allowed ? intent.roles_allowed.includes(role) : true;
       if (!allowed) {
-        const noPerm = pickText("No tienes permiso para esta acción.", lang);
+        const noPerm = pickText({es:"No tienes permiso para esta acción.", ro:"Nu ai permisiune pentru această acțiune.", ca:"No tens permís per a aquesta acció."}, lang);
         setMessages(m => [...m, { from: "bot", reply_text: noPerm }]);
         return;
       }
 
-      // ——— flux existent: add camera inline
+      // ——— add camera inline
       if (intent.dialog?.form === "add_camera_inline") {
-        const intro = pickText("Perfecto. Añadamos una cámara:", lang);
+        const intro = pickText({es:"Perfecto. Añadamos una cámara:", ro:"Perfect. Hai să adăugăm o cameră:", ca:"Perfecte. Afegim una càmera:"}, lang);
         setMessages(m => [...m, {
           from: "bot",
           reply_text: intro,
@@ -220,7 +297,7 @@ export default function RaynaHub() {
       }
     } // end dialog
 
-    // ==== NOU: ACTION – pornește wizard-ul conversațional de adăugare locație
+    // ==== ACTION: start add location wizard
     if (intent.type === "action" && intent.action === "start_gps_add_chat") {
       const intro = pickText(intent.response?.text, lang) || "Vamos a crearla paso a paso (chat).";
       setMessages(m => [...m, {
@@ -230,11 +307,10 @@ export default function RaynaHub() {
           <AddGpsWizard
             onDone={({ openPreviewOf }) => {
               if (openPreviewOf) {
-                // injectează automat întrebarea de info pt. card
                 setMessages(mm => [...mm, { from: "user", text: `que me puedes decir de ${openPreviewOf}` }]);
               }
             }}
-            onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: pickText("Cancelado. ¿Algo más?", lang) }])}
+            onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: pickText({es:"Cancelado. ¿Algo más?", ro:"Anulat. Altceva?", ca:"Cancel·lat. Alguna cosa més?"}, lang) }])}
           />
         )
       }]);
@@ -273,7 +349,7 @@ export default function RaynaHub() {
     if (intent.type === "action" && intent.action === "open_camera") {
       const queryName = (slots.cameraName || "").trim();
       if (!queryName) {
-        setMessages(m => [...m, { from: "bot", reply_text: pickText("Dime el nombre de la cámara (por ejemplo: TCB).", lang) }]);
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"Dime el nombre de la cámara (por ejemplo: TCB).", ro:"Spune-mi numele camerei (de ex.: TCB).", ca:"Digues-me el nom de la càmera (per ex.: TCB)."}, lang) }]);
         return;
       }
 
@@ -297,7 +373,6 @@ export default function RaynaHub() {
         return;
       }
 
-      // text & card cu templating și etichete localizate
       const replyRaw = pickText(intent.response?.text, lang);
       const reply = tpl(replyRaw, { camera: { name: data.name, url: data.url } });
 
@@ -322,7 +397,8 @@ export default function RaynaHub() {
     // ==== ACTION: show_announcement
     if (intent.type === "action" && intent.action === "show_announcement") {
       const { data, error } = await supabase.from("anuncios").select("content").eq("id", 1).maybeSingle();
-      const content = error ? pickText("No se pudo cargar el anuncio.", lang) : (data?.content || pickText("Sin contenido.", lang));
+      const content = error ? pickText({es:"No se pudo cargar el anuncio.", ro:"Nu s-a putut încărca anunțul.", ca:"No s'ha pogut carregar l'anunci."}, lang)
+                            : (data?.content || pickText({es:"Sin contenido.", ro:"Fără conținut.", ca:"Sense contingut."}, lang));
       const txt = pickText(intent.response?.text, lang) || pickText("Este es el anuncio vigente:", lang);
       setMessages(m => [...m, {
         from: "bot",
@@ -332,11 +408,11 @@ export default function RaynaHub() {
       return;
     }
 
-    // ==== ACTION: GPS – navegar a (preview rută)
+    // ==== ACTION: GPS – navegar a
     if (intent.type === "action" && (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")) {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
-        setMessages(m => [...m, { from: "bot", reply_text: pickText("Dime el destino (por ejemplo: TCB).", lang) }]);
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"Dime el destino (por ejemplo: TCB).", ro:"Spune-mi destinația (de ex.: TCB).", ca:"Digues-me la destinació (per ex.: TCB)."}, lang) }]);
         return;
       }
 
@@ -378,7 +454,9 @@ export default function RaynaHub() {
       if (options.length > 1) {
         setMessages(m => [...m, {
           from: "bot",
-          reply_text: pickText(`He encontrado varios sitios para «${placeName}». Elige uno:`, lang),
+          reply_text: pickText({es:`He encontrado varios sitios para «${placeName}». Elige uno:`,
+                                ro:`Am găsit mai multe locuri pentru „${placeName}”. Alege unul:`,
+                                ca:`He trobat diversos llocs per a «${placeName}». Tria un:`}, lang),
           render: () => <SimpleList title={pickText({es:"Resultados", ro:"Rezultate", ca:"Resultats"}, lang)} items={options} onPick={showRoute} />
         }]);
         return;
@@ -392,7 +470,7 @@ export default function RaynaHub() {
     if (intent.type === "action" && intent.id === "gps_info_de") {
       const placeName = (slots.placeName || "").trim();
       if (!placeName) {
-        setMessages(m => [...m, { from: "bot", reply_text: pickText("¿De qué sitio quieres información?", lang) }]);
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"¿De qué sitio quieres información?", ro:"Despre ce loc vrei informații?", ca:"De quin lloc vols informació?"}, lang) }]);
         return;
       }
 
@@ -419,7 +497,9 @@ export default function RaynaHub() {
       if (options.length > 1) {
         setMessages(m => [...m, {
           from: "bot",
-          reply_text: pickText(`He encontrado varios «${placeName}». Elige uno:`, lang),
+          reply_text: pickText({es:`He encontrado varios «${placeName}». Elige uno:`,
+                                ro:`Am găsit mai multe „${placeName}”. Alege unul:`,
+                                ca:`He trobat diversos «${placeName}». Tria'n un:`}, lang),
           render: () => <SimpleList title={pickText({es:"Resultados", ro:"Rezultate", ca:"Resultats"}, lang)} items={options} onPick={showInfo} />
         }]);
         return;
@@ -429,7 +509,7 @@ export default function RaynaHub() {
       return;
     }
 
-    // ==== ACTION: GPS – LISTE GENERICE
+    // ==== ACTION: GPS – liste generice
     if (intent.type === "action" && intent.action === "gps_list") {
       const id = intent.id;
       const tables = {
@@ -452,170 +532,301 @@ export default function RaynaHub() {
         return;
       }
     }
-// ==== ACTION: driver_self_info (STRICT self-only)
-if (intent.type === "action" && intent.action === "driver_self_info") {
-  // 0) Safety: doar despre tine, nu alte ID-uri/nume
-  // (Intențiile sunt formulate generic; dacă adaugi în viitor ceva cu alt user, pune aici verificări.)
 
-  // 1) Info din profil – disponibil imediat
-  const truck = {
-    itv: profile?.camioane?.fecha_itv || "—",
-    plate: profile?.camioane?.matricula || "—",
-    km: profile?.camioane?.kilometros ?? null,
-  };
-  const trailer = {
-    itv: profile?.remorci?.fecha_itv || "—",
-    plate: profile?.remorci?.matricula || "—",
-  };
-  const driver = {
-    cap: profile?.cap_expirare || "—",
-    lic: profile?.carnet_caducidad || "—",
-    adr: profile?.tiene_adr ? (profile?.adr_caducidad || "Sí") : "No",
-  };
+    /* ===================== DRIVER SELF-ONLY (din profilul propriu) ===================== */
 
-  const topic = intent?.meta?.topic;
+    // ==== ACTION: întreținere — status ulei
+    if (intent.type === "action" && intent.action === "veh_oil_status") {
+      const { truck, error: terr } = await getMyTruck(profile);
+      if (terr === "no_truck") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No tienes camión asignado en tu perfil.", ro:"Nu ai un camion asignat în profil.", ca:"No tens cap camió assignat al teu perfil."}, lang) }]);
+        return;
+      }
+      if (terr === "truck_not_found") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No encuentro tu camión en la base de datos.", ro:"Nu găsesc camionul tău în baza de date.", ca:"No trobo el teu camió a la base de dades."}, lang) }]);
+        return;
+      }
 
-  // 2) Răspunsuri simple (fără DB extra)
-  if (topic === "truck_itv") {
-    setMessages(m => [...m, { from: "bot", reply_text: intent.response?.text?.replace("{{truck.itv}}", String(truck.itv)) }]);
-    return;
-  }
-  if (topic === "trailer_itv") {
-    setMessages(m => [...m, { from: "bot", reply_text: intent.response?.text?.replace("{{trailer.itv}}", String(trailer.itv)) }]);
-    return;
-  }
-  if (topic === "plates") {
-    const txt = intent.response?.text
-      ?.replace("{{truck.plate}}", String(truck.plate))
-      ?.replace("{{trailer.plate}}", String(trailer.plate));
-    setMessages(m => [...m, { from: "bot", reply_text: txt }]);
-    return;
-  }
-  if (topic === "driver_credentials") {
-    const txt = intent.response?.text
-      ?.replace("{{driver.cap}}", String(driver.cap))
-      ?.replace("{{driver.lic}}", String(driver.lic))
-      ?.replace("{{driver.adr}}", String(driver.adr));
-    setMessages(m => [...m, { from: "bot", reply_text: txt }]);
-    return;
-  }
+      const last = await findLastOilChange(truck.id);
+      if (!last) {
+        setMessages(m => [...m, { from: "bot", reply_text:
+          pickText({es:"No veo un registro de cambio de aceite para tu camión. Añade la reparación (con KM) para poder calcular el siguiente.",
+                    ro:"Nu văd un registru de schimb ulei pentru camionul tău. Adaugă reparația (cu KM) ca să pot calcula următorul.",
+                    ca:"No veig un registre de canvi d'oli per al teu camió. Afegeix la reparació (amb KM) per poder calcular el següent."}, lang)
+        }]);
+        return;
+      }
 
-  // 3) Răspunsuri cu DB (payroll & vacanțe) – replică logică din MiPerfilPage
-  if (topic === "payroll_summary") {
-    try {
+      const kmNow = parseInt(truck.kilometros || 0, 10) || 0;
+      const kmAtChange = parseInt(last.kilometri || 0, 10) || 0;
+      const sinceKm = Math.max(kmNow - kmAtChange, 0);
+      const leftKm = Math.max(OIL_INTERVAL_KM - sinceKm, 0);
+
+      let monthsLeftTxt = "";
+      const avg = await getAvgMonthlyKm(user?.id);
+      if (avg && avg > 0) {
+        const monthsLeft = leftKm > 0 ? (leftKm / avg) : 0;
+        const rounded = Math.max(0, Math.round(monthsLeft * 10) / 10);
+        monthsLeftTxt = rounded > 0 ? ` ~${rounded} ${pickText({es:"meses", ro:"luni", ca:"mesos"}, lang)}` : ` 0 ${pickText({es:"meses", ro:"luni", ca:"mesos"}, lang)}`;
+      }
+
+      const reply = pickText({
+        es: `Último cambio de aceite: **${fmtDate(last.created_at)}** a **${kmAtChange.toLocaleString("es-ES")} km**.
+Kilómetros desde entonces: **${sinceKm.toLocaleString("es-ES")} km**.
+Te quedan **${leftKm.toLocaleString("es-ES")} km${monthsLeftTxt ? " (" + monthsLeftTxt + ")" : ""}** hasta el próximo (intervalo: ${OIL_INTERVAL_KM.toLocaleString("es-ES")} km).`,
+        ro: `Ultimul schimb de ulei: **${fmtDate(last.created_at)}** la **${kmAtChange.toLocaleString("es-ES")} km**.
+Kilometri de atunci: **${sinceKm.toLocaleString("es-ES")} km**.
+Îți mai rămân **${leftKm.toLocaleString("es-ES")} km${monthsLeftTxt ? " (" + monthsLeftTxt + ")" : ""}** până la următorul (interval: ${OIL_INTERVAL_KM.toLocaleString("es-ES")} km).`,
+        ca: `Últim canvi d'oli: **${fmtDate(last.created_at)}** a **${kmAtChange.toLocaleString("es-ES")} km**.
+Quilòmetres des de llavors: **${sinceKm.toLocaleString("es-ES")} km**.
+Et queden **${leftKm.toLocaleString("es-ES")} km${monthsLeftTxt ? " (" + monthsLeftTxt + ")" : ""}** fins al proper (interval: ${OIL_INTERVAL_KM.toLocaleString("es-ES")} km).`
+      }, lang);
+
+      setMessages(m => [...m, { from: "bot", reply_text: reply }]);
+      return;
+    }
+
+    // ==== ACTION: întreținere — filtru AdBlue
+    if (intent.type === "action" && intent.action === "veh_adblue_filter_status") {
+      const { truck, error: terr } = await getMyTruck(profile);
+      if (terr === "no_truck") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No tienes camión asignado en tu perfil.", ro:"Nu ai un camion asignat în profil.", ca:"No tens cap camió assignat al teu perfil."}, lang) }]);
+        return;
+      }
+      if (terr === "truck_not_found") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No encuentro tu camión en la base de datos.", ro:"Nu găsesc camionul tău în baza de date.", ca:"No trobo el teu camió a la base de dades."}, lang) }]);
+        return;
+      }
+
+      const last = await findLastAdBlueFilter(truck.id);
+      if (!last) {
+        setMessages(m => [...m, { from: "bot", reply_text:
+          pickText({es:"No veo un registro de cambio de filtro AdBlue en tu camión. Añade la reparación (con KM) para poder estimar.",
+                    ro:"Nu văd un registru de schimb filtru AdBlue la camionul tău. Adaugă reparația (cu KM) ca să pot estima.",
+                    ca:"No veig un registre de canvi de filtre AdBlue al teu camió. Afegeix la reparació (amb KM) per poder estimar."}, lang)
+        }]);
+        return;
+      }
+
+      const kmNow = parseInt(truck.kilometros || 0, 10) || 0;
+      const kmAtChange = parseInt(last.kilometri || 0, 10) || 0;
+      const sinceKm = Math.max(kmNow - kmAtChange, 0);
+
+      const reply = pickText({
+        es: `Último filtro AdBlue: **${fmtDate(last.created_at)}** a **${kmAtChange.toLocaleString("es-ES")} km**.
+Kilómetros desde entonces: **${sinceKm.toLocaleString("es-ES")} km**.
+Si quieres, puedo calcular también un intervalo objetivo cuando lo definamos.`,
+        ro: `Ultimul filtru AdBlue: **${fmtDate(last.created_at)}** la **${kmAtChange.toLocaleString("es-ES")} km**.
+Kilometri de atunci: **${sinceKm.toLocaleString("es-ES")} km**.
+Dacă vrei, pot calcula și un interval țintă când îl stabilim.`,
+        ca: `Últim filtre AdBlue: **${fmtDate(last.created_at)}** a **${kmAtChange.toLocaleString("es-ES")} km**.
+Quilòmetres des de llavors: **${sinceKm.toLocaleString("es-ES")} km**.
+Si vols, puc calcular també un interval objectiu quan el definim.`
+      }, lang);
+
+      setMessages(m => [...m, { from: "bot", reply_text: reply }]);
+      return;
+    }
+
+    // ==== ACTION: ITV camión (propriu)
+    if (intent.type === "action" && intent.action === "veh_itv_truck") {
+      const { truck, error: terr } = await getMyTruck(profile);
+      if (terr === "no_truck") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No tienes camión asignado en tu perfil.", ro:"Nu ai un camion asignat în profil.", ca:"No tens cap camió assignat al teu perfil."}, lang) }]);
+        return;
+      }
+      if (terr === "truck_not_found") {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No encuentro tu camión en la base de datos.", ro:"Nu găsesc camionul tău în baza de date.", ca:"No trobo el teu camió a la base de dades."}, lang) }]);
+        return;
+      }
+
+      const itv = truck.fecha_itv ? new Date(truck.fecha_itv) : null;
+      if (!itv) {
+        setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"Tu camión no tiene una fecha ITV registrada.", ro:"Camionul tău nu are o dată ITV înregistrată.", ca:"El teu camió no té una data d'ITV registrada."}, lang) }]);
+        return;
+      }
+
       const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const { data } = await supabase
-        .from("pontaje_curente")
-        .select("pontaj_complet")
-        .eq("user_id", profile?.id)
-        .eq("an", y)
-        .eq("mes", m)
-        .maybeSingle();
+      const diffDays = Math.ceil((itv - now) / 86400000);
+      let msg;
+      if (diffDays > 0) {
+        msg = pickText({
+          es: `ITV del camión: **${itv.toLocaleDateString("es-ES")}**. Faltan **${diffDays} días**.`,
+          ro: `ITV camion: **${itv.toLocaleDateString("es-ES")}**. Au rămas **${diffDays} zile**.`,
+          ca: `ITV del camió: **${itv.toLocaleDateString("es-ES")}**. Queden **${diffDays} dies**.`
+        }, lang);
+      } else {
+        msg = pickText({
+          es: `ITV del camión: **${itv.toLocaleDateString("es-ES")}**. Está **vencida** hace **${Math.abs(diffDays)} días**.`,
+          ro: `ITV camion: **${itv.toLocaleDateString("es-ES")}**. Este **expirată** de **${Math.abs(diffDays)} zile**.`,
+          ca: `ITV del camió: **${itv.toLocaleDateString("es-ES")}**. Està **vençuda** fa **${Math.abs(diffDays)} dies**.`
+        }, lang);
+      }
+      setMessages(m => [...m, { from: "bot", reply_text: msg }]);
+      return;
+    }
 
-      const zile = data?.pontaj_complet?.zilePontaj || [];
-      let D = 0, C = 0, P = 0, KM = 0, CT = 0;
-      const marks = new Set();
-      zile.forEach((zi, idx) => {
-        if (!zi) return;
-        const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
-        if (zi.desayuno) D++;
-        if (zi.cena) C++;
-        if (zi.procena) P++;
-        if (kmZi > 0) KM += kmZi;
-        if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
-        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
-          marks.add(idx + 1);
+    // ==== ACTION: driver_self_info (alte întrebări din profil)
+    if (intent.type === "action" && intent.action === "driver_self_info") {
+      const truck = {
+        itv: profile?.camioane?.fecha_itv || "—",
+        plate: profile?.camioane?.matricula || "—",
+        km: profile?.camioane?.kilometros ?? null,
+      };
+      const trailer = {
+        itv: profile?.remorci?.fecha_itv || "—",
+        plate: profile?.remorci?.matricula || "—",
+      };
+      const driver = {
+        cap: profile?.cap_expirare || "—",
+        lic: profile?.carnet_caducidad || "—",
+        adr: profile?.tiene_adr ? (profile?.adr_caducidad || "Sí") : "No",
+      };
+
+      const topic = intent?.meta?.topic;
+
+      if (topic === "truck_itv") {
+        setMessages(m => [...m, { from: "bot", reply_text: (intent.response?.text || "").replace("{{truck.itv}}", String(truck.itv)) }]);
+        return;
+      }
+      if (topic === "trailer_itv") {
+        setMessages(m => [...m, { from: "bot", reply_text: (intent.response?.text || "").replace("{{trailer.itv}}", String(trailer.itv)) }]);
+        return;
+      }
+      if (topic === "plates") {
+        const txt = (intent.response?.text || "")
+          .replace("{{truck.plate}}", String(truck.plate))
+          .replace("{{trailer.plate}}", String(trailer.plate));
+        setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+        return;
+      }
+      if (topic === "driver_credentials") {
+        const txt = (intent.response?.text || "")
+          .replace("{{driver.cap}}", String(driver.cap))
+          .replace("{{driver.lic}}", String(driver.lic))
+          .replace("{{driver.adr}}", String(driver.adr));
+        setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+        return;
+      }
+
+      // payroll summary (luna curentă)
+      if (topic === "payroll_summary") {
+        try {
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = now.getMonth() + 1;
+          const { data } = await supabase
+            .from("pontaje_curente")
+            .select("pontaj_complet")
+            .eq("user_id", profile?.id)
+            .eq("an", y)
+            .eq("mes", m)
+            .maybeSingle();
+
+          const zile = data?.pontaj_complet?.zilePontaj || [];
+          let D = 0, C = 0, P = 0, KM = 0, CT = 0;
+          const marks = new Set();
+          zile.forEach((zi, idx) => {
+            if (!zi) return;
+            const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+            if (zi.desayuno) D++;
+            if (zi.cena) C++;
+            if (zi.procena) P++;
+            if (kmZi > 0) KM += kmZi;
+            if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
+            if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
+              marks.add(idx + 1);
+            }
+          });
+          const txt = (intent.response?.text || "")
+            .replace("{{payroll.dias}}", String(marks.size))
+            .replace("{{payroll.km}}", String(Math.round(KM)))
+            .replace("{{payroll.conts}}", String(CT))
+            .replace("{{payroll.desayunos}}", String(D))
+            .replace("{{payroll.cenas}}", String(C))
+            .replace("{{payroll.procenas}}", String(P));
+          setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+        } catch (e) {
+          setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No he podido leer tu nómina ahora mismo.", ro:"Nu am putut citi acum statul tău de plată.", ca:"No he pogut llegir ara mateix la teva nòmina."}, lang) }]);
         }
-      });
-      const txt = intent.response?.text
-        ?.replace("{{payroll.dias}}", String(marks.size))
-        ?.replace("{{payroll.km}}", String(Math.round(KM)))
-        ?.replace("{{payroll.conts}}", String(CT))
-        ?.replace("{{payroll.desayunos}}", String(D))
-        ?.replace("{{payroll.cenas}}", String(C))
-        ?.replace("{{payroll.procenas}}", String(P));
-      setMessages(m => [...m, { from: "bot", reply_text: txt }]);
-    } catch (e) {
-      setMessages(m => [...m, { from: "bot", reply_text: "No he podido leer tu nómina ahora mismo." }]);
+        return;
+      }
+
+      // sold concediu
+      if (topic === "vacation_balance") {
+        try {
+          const now = new Date();
+          const year = now.getFullYear();
+          const yearStart = `${year}-01-01`;
+          const yearEnd = `${year}-12-31`;
+
+          const { data: cfg } = await supabase
+            .from("vacaciones_parametros_anio")
+            .select("*")
+            .eq("anio", year)
+            .maybeSingle();
+
+          const dias_base = cfg?.dias_base ?? 23;
+          const dias_personales = cfg?.dias_personales ?? 2;
+          const dias_pueblo = cfg?.dias_pueblo ?? 0;
+
+          const { data: ex } = await supabase
+            .from("vacaciones_asignaciones_extra")
+            .select("dias_extra")
+            .eq("user_id", profile?.id)
+            .eq("anio", year)
+            .maybeSingle();
+          const dias_extra = ex?.dias_extra ?? 0;
+
+          const total = (dias_base || 0) + (dias_personales || 0) + (dias_pueblo || 0) + (dias_extra || 0);
+
+          const { data: evs } = await supabase
+            .from("vacaciones_eventos")
+            .select("id,tipo,state,start_date,end_date")
+            .eq("user_id", profile?.id)
+            .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
+
+          const fmt = (d) => {
+            const x = new Date(d);
+            const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
+            return z.toISOString().slice(0, 10);
+          };
+          const daysBetween = (a, b) => {
+            const A = new Date(fmt(a)), B = new Date(fmt(b));
+            return Math.floor((B - A) / 86400000) + 1;
+          };
+          const overlapDaysWithinYear = (ev) => {
+            const yStart = new Date(`${year}-01-01T00:00:00`);
+            const yEnd = new Date(`${year}-12-31T23:59:59`);
+            const s0 = new Date(ev.start_date);
+            const e0 = new Date(ev.end_date);
+            const s = s0 < yStart ? yStart : s0;
+            const e = e0 > yEnd ? yEnd : e0;
+            if (e < s) return 0;
+            return daysBetween(s, e);
+          };
+
+          const usadas = (evs || []).filter(e => e.state === "aprobado").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+          const pendientes = (evs || []).filter(e => e.state === "pendiente" || e.state === "conflicto").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
+          const disponibles = Math.max(total - usadas - pendientes, 0);
+
+          const txt = (intent.response?.text || "")
+            .replace("{{vac.total}}", String(total))
+            .replace("{{vac.usadas}}", String(usadas))
+            .replace("{{vac.pendientes}}", String(pendientes))
+            .replace("{{vac.disponibles}}", String(disponibles));
+          setMessages(m => [...m, { from: "bot", reply_text: txt }]);
+        } catch (e) {
+          setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No he podido calcular ahora tus vacaciones.", ro:"Nu am putut calcula acum concediul tău.", ca:"No he pogut calcular ara les teves vacances."}, lang) }]);
+        }
+        return;
+      }
+
+      // fallback pentru driver_self_info necunoscut
+      setMessages(m => [...m, { from: "bot", reply_text: pickText({es:"No encuentro ese dato en tu perfil.", ro:"Nu găsesc informația cerută în profilul tău.", ca:"No trobo aquesta dada al teu perfil."}, lang) }]);
+      return;
     }
-    return;
-  }
 
-  if (topic === "vacation_balance") {
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const yearStart = `${year}-01-01`;
-      const yearEnd = `${year}-12-31`;
-
-      const { data: cfg } = await supabase
-        .from("vacaciones_parametros_anio")
-        .select("*")
-        .eq("anio", year)
-        .maybeSingle();
-
-      const dias_base = cfg?.dias_base ?? 23;
-      const dias_personales = cfg?.dias_personales ?? 2;
-      const dias_pueblo = cfg?.dias_pueblo ?? 0;
-
-      const { data: ex } = await supabase
-        .from("vacaciones_asignaciones_extra")
-        .select("dias_extra")
-        .eq("user_id", profile?.id)
-        .eq("anio", year)
-        .maybeSingle();
-      const dias_extra = ex?.dias_extra ?? 0;
-
-      const total = (dias_base || 0) + (dias_personales || 0) + (dias_pueblo || 0) + (dias_extra || 0);
-
-      const { data: evs } = await supabase
-        .from("vacaciones_eventos")
-        .select("id,tipo,state,start_date,end_date")
-        .eq("user_id", profile?.id)
-        .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
-
-      const fmt = (d) => {
-        const x = new Date(d);
-        const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
-        return z.toISOString().slice(0, 10);
-      };
-      const daysBetween = (a, b) => {
-        const A = new Date(fmt(a)), B = new Date(fmt(b));
-        return Math.floor((B - A) / 86400000) + 1;
-      };
-      const overlapDaysWithinYear = (ev) => {
-        const yStart = new Date(`${year}-01-01T00:00:00`);
-        const yEnd = new Date(`${year}-12-31T23:59:59`);
-        const s0 = new Date(ev.start_date);
-        const e0 = new Date(ev.end_date);
-        const s = s0 < yStart ? yStart : s0;
-        const e = e0 > yEnd ? yEnd : e0;
-        if (e < s) return 0;
-        return daysBetween(s, e);
-      };
-
-      const usadas = (evs || []).filter(e => e.state === "aprobado").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
-      const pendientes = (evs || []).filter(e => e.state === "pendiente" || e.state === "conflicto").reduce((s, e) => s + overlapDaysWithinYear(e), 0);
-      const disponibles = Math.max(total - usadas - pendientes, 0);
-
-      const txt = intent.response?.text
-        ?.replace("{{vac.total}}", String(total))
-        ?.replace("{{vac.usadas}}", String(usadas))
-        ?.replace("{{vac.pendientes}}", String(pendientes))
-        ?.replace("{{vac.disponibles}}", String(disponibles));
-      setMessages(m => [...m, { from: "bot", reply_text: txt }]);
-    } catch (e) {
-      setMessages(m => [...m, { from: "bot", reply_text: "Nu am putut calcula acum concediul tău." }]);
-    }
-    return;
-  }
-
-  // fallback pentru driver_self_info necunoscut
-  setMessages(m => [...m, { from: "bot", reply_text: "Nu găsesc informația cerută din profilul tău." }]);
-  return;
-}
     // ==== fallback
     const fbText = pickText(
       intentsData.find(i => i.id === "fallback")?.response?.text,
