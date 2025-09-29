@@ -145,7 +145,7 @@
   },
   {
     "id": "ver_camara",
-    "priority": 80,
+    "priority": 85,
     "type": "action",
     "patterns_any": [
       "abre",
