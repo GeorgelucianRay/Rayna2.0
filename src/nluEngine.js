@@ -10,7 +10,7 @@ export function normalize(s) {
     // RO
     "ă":"a","â":"a","î":"i","ș":"s","ş":"s","ț":"t","ţ":"t",
     "Ă":"a","Â":"a","Î":"i","Ș":"s","Ş":"s","Ț":"t","Ţ":"t",
-    // CA (folosește același fallback latin)
+    // CA (fallback latin)
     "ò":"o","ó":"o","à":"a","è":"e","é":"e","ï":"i","ü":"u",
     "Ò":"o","Ó":"o","À":"a","È":"e","É":"e","Ï":"i","Ü":"u"
   };
@@ -85,7 +85,6 @@ export function detectLanguage(raw) {
   const n = normalize(raw);
   const toks = new Set(n.split(" ").filter(Boolean));
 
-  // semnale ușoare (greetings, conectori, întrebări frecvente)
   const ES = ["hola","buenas","buenos","dias","días","tardes","noches","quiero","como","cómo","llego","abrir","abre","camara","cámara","donde","dónde","hay","ver"];
   const RO = ["salut","buna","bună","buna ziua","ziua","vreau","cum","ajung","deschide","camera","unde","este","e","lista","client","sofer","șofer"];
   const CA = ["hola","bon","bon dia","bones","tardes","nits","vull","com","arribo","obre","camaras","càmera","on","esta","està","veure"];
@@ -105,19 +104,18 @@ export function detectLanguage(raw) {
 function captureCameraName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
-    // articole/prepoziții
     "la","el","una","un","de","del","al","en",
-    // substantive generale
     "camara","cámara","camera","camaras","cámaras","camere",
-    // verbe/umpluturi
     "abre","abrir","abreme","ver","muestra","mostrar","desplegar","deschide",
     "quiero","vreau","sa","să","vad","văd",
     "por","favor","pf","pls","ok","vale",
     "que","qué","pasa","hay",
-    // creare / administrativ
     "añadir","anadir","agregar","crear","nueva","nuevo",
     "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar",
-    "lista","listado","todas","tutti","todes"
+    "lista","listado","todas","tutti","todes",
+    "hola","buenas","buenos","dias","días","tardes","noches",
+    "salut","buna","bună","servus","ciao","ola","olá",
+    "que tal","qué tal"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -135,14 +133,15 @@ function captureCameraName(raw, stopwords = []) {
 function capturePlaceName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
-    // articole/prepoziții
     "a","al","la","el","de","del","en","pe","catre","către",
-    // verbe/umpluturi
     "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
     "vreau","sa","să","ajung","merg",
     "info","informacion","información","detalii",
     "donde","dónde","esta","está","despre",
-    "cliente","client","clientul","que","qué","pasa","hay"
+    "cliente","client","clientul","que","qué","pasa","hay",
+    "hola","buenas","buenos","dias","días","tardes","noches",
+    "salut","buna","bună","servus","ciao","ola","olá",
+    "que tal","qué tal"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -156,9 +155,6 @@ function capturePlaceName(raw, stopwords = []) {
 }
 
 /* -------------------- Localizare intent -------------------- */
-/**
- * Acceptă atât string cât și obiect {es,ro,ca}. Returnează string în limba cerută.
- */
 function pickLang(val, lang) {
   if (val == null) return undefined;
   if (typeof val === "string") return val;
@@ -167,22 +163,13 @@ function pickLang(val, lang) {
   }
   return String(val);
 }
-
 function deepClone(obj) {
   return obj ? JSON.parse(JSON.stringify(obj)) : obj;
 }
-
 function localizeIntent(intent, lang) {
   const it = deepClone(intent);
-  // response.text
-  if (it.response && "text" in it.response) {
-    it.response.text = pickLang(it.response.text, lang);
-  }
-  // not_found.text
-  if (it.not_found && "text" in it.not_found) {
-    it.not_found.text = pickLang(it.not_found.text, lang);
-  }
-  // dialog: ask_text, save_ok, save_err
+  if (it.response && "text" in it.response) it.response.text = pickLang(it.response.text, lang);
+  if (it.not_found && "text" in it.not_found) it.not_found.text = pickLang(it.not_found.text, lang);
   if (it.dialog) {
     if ("ask_text" in it.dialog) it.dialog.ask_text = pickLang(it.dialog.ask_text, lang);
     if ("save_ok" in it.dialog) it.dialog.save_ok = pickLang(it.dialog.save_ok, lang);
@@ -195,26 +182,21 @@ function localizeIntent(intent, lang) {
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
   const list = Array.isArray(intentsJson) ? intentsJson : [];
-  const lang = detectLanguage(text); // ← alegem limba în funcție de input
+  const lang = detectLanguage(text);
 
-  // sortare defensivă după priority (desc)
   const intents = [...list].sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
 
   for (const rawIntent of intents) {
     if (!rawIntent) continue;
     if (rawIntent.id === "fallback") continue;
 
-    // 1) potrivire pe patterns (funcționează indiferent de limbă datorită normalize + fuzzy)
     let ok = includesAny(text, rawIntent.patterns_any) || hasToken(text, rawIntent.patterns_any);
 
-    // 1.1) negative_any — inhibit
     if (ok && rawIntent.negative_any) {
       const negHit = includesAny(text, rawIntent.negative_any) || hasToken(text, rawIntent.negative_any);
       if (negHit) ok = false;
     }
 
-    // 2) Heuristica pentru ver_camara: acceptă substantiv sau verb + frază scurtă,
-    // și evită interogările de tip listă.
     if (!ok && rawIntent.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasNounCue = includesAny(text, ["camara","cámara","camera","camere"]);
@@ -229,7 +211,6 @@ export function detectIntent(message, intentsJson) {
 
     if (!ok) continue;
 
-    // 3) slots
     const slots = {};
     if (rawIntent.slots?.cameraName) {
       const name = captureCameraName(text, rawIntent.stopwords);
@@ -240,13 +221,15 @@ export function detectIntent(message, intentsJson) {
       if (pname) slots.placeName = pname;
     }
 
-    // 4) localizează intentul înainte de return — pentru compat cu RaynaHub care citește response.text
     const intent = localizeIntent(rawIntent, lang);
     return { intent, slots, lang };
   }
 
-  // 5) fallback (localizat)
-  const fbRaw = intents.find(i => i?.id === "fallback") || { id: "fallback", type: "static", response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } } };
+  const fbRaw = intents.find(i => i?.id === "fallback") || {
+    id: "fallback",
+    type: "static",
+    response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } }
+  };
   const intent = localizeIntent(fbRaw, lang);
   return { intent, slots: {}, lang };
 }
