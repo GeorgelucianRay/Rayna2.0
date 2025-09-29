@@ -10,12 +10,13 @@ export function normalize(s) {
     // RO
     "ă":"a","â":"a","î":"i","ș":"s","ş":"s","ț":"t","ţ":"t",
     "Ă":"a","Â":"a","Î":"i","Ș":"s","Ş":"s","Ț":"t","Ţ":"t",
-    // CA (uzuale)
-    "à":"a","À":"a","ç":"c","Ç":"c","è":"e","È":"e","ï":"i","Ï":"i"
+    // CA (folosește același fallback latin)
+    "ò":"o","ó":"o","à":"a","è":"e","é":"e","ï":"i","ü":"u",
+    "Ò":"o","Ó":"o","À":"a","È":"e","É":"e","Ï":"i","Ü":"u"
   };
   let out = String(s).replace(/[\s\S]/g, c => DIAC[c] ?? c);
   out = out.toLowerCase();
-  // doar litere englezești/ cifre / spații – evităm \p{L} pentru compat Safari
+  // doar litere/cifre/spații – evităm \p{L} pentru compat Safari/iOS
   out = out.replace(/[^a-z0-9\s]/g, " ");
   out = out.replace(/\s+/g, " ").trim();
   return out;
@@ -78,17 +79,29 @@ function hasToken(text, list) {
   return list.some(w => toks.some(tk => fuzzyEq(tk, normalize(w))));
 }
 
-/* -------------------- Strip greeting prefix ------------------- */
-// Taie saluturile de la început: "hola, ...", "buenas, ...", "salut, ...", "bon dia, ..." etc.
-function stripGreetingPrefix(s) {
-  if (!s) return "";
-  // tolerant, acoperă ES/RO/CA uzual + semne de punctuație/ spații după
-  const re = /^(hola|buenas|buenos dias|buenos dias|buen dia|buen dia|que tal|qué tal|salut|buna|bună|hei|hey|alo|bon dia|bona tarda|bona nit|oli|bones)[,!\s-]+/i;
-  return String(s).replace(re, "");
+/* -------------------- Heuristic language detect -------------------- */
+/** Returnează 'es' | 'ro' | 'ca' (sau 'es' fallback) */
+export function detectLanguage(raw) {
+  const n = normalize(raw);
+  const toks = new Set(n.split(" ").filter(Boolean));
+
+  // semnale ușoare (greetings, conectori, întrebări frecvente)
+  const ES = ["hola","buenas","buenos","dias","días","tardes","noches","quiero","como","cómo","llego","abrir","abre","camara","cámara","donde","dónde","hay","ver"];
+  const RO = ["salut","buna","bună","buna ziua","ziua","vreau","cum","ajung","deschide","camera","unde","este","e","lista","client","sofer","șofer"];
+  const CA = ["hola","bon","bon dia","bones","tardes","nits","vull","com","arribo","obre","camaras","càmera","on","esta","està","veure"];
+
+  const score = (arr) => arr.reduce((s, w) => s + (toks.has(normalize(w)) ? 1 : 0), 0);
+
+  const es = score(ES);
+  const ro = score(RO);
+  const ca = score(CA);
+
+  if (ro > es && ro >= ca) return "ro";
+  if (ca > es && ca >= ro) return "ca";
+  return "es";
 }
 
-/* -------------------- Capture: cameraName -------------------- */
-// extrage numele camerei din coadă, eliminând verbe/umpluturi
+/* -------------------- Helpers pentru capturi -------------------- */
 function captureCameraName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
@@ -104,15 +117,12 @@ function captureCameraName(raw, stopwords = []) {
     // creare / administrativ
     "añadir","anadir","agregar","crear","nueva","nuevo",
     "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar",
-    "lista","listado","todas","tutti","todes",
-    // saluturi – să nu intre în nume
-    "hola","buenas","buenos","dias","días","tardes","noches",
-    "salut","buna","bună","bon","dia","bona","tarda","nit"
+    "lista","listado","todas","tutti","todes"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
-    const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte utile
+    const candidate = toks.slice(-3).join(" ").trim();
     const generic = new Set(["camara","camera","camere"]);
     if (!candidate || generic.has(candidate)) return null;
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
@@ -122,7 +132,6 @@ function captureCameraName(raw, stopwords = []) {
   return null;
 }
 
-/* -------------------- Capture: placeName --------------------- */
 function capturePlaceName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
@@ -133,10 +142,7 @@ function capturePlaceName(raw, stopwords = []) {
     "vreau","sa","să","ajung","merg",
     "info","informacion","información","detalii",
     "donde","dónde","esta","está","despre",
-    "cliente","client","clientul","que","qué","pasa","hay",
-    // saluturi – să nu intre în nume
-    "hola","buenas","buenos","dias","días","tardes","noches",
-    "salut","buna","bună","bon","dia","bona","tarda","nit"
+    "cliente","client","clientul","que","qué","pasa","hay"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -149,59 +155,98 @@ function capturePlaceName(raw, stopwords = []) {
   return null;
 }
 
+/* -------------------- Localizare intent -------------------- */
+/**
+ * Acceptă atât string cât și obiect {es,ro,ca}. Returnează string în limba cerută.
+ */
+function pickLang(val, lang) {
+  if (val == null) return undefined;
+  if (typeof val === "string") return val;
+  if (typeof val === "object") {
+    return val[lang] || val.es || val.ro || val.ca || "";
+  }
+  return String(val);
+}
+
+function deepClone(obj) {
+  return obj ? JSON.parse(JSON.stringify(obj)) : obj;
+}
+
+function localizeIntent(intent, lang) {
+  const it = deepClone(intent);
+  // response.text
+  if (it.response && "text" in it.response) {
+    it.response.text = pickLang(it.response.text, lang);
+  }
+  // not_found.text
+  if (it.not_found && "text" in it.not_found) {
+    it.not_found.text = pickLang(it.not_found.text, lang);
+  }
+  // dialog: ask_text, save_ok, save_err
+  if (it.dialog) {
+    if ("ask_text" in it.dialog) it.dialog.ask_text = pickLang(it.dialog.ask_text, lang);
+    if ("save_ok" in it.dialog) it.dialog.save_ok = pickLang(it.dialog.save_ok, lang);
+    if ("save_err" in it.dialog) it.dialog.save_err = pickLang(it.dialog.save_err, lang);
+  }
+  return it;
+}
+
 /* ---------------------- Intent detect ------------------------ */
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
-  const pre = stripGreetingPrefix(text); // ← ignorăm salutul de la început
   const list = Array.isArray(intentsJson) ? intentsJson : [];
+  const lang = detectLanguage(text); // ← alegem limba în funcție de input
 
   // sortare defensivă după priority (desc)
   const intents = [...list].sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
 
-  for (const it of intents) {
-    if (!it) continue;
-    if (it.id === "fallback") continue;
+  for (const rawIntent of intents) {
+    if (!rawIntent) continue;
+    if (rawIntent.id === "fallback") continue;
 
-    // 1) potrivire pe patterns — folosim textul curățat
-    let ok = includesAny(pre, it.patterns_any) || hasToken(pre, it.patterns_any);
+    // 1) potrivire pe patterns (funcționează indiferent de limbă datorită normalize + fuzzy)
+    let ok = includesAny(text, rawIntent.patterns_any) || hasToken(text, rawIntent.patterns_any);
 
     // 1.1) negative_any — inhibit
-    if (ok && it.negative_any) {
-      const negHit = includesAny(pre, it.negative_any) || hasToken(pre, it.negative_any);
+    if (ok && rawIntent.negative_any) {
+      const negHit = includesAny(text, rawIntent.negative_any) || hasToken(text, rawIntent.negative_any);
       if (negHit) ok = false;
     }
 
-    // 2) Heuristica pentru ver_camara (fraze scurte cu „abre/ver/cámara” etc.)
-    if (!ok && it.id === "ver_camara") {
-      const tokens = normalize(pre).split(" ").filter(Boolean);
-      const hasNounCue = includesAny(pre, ["camara","cámara","camera","camere"]);
-      const hasVerbCue = includesAny(pre, ["abre","abrir","abreme","ver","muestra","mostrar","desplegar","deschide"]);
-      const isListy = includesAny(pre, [
+    // 2) Heuristica pentru ver_camara: acceptă substantiv sau verb + frază scurtă,
+    // și evită interogările de tip listă.
+    if (!ok && rawIntent.id === "ver_camara") {
+      const tokens = normalize(text).split(" ").filter(Boolean);
+      const hasNounCue = includesAny(text, ["camara","cámara","camera","camere"]);
+      const hasVerbCue = includesAny(text, ["abre","abrir","ver","muestra","mostrar","desplegar","deschide"]);
+      const isListy = includesAny(text, [
         "que camaras hay","qué camaras hay","qué cámaras hay",
-        "lista camaras","listado camaras","ver todas las camaras"
+        "lista camaras","listado camaras","ver todas las camaras",
+        "todas las camaras","todas las cámaras"
       ]);
-      if ((hasNounCue || hasVerbCue) && !isListy && tokens.length <= 7) {
-        ok = true;
-      }
+      if (!isListy && (hasNounCue || hasVerbCue) && tokens.length <= 5) ok = true;
     }
 
     if (!ok) continue;
 
-    // 3) slots — din textul curățat (fără salut)
+    // 3) slots
     const slots = {};
-    if (it.slots?.cameraName) {
-      const name = captureCameraName(pre, it.stopwords);
+    if (rawIntent.slots?.cameraName) {
+      const name = captureCameraName(text, rawIntent.stopwords);
       if (name) slots.cameraName = name;
     }
-    if (it.slots?.placeName) {
-      const pname = capturePlaceName(pre, it.stopwords);
+    if (rawIntent.slots?.placeName) {
+      const pname = capturePlaceName(text, rawIntent.stopwords);
       if (pname) slots.placeName = pname;
     }
 
-    return { intent: it, slots };
+    // 4) localizează intentul înainte de return — pentru compat cu RaynaHub care citește response.text
+    const intent = localizeIntent(rawIntent, lang);
+    return { intent, slots, lang };
   }
 
-  // 4) fallback
-  const fb = intents.find(i => i?.id === "fallback");
-  return { intent: fb || { id: "fallback", type: "static", response: { text: "No te he entendido." } }, slots: {} };
+  // 5) fallback (localizat)
+  const fbRaw = intents.find(i => i?.id === "fallback") || { id: "fallback", type: "static", response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } } };
+  const intent = localizeIntent(fbRaw, lang);
+  return { intent, slots: {}, lang };
 }
