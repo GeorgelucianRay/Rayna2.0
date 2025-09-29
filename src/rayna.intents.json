@@ -172,7 +172,7 @@
   },
 
   { /* ...next intent... */ }
-]
+],
   "stopwords": ["de","la","el","en","del","despre","pe","al"],
   "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
   "action": "gps_place_info",
