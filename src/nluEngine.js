@@ -13,12 +13,13 @@ export function normalize(s) {
   };
   let out = String(s).replace(/[\s\S]/g, c => DIAC[c] ?? c);
   out = out.toLowerCase();
-  out = out.replace(/[^a-z0-9\s]/g, " "); // doar litere/cifre/spații
+  // doar litere englezești/ cifre / spații – evităm \p{L} pentru compat Safari
+  out = out.replace(/[^a-z0-9\s]/g, " ");
   out = out.replace(/\s+/g, " ").trim();
   return out;
 }
 
-// ——— Damerau–Levenshtein (simplu) pentru fuzzy token match
+// ——— Damerau–Levenshtein simplu (fuzzy pe token)
 function ed(a, b) {
   const al = a.length, bl = b.length;
   const d = Array.from({ length: al + 1 }, (_, i) =>
@@ -39,17 +40,17 @@ const fuzzyEq = (a, b) => {
   a = normalize(a); b = normalize(b);
   if (a === b) return true;
   const L = Math.max(a.length, b.length);
-  const tol = L <= 4 ? 1 : 2;
+  const tol = L <= 4 ? 1 : 2; // mai tolerant pentru cuvinte mai lungi
   return ed(a, b) <= tol;
 };
 
-// ——— Potrivire corectă (fără sub-șiruri accidentale)
+// ——— Potrivire fără sub-șiruri accidentale
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * includesAny:
- * - frază → căutăm exact în text
- * - cuvânt → fuzzy pe tokens
+ * - dacă pattern-ul are spații -> căutăm fraza cu margini
+ * - dacă e un singur cuvânt -> comparăm pe token-uri (fuzzy)
  */
 function includesAny(text, arr) {
   if (!Array.isArray(arr) || !arr.length) return false;
@@ -60,10 +61,10 @@ function includesAny(text, arr) {
     const np = normalize(p);
     if (!np) return false;
 
-    if (np.includes(" ")) {
+    if (np.includes(" ")) { // frază exactă (după normalizare)
       const re = new RegExp(`(?:^|\\s)${esc(np)}(?:\\s|$)`);
       return re.test(n);
-    } else {
+    } else { // cuvânt
       return toks.some(tk => fuzzyEq(tk, np));
     }
   });
@@ -76,22 +77,29 @@ function hasToken(text, list) {
 }
 
 /* -------------------- Capture: cameraName -------------------- */
+// extrage numele camerei din coadă, eliminând verbe/umpluturi
 function captureCameraName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
-    "la","el","una","un","de","del","al",
-    "camara","cámara","camera","camaras","cámaras",
-    "abre","abrir","ver","muestra","mostrar","desplegar",
-    "deschide","quiero","vreau","sa","să","vad","văd",
+    // articole/prepoziții
+    "la","el","una","un","de","del","al","en",
+    // substantive generale
+    "camara","cámara","camera","camaras","cámaras","camere",
+    // verbe/umpluturi
+    "abre","abrir","abreme","ver","muestra","mostrar","desplegar","deschide",
+    "quiero","vreau","sa","să","vad","văd",
     "por","favor","pf","pls","ok","vale",
+    "que","qué","pasa","hay",
+    // creare / administrativ
     "añadir","anadir","agregar","crear","nueva","nuevo",
-    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar","que","pasa"
+    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar",
+    "lista","listado","todas","tutti","todes"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
   if (toks.length >= 1) {
-    const candidate = toks.slice(-3).join(" ").trim();
-    const generic = new Set(["camara","camera"]);
+    const candidate = toks.slice(-3).join(" ").trim(); // ultimele 1–3 cuvinte utile
+    const generic = new Set(["camara","camera","camere"]);
     if (!candidate || generic.has(candidate)) return null;
     if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
   }
@@ -104,11 +112,14 @@ function captureCameraName(raw, stopwords = []) {
 function capturePlaceName(raw, stopwords = []) {
   const service = new Set([
     ...(stopwords || []),
-    "a","al","la","el","de","del","pe","catre","către",
+    // articole/prepoziții
+    "a","al","la","el","de","del","en","pe","catre","către",
+    // verbe/umpluturi
     "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
     "vreau","sa","să","ajung","merg",
     "info","informacion","información","detalii",
-    "donde","dónde","esta","está","despre","cliente","client","clientul"
+    "donde","dónde","esta","está","despre",
+    "cliente","client","clientul","que","qué","pasa","hay"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -126,39 +137,39 @@ export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
   const list = Array.isArray(intentsJson) ? intentsJson : [];
 
+  // sortare defensivă după priority (desc)
   const intents = [...list].sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
 
   for (const it of intents) {
     if (!it) continue;
     if (it.id === "fallback") continue;
 
-    // 1) strict match pe patterns
+    // 1) potrivire pe patterns
     let ok = includesAny(text, it.patterns_any) || hasToken(text, it.patterns_any);
 
-    // 2) negative_any
+    // 1.1) negative_any — inhibit
     if (ok && it.negative_any) {
       const negHit = includesAny(text, it.negative_any) || hasToken(text, it.negative_any);
       if (negHit) ok = false;
     }
 
-    // 3) Heuristică specială pentru ver_camara:
+    // 2) Heuristica pentru ver_camara: cere substantiv + frază scurtă, NU „lista/qué … hay”
     if (!ok && it.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasNoun = includesAny(text, ["camara","cámara","camera","camere"]);
-      if (hasNoun && tokens.length <= 4) {
-        ok = true; // doar dacă are substantiv + frază scurtă
-      }
+      const isListy = includesAny(text, ["que camaras hay","qué camaras hay","qué cámaras hay","lista camaras","listado camaras","ver todas las camaras"]);
+      if (hasNoun && !isListy && tokens.length <= 4) ok = true;
     }
 
-    // 4) Heuristică GPS info / navigație
+    // 3) Heuristică GPS: mesaje foarte scurte → încearcă
     if (!ok && (it.id === "gps_navegar_a" || it.id === "gps_info_de")) {
       const tokens = normalize(text).split(" ").filter(Boolean);
-      if (tokens.length <= 2) ok = true; // mesaje scurte: „TCB”, „Constanta”
+      if (tokens.length <= 2) ok = true;
     }
 
     if (!ok) continue;
 
-    // 5) slots
+    // 4) slots
     const slots = {};
     if (it.slots?.cameraName) {
       const name = captureCameraName(text, it.stopwords);
@@ -172,7 +183,7 @@ export function detectIntent(message, intentsJson) {
     return { intent: it, slots };
   }
 
-  // fallback
+  // 5) fallback
   const fb = intents.find(i => i?.id === "fallback");
   return { intent: fb || { id: "fallback", type: "static", response: { text: "No te he entendido." } }, slots: {} };
 }
