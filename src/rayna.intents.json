@@ -267,7 +267,8 @@
     "id": "gps_info_de",
     "priority": 87,
     "type": "action",
-    "patterns_any": [
+    "patterns_any": ["que me puedes decir de","qué me puedes decir de","que sabes de","qué sabes de",
+  "info","informacion","información","detalii","cliente","client", 
       "que me puedes decir de",
       "qué me puedes decir de",
       "que sabes de",
@@ -328,7 +329,8 @@
     "id": "gps_list_parkings",
     "priority": 61,
     "type": "action",
-    "patterns_any": ["que parkings hay", "qué parkings hay", "lista parkings", "ver parkings"],
+    "patterns_any": ["que parkings hay", "que parkings hay", "qué parkings hay", "lista parkings", "ver parkings",
+  "que parking hay", "qué parking hay", "qué parkings hay", "lista parkings", "ver parkings"],
     "action": "gps_list",
     "meta": { "table": "gps_parkings", "label": "Parkings" },
     "response": {
