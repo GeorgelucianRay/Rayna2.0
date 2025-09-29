@@ -415,6 +415,96 @@
     }
   },
   {
+  "id": "me_itv_camion",
+  "priority": 120,
+  "type": "action",
+  "patterns_any": [
+    "itv del camion","itv camión","caduca itv camion","cuando caduca itv camion","cuando caduca la itv del camion",
+    "itv la camion","cand expira itv camion","când expiră itv camion","când îmi expiră itv la camion",
+    "itv del camio","itv del camió","quan caduca itv camio","quan caduca itv camió",
+    "itp camion","cand expira itp camion","itp la camion"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "truck_itv" },
+  "response": { "text": { "es": "La ITV de tu camión es **{{truck.itv}}**.", "ro": "ITV-ul camionului tău este **{{truck.itv}}**.", "ca": "La ITV del teu camió és **{{truck.itv}}**." } }
+}, 
+{
+  "id": "me_itv_remolque",
+  "priority": 119,
+  "type": "action",
+  "patterns_any": [
+    "itv del remolque","caduca itv remolque","cuando caduca la itv del remolque",
+    "itv remorca","cand expira itv remorca","când expiră itv remorcă",
+    "itv del remolc","quan caduca itv remolc",
+    "itp remorca","cand expira itp remorca","itp la remorca"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "trailer_itv" },
+  "response": { "text": { "es": "La ITV de tu remolque es **{{trailer.itv}}**.", "ro": "ITV-ul remorcii tale este **{{trailer.itv}}**.", "ca": "La ITV del teu remolc és **{{trailer.itv}}**." } }
+},
+{
+  "id": "me_cap_carnet_adr",
+  "priority": 118,
+  "type": "action",
+  "patterns_any": [
+    "cuando caduca mi cap","cap caduca","mi cap","cap expirare","cap expiră","cand expira cap","când expiră cap",
+    "cuando caduca mi carnet","caduca carnet","permiso conducir","carnet conducir","când expiră permisul","cand expira permisul","permis expir",
+    "cuando caduca mi adr","caduca adr","adr expirare","cand expira adr","când expiră adr"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "driver_credentials" },
+  "response": { "text": { "es": "CAP: **{{driver.cap}}** · Carnet: **{{driver.lic}}** · ADR: **{{driver.adr}}**",
+                           "ro": "CAP: **{{driver.cap}}** · Permis: **{{driver.lic}}** · ADR: **{{driver.adr}}**",
+                           "ca": "CAP: **{{driver.cap}}** · Permís: **{{driver.lic}}** · ADR: **{{driver.adr}}**" } }
+},
+{
+  "id": "me_matriculas",
+  "priority": 117,
+  "type": "action",
+  "patterns_any": [
+    "matricula camion","matrícula camión","numar camion","numărul camion","numere camion",
+    "matricula remolque","matrícula remolque","numar remorca","numărul remorcă","numere remorca",
+    "matricula camio","matricula remolc","matrícula remolc",
+    "care e numarul camionului","care e numarul remorcii","care e numărul camionului","care e numărul remorcii"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "plates" },
+  "response": { "text": { "es": "Camión: **{{truck.plate}}** · Remolque: **{{trailer.plate}}**",
+                           "ro": "Camion: **{{truck.plate}}** · Remorcă: **{{trailer.plate}}**",
+                           "ca": "Camió: **{{truck.plate}}** · Remolc: **{{trailer.plate}}**" } }
+},
+{
+  "id": "me_nomina_resumen",
+  "priority": 116,
+  "type": "action",
+  "patterns_any": [
+    "nomina mes","nómina mes","resumen nomina","resumen nómina","mi nomina este mes","mi nómina este mes",
+    "rezumat salariu","salariu luna","pontaj luna","rezumat pontaj",
+    "resum nòmina","nòmina aquest mes","resum nòmina aquest mes"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "payroll_summary" },
+  "response": { "text": { "es": "Este mes: **{{payroll.dias}}** días · **{{payroll.km}}** km · **{{payroll.conts}}** conts · D{{payroll.desayunos}}/C{{payroll.cenas}}/P{{payroll.procenas}}",
+                           "ro": "Luna aceasta: **{{payroll.dias}}** zile · **{{payroll.km}}** km · **{{payroll.conts}}** containere · D{{payroll.desayunos}}/C{{payroll.cenas}}/P{{payroll.procenas}}",
+                           "ca": "Aquest mes: **{{payroll.dias}}** dies · **{{payroll.km}}** km · **{{payroll.conts}}** conts · D{{payroll.desayunos}}/S{{payroll.cenas}}/P{{payroll.procenas}}"} }
+},
+{
+  "id": "me_vacaciones",
+  "priority": 115,
+  "type": "action",
+  "patterns_any": [
+    "vacaciones me quedan","cuantas vacaciones","cuántas vacaciones","dias pendientes vacaciones","días pendientes vacaciones",
+    "cate zile de concediu am","cate concedii mai am","zile concediu ramase","zile de concediu rămase","mai am concediu",
+    "quantes vacances em queden","dies pendents vacances","vacances pendents","quants dies de vacances"
+  ],
+  "action": "driver_self_info",
+  "meta": { "topic": "vacation_balance" },
+  "response": { "text": { "es": "Vacaciones: **{{vac.total}}** total · usadas **{{vac.usadas}}** · pendientes **{{vac.pendientes}}** · disponibles **{{vac.disponibles}}**",
+                           "ro": "Concediu: **{{vac.total}}** total · folosite **{{vac.usadas}}** · în așteptare **{{vac.pendientes}}** · disponibile **{{vac.disponibles}}**",
+                           "ca": "Vacances: **{{vac.total}}** total · usades **{{vac.usadas}}** · pendents **{{vac.pendientes}}** · disponibles **{{vac.disponibles}}**" } }
+},
+
+  {
     "id": "fallback",
     "priority": 0,
     "type": "static",
