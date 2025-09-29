@@ -121,30 +121,29 @@
     }
   },
   {
-    "id": "ver_anuncio",
-    "priority": 70,
+    "id": "gps_info_de",
+    "priority": 87,
     "type": "action",
     "patterns_any": [
-      "que anuncio hay",
-      "qué anuncio hay",
-      "ver anuncio",
-      "anuncios",
-      "ce anunț avem",
-      "ce anunt avem"
+      "que hay en","qué hay en","que hay de","qué hay de","que pasa en","qué pasa en",
+      "info","informacion","información","detalii","cliente","client",
+      "que me puedes decir de","qué me puedes decir de","que sabes de","qué sabes de",
+      "que tienes de","qué tienes de","donde esta","dónde está","info de","informacion de","información de"
     ],
-    "action": "show_announcement",
+    "stopwords": ["de","la","el","en","del","despre","pe","al"],
+    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "gps_place_info",
     "response": {
-      "text": "Este es el anuncio vigente:",
+      "text": "Esto es lo que tengo de **{{place.name}}**:",
       "objects": [
         {
-          "type": "announcement_box",
-          "content": "{{announcement.content}}"
-        }
-      ]
-    }
-  },
-  [
-  { /* ...prev intent... */ },
+          "type": "info",
+          "fields": [
+            { "label": "Dirección", "value": "{{place.direccion}}" },
+            { "label": "Detalles", "value": "{{place.detalles}}" },
+            { "label": "Tiempo de espera", "value": "{{place.tiempo_espera}}" }
+          ]
+        },
 
   {
     "id": "gps_info_de",
