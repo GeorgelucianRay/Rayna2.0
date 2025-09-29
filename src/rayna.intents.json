@@ -503,6 +503,60 @@
                            "ro": "Concediu: **{{vac.total}}** total · folosite **{{vac.usadas}}** · în așteptare **{{vac.pendientes}}** · disponibile **{{vac.disponibles}}**",
                            "ca": "Vacances: **{{vac.total}}** total · usades **{{vac.usadas}}** · pendents **{{vac.pendientes}}** · disponibles **{{vac.disponibles}}**" } }
 },
+{
+  "id": "veh_oil_status",
+  "priority": 92,
+  "type": "action",
+  "patterns_any": [
+    "cuando cambie el aceite","cuando hice el cambio de aceite","ultimo cambio de aceite","próximo cambio de aceite","proximo cambio de aceite","cuanto me queda de aceite",
+    "cand am schimbat uleiul","ultimul schimb de ulei","cât mai am până la ulei","cat mai am pana la ulei","urmatorul schimb de ulei",
+    "quan vaig canviar l'oli","últim canvi d'oli","quant em queda per l'oli","proper canvi d'oli"
+  ],
+  "action": "veh_oil_status",
+  "response": {
+    "text": {
+      "es": "Un segundo, miro tu historial de aceite…",
+      "ro": "Un moment, verific istoricul tău de ulei…",
+      "ca": "Un moment, reviso l'historial d'oli…"
+    }
+  }
+},
+{
+  "id": "veh_adblue_filter_status",
+  "priority": 91,
+  "type": "action",
+  "patterns_any": [
+    "cuando cambie el filtro de adblue","ultimo filtro adblue","próximo filtro adblue","proximo filtro adblue",
+    "cand am schimbat filtrul de adblue","ultimul filtru adblue","urmatorul filtru adblue",
+    "quan vaig canviar el filtre d'adblue","últim filtre adblue","proper filtre adblue"
+  ],
+  "action": "veh_adblue_filter_status",
+  "response": {
+    "text": {
+      "es": "Reviso tu filtro AdBlue…",
+      "ro": "Verific filtrul tău AdBlue…",
+      "ca": "Reviso el teu filtre AdBlue…"
+    }
+  }
+},
+{
+  "id": "veh_itv_truck",
+  "priority": 90,
+  "type": "action",
+  "patterns_any": [
+    "cuando me caduca la itv del camión","cuando caduca la itv del camion","itv camión","itv camion",
+    "cand îmi expiră itv la camion","când îmi expiră itv la camion","itv camion",
+    "quan em caduca la itv del camió","itv camió"
+  ],
+  "action": "veh_itv_truck",
+  "response": {
+    "text": {
+      "es": "Consulto la ITV de tu camión…",
+      "ro": "Verific ITV-ul camionului tău…",
+      "ca": "Consulto la ITV del teu camió…"
+    }
+  }
+},
 
   {
     "id": "fallback",
