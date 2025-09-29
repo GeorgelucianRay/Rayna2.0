@@ -86,23 +86,39 @@
   },
   {
     "id": "ver_camara",
-    "priority": 80,
-    "type": "action",
-    "patterns_any": ["camara", "cámara", "camera", "camere"],
-    "negative_any": ["añadir","anadir","agregar","crear","nueva","nuevo","adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar","alta","crear nueva","nueva camara"],
-    "stopwords": ["abre","abrir","ver","muestra","mostrar","desplegar","deschide","vreau","sa","să","vad","văd","entonces","por","favor","la","el","una","un","pf","pls","ok","vale"],
-    "slots": { "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "open_camera",
-    "response": {
-      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
-      "objects": [
-        { "type": "card", "title": "{{camera.name}}",
-          "actions": [{ "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }]
-        }
-      ]
-    },
-    "not_found": { "text": "No he encontrado la cámara \"{{query}}\"." }
+  "priority": 80,
+  "type": "action",
+  "patterns_any": ["camara", "cámara", "camera", "camere"],
+  "negative_any": ["lista", "listado", "todas", "todes", "tutti"],
+  "stopwords": [
+    "abre","abrir","ver","muestra","mostrar","desplegar","deschide",
+    "quiero","pf","pls","por","favor","la","el","una","un","ok","vale",
+    "de","del","al","en"
+  ],
+  "slots": { "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+  "action": "open_camera",
+  "response": {
+    "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
+    "objects": [{
+      "type": "card",
+      "title": "{{camera.name}}",
+      "actions": [{ "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }]
+    }]
   },
+  "not_found": { "text": "No he encontrado la cámara \"{{query}}\"." }
+  },
+  {
+  "id": "gps_list_camaras",
+  "priority": 81,
+  "type": "action",
+  "patterns_any": [
+    "que camaras hay","qué camaras hay","qué cámaras hay",
+    "lista de camaras","listado camaras","ver todas las camaras",
+    "lista camaras","que cámaras hay","que camara hay"
+  ],
+  "action": "list_all_cameras",
+  "response": { "text": "Aquí tienes todas las cámaras disponibles:" }
+},
   {
     "id": "gps_navegar_a",
     "priority": 88,
@@ -124,40 +140,21 @@
   },
   {
     "id": "gps_info_de",
-    "priority": 87,
-    "type": "action",
-    "patterns_any": [
-      "que hay en","qué hay en","que hay de","qué hay de","que pasa en","qué pasa en",
-      "info","informacion","información","detalii","cliente","client",
-      "que me puedes decir de","qué me puedes decir de","que sabes de","qué sabes de",
-      "que tienes de","qué tienes de","donde esta","dónde está","info de","informacion de","información de"
-    ],
-    "stopwords": ["de","la","el","en","del","despre","pe","al"],
-    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_place_info",
-    "response": {
-      "text": "Esto es lo que tengo de **{{place.name}}**:",
-      "objects": [
-        {
-          "type": "info",
-          "fields": [
-            { "label": "Dirección", "value": "{{place.direccion}}" },
-            { "label": "Detalles", "value": "{{place.detalles}}" },
-            { "label": "Tiempo de espera", "value": "{{place.tiempo_espera}}" }
-          ]
-        },
-        {
-          "type": "card",
-          "title": "Acciones",
-          "actions": [
-            { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true },
-            { "type": "open", "label": "Ver en GPS", "route": "/gps", "newTab": false },
-            { "type": "open", "label": "Ver cámara", "route": "{{camera_url}}", "newTab": true, "if": "camera_url" }
-          ]
-        }
-      ]
-    },
-    "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
+  "priority": 87,
+  "type": "action",
+  "patterns_any": [
+    "que hay en","qué hay en","que hay de","qué hay de","que pasa en","qué pasa en",
+    "que me puedes decir de","qué me puedes decir de",
+    "que sabes de","qué sabes de","que tienes de","qué tienes de",
+    "info","informacion","información","detalii",
+    "donde esta","dónde está"
+  ],
+  "stopwords": ["de","la","el","en","del","al","despre","pe"],
+  "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+  "action": "gps_place_info",
+  "response": { "text": "Esto es lo que tengo de **{{place.name}}**:" },
+  "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
+      
   },
   {
     "id": "gps_list_terminale",
@@ -170,12 +167,15 @@
   },
   {
     "id": "gps_list_parkings",
-    "priority": 61,
-    "type": "action",
-    "patterns_any": ["que parkings hay","qué parkings hay","que parking hay","qué parking hay","lista parkings","ver parkings"],
-    "action": "gps_list",
-    "meta": { "table": "gps_parkings", "label": "Parkings" },
-    "response": { "text": "Estos son los parkings disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
+  "priority": 61,
+  "type": "action",
+  "patterns_any": [
+    "que parkings hay","qué parkings hay","lista parkings","ver parkings",
+    "que parking hay","qué parking hay","lista parking","ver parking"
+  ],
+  "action": "gps_list",
+  "meta": { "table": "gps_parkings", "label": "Parkings" },
+  "response": { "text": "Estos son los parkings disponibles:" }
   },
   {
     "id": "gps_list_servicios",
