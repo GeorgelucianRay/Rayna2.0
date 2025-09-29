@@ -25,6 +25,7 @@ import AnnouncementBox from "./ui/AnnouncementBox";
 import AddCameraInline from "./ui/AddCameraInline";
 import PlaceInfoCard from "./ui/PlaceInfoCard";
 import SimpleList from "./ui/SimpleList";
+import AddGpsWizard from "./ui/AddGpsWizard"; // 👈 nou
 
 export default function RaynaHub() {
   // 👉 apelează hook-ul anti-zoom la MOUNT
@@ -42,6 +43,20 @@ export default function RaynaHub() {
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // helper: pune întrebarea „qué me puedes decir de X” și o trimite prin același flux
+  const askInfoNow = (name) => {
+    const q = `qué me puedes decir de ${name}`;
+    setText(q);
+    // simulăm enter
+    setTimeout(() => {
+      // protecție: dacă între timp user-ul a tastat altceva, nu override-ui
+      if (document.activeElement?.tagName?.toLowerCase() !== "input") {
+        // nimic special
+      }
+      send(); // folosește text-ul curent (q)
+    }, 0);
+  };
 
   async function send() {
     const userText = text.trim();
@@ -96,6 +111,8 @@ export default function RaynaHub() {
         setMessages(m => [...m, { from: "bot", reply_text: "No tienes permiso para esta acción." }]);
         return;
       }
+
+      // ——— flux existent: add camera inline
       if (intent.dialog.form === "add_camera_inline") {
         setMessages(m => [...m, {
           from: "bot",
@@ -118,9 +135,65 @@ export default function RaynaHub() {
         }]);
         return;
       }
+
       if (intent.dialog.await_key === "anuncio_text") {
         setAwaiting("anuncio_text");
         setMessages(m => [...m, { from: "bot", reply_text: intent.dialog.ask_text }]);
+        return;
+      }
+
+      // ——— NOU: wizard adăugare locație GPS din chat
+      if (intent.id === "gps_add_location") {
+        setMessages(m => [
+          ...m,
+          {
+            from: "bot",
+            reply_text: "Claro, vamos a añadir una ubicación. Sigue el asistente:",
+            render: () => (
+              <AddGpsWizard
+                onDone={(saved /*, openNow flag optional*/ ) => {
+                  setMessages(mm => [
+                    ...mm,
+                    {
+                      from: "bot",
+                      reply_text: "¡Ubicación guardada con éxito! ¿Quieres verla ahora?",
+                      render: () => (
+                        <div className={styles.card}>
+                          <div className={styles.cardTitle}>{saved?.nombre || "Ubicación"}</div>
+                          <div className={styles.cardActions} style={{ marginTop: 8 }}>
+                            <button
+                              className={styles.actionBtn}
+                              onClick={() => askInfoNow(saved?.nombre || "")}
+                            >
+                              Ver ahora
+                            </button>
+                            <button
+                              className={styles.actionBtn}
+                              onClick={() => {
+                                setMessages(mmm => [
+                                  ...mmm,
+                                  { from: "bot", reply_text: "¿En qué te puedo ayudar más?" }
+                                ]);
+                              }}
+                            >
+                              No, gracias
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    }
+                  ]);
+                }}
+                onCancel={() => {
+                  setMessages(mm => [
+                    ...mm,
+                    { from: "bot", reply_text: "Operación cancelada. ¿En qué te puedo ayudar más?" }
+                  ]);
+                }}
+              />
+            )
+          }
+        ]);
         return;
       }
     }
