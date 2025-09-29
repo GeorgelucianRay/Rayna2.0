@@ -24,59 +24,28 @@
     "id": "saludo",
     "priority": 100,
     "type": "static",
-    "patterns_any": [
-      "hola",
-      "buenas",
-      "buenos dias",
-      "buenas tardes",
-      "buenas noches",
-      "hola rayna",
-      "que tal"
-    ],
-    "response": {
-      "text": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?"
-    }
+    "patterns_any": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hola rayna", "que tal"],
+    "response": { "text": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?" }
   },
   {
     "id": "quien_eres",
     "priority": 95,
     "type": "static",
-    "patterns_any": [
-      "quien eres",
-      "quién eres",
-      "quien es rayna",
-      "quién es rayna",
-      "que eres"
-    ],
-    "response": {
-      "text": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉."
-    }
+    "patterns_any": ["quien eres", "quién eres", "quien es rayna", "quién es rayna", "que eres"],
+    "response": { "text": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉." }
   },
   {
     "id": "help",
     "priority": 90,
     "type": "static",
-    "patterns_any": [
-      "que puedes hacer",
-      "qué puedes hacer",
-      "ayuda",
-      "help",
-      "que piedes hacer",
-      "que puedes acer"
-    ],
-    "response": {
-      "text": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio."
-    }
+    "patterns_any": ["que puedes hacer", "qué puedes hacer", "ayuda", "help", "que piedes hacer", "que puedes acer"],
+    "response": { "text": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio." }
   },
   {
     "id": "set_anuncio",
     "priority": 85,
     "type": "dialog",
-    "patterns_any": [
-      "quiero poner un anuncio",
-      "poner anuncio",
-      "publicar anuncio"
-    ],
+    "patterns_any": ["quiero poner un anuncio", "poner anuncio", "publicar anuncio"],
     "roles_allowed": ["admin", "dispecer"],
     "dialog": {
       "await_key": "anuncio_text",
@@ -91,26 +60,10 @@
     "priority": 86,
     "type": "dialog",
     "patterns_any": [
-      "quiero añadir una camara",
-      "quiero anadir una camara",
-      "añadir camara",
-      "agregar camara",
-      "crear camara",
-      "nueva camara",
-      "adaugă cameră",
-      "adaugă camera",
-      "adauga camera",
-      "adaug camera",
-      "adăuga cameră",
-      "adăuga camera",
-      "adauga cameră",
-      "adaugare cameră",
-      "adaugare camera",
-      "vreau să adaug o cameră",
-      "vreau sa adaug o camera",
-      "vreau să adăuga o cameră",
-      "vreau sa adauga o camera",
-      "add camera"
+      "quiero añadir una camara","quiero anadir una camara","añadir camara","agregar camara","crear camara","nueva camara",
+      "adaugă cameră","adaugă camera","adauga camera","adaug camera","adăuga cameră","adăuga camera","adauga cameră",
+      "adaugare cameră","adaugare camera","vreau să adaug o cameră","vreau sa adaug o camera","vreau să adăuga o cameră",
+      "vreau sa adauga o camera","add camera"
     ],
     "roles_allowed": ["admin"],
     "dialog": {
@@ -119,6 +72,55 @@
       "save_ok": "¡Listo! Cámara **{{camera.name}}** añadida.",
       "save_err": "No pude añadir la cámara. Revisa el URL."
     }
+  },
+  {
+    "id": "ver_anuncio",
+    "priority": 70,
+    "type": "action",
+    "patterns_any": ["que anuncio hay", "qué anuncio hay", "ver anuncio", "anuncios", "ce anunț avem", "ce anunt avem"],
+    "action": "show_announcement",
+    "response": {
+      "text": "Este es el anuncio vigente:",
+      "objects": [{ "type": "announcement_box", "content": "{{announcement.content}}" }]
+    }
+  },
+  {
+    "id": "ver_camara",
+    "priority": 80,
+    "type": "action",
+    "patterns_any": ["camara", "cámara", "camera", "camere"],
+    "negative_any": ["añadir","anadir","agregar","crear","nueva","nuevo","adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar","alta","crear nueva","nueva camara"],
+    "stopwords": ["abre","abrir","ver","muestra","mostrar","desplegar","deschide","vreau","sa","să","vad","văd","entonces","por","favor","la","el","una","un","pf","pls","ok","vale"],
+    "slots": { "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "open_camera",
+    "response": {
+      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
+      "objects": [
+        { "type": "card", "title": "{{camera.name}}",
+          "actions": [{ "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }]
+        }
+      ]
+    },
+    "not_found": { "text": "No he encontrado la cámara \"{{query}}\"." }
+  },
+  {
+    "id": "gps_navegar_a",
+    "priority": 88,
+    "type": "action",
+    "patterns_any": ["quiero llegar a","llevar a","ir a","navegar a","como llego a","cómo llego a","vreau sa ajung la","vreau să ajung la","vreau sa merg la","vreau să merg la"],
+    "stopwords": ["a","la","al","el","către","pe"],
+    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "gps_route_preview",
+    "response": {
+      "text": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
+      "objects": [
+        { "type": "mini_map", "title": "{{place.name}}", "geojson": "{{route.geojson}}", "maps_link": "{{maps_link}}" },
+        { "type": "card", "title": "{{place.name}}",
+          "actions": [{ "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true }]
+        }
+      ]
+    },
+    "not_found": { "text": "No he encontrado la ubicación \"{{query}}\"." }
   },
   {
     "id": "gps_info_de",
@@ -132,180 +134,6 @@
     ],
     "stopwords": ["de","la","el","en","del","despre","pe","al"],
     "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_place_info",
-    "response": {
-      "text": "Esto es lo que tengo de **{{place.name}}**:",
-      "objects": [
-        {
-          "type": "info",
-          "fields": [
-            { "label": "Dirección", "value": "{{place.direccion}}" },
-            { "label": "Detalles", "value": "{{place.detalles}}" },
-            { "label": "Tiempo de espera", "value": "{{place.tiempo_espera}}" }
-          ]
-        },
-
-  {
-    "id": "gps_info_de",
-    "priority": 87,
-    "type": "action",
-    "patterns_any": [
-      "que hay en", "qué hay en",
-      "que hay de", "qué hay de",
-      "que pasa en", "qué pasa en",
-      "info", "informacion", "información",
-      "detalii",
-      "que me puedes decir de", "qué me puedes decir de",
-      "que sabes de", "qué sabes de",
-      "que tienes de", "qué tienes de",
-      "donde esta", "dónde está"
-    ],
-    "stopwords": ["de","la","el","en","del","despre","pe","al"],
-    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_place_info",
-    "response": {
-      "text": "Esto es lo que tengo de **{{place.name}}**:",
-      "objects": [{ "type": "info" }]
-    },
-    "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
-  },
-
-  { /* ...next intent... */ }
-],
-  "stopwords": ["de","la","el","en","del","despre","pe","al"],
-  "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-  "action": "gps_place_info",
-  "response": { "text": "Esto es lo que tengo de **{{place.name}}**:", "objects": [{ "type": "info" }] },
-  "not_found": { "text": "No he encontrado información de \"{{query}}\"." }
-}
-    ],
-    "negative_any": [
-      "añadir",
-      "anadir",
-      "agregar",
-      "crear",
-      "nueva",
-      "nuevo",
-      "adauga",
-      "adaugă",
-      "adaug",
-      "adăuga",
-      "adaugare",
-      "adaugă",
-      "add",
-      "poner",
-      "publicar",
-      "alta",
-      "crear nueva",
-      "nueva camara"
-    ],
-    "stopwords": [
-      "entonces",
-      "por",
-      "favor",
-      "la",
-      "el",
-      "una",
-      "un",
-      "pf",
-      "pls",
-      "ok",
-      "vale"
-    ],
-    "slots": {
-      "cameraName": {
-        "from": "tail_after_patterns_or_single_token",
-        "min_len": 2
-      }
-    },
-    "action": "open_camera",
-    "response": {
-      "text": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
-      "objects": [
-        {
-          "type": "card",
-          "title": "{{camera.name}}",
-          "actions": [
-            {
-              "type": "open",
-              "label": "Abrir cámara",
-              "route": "{{camera.url}}",
-              "newTab": true
-            }
-          ]
-        }
-      ]
-    },
-    "not_found": {
-      "text": "No he encontrado la cámara \"{{query}}\"."
-    }
-  },
-  {
-    "id": "gps_navegar_a",
-    "priority": 88,
-    "type": "action",
-    "patterns_any": [
-      "quiero llegar a",
-      "llevar a",
-      "ir a",
-      "navegar a",
-      "como llego a",
-      "cómo llego a",
-      "vreau sa ajung la",
-      "vreau să ajung la",
-      "vreau sa merg la",
-      "vreau să merg la"
-    ],
-    "stopwords": ["a", "la", "al", "el", "către", "pe"],
-    "slots": {
-      "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
-    },
-    "action": "gps_route_preview",
-    "response": {
-      "text": "Claro, aquí tienes la ruta a **{{place.name}}**. Pulsa el mapa o el botón para abrirla en Google Maps.",
-      "objects": [
-        {
-          "type": "mini_map",
-          "title": "{{place.name}}",
-          "geojson": "{{route.geojson}}",
-          "maps_link": "{{maps_link}}"
-        },
-        {
-          "type": "card",
-          "title": "{{place.name}}",
-          "actions": [
-            { "type": "open", "label": "Abrir en Google Maps", "route": "{{maps_link}}", "newTab": true }
-          ]
-        }
-      ]
-    },
-    "not_found": { "text": "No he encontrado la ubicación \"{{query}}\"." }
-  },
-  {
-    "id": "gps_info_de",
-    "priority": 87,
-    "type": "action",
-    "patterns_any": ["que me puedes decir de","qué me puedes decir de","que sabes de","qué sabes de",
-  "info","informacion","información","detalii","cliente","client", 
-      "que me puedes decir de",
-      "qué me puedes decir de",
-      "que sabes de",
-      "qué sabes de",
-      "que tienes de",
-      "qué tienes de",
-      "info de",
-      "informacion de",
-      "información de",
-      "info",
-      "donde esta",
-      "dónde está",
-      "ce poti spune despre",
-      "ce poți spune despre"
-    ],
-    "stopwords": ["de", "la", "el", "despre", "pe"],
-    "slots": {
-      "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 }
-    },
     "action": "gps_place_info",
     "response": {
       "text": "Esto es lo que tengo de **{{place.name}}**:",
@@ -335,50 +163,38 @@
     "id": "gps_list_terminale",
     "priority": 62,
     "type": "action",
-    "patterns_any": ["que terminales hay", "qué terminales hay", "lista terminales", "ver terminales"],
+    "patterns_any": ["que terminales hay","qué terminales hay","lista terminales","ver terminales"],
     "action": "gps_list",
     "meta": { "table": "gps_terminale", "label": "Terminales" },
-    "response": {
-      "text": "Estas son las terminales disponibles:",
-      "objects": [{ "type": "list", "items": "{{items}}" }]
-    }
+    "response": { "text": "Estas son las terminales disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
   },
   {
     "id": "gps_list_parkings",
     "priority": 61,
     "type": "action",
-    "patterns_any": ["que parkings hay", "que parkings hay", "qué parkings hay", "lista parkings", "ver parkings",
-  "que parking hay", "qué parking hay", "qué parkings hay", "lista parkings", "ver parkings"],
+    "patterns_any": ["que parkings hay","qué parkings hay","que parking hay","qué parking hay","lista parkings","ver parkings"],
     "action": "gps_list",
     "meta": { "table": "gps_parkings", "label": "Parkings" },
-    "response": {
-      "text": "Estos son los parkings disponibles:",
-      "objects": [{ "type": "list", "items": "{{items}}" }]
-    }
+    "response": { "text": "Estos son los parkings disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
   },
   {
     "id": "gps_list_servicios",
     "priority": 60,
     "type": "action",
-    "patterns_any": ["que servicios hay", "qué servicios hay", "lista servicios", "ver servicios"],
+    "patterns_any": ["que servicios hay","qué servicios hay","lista servicios","ver servicios"],
     "action": "gps_list",
     "meta": { "table": "gps_servicios", "label": "Servicios" },
-    "response": {
-      "text": "Estos son los servicios disponibles:",
-      "objects": [{ "type": "list", "items": "{{items}}" }]
-    }
+    "response": { "text": "Estos son los servicios disponibles:", "objects": [{ "type": "list", "items": "{{items}}" }] }
   },
   {
     "id": "gps_atajos_clientes",
     "priority": 59,
     "type": "static",
-    "patterns_any": ["que clientes hay", "lista clientes", "ver clientes"],
+    "patterns_any": ["que clientes hay","lista clientes","ver clientes"],
     "response": {
       "text": "Hay muchos clientes. Abre la sección para verlos.",
       "objects": [
-        {
-          "type": "card",
-          "title": "Clientes",
+        { "type": "card", "title": "Clientes",
           "actions": [{ "type": "open", "label": "Ver clientes en GPS", "route": "/gps", "newTab": false }]
         }
       ]
@@ -388,8 +204,6 @@
     "id": "fallback",
     "priority": 0,
     "type": "static",
-    "response": {
-      "text": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
-    }
+    "response": { "text": "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS." }
   }
 ]
