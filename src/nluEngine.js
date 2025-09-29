@@ -85,7 +85,7 @@ function captureCameraName(raw, stopwords = []) {
     "deschide","quiero","vreau","sa","să","vad","văd",
     "por","favor","pf","pls","ok","vale",
     "añadir","anadir","agregar","crear","nueva","nuevo",
-    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar"
+    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar","que","pasa"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
@@ -108,7 +108,7 @@ function capturePlaceName(raw, stopwords = []) {
     "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
     "vreau","sa","să","ajung","merg",
     "info","informacion","información","detalii",
-    "donde","dónde","esta","está","despre"
+    "donde","dónde","esta","está","despre","cliente","client","clientul"
   ].map(normalize));
 
   const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
