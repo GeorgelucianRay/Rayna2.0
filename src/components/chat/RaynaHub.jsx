@@ -25,7 +25,7 @@ import AnnouncementBox from "./ui/AnnouncementBox";
 import AddCameraInline from "./ui/AddCameraInline";
 import PlaceInfoCard from "./ui/PlaceInfoCard";
 import SimpleList from "./ui/SimpleList";
-import AddGpsModalWizard from "./wizards/AddGpsModalWizard"; // ✅ import corect
+import AddGpsWizard from "./ui/AddGpsWizard"; // ✅ import corect
 
 export default function RaynaHub() {
   // 👉 apelează hook-ul anti-zoom la MOUNT
@@ -134,7 +134,7 @@ export default function RaynaHub() {
         setMessages(m => [...m, { from: "bot", reply_text: intent.dialog.ask_text }]);
         return;
       }
-    } // ← ✅ aici se închide corect blocul de dialog
+    } // ← închidere dialog
 
     // ==== NOU: ACTION – pornește wizard-ul conversațional de adăugare locație
     if (intent.type === "action" && intent.action === "start_gps_add_chat") {
@@ -142,7 +142,7 @@ export default function RaynaHub() {
         from: "bot",
         reply_text: "Vale, iniciamos el alta de ubicación:",
         render: () => (
-          <AddGpsModalWizard
+          <AddGpsWizard
             onDone={({ openPreviewOf }) => {
               if (openPreviewOf) {
                 // injectează automat întrebarea de info pt. card
