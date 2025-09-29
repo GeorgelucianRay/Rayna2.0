@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./Chatbot.module.css";
+import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom"; // ajustează calea dacă e altă mapă
+
+export default function RaynaHub() {
+  useIOSNoInputZoom();
+  
+}
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../AuthContext.jsx";
 import intentsData from "../../rayna.intents.json";
