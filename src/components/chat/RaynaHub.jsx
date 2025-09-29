@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./Chatbot.module.css";
-import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom"; // ajustează calea dacă e altă mapă
 
-export default function RaynaHub() {
-  useIOSNoInputZoom();
-  
-}
+// hook anti-zoom iOS (ajustează calea dacă folderul e altul)
+import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
+
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../AuthContext.jsx";
 import intentsData from "../../rayna.intents.json";
@@ -13,8 +11,12 @@ import { detectIntent } from "../../nluEngine";
 import ChatMiniMap from "./ChatMiniMap";
 
 import {
-  findPlaceByName, findPlacesByName, findCameraFor,
-  getMapsLinkFromRecord, pointGeoJSONFromCoords, loadGpsList
+  findPlaceByName,
+  findPlacesByName,
+  findCameraFor,
+  getMapsLinkFromRecord,
+  pointGeoJSONFromCoords,
+  loadGpsList,
 } from "./gpsHelpers";
 
 import BotBubble from "./ui/BotBubble";
@@ -25,6 +27,9 @@ import PlaceInfoCard from "./ui/PlaceInfoCard";
 import SimpleList from "./ui/SimpleList";
 
 export default function RaynaHub() {
+  // 👉 apelează hook-ul anti-zoom la MOUNT
+  useIOSNoInputZoom();
+
   const { profile } = useAuth();
   const role = profile?.role || "driver";
 
@@ -35,6 +40,7 @@ export default function RaynaHub() {
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
   const endRef = useRef(null);
+
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   async function send() {
@@ -119,6 +125,33 @@ export default function RaynaHub() {
       }
     }
 
+    // ==== ACTION: list_all_cameras
+    if (intent.type === "action" && intent.action === "list_all_cameras") {
+      const { data } = await supabase
+        .from("external_links")
+        .select("id,name,url,icon_type")
+        .eq("icon_type", "camera")
+        .order("name");
+      const items = (data || []).map(d => ({ ...d, _table: "external_links", nombre: d.name }));
+      setMessages(m => [...m, {
+        from: "bot",
+        reply_text: intent.response?.text || "Cámaras:",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Cámaras</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {items.map(it => (
+                <button key={it.id} className={styles.actionBtn} onClick={() => window.open(it.url, "_blank", "noopener")}>
+                  {it.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }]);
+      return;
+    }
+
     // ==== ACTION: open_camera
     if (intent.type === "action" && intent.action === "open_camera") {
       const queryName = (slots.cameraName || "").trim();
@@ -167,52 +200,12 @@ export default function RaynaHub() {
       }]);
       return;
     }
-    // LISTA CAMERAS
-if (intent.type === "action" && intent.action === "list_all_cameras") {
-  const { data } = await supabase
-    .from("external_links")
-    .select("id,name,url,icon_type")
-    .eq("icon_type", "camera")
-    .order("name");
-  const items = (data || []).map(d => ({
-    ...d,
-    _table: "external_links",
-    _mapsUrl: d.url, // doar ca să avem ceva de deschis
-    nombre: d.name
-  }));
-  setMessages(m => [
-    ...m,
-    {
-      from: "bot",
-      reply_text: intent.response?.text || "Cámaras:",
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Cámaras</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            {items.map(it => (
-              <button
-                key={it.id}
-                className={styles.actionBtn}
-                onClick={() => window.open(it.url, "_blank", "noopener")}
-              >
-                {it.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )
-    }
-  ]);
-  return;
-}
 
     // ==== ACTION: GPS – navegar a
     if (intent.type === "action" && (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")) {
       const placeName = (slots.placeName || "").trim();
-      if (!placeName) {
-        setMessages(m => [...m, { from: "bot", reply_text: "Dime el destino (por ejemplo: TCB)." }]);
-        return;
-      }
+      if (!placeName) { setMessages(m => [...m, { from: "bot", reply_text: "Dime el destino (por ejemplo: TCB)." }]); return; }
+
       const options = await findPlacesByName(placeName);
       if (!options.length) { setMessages(m => [...m, { from: "bot", reply_text: `No he encontrado «${placeName}».` }]); return; }
 
@@ -264,7 +257,11 @@ if (intent.type === "action" && intent.action === "list_all_cameras") {
       const showInfo = async (p) => {
         const cam = await findCameraFor(p.nombre);
         const mapsUrl = getMapsLinkFromRecord(p);
-        setMessages(mm => [...mm, { from: "bot", reply_text: `Esto es lo que tengo de **${p.nombre}**:`, render: () => <PlaceInfoCard place={p} mapsUrl={mapsUrl} cameraUrl={cam?.url} /> }]);
+        setMessages(mm => [...mm, {
+          from: "bot",
+          reply_text: `Esto es lo que tengo de **${p.nombre}**:`,
+          render: () => <PlaceInfoCard place={p} mapsUrl={mapsUrl} cameraUrl={cam?.url} />
+        }]);
       };
 
       if (options.length > 1) {
@@ -286,7 +283,7 @@ if (intent.type === "action" && intent.action === "list_all_cameras") {
       const tables = {
         "gps_list_terminale": { table: "gps_terminale", label: "Terminales" },
         "gps_list_parkings":  { table: "gps_parkings",  label: "Parkings"  },
-        "gps_list_servicios": { table: "gps_servicios",  label: "Servicios" }
+        "gps_list_servicios": { table: "gps_servicios", label: "Servicios" }
       };
       const cfg = tables[id];
       if (cfg) {
@@ -303,7 +300,8 @@ if (intent.type === "action" && intent.action === "list_all_cameras") {
     // ==== fallback
     setMessages(m => [...m, {
       from: "bot",
-      reply_text: intentsData.find(i => i.id === "fallback")?.response?.text || "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
+      reply_text: intentsData.find(i => i.id === "fallback")?.response?.text ||
+        "Te escucho. Puedo abrir cámaras por nombre, mostrar el anuncio o ayudarte con el depósito y el GPS."
     }]);
   }
 
