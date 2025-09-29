@@ -143,60 +143,24 @@ export default function RaynaHub() {
       }
 
       // ——— NOU: wizard adăugare locație GPS din chat
-      if (intent.id === "gps_add_location") {
-        setMessages(m => [
-          ...m,
-          {
-            from: "bot",
-            reply_text: "Claro, vamos a añadir una ubicación. Sigue el asistente:",
-            render: () => (
-              <AddGpsWizard
-                onDone={(saved /*, openNow flag optional*/ ) => {
-                  setMessages(mm => [
-                    ...mm,
-                    {
-                      from: "bot",
-                      reply_text: "¡Ubicación guardada con éxito! ¿Quieres verla ahora?",
-                      render: () => (
-                        <div className={styles.card}>
-                          <div className={styles.cardTitle}>{saved?.nombre || "Ubicación"}</div>
-                          <div className={styles.cardActions} style={{ marginTop: 8 }}>
-                            <button
-                              className={styles.actionBtn}
-                              onClick={() => askInfoNow(saved?.nombre || "")}
-                            >
-                              Ver ahora
-                            </button>
-                            <button
-                              className={styles.actionBtn}
-                              onClick={() => {
-                                setMessages(mmm => [
-                                  ...mmm,
-                                  { from: "bot", reply_text: "¿En qué te puedo ayudar más?" }
-                                ]);
-                              }}
-                            >
-                              No, gracias
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
-                  ]);
-                }}
-                onCancel={() => {
-                  setMessages(mm => [
-                    ...mm,
-                    { from: "bot", reply_text: "Operación cancelada. ¿En qué te puedo ayudar más?" }
-                  ]);
-                }}
-              />
-            )
+      if (intent.type === "action" && intent.action === "start_gps_add_chat") {
+  setMessages(m => [...m, {
+    from: "bot",
+    reply_text: "Vale, iniciamos el alta de ubicación:",
+    render: () => (
+      <AddGpsModalWizard
+        onDone={({ openPreviewOf }) => {
+          if (openPreviewOf) {
+            // injectează automat întrebarea de info pt. card
+            setMessages(mm => [...mm, { from: "user", text: `que me puedes decir de ${openPreviewOf}` }]);
           }
-        ]);
-        return;
-      }
-    }
+        }}
+        onCancel={() => setMessages(mm => [...mm, { from: "bot", reply_text: "Cancelado. ¿Algo más?" }])}
+      />
+    )
+  }]);
+  return;
+}
 
     // ==== ACTION: list_all_cameras
     if (intent.type === "action" && intent.action === "list_all_cameras") {
