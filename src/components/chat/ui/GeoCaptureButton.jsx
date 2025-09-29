@@ -1,27 +1,29 @@
 import React, { useState } from "react";
 
-export default function GeoCaptureButton({ className, label = "Usar mi ubicación", onCoords }) {
+export default function GeoCaptureButton({ onCoords }) {
   const [busy, setBusy] = useState(false);
+
+  const get = () => {
+    if (!navigator.geolocation) {
+      alert("La geolocalización no es compatible.");
+      return;
+    }
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { latitude, longitude } }) => {
+        setBusy(false);
+        onCoords?.(`${latitude},${longitude}`);
+      },
+      (err) => {
+        setBusy(false);
+        alert(err.message || "No se pudo obtener la ubicación.");
+      }
+    );
+  };
+
   return (
-    <button
-      className={className}
-      onClick={() => {
-        if (!navigator.geolocation) return alert("La geolocalización no es compatible con este navegador.");
-        setBusy(true);
-        navigator.geolocation.getCurrentPosition(
-          ({ coords: { latitude, longitude } }) => {
-            setBusy(false);
-            const s = `${latitude},${longitude}`;
-            onCoords?.(s);
-          },
-          (err) => {
-            setBusy(false);
-            alert(`Error al obtener la ubicación: ${err.message}`);
-          }
-        );
-      }}
-    >
-      {busy ? "Obteniendo…" : label}
+    <button type="button" onClick={get} disabled={busy}>
+      {busy ? "…" : "Usar mi ubicación"}
     </button>
   );
 }
