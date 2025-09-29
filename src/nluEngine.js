@@ -43,7 +43,7 @@ const fuzzyEq = (a, b) => {
   a = normalize(a); b = normalize(b);
   if (a === b) return true;
   const L = Math.max(a.length, b.length);
-  const tol = L <= 4 ? 1 : 2;
+  const tol = L <= 4 ? 1 : 2; // mai tolerant pentru cuvinte mai lungi
   return ed(a, b) <= tol;
 };
 
@@ -64,10 +64,10 @@ function includesAny(text, arr) {
     const np = normalize(p);
     if (!np) return false;
 
-    if (np.includes(" ")) {
+    if (np.includes(" ")) { // frază exactă (după normalizare)
       const re = new RegExp(`(?:^|\\s)${esc(np)}(?:\\s|$)`);
       return re.test(n);
-    } else {
+    } else { // cuvânt
       return toks.some(tk => fuzzyEq(tk, np));
     }
   });
@@ -84,20 +84,21 @@ function hasToken(text, list) {
 export function detectLanguage(raw) {
   const n = normalize(raw);
   const toks = new Set(n.split(" ").filter(Boolean));
+
   const ES = ["hola","buenas","buenos","dias","tardes","noches","quiero","como","llego","abrir","abre","camara","donde","hay","ver","navegar"];
   const RO = ["salut","buna","bună","ziua","vreau","cum","ajung","deschide","camera","unde","este","lista","client","gps"];
   const CA = ["hola","bon","bones","tardes","nits","vull","com","arribo","obre","camaras","càmera","on","esta","veure","navegar"];
+
   const score = (arr) => arr.reduce((s, w) => s + (toks.has(normalize(w)) ? 1 : 0), 0);
   const es = score(ES), ro = score(RO), ca = score(CA);
+
   if (ro > es && ro >= ca) return "ro";
   if (ca > es && ca >= ro) return "ca";
   return "es";
 }
 
-/* -------------------- Cues de ACȚIUNE (pentru a nu cădea pe salut) -------------------- */
-const CAMERA_VERBS = [
-  "abre","abrir","ver","muestra","mostrar","desplegar","deschide","obre"
-];
+/* -------------------- Cues de ACȚIUNE (pentru a evita salutul) -------------------- */
+const CAMERA_VERBS = ["abre","abrir","ver","muestra","mostrar","desplegar","deschide","obre"];
 const CAMERA_NOUNS = ["camara","cámara","camera","camere","càmera"];
 const GPS_CUES = [
   "quiero llegar a","llevar a","ir a","navegar a","como llego a","cómo llego a",
@@ -106,59 +107,69 @@ const GPS_CUES = [
 ];
 
 function hasActionCue(text) {
-  return (
-    includesAny(text, CAMERA_VERBS) ||
-    includesAny(text, CAMERA_NOUNS) ||
-    includesAny(text, GPS_CUES)
-  );
+  return includesAny(text, CAMERA_VERBS) || includesAny(text, CAMERA_NOUNS) || includesAny(text, GPS_CUES);
 }
+
+/* -------------------- Set comun de umpluturi/saluturi -------------------- */
+const GREETINGS = [
+  // ES
+  "hola","buenas","buenos","dias","días","tardes","noches",
+  // RO
+  "salut","buna","bună","ziua","seara","buna ziua","bună ziua","buna seara","bună seara",
+  // CA
+  "bon","bon dia","bones","tardes","nits","bona","bona tarda","bona nit"
+];
+
+const COMMON_FILLERS = [
+  "por","favor","pf","pls","ok","vale","te","rog","mersi","merci"
+];
 
 /* -------------------- Helpers pentru capturi -------------------- */
-function captureCameraName(raw, stopwords = []) {
-  const service = new Set([
-    ...(stopwords || []),
-    "la","el","una","un","de","del","al","en",
-    "camara","cámara","camera","camaras","cámaras","camere",
-    "abre","abrir","abreme","ver","muestra","mostrar","desplegar","deschide",
-    "quiero","vreau","sa","să","vad","văd",
-    "por","favor","pf","pls","ok","vale",
-    "que","qué","pasa","hay",
-    "añadir","anadir","agregar","crear","nueva","nuevo",
-    "adauga","adaugă","adaug","adăuga","adaugare","add","poner","publicar",
-    "lista","listado","todas","tutti","todes"
-  ].map(normalize));
 
-  const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
-  if (toks.length >= 1) {
-    const candidate = toks.slice(-3).join(" ").trim();
-    const generic = new Set(["camara","camera","camere"]);
-    if (!candidate || generic.has(candidate)) return null;
-    if (/^[a-z0-9._ -]{2,}$/i.test(candidate)) return candidate;
-  }
-  const trimmed = String(raw).trim().replace(/[?!.]+$/, "");
-  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return normalize(trimmed);
-  return null;
+function extractTailMeaningful(raw, extraStop = [], maxWords = 3) {
+  const service = new Set(
+    [...extraStop, ...GREETINGS, ...COMMON_FILLERS].map(normalize)
+  );
+  const toks = normalize(raw).split(" ").filter(Boolean);
+
+  // Păstrăm doar token-urile care NU sunt de serviciu
+  const clean = toks.filter(w => !service.has(w));
+  if (!clean.length) return null;
+
+  // Luăm din coadă maximum maxWords token-uri
+  const tail = clean.slice(-maxWords);
+  const joined = tail.join(" ").trim();
+
+  return /^[a-z0-9._ -]{2,}$/i.test(joined) ? joined : null;
 }
 
-function capturePlaceName(raw, stopwords = []) {
-  const service = new Set([
+/* Capture: cameraName */
+function captureCameraName(raw, stopwords = []) {
+  const EXTRA = [
     ...(stopwords || []),
+    // articole/prepoziții
+    "la","el","una","un","de","del","al","en",
+    // substantive generale cameră
+    "camara","cámara","camera","camaras","cámaras","camere"
+  ];
+  const cand = extractTailMeaningful(raw, EXTRA, 3);
+  return cand;
+}
+
+/* Capture: placeName */
+function capturePlaceName(raw, stopwords = []) {
+  const EXTRA = [
+    ...(stopwords || []),
+    // articole/prepoziții
     "a","al","la","el","de","del","en","pe","catre","către",
+    // verbe orientate pe navigație
     "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
     "vreau","sa","să","ajung","merg",
-    "info","informacion","información","detalii",
-    "donde","dónde","esta","está","despre",
-    "cliente","client","clientul","que","qué","pasa","hay"
-  ].map(normalize));
-
-  const toks = normalize(raw).split(" ").filter(Boolean).filter(w => !service.has(w));
-  if (toks.length >= 1) {
-    const cand = toks.slice(-4).join(" ").trim();
-    if (/^[a-z0-9._ -]{2,}$/i.test(cand)) return cand;
-  }
-  const trimmed = String(raw).trim().replace(/[?!.]+$/, "");
-  if (/^[A-Za-z0-9._ -]{2,}$/.test(trimmed)) return normalize(trimmed);
-  return null;
+    "donde","dónde","esta","está","unde","este","e","on","es","és",
+    "info","informacion","información","detalii","despre","pasa","hay","que","qué"
+  ];
+  const cand = extractTailMeaningful(raw, EXTRA, 4);
+  return cand;
 }
 
 /* -------------------- Localizare intent -------------------- */
@@ -183,7 +194,6 @@ function localizeIntent(intent, lang) {
     if ("save_ok" in it.dialog) it.dialog.save_ok = pickLang(it.dialog.save_ok, lang);
     if ("save_err" in it.dialog) it.dialog.save_err = pickLang(it.dialog.save_err, lang);
   }
-  // (opțional) dacă vrei, poți adăuga aici localizare profundă pentru objects/actions.
   return it;
 }
 
@@ -209,12 +219,10 @@ export function detectIntent(message, intentsJson) {
       if (negHit) ok = false;
     }
 
-    // 1.2) NU trata salut dacă vedem cuvinte de acțiune (camera/GPS)
+    // 1.2) NU trata salut dacă vedem indicii de acțiune (camera/GPS) sau dacă mesajul e mai lung
     if (ok && (rawIntent.id === "saludo" || rawIntent.id.startsWith("saludo_"))) {
-      if (hasActionCue(text)) ok = false;
-      // și restrânge salutul la mesaje scurte
       const tokens = normalize(text).split(" ").filter(Boolean);
-      if (tokens.length > 5) ok = false;
+      if (hasActionCue(text) || tokens.length > 5) ok = false;
     }
 
     // 2) Heuristica pentru ver_camara: acceptă verb/substantiv + frază scurtă, evită interogările listă
