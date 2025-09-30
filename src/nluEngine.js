@@ -16,7 +16,6 @@ export function normalize(s) {
   };
   let out = String(s).replace(/[\s\S]/g, c => DIAC[c] ?? c);
   out = out.toLowerCase();
-  // doar litere/cifre/spații – evităm \p{L} pentru compat Safari/iOS
   out = out.replace(/[^a-z0-9\s]/g, " ");
   out = out.replace(/\s+/g, " ").trim();
   return out;
@@ -43,36 +42,28 @@ const fuzzyEq = (a, b) => {
   a = normalize(a); b = normalize(b);
   if (a === b) return true;
   const L = Math.max(a.length, b.length);
-  const tol = L <= 4 ? 1 : 2; // mai tolerant pentru cuvinte mai lungi
+  const tol = L <= 4 ? 1 : 2;
   return ed(a, b) <= tol;
 };
 
 // ——— Potrivire fără sub-șiruri accidentale
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/**
- * includesAny:
- * - dacă pattern-ul are spații -> căutăm fraza cu margini
- * - dacă e un singur cuvânt -> comparăm pe token-uri (fuzzy)
- */
 function includesAny(text, arr) {
   if (!Array.isArray(arr) || !arr.length) return false;
   const n = normalize(text);
   const toks = n.split(" ").filter(Boolean);
-
   return arr.some(p => {
     const np = normalize(p);
     if (!np) return false;
-
-    if (np.includes(" ")) { // frază exactă (după normalizare)
+    if (np.includes(" ")) {
       const re = new RegExp(`(?:^|\\s)${esc(np)}(?:\\s|$)`);
       return re.test(n);
-    } else { // cuvânt
+    } else {
       return toks.some(tk => fuzzyEq(tk, np));
     }
   });
 }
-
 function hasToken(text, list) {
   if (!Array.isArray(list) || !list.length) return false;
   const toks = normalize(text).split(" ").filter(Boolean);
@@ -80,24 +71,20 @@ function hasToken(text, list) {
 }
 
 /* -------------------- Heuristic language detect -------------------- */
-/** Returnează 'es' | 'ro' | 'ca' (fallback 'es') */
 export function detectLanguage(raw) {
   const n = normalize(raw);
   const toks = new Set(n.split(" ").filter(Boolean));
-
-  const ES = ["hola","buenas","buenos","dias","tardes","noches","quiero","como","llego","abrir","abre","camara","donde","hay","ver","navegar"];
-  const RO = ["salut","buna","bună","ziua","vreau","cum","ajung","deschide","camera","unde","este","lista","client","gps"];
-  const CA = ["hola","bon","bones","tardes","nits","vull","com","arribo","obre","camaras","càmera","on","esta","veure","navegar"];
-
+  const ES = ["hola","buenas","buenos","dias","tardes","noches","quiero","como","llego","abrir","abre","camara","donde","hay","ver","navegar","itv","camion","remolque"];
+  const RO = ["salut","buna","bună","ziua","vreau","cum","ajung","deschide","camera","unde","este","lista","client","gps","itv","camion","remorca","remorcă"];
+  const CA = ["hola","bon","bones","tardes","nits","vull","com","arribo","obre","camaras","càmera","on","esta","veure","navegar","itv","camio","camió","remolc","remolque"];
   const score = (arr) => arr.reduce((s, w) => s + (toks.has(normalize(w)) ? 1 : 0), 0);
   const es = score(ES), ro = score(RO), ca = score(CA);
-
   if (ro > es && ro >= ca) return "ro";
   if (ca > es && ca >= ro) return "ca";
   return "es";
 }
 
-/* -------------------- Cues de ACȚIUNE (pentru a evita salutul) -------------------- */
+/* -------------------- Cues de ACȚIUNE -------------------- */
 const CAMERA_VERBS = ["abre","abrir","ver","muestra","mostrar","desplegar","deschide","obre"];
 const CAMERA_NOUNS = ["camara","cámara","camera","camere","càmera"];
 const GPS_CUES = [
@@ -105,71 +92,46 @@ const GPS_CUES = [
   "vreau sa ajung la","vreau să ajung la","vreau sa merg la","vreau să merg la","navigheaza la","navighează la","cum ajung la",
   "vull arribar a","portar a","anar a","com arribo a"
 ];
-
 function hasActionCue(text) {
   return includesAny(text, CAMERA_VERBS) || includesAny(text, CAMERA_NOUNS) || includesAny(text, GPS_CUES);
 }
 
-/* -------------------- Set comun de umpluturi/saluturi -------------------- */
+/* -------------------- Saluturi / Umpluturi -------------------- */
 const GREETINGS = [
-  // ES
   "hola","buenas","buenos","dias","días","tardes","noches",
-  // RO
   "salut","buna","bună","ziua","seara","buna ziua","bună ziua","buna seara","bună seara",
-  // CA
   "bon","bon dia","bones","tardes","nits","bona","bona tarda","bona nit"
 ];
-
-const COMMON_FILLERS = [
-  "por","favor","pf","pls","ok","vale","te","rog","mersi","merci"
-];
+const COMMON_FILLERS = ["por","favor","pf","pls","ok","vale","te","rog","mersi","merci"];
 
 /* -------------------- Helpers pentru capturi -------------------- */
-
 function extractTailMeaningful(raw, extraStop = [], maxWords = 3) {
-  const service = new Set(
-    [...extraStop, ...GREETINGS, ...COMMON_FILLERS].map(normalize)
-  );
+  const service = new Set([...extraStop, ...GREETINGS, ...COMMON_FILLERS].map(normalize));
   const toks = normalize(raw).split(" ").filter(Boolean);
-
-  // Păstrăm doar token-urile care NU sunt de serviciu
   const clean = toks.filter(w => !service.has(w));
   if (!clean.length) return null;
-
-  // Luăm din coadă maximum maxWords token-uri
   const tail = clean.slice(-maxWords);
   const joined = tail.join(" ").trim();
-
   return /^[a-z0-9._ -]{2,}$/i.test(joined) ? joined : null;
 }
-
-/* Capture: cameraName */
 function captureCameraName(raw, stopwords = []) {
   const EXTRA = [
     ...(stopwords || []),
-    // articole/prepoziții
     "la","el","una","un","de","del","al","en",
-    // substantive generale cameră
     "camara","cámara","camera","camaras","cámaras","camere"
   ];
-  const cand = extractTailMeaningful(raw, EXTRA, 3);
-  return cand;
+  return extractTailMeaningful(raw, EXTRA, 3);
 }
-
-/* Capture: placeName */
 function capturePlaceName(raw, stopwords = []) {
   const EXTRA = [
     ...(stopwords || []),
-    // articole/prepoziții
     "a","al","la","el","de","del","en","pe","catre","către",
-    // verbe orientate pe navigație
     "quiero","llegar","llevar","ir","navegar","como","cómo","llego",
     "vreau","sa","să","ajung","merg",
     "donde","dónde","esta","está","unde","este","e","on","es","és",
     "info","informacion","información","detalii","despre","pasa","hay","que","qué"
   ];
-  const cand = extractTailMeaningful(raw, EXTRA, 4);
-  return cand;
+  return extractTailMeaningful(raw, EXTRA, 4);
 }
 
 /* -------------------- Localizare intent -------------------- */
@@ -180,15 +142,10 @@ function pickLang(val, lang) {
   return String(val);
 }
 function deepClone(obj) { return obj ? JSON.parse(JSON.stringify(obj)) : obj; }
-
 function localizeIntent(intent, lang) {
   const it = deepClone(intent);
-  if (it.response && "text" in it.response) {
-    it.response.text = pickLang(it.response.text, lang);
-  }
-  if (it.not_found && "text" in it.not_found) {
-    it.not_found.text = pickLang(it.not_found.text, lang);
-  }
+  if (it.response && "text" in it.response) it.response.text = pickLang(it.response.text, lang);
+  if (it.not_found && "text" in it.not_found) it.not_found.text = pickLang(it.not_found.text, lang);
   if (it.dialog) {
     if ("ask_text" in it.dialog) it.dialog.ask_text = pickLang(it.dialog.ask_text, lang);
     if ("save_ok" in it.dialog) it.dialog.save_ok = pickLang(it.dialog.save_ok, lang);
@@ -197,35 +154,127 @@ function localizeIntent(intent, lang) {
   return it;
 }
 
+/* -------------------- Self-queries quick detect (NEW) -------------------- */
+function quickDetectSelf(message) {
+  const n = normalize(message);
+  const toks = new Set(n.split(" ").filter(Boolean));
+
+  const has = (...words) => words.some(w => toks.has(normalize(w)));
+
+  // ITV camion
+  const truckCue = has("camion","camión","camio","camió","tractor");
+  const trailerCue = has("remorca","remorcă","remolque","remolc","semiremorca","semiremorcă","semiremolque");
+  const itvCue = has("itv","rar","r.a.r", "revizie", "revizia"); // „itv” e decisiv
+
+  if (itvCue && truckCue) {
+    return {
+      id: "driver_truck_itv__synthetic",
+      priority: 999,
+      type: "action",
+      action: "driver_self_info",
+      meta: { topic: "truck_itv" },
+      response: {
+        text: {
+          es: "La ITV de tu camión caduca el {{truck.itv}}.",
+          ro: "ITV-ul camionului tău expiră la {{truck.itv}}.",
+          ca: "L’ITV del teu camió caduca el {{truck.itv}}."
+        }
+      }
+    };
+  }
+  if (itvCue && trailerCue) {
+    return {
+      id: "driver_trailer_itv__synthetic",
+      priority: 999,
+      type: "action",
+      action: "driver_self_info",
+      meta: { topic: "trailer_itv" },
+      response: {
+        text: {
+          es: "La ITV de tu remolque caduca el {{trailer.itv}}.",
+          ro: "ITV-ul remorcii tale expiră la {{trailer.itv}}.",
+          ca: "L’ITV del teu remolc caduca el {{trailer.itv}}."
+        }
+      }
+    };
+  }
+
+  // Matricule (ambele)
+  if (has("matricula","matriculacion","numar","număr","placa","plăcuță","placuta","placuta de inmatriculare","inscripcio","inscripció","matricula?","placas") &&
+      (truckCue || trailerCue || true)) {
+    return {
+      id: "driver_plates__synthetic",
+      priority: 998,
+      type: "action",
+      action: "driver_self_info",
+      meta: { topic: "plates" },
+      response: {
+        text: {
+          es: "Camión: {{truck.plate}} · Remolque: {{trailer.plate}}.",
+          ro: "Camion: {{truck.plate}} · Remorcă: {{trailer.plate}}.",
+          ca: "Camió: {{truck.plate}} · Remolc: {{trailer.plate}}."
+        }
+      }
+    };
+  }
+
+  // Documente șofer (CAP / carnet / ADR)
+  if (has("cap","carnet","permiso","permis","adr","atestate","acte","documente")) {
+    return {
+      id: "driver_credentials__synthetic",
+      priority: 998,
+      type: "action",
+      action: "driver_self_info",
+      meta: { topic: "driver_credentials" },
+      response: {
+        text: {
+          es: "CAP: {{driver.cap}} · Carnet: {{driver.lic}} · ADR: {{driver.adr}}.",
+          ro: "CAP: {{driver.cap}} · Carnet: {{driver.lic}} · ADR: {{driver.adr}}.",
+          ca: "CAP: {{driver.cap}} · Carnet: {{driver.lic}} · ADR: {{driver.adr}}."
+        }
+      }
+    };
+  }
+
+  return null;
+}
+
 /* ---------------------- Intent detect ------------------------ */
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
   const list = Array.isArray(intentsJson) ? intentsJson : [];
   const lang = detectLanguage(text);
 
-  // sortare defensivă după priority (desc)
+  // ——— 0) Self-queries „scurtcircuit” (ITV, plăcuțe, documente)
+  const synthetic = quickDetectSelf(text);
+  if (synthetic) {
+    const intent = localizeIntent(synthetic, lang);
+    return { intent, slots: {}, lang };
+  }
+
+  // ——— 1) sortare
   const intents = [...list].sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
 
   for (const rawIntent of intents) {
     if (!rawIntent) continue;
     if (rawIntent.id === "fallback") continue;
 
-    // 1) potrivire pe patterns
+    // 2) potrivire pe patterns
     let ok = includesAny(text, rawIntent.patterns_any) || hasToken(text, rawIntent.patterns_any);
 
-    // 1.1) negative_any — inhibit
+    // 2.1) negative_any — inhibit
     if (ok && rawIntent.negative_any) {
       const negHit = includesAny(text, rawIntent.negative_any) || hasToken(text, rawIntent.negative_any);
       if (negHit) ok = false;
     }
 
-    // 1.2) NU trata salut dacă vedem indicii de acțiune (camera/GPS) sau dacă mesajul e mai lung
+    // 2.2) NU trata salut dacă vedem indicii de acțiune (camera/GPS) sau dacă mesajul e mai lung
     if (ok && (rawIntent.id === "saludo" || rawIntent.id.startsWith("saludo_"))) {
       const tokens = normalize(text).split(" ").filter(Boolean);
       if (hasActionCue(text) || tokens.length > 5) ok = false;
     }
 
-    // 2) Heuristica pentru ver_camara: acceptă verb/substantiv + frază scurtă, evită interogările listă
+    // 3) Heuristica camere
     if (!ok && rawIntent.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasNounCue = includesAny(text, CAMERA_NOUNS);
@@ -241,7 +290,7 @@ export function detectIntent(message, intentsJson) {
 
     if (!ok) continue;
 
-    // 3) slots
+    // 4) slots
     const slots = {};
     if (rawIntent.slots?.cameraName) {
       const name = captureCameraName(text, rawIntent.stopwords);
@@ -252,16 +301,16 @@ export function detectIntent(message, intentsJson) {
       if (pname) slots.placeName = pname;
     }
 
-    // 4) localizează intentul
+    // 5) localizare
     const intent = localizeIntent(rawIntent, lang);
     return { intent, slots, lang };
   }
 
-  // 5) fallback (localizat)
+  // ——— 6) fallback
   const fbRaw = intents.find(i => i?.id === "fallback") || {
     id: "fallback", type: "static",
     response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } }
   };
-  const intent = localizeIntent(fbRaw, detectLanguage(text));
+  const intent = localizeIntent(fbRaw, lang);
   return { intent, slots: {}, lang };
 }
