@@ -13,13 +13,13 @@ import SimpleList from "./ui/SimpleList";
 import { scrollToBottom } from "./helpers/miniScroll";
 
 // handlers
-import handleStatic from "./actions/handleStatic";
-import handleDialog from "./actions/handleDialog";
-import handleOpenCamera from "./actions/handleOpenCamera";
-import handleShowAnnouncement from "./actions/handleShowAnnouncement";
-import handleGpsNavigate from "./actions/handleGpsNavigate";
-import handleGpsInfo from "./actions/handleGpsInfo";
-import handleGpsLists from "./actions/handleGpsLists";
+import handleStatic from "./actions/handleStatic.jsx";
+import handleDialog from "./actions/handleDialog.jsx";
+import handleOpenCamera from "./actions/handleOpenCamera.jsx";
+import handleShowAnnouncement from "./actions/handleShowAnnouncement.jsx";
+import handleGpsNavigate from "./actions/handleGpsNavigate.jsx";
+import handleGpsInfo from "./actions/handleGpsInfo.jsx";
+import handleGpsLists from "./actions/handleGpsLists.jsx";
 
 export default function RaynaHub() {
   const { profile } = useAuth();
