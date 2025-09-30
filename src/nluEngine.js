@@ -154,18 +154,18 @@ function localizeIntent(intent, lang) {
   return it;
 }
 
-/* -------------------- Self-queries quick detect (NEW) -------------------- */
+/* -------------------- Self-queries quick detect (INCLUDE NOILE CUES) -------------------- */
 function quickDetectSelf(message) {
   const n = normalize(message);
   const toks = new Set(n.split(" ").filter(Boolean));
   const has = (...words) => words.some(w => toks.has(normalize(w)));
 
-  // --- indicii de bază
+  // indicii de bază
   const truckCue   = has("camion","camión","camio","camió","tractor");
   const trailerCue = has("remorca","remorcă","remolque","remolc","semiremorca","semiremorcă","semiremolque");
   const itvCue     = has("itv","rar","r.a.r","revizie","revizia");
 
-  // --- ITV camion
+  // ITV camion
   if (itvCue && truckCue) {
     return {
       id: "driver_truck_itv__synthetic",
@@ -183,7 +183,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // --- ITV remolque
+  // ITV remolque
   if (itvCue && trailerCue) {
     return {
       id: "driver_trailer_itv__synthetic",
@@ -201,7 +201,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // --- Matricule (ambele)
+  // Matricule (ambele)
   if (has("matricula","matriculacion","numar","număr","placa","plăcuță","placuta","placuta de inmatriculare","inscripcio","inscripció","matricula?","placas")) {
     return {
       id: "driver_plates__synthetic",
@@ -219,7 +219,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // --- Documente șofer (CAP / carnet / ADR)
+  // Documente șofer
   if (has("cap","carnet","permiso","permis","adr","atestate","acte","documente")) {
     return {
       id: "driver_credentials__synthetic",
@@ -237,13 +237,10 @@ function quickDetectSelf(message) {
     };
   }
 
-  /* ===== NOILE CUES — trebuie să fie ÎNĂUNTRUL funcției ===== */
-
-  // „ver mi camión” / „ficha camión”
+  // >>> NOU: „ver mi camión / ficha camión”
   const seeMyTruckCue =
     (has("mi") && (has("camion","camión","camio","camió"))) ||
     ((has("ver") || has("ficha") || has("mostrar")) && has("mi") && (has("camion","camión","camio","camió")));
-
   if (seeMyTruckCue) {
     return {
       id: "open_my_truck__synthetic",
@@ -260,11 +257,10 @@ function quickDetectSelf(message) {
     };
   }
 
-  // „¿quién soy yo?” / „cine sunt eu?”
+  // >>> NOU: „¿quién soy yo? / cine sunt eu?”
   const whoAmICue =
     (has("quien","quién","cine") && (has("soy","sunt") || has("yo","eu"))) ||
     n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
-
   if (whoAmICue) {
     return {
       id: "who_am_i__synthetic",
@@ -281,10 +277,9 @@ function quickDetectSelf(message) {
     };
   }
 
-  // ——— nimic detectat
+  // nimic detectat
   return null;
 }
-  
 
 /* ---------------------- Intent detect ------------------------ */
 export function detectIntent(message, intentsJson) {
@@ -292,14 +287,14 @@ export function detectIntent(message, intentsJson) {
   const list = Array.isArray(intentsJson) ? intentsJson : [];
   const lang = detectLanguage(text);
 
-  // ——— 0) Self-queries „scurtcircuit” (ITV, plăcuțe, documente)
+  // 0) Self-queries „scurtcircuit”
   const synthetic = quickDetectSelf(text);
   if (synthetic) {
     const intent = localizeIntent(synthetic, lang);
     return { intent, slots: {}, lang };
   }
 
-  // ——— 1) sortare
+  // 1) sortare după prioritate
   const intents = [...list].sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
 
   for (const rawIntent of intents) {
@@ -309,19 +304,19 @@ export function detectIntent(message, intentsJson) {
     // 2) potrivire pe patterns
     let ok = includesAny(text, rawIntent.patterns_any) || hasToken(text, rawIntent.patterns_any);
 
-    // 2.1) negative_any — inhibit
+    // 2.1) negative_any — inhibă
     if (ok && rawIntent.negative_any) {
       const negHit = includesAny(text, rawIntent.negative_any) || hasToken(text, rawIntent.negative_any);
       if (negHit) ok = false;
     }
 
-    // 2.2) NU trata salut dacă vedem indicii de acțiune (camera/GPS) sau dacă mesajul e mai lung
+    // 2.2) Nu trata salut dacă e clară o acțiune sau mesajul e lung
     if (ok && (rawIntent.id === "saludo" || rawIntent.id.startsWith("saludo_"))) {
       const tokens = normalize(text).split(" ").filter(Boolean);
       if (hasActionCue(text) || tokens.length > 5) ok = false;
     }
 
-    // 3) Heuristica camere
+    // 3) Heuristica „ver_camara” (tolerant)
     if (!ok && rawIntent.id === "ver_camara") {
       const tokens = normalize(text).split(" ").filter(Boolean);
       const hasNounCue = includesAny(text, CAMERA_NOUNS);
@@ -348,12 +343,12 @@ export function detectIntent(message, intentsJson) {
       if (pname) slots.placeName = pname;
     }
 
-    // 5) localizare
+    // 5) localizare răspuns
     const intent = localizeIntent(rawIntent, lang);
     return { intent, slots, lang };
   }
 
-  // ——— 6) fallback
+  // 6) fallback
   const fbRaw = intents.find(i => i?.id === "fallback") || {
     id: "fallback", type: "static",
     response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } }
