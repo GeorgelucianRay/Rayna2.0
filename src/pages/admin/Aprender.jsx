@@ -1,65 +1,149 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../AuthContext";
 import styles from "./Aprender.module.css";
 
-export default function Aprender() {
+export default function AprenderAdmin() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
-  const [links, setLinks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const isAdmin = profile?.role === "admin";
 
-  useEffect(() => {
-    const fetchLinks = async () => {
-      if (!isAdmin) return setLoading(false);
-      const { data, error } = await supabase
-        .from("aprender_links")
-        .select("id, nombre, url")
-        .order("nombre", { ascending: true });
-      if (error) console.error("Eroare Aprender:", error);
-      setLinks(data || []);
-      setLoading(false);
-    };
-    fetchLinks();
-  }, [isAdmin]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+
+  const loadItems = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("aprender_links")
+      .select("id, title, url, updated_at")
+      .order("title", { ascending: true });
+    if (!error) setItems(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadItems(); }, []);
+
+  const addItem = async (e) => {
+    e?.preventDefault();
+    if (!title.trim() || !url.trim()) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("aprender_links")
+      .insert({ title: title.trim(), url: url.trim() });
+    setSaving(false);
+    if (error) {
+      alert("Nu am putut salva linkul.");
+      return;
+    }
+    setTitle("");
+    setUrl("");
+    loadItems();
+  };
+
+  const deleteItem = async (id) => {
+    if (!window.confirm("Ștergi acest link?")) return;
+    const { error } = await supabase.from("aprender_links").delete().eq("id", id);
+    if (error) {
+      alert("Nu am putut șterge.");
+      return;
+    }
+    setItems((arr) => arr.filter((x) => x.id !== id));
+  };
 
   if (!isAdmin) {
     return (
       <div className={styles.shell}>
-        <button className={styles.backBtn} onClick={() => window.history.back()}>
-          ← Înapoi
-        </button>
-        <p className={styles.noAccess}>⛔ Nu ai acces la această secțiune.</p>
+        <header className={styles.header}>
+          <h1 className={styles.title}>¡Vámonos a aprender!</h1>
+          <button className={styles.backBtn} onClick={() => navigate(-1)}>Volver</button>
+        </header>
+        <div className={styles.card}>
+          <p>Doar administratorii pot gestiona conținutul „Aprender”.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={styles.shell}>
-      <button className={styles.backBtn} onClick={() => window.history.back()}>
-        ← Înapoi
-      </button>
+      <header className={styles.header}>
+        <h1 className={styles.title}>¡Vámonos a aprender!</h1>
+        <button className={styles.backBtn} onClick={() => navigate(-1)}>Volver</button>
+      </header>
 
-      <h1 className={styles.title}>📚 Aprender</h1>
-      <p className={styles.subtitle}>
-        Resurse pentru a învăța cum se folosesc componentele aplicației.
-      </p>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>Adaugă material</h2>
+        <form className={styles.form} onSubmit={addItem}>
+          <div className={styles.row}>
+            <label className={styles.label}>Nume</label>
+            <input
+              className={styles.input}
+              placeholder="ex.: Rayna"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+          <div className={styles.row}>
+            <label className={styles.label}>Link</label>
+            <input
+              className={styles.input}
+              placeholder="https://…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </div>
+          <div className={styles.actions}>
+            <button
+              type="submit"
+              className={`${styles.ghostBtn} ${styles.ghostGreen}`}
+              disabled={saving}
+            >
+              {saving ? "Se salvează…" : "Salvează"}
+            </button>
+          </div>
+        </form>
+      </section>
 
-      {loading && <p>Se încarcă…</p>}
-      {!loading && links.length === 0 && <p>Nu există resurse încă.</p>}
-
-      <div className={styles.linkList}>
-        {links.map((l) => (
-          <button
-            key={l.id}
-            className={styles.linkBtn}
-            onClick={() => window.open(l.url, "_blank", "noopener")}
-          >
-            {l.nombre}
-          </button>
-        ))}
-      </div>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>Materiale existente</h2>
+        {loading ? (
+          <div className={styles.empty}>Se încarcă…</div>
+        ) : items.length === 0 ? (
+          <div className={styles.empty}>Încă nu există materiale.</div>
+        ) : (
+          <ul className={styles.list}>
+            {items.map((it) => (
+              <li key={it.id} className={styles.item}>
+                <div className={styles.itemMain}>
+                  <div className={styles.itemTitle}>{it.title}</div>
+                  <div className={styles.itemUrl}>{it.url}</div>
+                </div>
+                <div className={styles.itemActions}>
+                  <a
+                    className={`${styles.ghostBtn} ${styles.ghostGreen}`}
+                    href={it.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Abrir
+                  </a>
+                  <button
+                    className={`${styles.ghostBtn} ${styles.ghostRed}`}
+                    onClick={() => deleteItem(it.id)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
