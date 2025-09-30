@@ -1,22 +1,40 @@
+/* =================================================================== */
+/* STIL MODERN PENTRU RAYNAHUB (2025 Trends)             */
+/* =================================================================== */
+
 :root {
-  --bg: #0b1522;
-  --panel: #0f2138;
-  --bot: #0e2a4a;
-  --me: #1f6feb;
-  --text: #e6f0ff;
-  --muted: #9db3d9;
+  /* Paleta de culori */
+  --bg-start: #eaf2f8;
+  --bg-end: #d3e0f0;
+  --text-color: #1c2b42;
+  --text-muted: #5a6e8c;
+  
+  /* Culori de accent */
+  --primary-accent: #8df2b4; /* Verde mentă pentru acțiuni principale */
+  --secondary-accent: #5a9dff; /* Albastru pentru bulele utilizatorului */
+  
+  /* Stiluri Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  
+  /* Stiluri Neumorphism (Soft UI) */
+  --shadow-light: -5px -5px 10px rgba(255, 255, 255, 0.9);
+  --shadow-dark: 5px 5px 10px rgba(163, 177, 198, 0.4);
+  --shadow-inset-light: inset -3px -3px 7px rgba(255, 255, 255, 0.9);
+  --shadow-inset-dark: inset 3px 3px 7px rgba(163, 177, 198, 0.5);
+
+  /* Alte variabile */
+  --main-radius: 18px;
+  --small-radius: 12px;
 }
 
 .shell {
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100%;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, #143a66 0, transparent 60%),
-    radial-gradient(900px 500px at 120% 10%, #0f2d52 0, transparent 50%),
-    var(--bg);
-  color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  color: var(--text-color);
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ————————————————— Header ————————————————— */
@@ -25,29 +43,48 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--glass-border);
 }
 .headerTitleWrap { flex: 1; }
 
-.logoDot {
-  width: 14px; height: 14px; border-radius: 50%;
-  background: linear-gradient(135deg, #4ee1ff, #a9ff9c);
-  box-shadow: 0 0 12px rgba(120,240,255,0.8);
+/* Adaugă un <img> cu această clasă în JSX */
+.mascotAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
-.brand { font-weight: 700; letter-spacing: .3px; font-size: 15px; }
-.tagline { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.brand { 
+  font-weight: 700; 
+  letter-spacing: .3px; 
+  font-size: 16px; 
+}
+.tagline { 
+  font-size: 12px; 
+  color: var(--text-muted); 
+  margin-top: 2px; 
+}
 
 .closeBtn {
-  width: 34px; height: 34px; line-height: 34px;
-  border-radius: 8px; border: none;
-  background: #ff3b30;
-  color: #fff; font-size: 22px; cursor: pointer;
-  transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
+  width: 32px; height: 32px;
+  border-radius: 50%; border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-muted); font-size: 24px; cursor: pointer;
+  transition: all .2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.closeBtn:hover { filter: brightness(1.05); }
-.closeBtn:active { transform: translateY(1px) scale(0.98); }
-.closeBtn:focus-visible { outline: 2px solid #ffe1de; outline-offset: 2px; }
+.closeBtn:hover { 
+  background: #ff3b30;
+  color: white;
+  transform: scale(1.1);
+}
 
 /* ————————————————— Zona de chat ————————————————— */
 .chat {
@@ -55,159 +92,134 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.25) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
-.chat::-webkit-scrollbar { height: 8px; width: 8px; }
-.chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 8px; }
+.chat::-webkit-scrollbar { width: 8px; }
+.chat::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 8px; }
 
 .bubble {
   max-width: min(700px, 90%);
-  padding: 12px 14px;
-  border-radius: 14px;
-  line-height: 1.35;
-  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  padding: 14px 18px;
+  border-radius: var(--main-radius);
+  line-height: 1.4;
   word-break: break-word;
 }
 .bot {
   align-self: flex-start;
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-  border: 1px solid rgba(255,255,255,0.06);
-  backdrop-filter: blur(6px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  border-radius: var(--main-radius) var(--main-radius) var(--main-radius) 6px;
 }
 .me {
   align-self: flex-end;
-  background: var(--me);
+  background: var(--secondary-accent);
+  color: white;
+  box-shadow: 0 6px 20px rgba(90, 157, 255, 0.4);
+  border-radius: var(--main-radius) var(--main-radius) 6px var(--main-radius);
 }
 
 .botText { white-space: pre-wrap; }
-
-/* cursor animat pentru efectul de scriere */
-.cursor {
-  display: inline-block;
-  margin-left: 2px;
-  animation: blink 1s steps(1) infinite;
-}
+.cursor { animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
 /* ————————————————— Carduri / acțiuni ————————————————— */
 .card {
-  margin-top: 10px;
-  padding: 10px;
-  background: var(--panel);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--small-radius);
 }
-.cardTitle { font-weight: 600; font-size: 14px; }
-.cardSubtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.cardTitle { font-weight: 600; font-size: 15px; }
+.cardSubtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.cardActions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
 
-.cardActions {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* butoane generice */
-.actionBtn,
-.suggestedBtn,
-.sendBtn {
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 10px;
+/* Butoane Neumorphic */
+.actionBtn, .sendBtn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--small-radius);
   cursor: pointer;
-  color: #0b1522;
-  background: #a7e0ff;
-  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
+  font-weight: 600;
+  color: var(--text-color);
+  background: var(--bg-start);
+  box-shadow: var(--shadow-light), var(--shadow-dark);
+  transition: all 0.15s ease-out;
 }
-.actionBtn:hover,
-.suggestedBtn:hover,
-.sendBtn:hover { filter: brightness(1.05); }
-.actionBtn:active,
-.suggestedBtn:active,
-.sendBtn:active { transform: translateY(1px) scale(0.98); }
-.actionBtn:focus-visible,
-.suggestedBtn:focus-visible,
-.sendBtn:focus-visible {
-  outline: 2px solid #c9ebff;
-  outline-offset: 2px;
+.actionBtn:hover, .sendBtn:hover {
+  filter: brightness(1.02);
 }
-
-.suggested {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.actionBtn:active, .sendBtn:active {
+  box-shadow: var(--shadow-inset-light), var(--shadow-inset-dark);
+  transform: scale(0.98);
+}
+.sendBtn {
+  background: var(--primary-accent);
+}
+.sendBtn:active {
+  box-shadow: inset -3px -3px 7px rgba(255, 255, 255, 0.9), inset 3px 3px 7px rgba(100, 180, 130, 0.6);
 }
 
 /* ————————————————— Input bar ————————————————— */
 .inputBar {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   padding: 12px;
-  background: linear-gradient(0deg, rgba(255,255,255,0.04), transparent);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--glass-border);
 }
 .input {
   flex: 1;
-  border-radius: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
+  border-radius: var(--small-radius);
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
   outline: none;
+  font-size: 15px;
+  box-shadow: var(--shadow-inset-light), var(--shadow-inset-dark);
 }
-.input::placeholder { color: rgba(230,240,255,0.6); }
-.sendBtn { background: #8df2b4; }
+.input::placeholder { color: var(--text-muted); }
 
-/* ————————————————— Caja Anuncio ————————————————— */
+/* ————————————————— Componente specifice (Anunț, Formular) ————————————————— */
 .annBox {
   margin-top: 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border-radius: var(--small-radius);
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
 }
 .annHead {
   padding: 8px 12px;
   font-weight: 600;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.1);
 }
 .annBody {
   padding: 12px;
   white-space: pre-wrap;
 }
 
-/* ————————————————— Formular inline „Añadir cámara” ————————————————— */
 .formRow {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr auto;
-  gap: 8px;
-  margin-top: 10px;
+  display: grid; grid-template-columns: 1fr 1.3fr auto;
+  gap: 8px; margin-top: 10px;
 }
 .formRow .input {
-  border-radius: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: #e6f0ff;
 }
-.formRow .sendBtn { min-width: 110px; }
 
-/* ————————————————— MiniMap container ————————————————— */
 .card .leaflet-container {
-  width: 100%;
-  height: 180px;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-top: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  width: 100%; height: 180px;
+  border-radius: var(--small-radius);
+  overflow: hidden; margin-top: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* ————————————————— Mică responsivitate ————————————————— */
+/* ————————————————— Responsivitate ————————————————— */
 @media (max-width: 640px) {
   .chat { padding: 12px; }
   .bubble { max-width: 96%; }
   .formRow { grid-template-columns: 1fr; }
-  .closeBtn { width: 32px; height: 32px; line-height: 32px; }
 }
