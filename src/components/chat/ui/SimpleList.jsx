@@ -1,6 +1,6 @@
 // src/components/chat/ui/SimpleList.jsx
 import React from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function SimpleList({ title, items, onPick }) {
   return (
