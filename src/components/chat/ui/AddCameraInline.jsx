@@ -1,6 +1,6 @@
 // src/components/chat/ui/AddCameraInline.jsx
 import React, { useState } from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function AddCameraInline({ onSubmit, saving }) {
   const [name, setName] = useState("");
