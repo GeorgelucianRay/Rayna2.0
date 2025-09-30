@@ -78,23 +78,9 @@
     ],
     "response": {
       "text": {
-        "es": "Soy Rayna:  
-        • R-utas 
-        • A.Y.-Inteligencia Artificial 
-        • N-avegar 
-        • A-sistente. 
-        Formal, cercana y rápida 😉.",
-        "ro": "Sunt Rayna: 
-        • R-ute • A.I.-Inteligenta Artificiala
-        • N-avigare 
-        • A-asistent. 
-        Formală, prietenoasă și rapidă 😉.",
-        "ca": "Sóc Rayna: 
-       • R-utes 
-       • I.A. 
-       • N-avegar 
-       • A-ssistent. 
-      Formal, propera i ràpida 😉."
+        "es": "Soy Rayna:\n• R-utas\n• A.Y.-Inteligencia Artificial\n• N-avegar\n• A-sistente\nFormal, cercana y rápida 😉.",
+"ro": "Sunt Rayna:\n• R-ute\n• A.I.-Inteligența Artificială\n• N-avigare\n• A-sistent\nFormală, prietenoasă și rapidă 😉.",
+"ca": "Sóc Rayna:\n• R-utes\n• I.A.\n• N-avegar\n• A-ssistent\nFormal, propera i ràpida 😉."
       }
     }
   },
