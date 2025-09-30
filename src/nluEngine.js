@@ -284,27 +284,6 @@ function quickDetectSelf(message) {
   // ——— nimic detectat
   return null;
 }
-
-  // --- "¿quién soy yo?" / "cine sunt eu?"
-  const whoAmICue =
-    has("quien","quién","cine") && (has("soy","sunt") || has("eu","yo")) ||
-    n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
-
-  if (whoAmICue) {
-    return {
-      id: "who_am_i__synthetic",
-      priority: 997,
-      type: "action",
-      action: "who_am_i",
-      response: {
-        text: {
-          es: "Hola, esto es lo que sé de ti:",
-          ro: "Salut, iată ce știu despre tine:",
-          ca: "Hola, això és el que sé de tu:"
-        }
-      }
-    };
-  }
   
 
 /* ---------------------- Intent detect ------------------------ */
