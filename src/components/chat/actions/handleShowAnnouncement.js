@@ -1,4 +1,5 @@
-// src/components/chat/actions/handleShowAnnouncement.js
+// src/components/chat/actions/handleShowAnnouncement.jsx
+import React from "react";
 import AnnouncementBox from "../ui/AnnouncementBox";
 import { readAnnouncement } from "../data/queries";
 import { tpl } from "../helpers/templating";
