@@ -1,10 +1,9 @@
-// src/components/chat/actions/handleGpsNavigate.js
+import React from "react";
+import styles from "../Chatbot.module.css";
 import ChatMiniMap from "../ChatMiniMap";
 import SimpleList from "../ui/SimpleList";
 import { findPlacesByName, findPlaceByName } from "../data/queries";
 import { getMapsLinkFromRecord, pointGeoJSONFromCoords } from "../helpers/gps";
-import styles from "../../Chatbot.module.css";
-import React from "react";
 
 export default async function handleGpsNavigate({ intent, slots, setMessages }) {
   const placeName = (slots.placeName || "").trim();
