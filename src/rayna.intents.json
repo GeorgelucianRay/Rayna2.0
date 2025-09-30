@@ -78,26 +78,36 @@
     ],
     "response": {
       "text": {
-        "es": "Soy Rayna: **R**utas • **A.Y.** Inteligencia Artificial • **N**avegar • **A**sistente. Formal, cercana y rápida 😉.",
-        "ro": "Sunt Rayna: **R**ute • **A.I.** Asistent • **N**avigare • **A**jutor. Formală, prietenoasă și rapidă 😉.",
-        "ca": "Sóc Rayna: **R**utes • **I.A.** • **N**avegar • **A**ssistent. Formal, propera i ràpida 😉."
+        "es": "Soy Rayna:  
+        • R-utas 
+        • A.Y.-Inteligencia Artificial 
+        • N-avegar 
+        • A-sistente. 
+        Formal, cercana y rápida 😉.",
+        "ro": "Sunt Rayna: 
+        • R-ute • A.I.-Inteligenta Artificiala
+        • N-avigare 
+        • A-asistent. 
+        Formală, prietenoasă și rapidă 😉.",
+        "ca": "Sóc Rayna: 
+       • R-utes 
+       • I.A. 
+       • N-avegar 
+       • A-ssistent. 
+      Formal, propera i ràpida 😉."
       }
     }
   },
   {
-    "id": "help",
-    "priority": 90,
-    "type": "static",
-    "patterns_any": [
-      "que puedes hacer", "qué puedes hacer", "ayuda", "help", "que piedes hacer", "que puedes acer",
-      "cu ce ma poti ajuta", "cu ce mă poți ajuta", "ajutor", "help me",
-      "què pots fer", "ajuda", "ajudame", "ajuda'm"
-    ],
-    "response": {
-      "text": {
-        "es": "Puedo abrir **cámaras** por nombre (ej.: «Abre TCB»), mostrar el **anuncio** vigente o ayudarte con **depósito/GPS**. Admin: añadir cámara. Dispecer/Admin: publicar anuncio.",
-        "ro": "Pot deschide **camere** după nume (ex.: „Deschide TCB”), pot afișa **anunțul** curent sau te pot ajuta cu **depozit/GPS**. Admin: adaugă cameră. Dispecer/Admin: publică anunț.",
-        "ca": "Puc obrir **càmeres** pel nom (ex.: «Obre TCB»), mostrar **l'anunci** vigent o ajudar-te amb **dipòsit/GPS**. Admin: afegir càmera. Dispatcher/Admin: publicar anunci."
+     "id": "help",
+  "priority": 90,
+  "type": "static",
+  "patterns_any": ["que puedes hacer", "qué puedes hacer", "ayuda", "help", "..."],
+  "response": {
+    "text": {
+      "es": "Puedo: 1) abrir cámaras por nombre, 2) darte rutas y abrir Google Maps, 3) decirte tu ITV/CAP/carnet/ADR y resumen de nómina, y 4) listar terminales, parkings y servicios. Dime, ¿qué necesitas?",
+      "ro": "Pot: 1) deschide camere după nume, 2) oferi rute și deschide Google Maps, 3) spune datele tale ITV/CAP/permis/ADR și rezumatul de salariu, 4) lista terminale, parcări și servicii. Spune-mi ce ai nevoie.",
+      "ca": "Puc: 1) obrir càmeres pel nom, 2) donar rutes i obrir Google Maps, 3) dir-te la teva ITV/CAP/carnet/ADR i resum de nòmina, 4) llistar terminals, pàrquings i serveis. Què necessites?"
       }
     }
   },
