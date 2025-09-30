@@ -8,6 +8,13 @@ import intentsData from "../../rayna.intents.json";
 import { detectIntent } from "../../nluEngine";
 
 // barrels locale
+import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
+
+export default function RaynaHub() {
+  useIOSNoInputZoom();
+  // ...
+}
+
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 import {
