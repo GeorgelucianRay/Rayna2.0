@@ -71,9 +71,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
-  /**
-   * Ia sesiunea curentă și sincronizează user-ul.
-   */
+  /** Ia sesiunea curentă și sincronizează user-ul. */
   const refreshSession = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setSession(session);
@@ -82,8 +80,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /**
-   * Încarcă profilul și alarmele pe baza rolului.
-   * Este safe să fie apelată oricând — va verifica sesiunea actuală intern.
+   * Încarcă profilul COMPLET + camion/remorcă și calculează alarmele.
+   * Safe de apelat oricând — verifică sesiunea intern.
    */
   const fetchAndProcessData = useCallback(async () => {
     const current = await refreshSession();
@@ -94,71 +92,104 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // 1) profil minim
-      let userProfileMin = null;
-      const { data, error } = await supabase
+      // 1) Citește profilul complet necesar UI-ului
+      const { data: baseProfile, error: profErr } = await supabase
         .from('profiles')
-        .select('id, role, nombre_completo, email, camion_id, remorca_id, ultima_aparitie_feedback')
+        .select('id, role, nombre_completo, email, camion_id, remorca_id, ultima_aparitie_feedback, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, avatar_url')
         .eq('id', current.user.id)
         .maybeSingle();
-      if (!error) userProfileMin = data ?? null;
-      else console.warn('profiles select error:', error.message);
 
-      setProfile(userProfileMin);
+      if (profErr) {
+        console.warn('profiles select error:', profErr.message);
+        setProfile(null);
+        setAlarms([]);
+        return;
+      }
+      if (!baseProfile) {
+        // profilul nu există încă
+        setProfile(null);
+        setAlarms([]);
+        return;
+      }
 
-      // feedback modal: o dată / 7 zile
-      if (userProfileMin?.ultima_aparitie_feedback !== undefined) {
-        const last = userProfileMin.ultima_aparitie_feedback;
+      // 2) Adaugă în profil camionul și remorca (obiecte) dacă sunt setate
+      let camioaneToProcess = [];
+      let remorciToProcess = [];
+      const enrichedProfile = { ...baseProfile };
+
+      if (baseProfile.camion_id) {
+        const { data: c } = await supabase
+          .from('camioane')
+          .select('id, matricula, fecha_itv, kilometros')
+          .eq('id', baseProfile.camion_id)
+          .maybeSingle();
+        if (c) {
+          enrichedProfile.camioane = c;
+          camioaneToProcess = [c];
+        }
+      }
+
+      if (baseProfile.remorca_id) {
+        const { data: r } = await supabase
+          .from('remorci')
+          .select('id, matricula, fecha_itv')
+          .eq('id', baseProfile.remorca_id)
+          .maybeSingle();
+        if (r) {
+          enrichedProfile.remorci = r;
+          remorciToProcess = [r];
+        }
+      }
+
+      // Setează profilul în context (acum are toate câmpurile folosite în MiPerfilPage)
+      setProfile(enrichedProfile);
+
+      // 3) Feedback modal: o dată / 7 zile
+      if (enrichedProfile.ultima_aparitie_feedback !== undefined) {
+        const last = enrichedProfile.ultima_aparitie_feedback;
         const should = !last || ((Date.now() - new Date(last).getTime()) / MS_PER_DAY) > 7;
         if (should) setIsFeedbackModalOpen(true);
       }
 
-      // 2) date pentru alarme
+      // 4) Date pentru alarme în funcție de rol
       let profilesToProcess = [];
-      let camioaneToProcess = [];
-      let remorciToProcess = [];
       let mantenimientoAlertsToProcess = [];
 
-      if (['dispecer', 'admin'].includes(userProfileMin?.role)) {
+      if (['dispecer', 'admin'].includes(enrichedProfile.role)) {
         const { data: p } = await supabase
           .from('profiles')
           .select('id, role, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad');
         profilesToProcess = p || [];
 
-        const { data: c } = await supabase.from('camioane').select('*');
-        camioaneToProcess = c || [];
+        const { data: cAll } = await supabase.from('camioane').select('id, matricula, fecha_itv, kilometros');
+        camioaneToProcess = cAll || [];
 
-        const { data: r } = await supabase.from('remorci').select('*');
-        remorciToProcess = r || [];
+        const { data: rAll } = await supabase.from('remorci').select('id, matricula, fecha_itv');
+        remorciToProcess = rAll || [];
 
-        const { data: m } = await supabase
+        const { data: mAll } = await supabase
           .from('mantenimiento_alertas')
           .select('*')
           .eq('activa', true);
-        mantenimientoAlertsToProcess = m || [];
-      } else if (userProfileMin?.role === 'sofer') {
-        const { data: self } = await supabase
-          .from('profiles')
-          .select('id, role, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, camion_id, remorca_id')
-          .eq('id', userProfileMin.id)
-          .maybeSingle();
-        profilesToProcess = self ? [self] : [];
+        mantenimientoAlertsToProcess = mAll || [];
+      } else if (enrichedProfile.role === 'sofer') {
+        profilesToProcess = [{
+          id: enrichedProfile.id,
+          role: enrichedProfile.role,
+          nombre_completo: enrichedProfile.nombre_completo,
+          cap_expirare: enrichedProfile.cap_expirare,
+          carnet_caducidad: enrichedProfile.carnet_caducidad,
+          tiene_adr: enrichedProfile.tiene_adr,
+          adr_caducidad: enrichedProfile.adr_caducidad
+        }];
 
-        if (self?.camion_id) {
-          const { data: c } = await supabase.from('camioane').select('*').eq('id', self.camion_id).maybeSingle();
-          if (c) camioaneToProcess = [c];
-          if (c?.id) {
-            const { data: m } = await supabase
-              .from('mantenimiento_alertas')
-              .select('*')
-              .eq('activa', true)
-              .eq('camion_id', c.id);
-            mantenimientoAlertsToProcess = m || [];
-          }
-        }
-        if (self?.remorca_id) {
-          const { data: r } = await supabase.from('remorci').select('*').eq('id', self.remorca_id).maybeSingle();
-          if (r) remorciToProcess = [r];
+        if (enrichedProfile.camioane?.id) {
+          const { data: m } = await supabase
+            .from('mantenimiento_alertas')
+            .select('*')
+            .eq('activa', true)
+            .eq('camion_id', enrichedProfile.camioane.id);
+          mantenimientoAlertsToProcess = m || [];
         }
       }
 
