@@ -1,5 +1,5 @@
 // src/components/chat/data/queries.js
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../../supabaseClient";
 
 export async function findPlaceByName(name) {
   const tables = ["gps_clientes", "gps_parkings", "gps_servicios", "gps_terminale"];
@@ -49,8 +49,11 @@ export async function openCameraByQuery(queryName) {
     .limit(1)
     .maybeSingle();
 
-  if ((!data || error) && queryName.split(" ").length > 1) {
-    let q = supabase.from("external_links").select("id,name,url,icon_type").eq("icon_type", "camera");
+  if ((!data || error) && queryName.trim().includes(" ")) {
+    let q = supabase
+      .from("external_links")
+      .select("id,name,url,icon_type")
+      .eq("icon_type", "camera");
     queryName.split(" ").forEach((tok) => {
       q = q.ilike("name", `%${tok}%`);
     });
@@ -70,7 +73,11 @@ export async function readAnnouncement() {
 }
 
 export async function listTable(table) {
-  return await supabase.from(table).select("id,nombre,link_maps,coordenadas").order("nombre").limit(50);
+  return await supabase
+    .from(table)
+    .select("id,nombre,link_maps,coordenadas")
+    .order("nombre")
+    .limit(50);
 }
 
 export async function insertCamera({ name, url }) {
