@@ -1,6 +1,6 @@
 // src/components/chat/ui/AnnouncementBox.jsx
 import React from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function AnnouncementBox({ content }) {
   return (
