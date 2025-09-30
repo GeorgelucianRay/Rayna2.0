@@ -1,3 +1,4 @@
+// src/pages/MiPerfilPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -30,12 +31,13 @@ export default function MiPerfilPage() {
   // 🔹 Vacaciones widget info (TOTAL / USADAS / PENDIENTES / DISPONIBLES)
   const [vacInfo, setVacInfo] = useState({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
 
-  // Fetch Nomina Summary
+  /* ================== Nómina (luna curentă) ================== */
   useEffect(() => {
     const fetchNomina = async () => {
       if (!user) return;
       const y = currentDate.getFullYear();
       const m = currentDate.getMonth() + 1;
+
       const { data } = await supabase
         .from('pontaje_curente')
         .select('pontaj_complet')
@@ -61,13 +63,17 @@ export default function MiPerfilPage() {
           marks.add(d);
         }
       });
-      setNominaSummary({ desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size });
+
+      setNominaSummary({
+        desayunos: D, cenas: C, procenas: P,
+        km: Math.round(KM), conts: CT, dias: marks.size
+      });
       setNominaMarks(marks);
     };
     fetchNomina();
   }, [user, currentDate]);
 
-  // 🔹 Fetch Vacaciones info pentru widget (fără a umbla la altă logică existentă)
+  /* ================== Vacaciones (an curent) ================== */
   useEffect(() => {
     async function loadVacacionesInfo() {
       if (!user) return;
@@ -140,18 +146,17 @@ export default function MiPerfilPage() {
     loadVacacionesInfo();
   }, [user, currentDate]);
 
-  // Save Profile Logic
+  /* ================== Salvare profil ================== */
   const handleSaveProfile = async (editableProfile) => {
     try {
       const { error } = await supabase
         .from('profiles')
         .update(editableProfile)
         .eq('id', user.id);
-      
       if (error) throw error;
-      
-      // Actualizează profile în context
-      setProfile({ ...profile, ...editableProfile });
+
+      // Actualizează profile în context (non-destructiv)
+      setProfile(prev => ({ ...prev, ...editableProfile }));
       alert('Perfil actualizado correctamente!');
       setIsEditOpen(false);
     } catch (error) {
@@ -160,31 +165,22 @@ export default function MiPerfilPage() {
     }
   };
 
-  // IMPORTANT: Funcția corectată pentru upload avatar
+  /* ================== Upload avatar ================== */
   const handleAvatarUpload = async (newAvatarUrl) => {
     console.log('Avatar uploaded successfully:', newAvatarUrl);
-    
-    if (setProfile) {
-      setProfile(prevProfile => ({
-        ...prevProfile,
-        avatar_url: newAvatarUrl
-      }));
-    }
-    
+
+    setProfile(prev => ({ ...(prev || {}), avatar_url: newAvatarUrl }));
+
     try {
       const { data: updatedProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      
-      if (updatedProfile) {
-        setProfile(updatedProfile);
-      }
+      if (updatedProfile) setProfile(updatedProfile);
     } catch (error) {
       console.error('Error refreshing profile:', error);
     }
-    
     setIsPhotoOpen(false);
   };
 
@@ -193,19 +189,24 @@ export default function MiPerfilPage() {
     if (!n) return '...';
     return n.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '...';
   }, [profile]);
-  
+
   // Debug logging
   useEffect(() => {
-    if (user) {
-      console.log('Current user in MiPerfilPage:', { id: user.id, email: user.email });
-    }
-    if (profile) {
-      console.log('Current profile:', { avatar_url: profile.avatar_url, nombre_completo: profile.nombre_completo });
-    }
+    if (user) console.log('Current user in MiPerfilPage:', { id: user.id, email: user.email });
+    if (profile) console.log('Current profile:', {
+      avatar_url: profile.avatar_url,
+      nombre_completo: profile.nombre_completo,
+      camioane: profile.camioane,
+      remorci: profile.remorci
+    });
   }, [user, profile]);
-  
+
   if (loading || !profile) {
-    return <Layout><div className={styles.loading}>Cargando…</div></Layout>;
+    return (
+      <Layout>
+        <div className={styles.loading}>Cargando…</div>
+      </Layout>
+    );
   }
 
   if (!user) {
@@ -219,6 +220,10 @@ export default function MiPerfilPage() {
     );
   }
 
+  /* Helpers UI */
+  const truck = profile?.camioane || null;
+  const trailer = profile?.remorci || null;
+
   return (
     <Layout>
       <div className={styles.page}>
@@ -226,31 +231,31 @@ export default function MiPerfilPage() {
           <div className={styles.headerLeft}>
             <div className={styles.avatarXxl} onClick={() => setIsPhotoOpen(true)}>
               {profile.avatar_url ? (
-                <img 
-                  src={profile.avatar_url} 
-                  alt="Avatar" 
+                <img
+                  src={profile.avatar_url}
+                  alt="Avatar"
                   className={styles.avatarImg}
                   onError={(e) => {
                     console.error('Error loading avatar:', profile.avatar_url);
-                    e.target.style.display = 'none';
+                    e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : (
                 <div className={styles.avatarFallbackXl}>{initials}</div>
               )}
               <div className={styles.avatarOverlay}></div>
-              <button 
-                className={styles.avatarCamBtn} 
-                type="button" 
+              <button
+                className={styles.avatarCamBtn}
+                type="button"
                 onClick={(e) => {
-                  e.stopPropagation(); 
-                  console.log('Opening photo modal with userId:', user.id);
+                  e.stopPropagation();
                   setIsPhotoOpen(true);
                 }}
               >
                 <CameraIcon />
               </button>
             </div>
+
             <div>
               <button className={styles.editBtn} onClick={() => setIsEditOpen(true)}>
                 <EditIcon /> Editar perfil
@@ -260,6 +265,7 @@ export default function MiPerfilPage() {
         </div>
 
         <div className={styles.cardsGrid}>
+          {/* Conductor */}
           <section className={styles.card}>
             <div className={styles.cardTitle}>Conductor</div>
             <div className={styles.rows2}>
@@ -277,17 +283,19 @@ export default function MiPerfilPage() {
               </div>
               <div>
                 <span className={styles.k}>ADR</span>
-                <span className={styles.v}>{profile.tiene_adr ? profile.adr_caducidad || 'Sí' : 'No'}</span>
+                <span className={styles.v}>{profile.tiene_adr ? (profile.adr_caducidad || 'Sí') : 'No'}</span>
               </div>
             </div>
           </section>
-          
+
+          {/* Camión */}
           <section className={styles.card}>
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Camión</div>
-              <button 
-                className={styles.ghostBtn} 
+              <button
+                className={styles.ghostBtn}
                 onClick={() => profile?.camion_id && navigate(`/camion/${profile.camion_id}`)}
+                disabled={!profile?.camion_id}
               >
                 Ver ficha
               </button>
@@ -295,21 +303,23 @@ export default function MiPerfilPage() {
             <div className={styles.rows2}>
               <div>
                 <span className={styles.k}>Matrícula</span>
-                <span className={styles.v}>{profile.camioane?.matricula || 'No asignado'}</span>
+                <span className={styles.v}>{truck?.matricula || 'No asignado'}</span>
               </div>
               <div>
                 <span className={styles.k}>ITV</span>
-                <span className={styles.v}>{profile.camioane?.fecha_itv || '—'}</span>
+                <span className={styles.v}>{truck?.fecha_itv || '—'}</span>
               </div>
             </div>
           </section>
-          
+
+          {/* Remolque */}
           <section className={styles.card}>
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>Remolque</div>
-              <button 
-                className={styles.ghostBtn} 
+              <button
+                className={styles.ghostBtn}
                 onClick={() => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`)}
+                disabled={!profile?.remorca_id}
               >
                 Ver ficha
               </button>
@@ -317,22 +327,22 @@ export default function MiPerfilPage() {
             <div className={styles.rows2}>
               <div>
                 <span className={styles.k}>Matrícula</span>
-                <span className={styles.v}>{profile.remorci?.matricula || 'No asignado'}</span>
+                <span className={styles.v}>{trailer?.matricula || 'No asignado'}</span>
               </div>
               <div>
                 <span className={styles.k}>ITV</span>
-                <span className={styles.v}>{profile.remorci?.fecha_itv || '—'}</span>
+                <span className={styles.v}>{trailer?.fecha_itv || '—'}</span>
               </div>
             </div>
           </section>
         </div>
 
         <div className={styles.widgetsGrid}>
-          <NominaWidget 
-            summary={nominaSummary} 
-            marks={nominaMarks} 
-            date={currentDate} 
-            onNavigate={() => navigate('/calculadora-nomina')} 
+          <NominaWidget
+            summary={nominaSummary}
+            marks={nominaMarks}
+            date={currentDate}
+            onNavigate={() => navigate('/calculadora-nomina')}
           />
 
           {/* 🔹 Widget Vacaciones alimentat din DB, nu din profile */}
@@ -348,7 +358,7 @@ export default function MiPerfilPage() {
           profile={profile}
           onSave={handleSaveProfile}
         />
-        
+
         {/* IMPORTANT: Transmite userId ca prop la UploadAvatarModal */}
         <UploadAvatarModal
           isOpen={isPhotoOpen}
