@@ -158,19 +158,39 @@ function fmtDate(d) {
 export default function RaynaHub() {
   useIOSNoInputZoom();
 
-  const { user, profile } = useAuth(); // ← avem nevoie și de user.id
+  const { user, profile, firstName } = useAuth(); // folosim prenumele pentru salut
   const role = profile?.role || "driver";
 
   // limbă implicită UI
-  const uiDefaultLang = useMemo(() => defaultLang(), []);
-  const [lastLang, setLastLang] = useState(uiDefaultLang);
+const uiDefaultLang = useMemo(() => defaultLang(), []);
+const [lastLang, setLastLang] = useState(uiDefaultLang);
 
-  // salut inițial (în limba UI)
-  const saludoTextRaw = intentsData.find(i => i.id === "saludo")?.response?.text;
-  const saludoText = pickText(saludoTextRaw, lastLang) || "¡Hola!";
-  const [messages, setMessages] = useState([
-    { from: "bot", reply_text: saludoText }
-  ]);
+// salutul îl adăugăm după montare, ca să prindem prenumele
+const [messages, setMessages] = useState([]);
+const greetedRef = useRef(false);
+
+// Saluturi pe limbi, cu nume
+const HELLOS = {
+  es: (n) => `Hola, ${n || 'conductor'}. ¿En qué te puedo ayudar hoy?`,
+  ro: (n) => `Salut, ${n || 'șoferule'}. Cu ce te pot ajuta azi?`,
+  ca: (n) => `Hola, ${n || 'conductor'}. En què et puc ajudar avui?`,
+};
+
+// rulează o singură dată: pune salutul personalizat
+useEffect(() => {
+  if (greetedRef.current) return;
+  // derivăm prenumele din context sau din nombre_completo ca fallback
+  const name =
+    (firstName && firstName.trim()) ||
+    (profile?.nombre_completo?.trim()?.split(' ')[0]) ||
+    '';
+
+  const hello = (HELLOS[lastLang] || HELLOS.es)(name);
+
+  setMessages((m) => (m.length === 0 ? [{ from: 'bot', reply_text: hello }] : m));
+  greetedRef.current = true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [firstName, profile?.nombre_completo, lastLang]);
 
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
