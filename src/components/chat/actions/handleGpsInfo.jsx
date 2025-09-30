@@ -1,4 +1,5 @@
 // src/components/chat/actions/handleGpsInfo.js
+
 import SimpleList from "../ui/SimpleList";
 import PlaceInfoCard from "../ui/PlaceInfoCard";
 import { findPlacesByName, findPlaceByName, findCameraFor } from "../data/queries";
