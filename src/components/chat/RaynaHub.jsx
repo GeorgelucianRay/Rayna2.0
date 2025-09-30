@@ -8,7 +8,7 @@ import { detectIntent } from "../../nluEngine";
 
 // barrels locale
 import { BotBubble } from "./ui";
-import { scrollToBottom } from "./helpers";
+import { scrollToBottom, tpl } from "./helpers";
 import {
   handleStatic,
   handleDialog,
@@ -20,22 +20,40 @@ import {
 } from "./actions";
 
 export default function RaynaHub() {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth(); // <— folosim și loading din context
   const role = profile?.role || "driver";
 
-  const [messages, setMessages] = useState([
-    {
-      from: "bot",
-      reply_text:
-        intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!",
-    },
-  ]);
+  // pornim fără mesaje; adăugăm salutul când profilul e gata
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
   const endRef = useRef(null);
 
   useEffect(() => scrollToBottom(endRef), [messages]);
+
+  // ——— Salut personalizat din profil (o singură dată, când se termină loading-ul)
+  useEffect(() => {
+    if (messages.length > 0) return;    // nu rescrie conversația dacă a început
+    if (loading) return;                 // așteptăm să se încarce contextul
+
+    const saludo =
+      intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!";
+
+    // prenume din nombre_completo, altfel username
+    const firstName = (() => {
+      const n = (profile?.nombre_completo || "").trim();
+      if (n) return n.split(/\s+/)[0];
+      return profile?.username || "";
+    })();
+
+    // suportă și template-uri din JSON: {{name}}, {{profile.nombre_completo}} etc.
+    const reply =
+      tpl(saludo, { name: firstName, user: profile, profile }) ||
+      (firstName ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?` : saludo);
+
+    setMessages([{ from: "bot", reply_text: reply }]);
+  }, [loading, profile, messages.length]);
 
   const send = async () => {
     const userText = text.trim();
@@ -44,7 +62,7 @@ export default function RaynaHub() {
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // 1) pași de dialog care așteaptă input (ex: anuncio)
+    // pași de dialog care așteaptă input (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
         userText,
@@ -58,10 +76,10 @@ export default function RaynaHub() {
       return;
     }
 
-    // 2) detectează intenția + sloturile
+    // detectează intenția + sloturile
     const { intent, slots } = detectIntent(userText, intentsData);
 
-    // 3) dispecer
+    // dispecer
     if (intent.type === "static") {
       await handleStatic({ intent, setMessages });
       return;
@@ -102,7 +120,7 @@ export default function RaynaHub() {
       }
     }
 
-    // 4) fallback
+    // fallback
     setMessages((m) => [
       ...m,
       {
@@ -117,11 +135,21 @@ export default function RaynaHub() {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <div className={styles.logoDot} />
+        {/* avatar Rayna din profil (cu fallback local) */}
+        <img
+          src={profile?.avatar_url || "/avatar-fallback.png"}
+          alt={profile?.nombre_completo || "Rayna"}
+          className={styles.avatar}
+          onError={(e) => { e.currentTarget.src = "/avatar-fallback.png"; }}
+        />
+
         <div className={styles.headerTitleWrap}>
           <div className={styles.brand}>Rayna 2.0</div>
-          <div className={styles.tagline}>Tu transportista virtual</div>
+          <div className={styles.tagline}>
+            {profile?.nombre_completo || "Tu transportista virtual"}
+          </div>
         </div>
+
         <button className={styles.closeBtn} onClick={() => window.history.back()}>
           ×
         </button>
