@@ -114,17 +114,20 @@
 
 /* ===== Chat (se întinde între header și footer) ===== */
 .chat {
-  flex: 1;
-  overflow-y: auto;
+  margin-top: 14px;
+  padding: 16px;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.08);
+
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--stroke-soft);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
+
+  /* blur minimal */
+  backdrop-filter: blur(4px) saturate(160%);
+  -webkit-backdrop-filter: blur(4px) saturate(160%);
 }
 
 /* ===== Bubbles ===== */
@@ -233,16 +236,20 @@
 
 /* ===== Input bar (jos) ===== */
 .inputBar {
+  margin-top: 14px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
   border-radius: var(--radius-xl);
-  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--stroke);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
+
+  /* blur foarte subtil */
+  backdrop-filter: blur(3px) saturate(160%);
+  -webkit-backdrop-filter: blur(3px) saturate(160%);
 }
 
 .input {
