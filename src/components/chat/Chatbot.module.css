@@ -11,10 +11,10 @@
   --stroke-soft: rgba(255, 255, 255, 0.14);
   --text-strong: #eaf3ff;
   --text-soft: #b7c7e6;
-  --brand: #7dd3fc;          /* accent cyan */
-  --primary: #3be476;        /* verde principal */
+  --brand: #7dd3fc;
+  --primary: #3be476;
   --primary-deep: #12b85c;
-  --secondary: #cfd8e3;      /* gri deschis pt buton secundar */
+  --secondary: #cfd8e3;
   --secondary-deep: #b7c2d2;
   --danger: #ff6b6b;
 
@@ -24,26 +24,26 @@
   --radius-sm: 10px;
 
   --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.28);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.16),
-                  inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-inset: inset 0 1px 0 rgba(255,255,255,0.16),
+                  inset 0 -1px 0 rgba(0,0,0,0.25);
   --blur: blur(18px);
 }
 
-/* ===== Fundal general (gradient închis, fără roz) ===== */
+/* ===== Layout + Wallpaper ===== */
 .shell {
-  position: relative;                /* necesar pentru ::before */
-  min-height: 100vh;                 /* ocupă tot ecranul */
+  position: relative;
+  min-height: 100dvh;                  /* iOS/Android safe */
+  min-height: -webkit-fill-available;  /* older iOS */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 12px;
   border-radius: var(--radius-xl);
 
-  /* gradient principal + pete radiale discrete */
+  /* Wallpaper din /public + strat de întunecare */
   background:
-    radial-gradient(1200px 800px at 85% 15%, rgba(72, 126, 255, 0.22), transparent 55%),
-    radial-gradient(900px 600px at 10% 85%, rgba(0, 218, 206, 0.16), transparent 60%),
-    linear-gradient(135deg, #0d1b2a 0%, #1b263b 45%, #0f2027 100%);
-
-  background-size: 200% 200%;
-  animation: gradientShift 20s ease infinite;
+    linear-gradient(180deg, rgba(13,27,42,.65), rgba(15,32,39,.75)),
+    url("/Chatwalpaper.JPG") center/cover no-repeat fixed;
 }
 
 .shell::before {
@@ -55,19 +55,12 @@
   box-shadow: var(--shadow-soft);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
-  z-index: 0;
   border: 1px solid rgba(255,255,255,0.14);
-  pointer-events: none; /* să nu blocheze clickurile */
+  pointer-events: none;
+  z-index: 0;
 }
 
 .shell > * { position: relative; z-index: 1; }
-
-/* animație pentru gradient */
-@keyframes gradientShift {
-  0%   { background-position: 0%   0%; }
-  50%  { background-position: 100% 100%; }
-  100% { background-position: 0%   0%; }
-}
 
 /* ===== Header ===== */
 .header {
@@ -93,47 +86,40 @@
   box-shadow: 0 6px 18px rgba(0,0,0,.35);
 }
 
-/* Folosit anterior, poate fi eliminat dacă nu-l mai randezi */
-.logoDot {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 35%, #fff 0%, rgba(255,255,255,0.2) 35%, transparent 36%),
-    linear-gradient(135deg, #6ee7ff 0%, #7c9bff 100%);
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.25), 0 6px 18px rgba(0, 0, 0, 0.35);
-}
-
 .headerTitleWrap { flex: 1; line-height: 1.1; }
 .brand {
-  font-weight: 800; font-size: 20px; letter-spacing: 0.3px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.3px;
   color: var(--text-strong);
   text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
-.tagline {
-  font-size: 12px; color: var(--text-soft);
-}
+.tagline { font-size: 12px; color: var(--text-soft); }
 
+/* X roșu cu glow */
 .closeBtn {
-  margin-left: auto;
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 1px solid var(--stroke);
-  background: radial-gradient(100% 100% at 50% 0%, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
-  color: var(--text-strong);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  background: radial-gradient(100% 100% at 50% 0%, #ff5a5a, #c51e1e);
+  box-shadow: 0 0 0 6px rgba(255, 90, 90, 0.18), 0 10px 24px rgba(0,0,0,.35);
   display: grid; place-items: center;
   cursor: pointer;
-  transition: transform .15s ease, background .2s ease, box-shadow .2s;
+  transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
 }
-.closeBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.closeBtn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.closeBtn:active { transform: translateY(0); }
 
-/* ===== Chat area (sticlă + blur) ===== */
+/* ===== Chat (se întinde între header și footer) ===== */
 .chat {
-  margin-top: 14px;
-  padding: 16px;
-  overflow: auto;
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--stroke-soft);
@@ -160,7 +146,6 @@
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
 }
-
 .me {
   align-self: flex-end;
   color: #0f1a2b;
@@ -184,7 +169,6 @@
 }
 .cardTitle { font-weight: 700; color: var(--text-strong); }
 .cardSubtitle { margin-top: 4px; font-size: 13px; color: var(--text-soft); }
-
 .cardActions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
 /* ===== Buttons ===== */
@@ -205,7 +189,6 @@
   transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
   box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.18);
 }
-
 .actionBtn[data-variant="primary"],
 .actionBtn.primary {
   --btn-bg: linear-gradient(180deg, rgba(59, 228, 118, 0.95), rgba(59, 228, 118, 0.80));
@@ -213,7 +196,6 @@
   --btn-txt: #062012;
   box-shadow: 0 10px 24px rgba(20, 180, 90, .35), inset 0 1px 0 rgba(255,255,255,.5);
 }
-
 .actionBtn[data-variant="secondary"],
 .actionBtn.secondary {
   --btn-bg: linear-gradient(180deg, rgba(207,216,227,.9), rgba(183,194,210,.85));
@@ -221,7 +203,6 @@
   --btn-txt: #233047;
   box-shadow: 0 10px 22px rgba(35,48,71,.25), inset 0 1px 0 rgba(255,255,255,.55);
 }
-
 .actionBtn:hover { transform: translateY(-1px); }
 .actionBtn:active { transform: translateY(0); box-shadow: inset 0 2px 6px rgba(0,0,0,.25); }
 
@@ -250,9 +231,8 @@
   margin-top: 10px;
 }
 
-/* ===== Input bar ===== */
+/* ===== Input bar (jos) ===== */
 .inputBar {
-  margin-top: 14px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
@@ -293,9 +273,7 @@
 .sendBtn:active { transform: translateY(0); box-shadow: inset 0 2px 6px rgba(0,0,0,.25); }
 
 /* ===== Utility: map thumbnails inside card (ChatMiniMap) ===== */
-.card iframe,
-.card canvas,
-.card .miniMap {
+.card iframe, .card canvas, .card .miniMap {
   width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.22);
