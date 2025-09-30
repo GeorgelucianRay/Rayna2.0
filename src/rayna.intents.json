@@ -10,9 +10,9 @@
     ],
     "response": {
       "text": {
-        "es": "¡Buenos días! Soy **Rayna**. ¿Qué necesitas hoy?",
-        "ro": "Bună dimineața! Sunt **Rayna**. Cu ce te pot ajuta azi?",
-        "ca": "Bon dia! Sóc **Rayna**. Què necessites avui?"
+        "es": "¡Buenos días! Soy Rayna. ¿Qué necesitas hoy?",
+        "ro": "Bună dimineața! Sunt Rayna. Cu ce te pot ajuta azi?",
+        "ca": "Bon dia! Sóc Rayna. Què necessites avui?"
       }
     }
   },
