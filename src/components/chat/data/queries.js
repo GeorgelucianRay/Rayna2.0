@@ -88,19 +88,3 @@ export async function insertCamera({ name, url }) {
     .single();
 }
 
-// Profilul Raynei (pentru avatar în header)
-export async function getRaynaProfile() {
-  // caută fie username = Rayna, fie nombre_completo = Rayna
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, username, nombre_completo, avatar_url")
-    .or("username.eq.Rayna,nombre_completo.eq.Rayna")
-    .maybeSingle();
-
-  return { data, error };
-}
-
-export async function getRaynaAvatarUrl() {
-  const { data } = await getRaynaProfile();
-  return data?.avatar_url || null;
-}
