@@ -1,4 +1,5 @@
-// src/components/chat/actions/handleStatic.js
+// src/components/chat/actions/handleStatic.jsx
+import React from "react";
 import ActionsRenderer from "../ui/ActionsRenderer";
 import { tpl } from "../helpers/templating";
 
