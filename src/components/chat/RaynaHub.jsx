@@ -7,14 +7,10 @@ import { useAuth } from "../../AuthContext";
 import intentsData from "../../rayna.intents.json";
 import { detectIntent } from "../../nluEngine";
 
-// barrels locale
+// hooks
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 
-export default function RaynaHub() {
-  useIOSNoInputZoom();
-  // ...
-}
-
+// barrels locale
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 import {
@@ -31,6 +27,8 @@ import {
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
 export default function RaynaHub() {
+  useIOSNoInputZoom();
+
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
@@ -63,7 +61,7 @@ export default function RaynaHub() {
       : saludoDefault;
 
     setMessages([{ from: "bot", reply_text: saludo }]);
-  }, [loading, profile, messages.length]);
+  }, [loading, profile]); // nu include messages.length aici ca să nu retragă salutul
 
   const send = async () => {
     const userText = text.trim();
