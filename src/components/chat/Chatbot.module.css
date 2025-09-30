@@ -28,14 +28,13 @@
   --blur: blur(18px);
 }
 
-/* ===== Background (no image → gradient + glow) ===== */
+/* fundalul general */
 .shell {
-  position: relative;
-  min-height: 100dvh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  padding: 16px;
-  color: var(--text-strong);
+  background: linear-gradient(135deg, #0d1b2a, #1b263b, #0f2027);
+  background-size: 400% 400%;
+  animation: gradientShift 20s ease infinite;
+}
+
 
   /* layered gradients */
   background:
@@ -58,6 +57,16 @@
   border: 1px solid rgba(255,255,255,0.14);
 }
 .shell > * { z-index: 1; }
+
+.avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.28);
+  margin-right: 12px;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
 
 /* ===== Header ===== */
 .header {
