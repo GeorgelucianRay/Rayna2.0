@@ -1,6 +1,6 @@
 // src/components/chat/RaynaHub.jsx
 import React, { useEffect, useRef, useState } from "react";
-import styles from "../Chatbot.module.css";
+import styles from "./Chatbot.module.css";
 import { useAuth } from "../../AuthContext.jsx";
 import intentsData from "../../rayna.intents.json";
 import { detectIntent } from "../../nluEngine";
