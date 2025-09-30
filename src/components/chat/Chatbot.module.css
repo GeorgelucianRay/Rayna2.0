@@ -36,14 +36,24 @@
 }
 
 
-  /* layered gradients */
+  /* ===== Fundal general (gradient închis, fără roz) ===== */
+.shell {
+  position: relative;                /* necesar pentru ::before */
+  min-height: 100%;                  /* sau 100vh, după layout-ul tău */
+  padding: 12px;
+  border-radius: var(--radius-xl);
+
+  /* gradient principal + pete radiale discrete */
   background:
     radial-gradient(1200px 800px at 85% 15%, rgba(72, 126, 255, 0.22), transparent 55%),
     radial-gradient(900px 600px at 10% 85%, rgba(0, 218, 206, 0.16), transparent 60%),
-    linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 100%);
+    linear-gradient(135deg, #0d1b2a 0%, #1b263b 45%, #0f2027 100%);
+
+  background-size: 200% 200%;
+  animation: gradientShift 20s ease infinite;
 }
 
-/* Glass container edges (optional if parent wraps whole page) */
+/* ușor „bezel” sticlos peste fundal (opțional) */
 .shell::before {
   content: "";
   position: absolute;
@@ -56,7 +66,30 @@
   z-index: 0;
   border: 1px solid rgba(255,255,255,0.14);
 }
-.shell > * { z-index: 1; }
+
+.shell > * { position: relative; z-index: 1; }
+
+/* animație pentru gradient */
+@keyframes gradientShift {
+  0%   { background-position: 0%   0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0%   0%; }
+}
+
+/* ===== Sticla chat (puțin mai mult blur) ===== */
+.chat {
+  margin-top: 14px;
+  padding: 16px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--stroke-soft);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+}
 
 .avatar {
   width: 42px; height: 42px;
