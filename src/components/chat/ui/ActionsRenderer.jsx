@@ -1,6 +1,6 @@
 // src/components/chat/ui/ActionsRenderer.jsx
 import React from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function ActionsRenderer({ card }) {
   return (
