@@ -1,32 +1,34 @@
-// src/components/chat/RaynaHub.jsx
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./Chatbot.module.css";
-import { useAuth } from "../../AuthContext.jsx";
+
+// din src/
+import { useAuth } from "../../AuthContext";
 import intentsData from "../../rayna.intents.json";
 import { detectIntent } from "../../nluEngine";
 
-// UI
-import BotBubble from "./ui/BotBubble";
-import SimpleList from "./ui/SimpleList";
-
-// helpers
-import { scrollToBottom } from "./helpers/miniScroll";
-
-// handlers
-import handleStatic from "./actions/handleStatic.jsx";
-import handleDialog from "./actions/handleDialog.jsx";
-import handleOpenCamera from "./actions/handleOpenCamera.jsx";
-import handleShowAnnouncement from "./actions/handleShowAnnouncement.jsx";
-import handleGpsNavigate from "./actions/handleGpsNavigate.jsx";
-import handleGpsInfo from "./actions/handleGpsInfo.jsx";
-import handleGpsLists from "./actions/handleGpsLists.jsx";
+// barrels locale
+import { BotBubble } from "./ui";
+import { scrollToBottom } from "./helpers";
+import {
+  handleStatic,
+  handleDialog,
+  handleOpenCamera,
+  handleShowAnnouncement,
+  handleGpsNavigate,
+  handleGpsInfo,
+  handleGpsLists,
+} from "./actions";
 
 export default function RaynaHub() {
   const { profile } = useAuth();
   const role = profile?.role || "driver";
 
   const [messages, setMessages] = useState([
-    { from: "bot", reply_text: intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!" },
+    {
+      from: "bot",
+      reply_text:
+        intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!",
+    },
   ]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
@@ -38,10 +40,11 @@ export default function RaynaHub() {
   const send = async () => {
     const userText = text.trim();
     if (!userText) return;
+
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // awaiting dialog steps (ex: anuncio)
+    // 1) pași de dialog care așteaptă input (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
         userText,
@@ -55,16 +58,24 @@ export default function RaynaHub() {
       return;
     }
 
+    // 2) detectează intenția + sloturile
     const { intent, slots } = detectIntent(userText, intentsData);
 
-    // dispatcher minimalist
+    // 3) dispecer
     if (intent.type === "static") {
       await handleStatic({ intent, setMessages });
       return;
     }
 
     if (intent.type === "dialog") {
-      const handled = await handleDialog.entry({ intent, role, setMessages, setAwaiting, saving, setSaving });
+      const handled = await handleDialog.entry({
+        intent,
+        role,
+        setMessages,
+        setAwaiting,
+        saving,
+        setSaving,
+      });
       if (handled) return;
     }
 
@@ -91,10 +102,15 @@ export default function RaynaHub() {
       }
     }
 
-    // fallback
+    // 4) fallback
     setMessages((m) => [
       ...m,
-      { from: "bot", reply_text: intentsData.find((i) => i.id === "fallback")?.response?.text || "No te he entendido." },
+      {
+        from: "bot",
+        reply_text:
+          intentsData.find((i) => i.id === "fallback")?.response?.text ||
+          "No te he entendido.",
+      },
     ]);
   };
 
@@ -106,15 +122,21 @@ export default function RaynaHub() {
           <div className={styles.brand}>Rayna 2.0</div>
           <div className={styles.tagline}>Tu transportista virtual</div>
         </div>
-        <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
+        <button className={styles.closeBtn} onClick={() => window.history.back()}>
+          ×
+        </button>
       </header>
 
       <main className={styles.chat}>
         {messages.map((m, i) =>
           m.from === "user" ? (
-            <div key={i} className={`${styles.bubble} ${styles.me}`}>{m.text}</div>
+            <div key={i} className={`${styles.bubble} ${styles.me}`}>
+              {m.text}
+            </div>
           ) : (
-            <BotBubble key={i} reply_text={m.reply_text}>{m.render ? m.render() : null}</BotBubble>
+            <BotBubble key={i} reply_text={m.reply_text}>
+              {m.render ? m.render() : null}
+            </BotBubble>
           )
         )}
         <div ref={endRef} />
@@ -128,7 +150,9 @@ export default function RaynaHub() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
         />
-        <button className={styles.sendBtn} onClick={send}>Enviar</button>
+        <button className={styles.sendBtn} onClick={send}>
+          Enviar
+        </button>
       </footer>
     </div>
   );
