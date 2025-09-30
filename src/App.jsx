@@ -36,6 +36,7 @@ import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
 import Utilizatori from './pages/admin/Utilizatori.jsx';
 // sus, lângă celelalte importuri de pagini
 import AdminFeedback from './pages/admin/AdminFeedback.jsx';
+import Aprender from "./pages/admin/Aprender";
 
 function App() {
   return (
@@ -56,7 +57,7 @@ function App() {
       <Route path="/admin/utilizatori" element={<Utilizatori />} />
       {/* ✅ Admin: Feedback */}
 <Route path="/admin/feedback" element={<AdminFeedback />} />
-      
+      <Route path="/admin/aprender" element={<Aprender />} />
 
       {/* DEPOT */}
       <Route path="/depot" element={<DepotPage />} />
