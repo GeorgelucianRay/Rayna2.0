@@ -1,5 +1,5 @@
-// src/components/chat/actions/handleDialog.js
-import AddCameraInline from "../ui/AddCameraInline";
+// src/components/chat/actions/handleDialog.jsx
+import React from "react"import AddCameraInline from "../ui/AddCameraInline";
 import { insertCamera, updateAnnouncement } from "../data/queries";
 import { tpl } from "../helpers/templating";
 
