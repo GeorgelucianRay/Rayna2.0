@@ -158,16 +158,14 @@ function localizeIntent(intent, lang) {
 function quickDetectSelf(message) {
   const n = normalize(message);
   const toks = new Set(n.split(" ").filter(Boolean));
-
   const has = (...words) => words.some(w => toks.has(normalize(w)));
 
-
-
-  // ITV camion
-  const truckCue = has("camion","camión","camio","camió","tractor");
+  // --- indicii de bază
+  const truckCue   = has("camion","camión","camio","camió","tractor");
   const trailerCue = has("remorca","remorcă","remolque","remolc","semiremorca","semiremorcă","semiremolque");
-  const itvCue = has("itv","rar","r.a.r", "revizie", "revizia"); // „itv” e decisiv
+  const itvCue     = has("itv","rar","r.a.r","revizie","revizia");
 
+  // --- ITV camion
   if (itvCue && truckCue) {
     return {
       id: "driver_truck_itv__synthetic",
@@ -184,6 +182,8 @@ function quickDetectSelf(message) {
       }
     };
   }
+
+  // --- ITV remolque
   if (itvCue && trailerCue) {
     return {
       id: "driver_trailer_itv__synthetic",
@@ -201,9 +201,8 @@ function quickDetectSelf(message) {
     };
   }
 
-  // Matricule (ambele)
-  if (has("matricula","matriculacion","numar","număr","placa","plăcuță","placuta","placuta de inmatriculare","inscripcio","inscripció","matricula?","placas") &&
-      (truckCue || trailerCue || true)) {
+  // --- Matricule (ambele)
+  if (has("matricula","matriculacion","numar","număr","placa","plăcuță","placuta","placuta de inmatriculare","inscripcio","inscripció","matricula?","placas")) {
     return {
       id: "driver_plates__synthetic",
       priority: 998,
@@ -220,7 +219,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // Documente șofer (CAP / carnet / ADR)
+  // --- Documente șofer (CAP / carnet / ADR)
   if (has("cap","carnet","permiso","permis","adr","atestate","acte","documente")) {
     return {
       id: "driver_credentials__synthetic",
@@ -238,14 +237,12 @@ function quickDetectSelf(message) {
     };
   }
 
-  return null;
-}
+  /* ===== NOILE CUES — trebuie să fie ÎNĂUNTRUL funcției ===== */
 
-
-// --- "ver mi camión" / "ficha camión"
+  // „ver mi camión” / „ficha camión”
   const seeMyTruckCue =
-    has("mi") && (has("camion","camión","camio","camió") || has("camion?","camión?")) ||
-    has("ver","ficha","mostrar") && (has("mi camion","mi camión") || truckCue);
+    (has("mi") && (has("camion","camión","camio","camió"))) ||
+    ((has("ver") || has("ficha") || has("mostrar")) && has("mi") && (has("camion","camión","camio","camió")));
 
   if (seeMyTruckCue) {
     return {
@@ -262,6 +259,31 @@ function quickDetectSelf(message) {
       }
     };
   }
+
+  // „¿quién soy yo?” / „cine sunt eu?”
+  const whoAmICue =
+    (has("quien","quién","cine") && (has("soy","sunt") || has("yo","eu"))) ||
+    n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
+
+  if (whoAmICue) {
+    return {
+      id: "who_am_i__synthetic",
+      priority: 997,
+      type: "action",
+      action: "who_am_i",
+      response: {
+        text: {
+          es: "Hola, esto es lo que sé de ti:",
+          ro: "Salut, iată ce știu despre tine:",
+          ca: "Hola, això és el que sé de tu:"
+        }
+      }
+    };
+  }
+
+  // ——— nimic detectat
+  return null;
+}
 
   // --- "¿quién soy yo?" / "cine sunt eu?"
   const whoAmICue =
