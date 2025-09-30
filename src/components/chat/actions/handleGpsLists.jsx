@@ -1,8 +1,7 @@
-// src/components/chat/actions/handleGpsLists.js
+import React from "react";
 import SimpleList from "../ui/SimpleList";
 import { listTable } from "../data/queries";
 import { getMapsLinkFromRecord } from "../helpers/gps";
-import React from "react";
 
 export default async function handleGpsLists({ intent, setMessages }) {
   const map = {
@@ -24,8 +23,10 @@ export default async function handleGpsLists({ intent, setMessages }) {
 
   setMessages((m) => [
     ...m,
-    { from: "bot", reply_text: intent.response?.text || `${labels[intent.id]}:`, render: () => (
-      <SimpleList title={labels[intent.id]} items={items} />
-    ) },
+    {
+      from: "bot",
+      reply_text: intent.response?.text || `${labels[intent.id]}:`,
+      render: () => <SimpleList title={labels[intent.id]} items={items} />,
+    },
   ]);
 }
