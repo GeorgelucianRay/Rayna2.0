@@ -1,6 +1,6 @@
 // src/components/chat/ui/PlaceInfoCard.jsx
 import React from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function PlaceInfoCard({ place, mapsUrl, cameraUrl }) {
   return (
