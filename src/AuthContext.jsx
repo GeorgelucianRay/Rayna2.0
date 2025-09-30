@@ -67,10 +67,12 @@ export const AuthProvider = ({ children }) => {
   const [sessionReady, setSessionReady] = useState(false);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [firstName, setFirstName] = useState(null); // 👈 nou
+  const [firstName, setFirstName] = useState(null);      // ← prenumele pentru salut
   const [alarms, setAlarms] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [feedbackSuppressed, setFeedbackSuppressed] = useState(false); // ← NU reafișăm în sesiunea curentă
 
   /** Ia sesiunea curentă și sincronizează user-ul. */
   const refreshSession = useCallback(async () => {
@@ -85,7 +87,7 @@ export const AuthProvider = ({ children }) => {
     const current = await refreshSession();
     if (!current?.user) {
       setProfile(null);
-      setFirstName(null); // resetăm și numele
+      setFirstName(null);
       setAlarms([]);
       return;
     }
@@ -111,18 +113,18 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // extragem doar primul prenume
+      // prenumele
       const first = baseProfile.nombre_completo?.trim().split(' ')[0] || null;
       setFirstName(first);
 
-      // setăm profilul complet în context
+      // profilul complet
       setProfile(baseProfile);
 
-      // feedback modal
+      // feedback modal — doar dacă nu a fost suprimat în sesiunea curentă
       if (baseProfile.ultima_aparitie_feedback !== undefined) {
         const last = baseProfile.ultima_aparitie_feedback;
         const should = !last || ((Date.now() - new Date(last).getTime()) / MS_PER_DAY) > 7;
-        if (should) setIsFeedbackModalOpen(true);
+        if (should && !feedbackSuppressed) setIsFeedbackModalOpen(true);
       }
 
       // alarme
@@ -167,7 +169,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Eroare la preluarea datelor:', e.message);
       setAlarms([]);
     }
-  }, [refreshSession]);
+  }, [refreshSession, feedbackSuppressed]);
 
   useEffect(() => {
     let intervalId;
@@ -199,16 +201,66 @@ export const AuthProvider = ({ children }) => {
   }, [fetchAndProcessData]);
 
   /* -------------------- Actions expuse în context -------------------- */
-  const addMantenimientoAlert = async (camionId, matricula, kmActual) => { /* ... la fel ... */ };
-  const handleFeedbackClose = async () => { /* ... la fel ... */ };
-  const handleFeedbackSubmit = async (feedbackText) => { /* ... la fel ... */ };
+  const addMantenimientoAlert = async (camionId, matricula, kmActual) => {
+    if (!camionId || !matricula || !kmActual) return;
+    try {
+      await supabase.from('mantenimiento_alertas')
+        .update({ activa: false })
+        .eq('camion_id', camionId)
+        .eq('activa', true);
+      const kmProximo = kmActual + 80000;
+      await supabase.from('mantenimiento_alertas').insert({
+        camion_id: camionId,
+        matricula,
+        km_mantenimiento: kmActual,
+        km_proximo_mantenimiento: kmProximo,
+        activa: true
+      });
+      await fetchAndProcessData();
+    } catch (error) {
+      console.error('Eroare la crearea alertei de mentenanță:', error);
+      alert('A apărut o eroare la crearea alertei de mentenanță.');
+    }
+  };
+
+  const handleFeedbackClose = async () => {
+    // închide imediat și nu mai reafișa în sesiunea curentă
+    setIsFeedbackModalOpen(false);
+    setFeedbackSuppressed(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase
+          .from('profiles')
+          .update({ ultima_aparitie_feedback: new Date().toISOString() })
+          .eq('id', session.user.id);
+      }
+    } catch (e) {
+      console.warn('Nu am putut salva timestamp-ul de feedback:', e.message);
+    }
+  };
+
+  const handleFeedbackSubmit = async (feedbackText) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !feedbackText) return;
+    try {
+      await supabase
+        .from('feedback_utilizatori')
+        .insert({ user_id: session.user.id, continut: feedbackText });
+    } finally {
+      // închide oricum, chiar dacă inserția durează
+      await handleFeedbackClose();
+      alert('Mulțumim pentru sugestie!');
+    }
+  };
 
   const value = {
     session,
     sessionReady,
     user,
     profile,
-    firstName,     // 👈 acum disponibil pentru salut
+    firstName,               // ← disponibil pentru salut personalizat
     alarms,
     loading,
     setLoading,
