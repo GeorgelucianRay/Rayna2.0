@@ -1,4 +1,5 @@
-// src/components/chat/actions/handleOpenCamera.js
+// src/components/chat/actions/handleOpenCamera.jsx
++ import React from "react";
 import ActionsRenderer from "../ui/ActionsRenderer";
 import { openCameraByQuery } from "../data/queries";
 import { tpl } from "../helpers/templating";
