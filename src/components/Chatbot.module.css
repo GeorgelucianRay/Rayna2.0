@@ -1,11 +1,13 @@
-.shell {
+:root {
   --bg: #0b1522;
   --panel: #0f2138;
   --bot: #0e2a4a;
   --me: #1f6feb;
   --text: #e6f0ff;
   --muted: #9db3d9;
+}
 
+.shell {
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100%;
