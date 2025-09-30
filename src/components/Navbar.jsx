@@ -18,6 +18,11 @@ const icons = {
   menu:   (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>),
   close:  (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>),
   calc:   (p) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm1 4h10v3H7V6Zm0 5h3v3H7v-3Zm4 0h3v3h-3v-3Zm4 0h3v3h-3v-3ZM7 15h3v3H7v-3Zm4 0h7v3h-7v-3Z"/></svg>),
+  books:  (p) => (
+    <svg {...p} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18 2H9a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9v2h2V4a2 2 0 0 0-2-2Zm0 16H9V4h9Zm-11 0H4V4h3Zm0 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2Z"/>
+    </svg>
+  ),
 };
 const Icon = ({ name, className }) => {
   const C = icons[name] || (() => null);
@@ -85,6 +90,14 @@ const Navbar = ({ open, onOpen, onClose }) => {
                   </Link>
                 );
               })}
+
+              {/* Link vizibil DOAR pentru admin */}
+              {role === "admin" && (
+                <Link to="/admin/aprender" onClick={onClose} className={styles.navLink}>
+                  <Icon name="books" />
+                  <span>Aprender</span>
+                </Link>
+              )}
 
               <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
 
