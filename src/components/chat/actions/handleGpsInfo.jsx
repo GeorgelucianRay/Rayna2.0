@@ -1,10 +1,8 @@
-// src/components/chat/actions/handleGpsInfo.js
-
+import React from "react";
 import SimpleList from "../ui/SimpleList";
 import PlaceInfoCard from "../ui/PlaceInfoCard";
 import { findPlacesByName, findPlaceByName, findCameraFor } from "../data/queries";
 import { getMapsLinkFromRecord } from "../helpers/gps";
-import React from "react";
 
 export default async function handleGpsInfo({ intent, slots, setMessages }) {
   const placeName = (slots.placeName || "").trim();
