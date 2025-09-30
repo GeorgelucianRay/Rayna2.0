@@ -161,47 +161,7 @@ function quickDetectSelf(message) {
 
   const has = (...words) => words.some(w => toks.has(normalize(w)));
 
-// --- "ver mi camión" / "ficha camión"
-  const seeMyTruckCue =
-    has("mi") && (has("camion","camión","camio","camió") || has("camion?","camión?")) ||
-    has("ver","ficha","mostrar") && (has("mi camion","mi camión") || truckCue);
 
-  if (seeMyTruckCue) {
-    return {
-      id: "open_my_truck__synthetic",
-      priority: 997,
-      type: "action",
-      action: "open_my_truck",
-      response: {
-        text: {
-          es: "Claro, aquí tienes la ficha del camión.",
-          ro: "Desigur, aici e fișa camionului.",
-          ca: "És clar, aquí tens la fitxa del camió."
-        }
-      }
-    };
-  }
-
-  // --- "¿quién soy yo?" / "cine sunt eu?"
-  const whoAmICue =
-    has("quien","quién","cine") && (has("soy","sunt") || has("eu","yo")) ||
-    n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
-
-  if (whoAmICue) {
-    return {
-      id: "who_am_i__synthetic",
-      priority: 997,
-      type: "action",
-      action: "who_am_i",
-      response: {
-        text: {
-          es: "Hola, esto es lo que sé de ti:",
-          ro: "Salut, iată ce știu despre tine:",
-          ca: "Hola, això és el que sé de tu:"
-        }
-      }
-    };
-  }
 
   // ITV camion
   const truckCue = has("camion","camión","camio","camió","tractor");
@@ -281,6 +241,48 @@ function quickDetectSelf(message) {
   return null;
 }
 
+
+// --- "ver mi camión" / "ficha camión"
+  const seeMyTruckCue =
+    has("mi") && (has("camion","camión","camio","camió") || has("camion?","camión?")) ||
+    has("ver","ficha","mostrar") && (has("mi camion","mi camión") || truckCue);
+
+  if (seeMyTruckCue) {
+    return {
+      id: "open_my_truck__synthetic",
+      priority: 997,
+      type: "action",
+      action: "open_my_truck",
+      response: {
+        text: {
+          es: "Claro, aquí tienes la ficha del camión.",
+          ro: "Desigur, aici e fișa camionului.",
+          ca: "És clar, aquí tens la fitxa del camió."
+        }
+      }
+    };
+  }
+
+  // --- "¿quién soy yo?" / "cine sunt eu?"
+  const whoAmICue =
+    has("quien","quién","cine") && (has("soy","sunt") || has("eu","yo")) ||
+    n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
+
+  if (whoAmICue) {
+    return {
+      id: "who_am_i__synthetic",
+      priority: 997,
+      type: "action",
+      action: "who_am_i",
+      response: {
+        text: {
+          es: "Hola, esto es lo que sé de ti:",
+          ro: "Salut, iată ce știu despre tine:",
+          ca: "Hola, això és el que sé de tu:"
+        }
+      }
+    };
+  }
   
 
 /* ---------------------- Intent detect ------------------------ */
