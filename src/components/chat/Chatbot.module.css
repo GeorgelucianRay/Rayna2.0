@@ -24,22 +24,15 @@
   --radius-sm: 10px;
 
   --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.28);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.16),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.25);
   --blur: blur(18px);
 }
 
-/* fundalul general */
-.shell {
-  background: linear-gradient(135deg, #0d1b2a, #1b263b, #0f2027);
-  background-size: 400% 400%;
-  animation: gradientShift 20s ease infinite;
-}
-
-
-  /* ===== Fundal general (gradient închis, fără roz) ===== */
+/* ===== Fundal general (gradient închis, fără roz) ===== */
 .shell {
   position: relative;                /* necesar pentru ::before */
-  min-height: 100%;                  /* sau 100vh, după layout-ul tău */
+  min-height: 100vh;                 /* ocupă tot ecranul */
   padding: 12px;
   border-radius: var(--radius-xl);
 
@@ -53,7 +46,6 @@
   animation: gradientShift 20s ease infinite;
 }
 
-/* ușor „bezel” sticlos peste fundal (opțional) */
 .shell::before {
   content: "";
   position: absolute;
@@ -65,6 +57,7 @@
   -webkit-backdrop-filter: var(--blur);
   z-index: 0;
   border: 1px solid rgba(255,255,255,0.14);
+  pointer-events: none; /* să nu blocheze clickurile */
 }
 
 .shell > * { position: relative; z-index: 1; }
@@ -74,31 +67,6 @@
   0%   { background-position: 0%   0%; }
   50%  { background-position: 100% 100%; }
   100% { background-position: 0%   0%; }
-}
-
-/* ===== Sticla chat (puțin mai mult blur) ===== */
-.chat {
-  margin-top: 14px;
-  padding: 16px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--stroke-soft);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-}
-
-.avatar {
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.28);
-  margin-right: 12px;
-  background: rgba(255,255,255,0.08);
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
 }
 
 /* ===== Header ===== */
@@ -114,6 +82,18 @@
   -webkit-backdrop-filter: var(--blur);
 }
 
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.28);
+  margin-right: 12px;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+
+/* Folosit anterior, poate fi eliminat dacă nu-l mai randezi */
 .logoDot {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -146,7 +126,7 @@
 }
 .closeBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 
-/* ===== Chat area ===== */
+/* ===== Chat area (sticlă + blur) ===== */
 .chat {
   margin-top: 14px;
   padding: 16px;
@@ -155,10 +135,10 @@
   flex-direction: column;
   gap: 12px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--stroke-soft);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
 }
 
 /* ===== Bubbles ===== */
@@ -175,8 +155,7 @@
 .bot {
   align-self: flex-start;
   color: var(--text-strong);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
   border: 1px solid var(--stroke-soft);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
@@ -193,7 +172,7 @@
 .cursor { opacity: .65; animation: blink 1s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* ===== Cards (Place Info, Lists etc.) ===== */
+/* ===== Cards ===== */
 .card {
   margin-top: 8px;
   padding: 14px;
@@ -203,22 +182,12 @@
   box-shadow: 0 10px 26px rgba(0,0,0,0.28);
   color: var(--text-strong);
 }
-.cardTitle {
-  font-weight: 700;
-  color: var(--text-strong);
-}
-.cardSubtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--text-soft);
-}
+.cardTitle { font-weight: 700; color: var(--text-strong); }
+.cardSubtitle { margin-top: 4px; font-size: 13px; color: var(--text-soft); }
 
-/* ===== Actions row (primary+secondary buttons) ===== */
-.cardActions {
-  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;
-}
+.cardActions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
-/* Primary green "Abrir en Google Maps" */
+/* ===== Buttons ===== */
 .actionBtn {
   --btn-bg: var(--glass);
   --btn-brd: var(--stroke);
@@ -237,7 +206,6 @@
   box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.18);
 }
 
-/* variants via data attributes */
 .actionBtn[data-variant="primary"],
 .actionBtn.primary {
   --btn-bg: linear-gradient(180deg, rgba(59, 228, 118, 0.95), rgba(59, 228, 118, 0.80));
@@ -257,7 +225,6 @@
 .actionBtn:hover { transform: translateY(-1px); }
 .actionBtn:active { transform: translateY(0); box-shadow: inset 0 2px 6px rgba(0,0,0,.25); }
 
-/* Icon-like circle inside primary (for check/camera emoji if needed) */
 .actionBtn .iconCircle {
   width: 22px; height: 22px; border-radius: 50%;
   background: rgba(255,255,255,0.85);
@@ -275,7 +242,7 @@
 .annHead { font-weight: 700; margin-bottom: 6px; color: var(--brand); }
 .annBody { color: var(--text-strong); }
 
-/* ===== Forms: AddCameraInline ===== */
+/* ===== Forms ===== */
 .formRow {
   display: grid;
   grid-template-columns: 1fr 1.2fr auto;
@@ -283,7 +250,7 @@
   margin-top: 10px;
 }
 
-/* ===== Inputs & Footer ===== */
+/* ===== Input bar ===== */
 .inputBar {
   margin-top: 14px;
   display: grid;
@@ -310,7 +277,6 @@
 }
 .input::placeholder { color: rgba(231,240,255,0.6); }
 
-/* Send button (verde) */
 .sendBtn {
   padding: 12px 18px;
   border-radius: 30px;
@@ -327,7 +293,9 @@
 .sendBtn:active { transform: translateY(0); box-shadow: inset 0 2px 6px rgba(0,0,0,.25); }
 
 /* ===== Utility: map thumbnails inside card (ChatMiniMap) ===== */
-.card iframe, .card canvas, .card .miniMap {
+.card iframe,
+.card canvas,
+.card .miniMap {
   width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.22);
