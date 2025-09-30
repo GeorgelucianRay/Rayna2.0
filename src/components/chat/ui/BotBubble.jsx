@@ -1,6 +1,6 @@
 // src/components/chat/ui/BotBubble.jsx
 import React, { useEffect, useRef, useState } from "react";
-import styles from "../../Chatbot.module.css";
+import styles from "../Chatbot.module.css";
 
 export default function BotBubble({ reply_text, children }) {
   const [shown, setShown] = useState("");
