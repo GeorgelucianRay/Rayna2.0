@@ -8,7 +8,7 @@ import { detectIntent } from "../../nluEngine";
 
 // barrels locale
 import { BotBubble } from "./ui";
-import { scrollToBottom, tpl } from "./helpers";
+import { scrollToBottom } from "./helpers";
 import {
   handleStatic,
   handleDialog,
@@ -19,38 +19,53 @@ import {
   handleGpsLists,
 } from "./actions";
 
+// 🔹 importăm helper-ul nou pentru avatarul Raynei
+import { getRaynaAvatarUrl } from "./data/queries";
+
 export default function RaynaHub() {
-  const { profile, loading } = useAuth(); // <— folosim și loading din context
+  const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
-  // pornim fără mesaje; adăugăm salutul când profilul e gata
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]);            // <- pornim fără mesaj
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [raynaAvatar, setRaynaAvatar] = useState(null);    // <- avatarul Raynei
   const endRef = useRef(null);
 
   useEffect(() => scrollToBottom(endRef), [messages]);
 
-  // ——— Salut personalizat din profil (o singură dată, când se termină loading-ul)
+  // === Încarcă avatarul Raynei (o singură dată) ===
   useEffect(() => {
-    if (messages.length > 0) return;    // nu rescrie conversația dacă a început
-    if (loading) return;                 // așteptăm să se încarce contextul
+    let alive = true;
+    (async () => {
+      try {
+        const url = await getRaynaAvatarUrl();
+        if (alive) setRaynaAvatar(url);
+      } catch (e) {
+        // fallback tăcut
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
-    const saludo =
-      intentsData.find((i) => i.id === "saludo")?.response?.text || "¡Hola!";
+  // === Salut personalizat (după ce avem profile pentru userul logat) ===
+  useEffect(() => {
+    if (messages.length > 0) return;     // nu rescrie conversația dacă a început
+    if (loading) return;                  // așteptăm contextul
 
-    // prenume din nombre_completo, altfel username
+    const saludo = intentsData.find((i) => i.id === "saludo")?.response?.text
+      || "¡Hola! ¿En qué te puedo ayudar hoy?";
+
     const firstName = (() => {
       const n = (profile?.nombre_completo || "").trim();
       if (n) return n.split(/\s+/)[0];
       return profile?.username || "";
     })();
 
-    // suportă și template-uri din JSON: {{name}}, {{profile.nombre_completo}} etc.
-    const reply =
-      tpl(saludo, { name: firstName, user: profile, profile }) ||
-      (firstName ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?` : saludo);
+    const reply = firstName
+      ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?`
+      : saludo;
 
     setMessages([{ from: "bot", reply_text: reply }]);
   }, [loading, profile, messages.length]);
@@ -62,83 +77,46 @@ export default function RaynaHub() {
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // pași de dialog care așteaptă input (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
-        userText,
-        role,
-        setMessages,
-        setAwaiting,
-        saving,
-        setSaving,
-        intentsData,
+        userText, role, setMessages, setAwaiting, saving, setSaving, intentsData,
       });
       return;
     }
 
-    // detectează intenția + sloturile
     const { intent, slots } = detectIntent(userText, intentsData);
 
-    // dispecer
     if (intent.type === "static") {
-      await handleStatic({ intent, setMessages });
-      return;
+      await handleStatic({ intent, setMessages }); return;
     }
-
     if (intent.type === "dialog") {
       const handled = await handleDialog.entry({
-        intent,
-        role,
-        setMessages,
-        setAwaiting,
-        saving,
-        setSaving,
+        intent, role, setMessages, setAwaiting, saving, setSaving,
       });
       if (handled) return;
     }
-
     if (intent.type === "action") {
-      if (intent.action === "open_camera") {
-        await handleOpenCamera({ intent, slots, setMessages });
-        return;
-      }
-      if (intent.action === "show_announcement") {
-        await handleShowAnnouncement({ intent, setMessages });
-        return;
-      }
-      if (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview") {
-        await handleGpsNavigate({ intent, slots, setMessages });
-        return;
-      }
-      if (intent.id === "gps_info_de") {
-        await handleGpsInfo({ intent, slots, setMessages });
-        return;
-      }
-      if (intent.action === "gps_list") {
-        await handleGpsLists({ intent, setMessages });
-        return;
-      }
+      if (intent.action === "open_camera")        return await handleOpenCamera({ intent, slots, setMessages });
+      if (intent.action === "show_announcement")  return await handleShowAnnouncement({ intent, setMessages });
+      if (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")
+        return await handleGpsNavigate({ intent, slots, setMessages });
+      if (intent.id === "gps_info_de")            return await handleGpsInfo({ intent, slots, setMessages });
+      if (intent.action === "gps_list")           return await handleGpsLists({ intent, setMessages });
     }
 
-    // fallback
     setMessages((m) => [
       ...m,
-      {
-        from: "bot",
-        reply_text:
-          intentsData.find((i) => i.id === "fallback")?.response?.text ||
-          "No te he entendido.",
-      },
+      { from: "bot", reply_text: intentsData.find((i) => i.id === "fallback")?.response?.text || "No te he entendido." },
     ]);
   };
 
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        {/* avatar Rayna din profil (cu fallback local) */}
+        {/* Avatarul Raynei din DB; fallback local dacă nu există/nu se încarcă */}
         <img
-          src={profile?.avatar_url || "/avatar-fallback.png"}
-          alt={profile?.nombre_completo || "Rayna"}
+          src={raynaAvatar || "/avatar-fallback.png"}
+          alt="Rayna"
           className={styles.avatar}
           onError={(e) => { e.currentTarget.src = "/avatar-fallback.png"; }}
         />
@@ -150,17 +128,13 @@ export default function RaynaHub() {
           </div>
         </div>
 
-        <button className={styles.closeBtn} onClick={() => window.history.back()}>
-          ×
-        </button>
+        <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
       </header>
 
       <main className={styles.chat}>
         {messages.map((m, i) =>
           m.from === "user" ? (
-            <div key={i} className={`${styles.bubble} ${styles.me}`}>
-              {m.text}
-            </div>
+            <div key={i} className={`${styles.bubble} ${styles.me}`}>{m.text}</div>
           ) : (
             <BotBubble key={i} reply_text={m.reply_text}>
               {m.render ? m.render() : null}
@@ -178,9 +152,7 @@ export default function RaynaHub() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
         />
-        <button className={styles.sendBtn} onClick={send}>
-          Enviar
-        </button>
+        <button className={styles.sendBtn} onClick={send}>Enviar</button>
       </footer>
     </div>
   );
