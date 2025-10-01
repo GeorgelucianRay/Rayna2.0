@@ -1,0 +1,284 @@
+[
+  {
+    "id": "who_am_i",
+    "type": "action",
+    "priority": 120,
+    "patterns_any": [
+      "quien soy yo",
+      "quién soy yo",
+      "quien soy",
+      "quién soy",
+      "de donde sabes quien soy",
+      "de dónde sabes quién soy",
+      "por que sabes quien soy",
+      "por qué sabes quién soy",
+      "como me conoces",
+      "cómo me conoces",
+      "de donde me conoces",
+      "de dónde me conoces",
+      "sabes quien soy",
+      "sabes quién soy",
+      "quien soy para ti rayna",
+      "quién soy para ti rayna",
+      "quien crees que soy",
+      "quién crees que soy",
+      "quien te habla",
+      "quién te habla",
+      "me reconoces",
+      "me tienes identificado",
+      "quien es el usuario",
+      "quién es el usuario",
+      "cine sunt eu",
+      "de unde știi cine sunt",
+      "qui soc jo",
+      "d'on saps qui soc"
+    ],
+    "response": {
+      "text": {
+        "es": "Hola, tú eres **{{profile.full_name}}** ({{profile.role_es}}). ¿Quieres ver tu perfil?",
+        "ro": "Salut, tu ești **{{profile.full_name}}** ({{profile.role_es}}). Vrei să vezi profilul tău?",
+        "ca": "Hola, tu ets **{{profile.full_name}}** ({{profile.role_es}}). Vols veure el teu perfil?"
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "Perfil",
+          "actions": [
+            { "type": "open", "label": "Ver perfil", "route": "/perfil", "newTab": false }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
+    "id": "open_my_profile",
+    "type": "action",
+    "priority": 110,
+    "patterns_any": [
+      "ver mi perfil",
+      "abre mi perfil",
+      "abrir mi perfil",
+      "muéstrame mi perfil",
+      "mostrar mi perfil",
+      "quiero ver mi perfil",
+      "perfil usuario",
+      "ir al perfil",
+      "entra a mi perfil",
+      "enséñame el perfil",
+      "perfil conductor",
+      "perfil chofer",
+      "perfil del conductor",
+      "perfil personal",
+      "mi ficha personal",
+      "ficha de usuario",
+      "ver datos personales",
+      "ver cuenta",
+      "abre cuenta",
+      "configuración de perfil",
+      "editar perfil",
+      "modificar perfil",
+      "actualizar perfil",
+      "profile",
+      "open profile",
+      "deschide profilul",
+      "veure el meu perfil"
+    ],
+    "action": "open_profile",
+    "response": {
+      "text": {
+        "es": "Aquí tienes tu perfil.",
+        "ro": "Aici este profilul tău.",
+        "ca": "Aquí tens el teu perfil."
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "Perfil",
+          "actions": [
+            { "type": "open", "label": "Ver perfil", "route": "/perfil", "newTab": false }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
+    "id": "profile_what_you_know",
+    "type": "action",
+    "priority": 105,
+    "patterns_any": [
+      "que sabes de mi",
+      "qué sabes de mí",
+      "que sabes sobre mi",
+      "qué sabes sobre mí",
+      "que conoces de mi",
+      "qué conoces de mí",
+      "que tienes de mi",
+      "qué tienes de mí",
+      "que datos tienes de mi",
+      "qué datos tienes de mí",
+      "que información tienes de mi",
+      "qué información tienes de mí",
+      "que guarda mi perfil",
+      "que dice mi perfil",
+      "resumen de mi perfil",
+      "dime mi info",
+      "mi información personal",
+      "mis credenciales",
+      "mis datos",
+      "mis papeles",
+      "ce știi despre mine",
+      "ce date ai despre mine",
+      "què saps de mi",
+      "informació del meu perfil"
+    ],
+    "action": "profile_what_you_know",
+    "meta": {
+      "needs": ["driver.adr", "truck.brand", "trailer.brand"]
+    },
+    "response": {
+      "text": {
+        "es": "Mira, sé que **ADR: {{driver.adr_status_es}}**. Conduces un conjunto formado por camión **{{truck.brand}}** y remolque **{{trailer.brand}}**.",
+        "ro": "Uite, știu că **ADR: {{driver.adr_status_ro}}**. Conduci un ansamblu format din camion **{{truck.brand}}** și remorcă **{{trailer.brand}}**.",
+        "ca": "Mira, sé que **ADR: {{driver.adr_status_ca}}**. Condueixes un conjunt format per camió **{{truck.brand}}** i remolc **{{trailer.brand}}**."
+      },
+      "alt_missing": {
+        "es": "¡Ah! No tienes el conjunto completado. ¿Quieres hacerlo ahora conmigo?",
+        "ro": "Ah! Nu ai completat ansamblul. Vrei să-l completăm acum împreună?",
+        "ca": "Ah! No tens el conjunt completat. Vols fer-ho ara amb mi?"
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "Perfil",
+          "actions": [
+            { "type": "open", "label": "Ver perfil", "route": "/perfil", "newTab": false }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
+    "id": "profile_complete_yes",
+    "type": "action",
+    "priority": 104,
+    "patterns_any": [
+      "si quiero completarlo",
+      "sí quiero completarlo",
+      "si quiero completar mi perfil",
+      "sí quiero completar mi perfil",
+      "quiero completar mi perfil",
+      "vamos a completarlo",
+      "completar mi perfil ahora",
+      "vamos a hacerlo ahora",
+      "ok completemos el perfil",
+      "vale completa el perfil",
+      "hagámoslo",
+      "hazlo conmigo",
+      "ajută-mă să completez profilul",
+      "vreau să completez profilul",
+      "vull completar el meu perfil",
+      "completar perfil con rayna",
+      "em ajuti cu profilul",
+      "help me complete my profile",
+      "start profile wizard",
+      "iniciar asistente de perfil",
+      "quiero editar mi perfil"
+    ],
+    "action": "profile_complete_start",
+    "response": {
+      "text": {
+        "es": "Perfecto. Empezamos a completar tu perfil. Te voy preguntando paso a paso.",
+        "ro": "Perfect. Începem să-ți completăm profilul. Îți voi pune întrebări pas cu pas.",
+        "ca": "Perfecte. Comencem a completar el teu perfil. T’aniré preguntant pas a pas."
+      }
+    }
+  },
+
+  {
+    "id": "profile_complete_no",
+    "type": "static",
+    "priority": 103,
+    "patterns_any": [
+      "no",
+      "no ahora",
+      "ahora no",
+      "no gracias",
+      "otro día",
+      "paso",
+      "no quiero",
+      "lo haré luego",
+      "lo haré mas tarde",
+      "más tarde",
+      "deja así",
+      "prefiero no",
+      "nu acum",
+      "nu, merci",
+      "nu vreau",
+      "pot mai târziu",
+      "ara no",
+      "més tard",
+      "no em va bé ara",
+      "no ho vull fer ara",
+      "otro momento"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Ah, ok! Pero tengo que decirte que es muy importante tenerlo completo: te dará muchas ventajas. Tú mismo.",
+        "ro": "Ah, ok! Dar trebuie să-ți spun că e foarte important să fie complet: îți va aduce multe avantaje. Tu decizi.",
+        "ca": "Ah, d’acord! Però és important tenir-lo complet: et donarà molts avantatges. Tu mateix."
+      }
+    }
+  },
+
+  {
+    "id": "profile_advantages",
+    "type": "action",
+    "priority": 102,
+    "patterns_any": [
+      "que ventajas",
+      "qué ventajas",
+      "para que sirve completar el perfil",
+      "por que es importante el perfil",
+      "por qué es importante el perfil",
+      "de que me sirve completar el perfil",
+      "beneficios de completar perfil",
+      "ventajas de completar perfil",
+      "por que debo completar el perfil",
+      "por qué debo completar el perfil",
+      "que gano con el perfil",
+      "que obtengo si lo completo",
+      "explicame ventajas del perfil",
+      "explícame ventajas del perfil",
+      "ajuta-ma cu avantajele",
+      "care sunt avantajele",
+      "per què serveix completar el perfil",
+      "avantatges de completar el perfil",
+      "beneficis del perfil",
+      "video ventajas perfil",
+      "muestrame por que",
+      "muéstrame por qué",
+      "porque es bueno completar perfil",
+      "why complete profile"
+    ],
+    "action": "profile_advantages_video",
+    "response": {
+      "text": {
+        "es": "Mira, te he preparado un vídeo de por qué está bien tenerlo completado y cómo rellenarlo. Si no lo consigues, solo dime: «quiero completar mi perfil» y te ayudo.",
+        "ro": "Uite, ți-am pregătit un video despre de ce e bine să fie completat și cum îl completezi. Dacă nu reușești, spune-mi «vreau să completez profilul» și te ajut.",
+        "ca": "Mira, t’he preparat un vídeo sobre per què va bé tenir-lo completat i com omplir-lo. Si no te’n surts, digue’m «vull completar el meu perfil» i t’ajudo."
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "Ventajas de completar el perfil",
+          "actions": [
+            { "type": "open", "label": "Ver vídeo", "route": "#", "newTab": true }
+          ]
+        }
+      ]
+    }
+  }
+]
