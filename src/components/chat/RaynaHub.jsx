@@ -21,7 +21,7 @@ import {
   handleGpsNavigate,
   handleGpsInfo,
   handleGpsLists,
-  // ⬇️ noile acțiuni, exportate denumit din ./actions/index.js
+  // noile acțiuni (named)
   handleOpenMyTruck,
   handleWhoAmI,
 } from "./actions";
@@ -35,8 +35,7 @@ export default function RaynaHub() {
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
-  // pornim fără mesaje; adăugăm salutul când e gata profilul
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // începem fără mesaje
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -64,8 +63,9 @@ export default function RaynaHub() {
       : saludoDefault;
 
     setMessages([{ from: "bot", reply_text: saludo }]);
+    // nu adăugăm `messages` în deps ca să nu re-trimită salutul
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, profile]); // nu include messages în deps ca să nu refacă salutul
+  }, [loading, profile]);
 
   const send = async () => {
     const userText = text.trim();
@@ -74,7 +74,7 @@ export default function RaynaHub() {
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // pași de dialog care așteaptă input (ex: anuncio)
+    // pași de dialog ce așteaptă input (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
         userText,
@@ -132,7 +132,7 @@ export default function RaynaHub() {
         return;
       }
 
-      // 🔹 NOILE ACȚIUNI (profil)
+      // 🔹 NOU: acțiuni legate de profil
       if (intent.action === "open_my_truck") {
         await handleOpenMyTruck({ profile, setMessages });
         return;
