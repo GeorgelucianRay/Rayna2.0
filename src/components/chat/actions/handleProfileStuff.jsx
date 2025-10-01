@@ -1,6 +1,8 @@
 // src/components/chat/actions/handleProfileStuff.jsx
 import React from "react";
-import styles from "../Chatbot.module.css";
+import styles from "../Chatbot.module.css"; // ← e corect dacă fișierul e în /chat/actions/
+
+// Dacă la tine Chatbot.module.css e în alt loc, ajustează: "../../Chatbot.module.css"
 
 /**
  * Răspunde cu un mic rezumat "cine sunt eu".
@@ -15,25 +17,29 @@ export async function handleWhoAmI({ profile, setMessages }) {
   const plate  = truck?.matricula || truck?.plate || "";
 
   let line = `Hola, tú eres **${nombre}** (${role}).`;
-  if (marca || plate) line += ` Llevas un camión ${marca ? marca : ""}${marca && plate ? " · " : ""}${plate ? plate : ""}.`;
+  if (marca || plate) {
+    line += ` Llevas un camión ${marca ? marca : ""}${marca && plate ? " · " : ""}${plate ? plate : ""}.`;
+  }
 
-  setMessages(m => [...m, {
-    from: "bot",
-    reply_text: line
-  }, {
-    from: "bot",
-    reply_text: "¿Quieres ver tu perfil?",
-    render: () => (
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>Perfil</div>
-        <div className={styles.cardActions}>
-          <a className={`${styles.actionBtn} ${styles.primary}`} href="/mi-perfil">
-            Ver perfil
-          </a>
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: line },
+    {
+      from: "bot",
+      reply_text: "¿Quieres ver tu perfil?",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Perfil</div>
+          <div className={styles.cardActions}>
+            {/* Folosesc data-variant="primary" ca să evit clasa .primary separată */}
+            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
+              Ver perfil
+            </a>
+          </div>
         </div>
-      </div>
-    )
-  }]);
+      ),
+    },
+  ]);
 }
 
 /**
@@ -47,36 +53,42 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
   const matricula = truck?.matricula || truck?.plate || "";
 
   if (!truckId) {
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "No tienes un camión asignado por ahora."
-    }, {
-      from: "bot",
-      reply_text: "Puedes revisar o actualizar tus datos desde tu perfil.",
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Perfil</div>
-          <div className={styles.cardActions}>
-            <a className={`${styles.actionBtn} ${styles.primary}`} href="/mi-perfil">Ver perfil</a>
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "No tienes un camión asignado por ahora." },
+      {
+        from: "bot",
+        reply_text: "Puedes revisar o actualizar tus datos desde tu perfil.",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Perfil</div>
+            <div className={styles.cardActions}>
+              <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
+                Ver perfil
+              </a>
+            </div>
           </div>
-        </div>
-      )
-    }]);
+        ),
+      },
+    ]);
     return;
   }
 
-  setMessages(m => [...m, {
-    from: "bot",
-    reply_text: `Claro, aquí tienes la ficha del camión ${marca}${matricula ? " · " + matricula : ""}.`,
-    render: () => (
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>Mi camión</div>
-        <div className={styles.cardActions}>
-          <a className={`${styles.actionBtn} ${styles.primary}`} href={`/camion/${truckId}`}>
-            Ver camión
-          </a>
+  setMessages((m) => [
+    ...m,
+    {
+      from: "bot",
+      reply_text: `Claro, aquí tienes la ficha del camión ${marca}${matricula ? " · " + matricula : ""}.`,
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Mi camión</div>
+          <div className={styles.cardActions}>
+            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${truckId}`}>
+              Ver camión
+            </a>
+          </div>
         </div>
-      </div>
-    )
-  }]);
+      ),
+    },
+  ]);
 }
