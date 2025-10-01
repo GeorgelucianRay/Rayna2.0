@@ -16,12 +16,7 @@ function ParkingCard({ p, distKm }) {
         {(p.direccion || "").trim()} {km}
       </div>
       <div className={styles.cardActions}>
-        <a
-          className={`${styles.actionBtn} ${styles.primary}`}
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a className={styles.actionBtn} data-variant="primary" href={link} target="_blank" rel="noopener noreferrer">
           Abrir en Google Maps
         </a>
       </div>
