@@ -1,0 +1,28 @@
+[
+  {
+    "id": "help",
+    "priority": 50,
+    "type": "static",
+    "patterns_any": ["ayuda", "help", "qué puedes hacer", "que puedes hacer", "cum mă ajuți", "cum ma ajuti"],
+    "negative_any": ["navegar a","ir a","abre","abrir","camara","cámara","camera","ver"],
+    "response": {
+      "text": {
+        "es": "Puedo: 1) abrir cámaras, 2) darte rutas/parkings, 3) mostrar anuncio, 4) datos de tu camión y tus documentos. ¿Qué necesitas?",
+        "ro": "Pot: 1) deschide camere, 2) rute/parcări, 3) arăta anunțul, 4) date despre camion și actele tale. Ce ai nevoie?",
+        "ca": "Puc: 1) obrir càmeres, 2) rutes/pàrquings, 3) mostrar l'anunci, 4) dades del teu camió i documents. Què necessites?"
+      }
+    }
+  },
+  {
+    "id": "fallback",
+    "priority": 0,
+    "type": "static",
+    "response": {
+      "text": {
+        "es": "Te escucho. Puedo abrir cámaras, ayudarte con rutas/parkings o mostrar el anuncio.",
+        "ro": "Te ascult. Pot deschide camere, te pot ajuta cu rute/parcări sau pot arăta anunțul.",
+        "ca": "T'escolto. Puc obrir càmeres, ajudar-te amb rutes/pàrquings o mostrar l'anunci."
+      }
+    }
+  }
+]
