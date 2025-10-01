@@ -22,30 +22,18 @@
     inset 0 -1px 0 rgba(0,0,0,.25);
 }
 
-/* Rayna ocupă tot ecranul, fără să lase pagina să deruleze */
+/* ===== Container full-screen: pagina NU derulează, doar chat-ul ===== */
 .shell{
-  position: fixed;        /* ⬅️ important: decuplează de layout-ul paginii */
-  inset: 0;               /* full-viewport */
-  z-index: 9999;          /* peste restul site-ului */
+  position: fixed;      /* decuplează de layout-ul paginii */
+  inset: 0;             /* full-viewport */
+  z-index: 9999;
   display: flex;
   flex-direction: column;
-  height: 100dvh;         /* stabile, iOS-friendly */
-  overflow: hidden;       /* ⬅️ blochează scroll-ul aici */
+  height: 100dvh;
+  overflow: hidden;     /* blochează scroll-ul global doar aici */
 
   padding: 12px;
-  border-radius: 0;       /* e full-screen; păstrează dacă vrei colțuri */
-
-  background-image:
-    radial-gradient(1200px 900px at 80% 10%, rgba(0,0,0,.25), transparent 60%),
-    linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.25)),
-    url("/Chatwalpaper.JPG");
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
-
-  /* opțional: evită „bounce” care ar mișca pagina de dedesubt */
-  overscroll-behavior: none;
-}
+  border-radius: 0;
 
   /* wallpaper din /public */
   background-image:
@@ -55,9 +43,10 @@
   background-repeat:no-repeat;
   background-size:cover;
   background-position:center;
-}
 
-/* nu mai punem pelicula ::before ca să nu „albească” imaginea */
+  /* evită „bounce” care ar mișca pagina de dedesubt */
+  overscroll-behavior: none;
+}
 
 /* ===== Header ===== */
 .header{
@@ -99,31 +88,28 @@
 }
 .closeBtn:hover{transform:translateY(-1px);filter:brightness(1.05)}
 
-/* ===== Chat area ===== */
-/* DOAR containerul de chat derulează */
+/* ===== Chat area (SINGURA care derulează) ===== */
 .chat{
-  flex: 1;
-  min-height: 0;                 /* esențial ca overflow să funcționeze într-un flex */
-  overflow: auto;                /* ⬅️ singurul scroll */
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;  /* nu propagă scroll-ul în afară */
+  flex:1;
+  min-height:0;                 /* esențial ca overflow să funcționeze în flex */
+  overflow:auto;                /* ⇦ singurul scroll */
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 
-  margin-top: 14px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  margin-top:14px;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 
-  border-radius: var(--radius-lg);
-  background: var(--glass-strong);
-  border: 1px solid var(--stroke-soft);
-  box-shadow: var(--shadow-inset), var(--shadow-outer);
+  border-radius:var(--radius-lg);
+  background:var(--glass-strong);
+  border:1px solid var(--stroke-soft);
+  box-shadow:var(--shadow-inset), var(--shadow-outer);
 }
 
-/* un mic „buffer” jos ca să nu se acopere de input bar la scroll */
-.chat::after{
-  content:""; display:block; height:80px;
-}
+/* buffer jos, să nu se acopere de input bar */
+.chat::after{ content:""; display:block; height:80px; }
 
 /* ===== Bubbles ===== */
 .bubble{
@@ -153,7 +139,7 @@
 
 /* ===== Cards ===== */
 .card{
-  margin-top:8px;padding:14px;border-radius:var(--radius-lg);
+  margin-top:8px; padding:14px; border-radius:var(--radius-lg);
   background:var(--glass);
   border:1px solid var(--stroke);
   box-shadow:0 10px 26px rgba(0,0,0,.28);
@@ -186,8 +172,7 @@
 
 /* ===== Input bar (stă jos) ===== */
 .inputBar{
-  position:sticky;   /* rămâne jos în viewport când se derulează */
-  bottom:12px;       /* spațiu de margine */
+  position:sticky; bottom:12px;
   margin-top:14px;
   display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;
   padding:12px;
