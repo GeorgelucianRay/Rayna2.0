@@ -9,3 +9,4 @@ export { default as handleStatic } from "./handleStatic.jsx";
 
 // noile acțiuni (exporturi denumite)
 export { handleWhoAmI, handleOpenMyTruck } from "./handleProfileStuff.jsx";
+export { handleParkingNearStart, handleParkingNext } from "./handleParkingNear.jsx";
