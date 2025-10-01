@@ -1,0 +1,224 @@
+[
+  {
+    "id": "saludo_dias",
+    "priority": 103,
+    "type": "static",
+    "patterns_any": [
+      "buenos dias", "buenos días", "muy buenos dias", "muy buenos días",
+      "buen dia", "buen día", "hola buenos dias", "hola buenos días",
+      "buenos dias rayna", "buenos días rayna", "buenos dias!", "buenos días!",
+      "buna dimineata", "bună dimineața", "buna dimineața", "bună dimineata",
+      "salut buna dimineata", "salut bună dimineața", "o dimineata buna",
+      "bon dia", "molt bon dia", "bon dia rayna", "bon dia!",
+      "good morning", "gm", "neata", "neața", "bunaaa dimineata"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenos días! Soy Rayna. ¿Qué necesitas hoy?",
+        "ro": "Bună dimineața! Sunt Rayna. Cu ce te pot ajuta azi?",
+        "ca": "Bon dia! Sóc Rayna. Què necessites avui?"
+      }
+    }
+  },
+  {
+    "id": "saludo_tardes",
+    "priority": 102,
+    "type": "static",
+    "patterns_any": [
+      "buenas tardes", "buenas tardez", "muy buenas tardes", "buenas tardes rayna",
+      "buenas!", "buenas tardes!", "hola buenas tardes",
+      "buna ziua", "bună ziua", "o dupa amiaza buna", "după-amiază bună",
+      "salut buna ziua", "salut bună ziua",
+      "bona tarda", "molt bona tarda", "bones tardes", "bona tarda rayna",
+      "good afternoon", "ga", "buna dupa masa", "bună după masă",
+      "buna seara devreme", "bună seara devreme"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenas tardes! Aquí **Rayna**. ¿En qué te ayudo?",
+        "ro": "Bună ziua! Aici **Rayna**. Cu ce te ajut?",
+        "ca": "Bona tarda! Sóc **Rayna**. En què t'ajudo?"
+      }
+    }
+  },
+  {
+    "id": "saludo_noches",
+    "priority": 101,
+    "type": "static",
+    "patterns_any": [
+      "buenas noches", "buenas noxes", "muy buenas noches", "buenas noches rayna",
+      "buenas noches!", "hola buenas noches",
+      "buna seara", "bună seara", "o seara buna", "noapte buna", "noapte bună",
+      "salut buna seara", "salut bună seara",
+      "bona nit", "bona nit!", "molt bona nit", "bona nit rayna",
+      "good night", "gn", "noches!", "seara faina", "seară faină"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Buenas noches! Soy **Rayna**. ¿Te echo una mano con algo?",
+        "ro": "Bună seara! Sunt **Rayna**. Te pot ajuta cu ceva?",
+        "ca": "Bona nit! Sóc **Rayna**. Et puc ajudar en alguna cosa?"
+      }
+    }
+  },
+  {
+    "id": "saludo_general",
+    "priority": 100,
+    "type": "static",
+    "patterns_any": [
+      "hola", "ola", "holaa", "holaaa", "ey", "ei", "hey", "buenas", "buenass",
+      "hola rayna", "ei rayna", "hey rayna", "hola que tal", "hola qué tal",
+      "que tal", "qué tal", "como va", "cómo va", "todo bien",
+      "salut", "buna", "bună", "servus", "ciao",
+      "hola què tal", "bones", "ep!", "ei bon dia", "hola buenas",
+      "alo", "aló"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?",
+        "ro": "Salut! Sunt **Rayna**, transportistul tău virtual. Cu ce te pot ajuta?",
+        "ca": "Hola! Sóc **Rayna**, la teva transportista virtual. En què t'ajudo?"
+      }
+    }
+  },
+  {
+    "id": "quien_eres",
+    "priority": 95,
+    "type": "static",
+    "patterns_any": [
+      "quien eres", "quién eres", "quien es rayna", "quién es rayna",
+      "que eres", "qué eres", "que puedes hacer rayna", "qué eres rayna",
+      "presentate", "preséntate", "dime quien eres", "quien me habla",
+      "cine esti", "cine ești", "cine este rayna", "ce esti", "ce ești",
+      "ce poti face", "ce poți face", "spune-mi cine ești",
+      "qui ets", "qui és", "qui és rayna", "què ets", "qui em parla",
+      "qui sou", "presenta't", "presenta’t", "qui ets tu",
+      "what are you", "who are you"
+    ],
+    "response": {
+      "text": {
+        "es": "Soy Rayna:\n• R-utas\n• A.Y.-Inteligencia Artificial\n• N-avegar\n• A-sistente\nFormal, cercana y rápida 😉.",
+        "ro": "Sunt Rayna:\n• R-ute\n• A.I.-Inteligența Artificială\n• N-avigare\n• A-sistent\nFormală, prietenoasă și rapidă 😉.",
+        "ca": "Sóc Rayna:\n• R-utes\n• I.A.\n• N-avegar\n• A-ssistent\nFormal, propera i ràpida 😉."
+      }
+    }
+  },
+  {
+    "id": "smalltalk_como_estas",
+    "priority": 94,
+    "type": "static",
+    "patterns_any": [
+      "como estas", "cómo estás", "que tal estas", "qué tal estás",
+      "como va todo", "cómo va todo", "que tal vas", "qué tal vas",
+      "todo bien rayna", "que hay", "qué hay", "como te va", "cómo te va",
+      "ce faci", "ce mai faci", "cum ești", "cum esti", "totul bine",
+      "com estàs", "què tal", "com va", "tot bé", "que tal rayna", "qué tal rayna"
+    ],
+    "response": {
+      "text": {
+        "es": "¡A tope y lista para ayudarte! ¿Qué necesitas?",
+        "ro": "Super, gata să te ajut! Ce ai nevoie?",
+        "ca": "A tope i llesta per ajudar-te! Què necessites?"
+      }
+    }
+  },
+  {
+    "id": "smalltalk_gracias",
+    "priority": 93,
+    "type": "static",
+    "patterns_any": [
+      "gracias", "muchas gracias", "mil gracias", "graciass", "graciasss",
+      "te lo agradezco", "perfecto gracias", "ok gracias",
+      "multumesc", "mulțumesc", "mersi", "merci", "fain merci",
+      "gràcies", "moltes gràcies", "merci beaucoup", "thanks", "ty",
+      "thank you", "thx", "tx", "gracias rayna", "mulțam"
+    ],
+    "response": {
+      "text": {
+        "es": "¡A ti! Si necesitas algo más, dime 😊",
+        "ro": "Cu plăcere! Dacă mai ai nevoie de ceva, spune-mi 😊",
+        "ca": "De res! Si necessites res més, digue-m'ho 😊"
+      }
+    }
+  },
+  {
+    "id": "smalltalk_ok",
+    "priority": 92,
+    "type": "static",
+    "patterns_any": [
+      "ok", "vale", "va", "okey", "okey dokey", "perfecto", "genial", "de acuerdo",
+      "entendido", "entiendo", "listo", "dale", "hecho",
+      "bine", "ok bine", "perfect", "inteles", "înțeles",
+      "d'acord", "daccord", "fet", "entès", "entenc",
+      "cool", "nice", "sweet", "sounds good", "got it"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Perfecto! ¿Seguimos con algo más?",
+        "ro": "Perfect! Continuăm cu altceva?",
+        "ca": "Perfecte! Seguim amb alguna cosa més?"
+      }
+    }
+  },
+  {
+    "id": "smalltalk_broma_risa",
+    "priority": 91,
+    "type": "static",
+    "patterns_any": [
+      "jaja", "jajaja", "jeje", "xd", "lol", "me parto", "qué risa",
+      "haha", "hahaha", "lolol", "risas",
+      "ha ha", ":)", ":D", "😂", "🤣",
+      "amuzant", "haha ce tare", "haha tare", "lol romanian",
+      "que bo", "que bo!", "quina risa", "molt bo", "xD", "juas"
+    ],
+    "response": {
+      "text": {
+        "es": "😄 Me alegra sacarte una sonrisa. ¿Seguimos?",
+        "ro": "😄 Mă bucur că te-am făcut să zâmbești. Continuăm?",
+        "ca": "😄 M'alegra fer-te somriure. Seguim?"
+      }
+    }
+  },
+  {
+    "id": "smalltalk_despedida",
+    "priority": 90,
+    "type": "static",
+    "patterns_any": [
+      "adios", "adiós", "hasta luego", "hasta pronto", "nos vemos",
+      "me voy", "chau", "chao", "ciao", "hasta la proxima", "hasta la próxima",
+      "pa", "pa pa", "bye", "goodbye", "see you",
+      "la revedere", "pa pa", "ne vedem", "o zi buna", "o zi bună",
+      "adeu", "fins aviat", "fins després", "ens veiem", "bona nit, adeu"
+    ],
+    "response": {
+      "text": {
+        "es": "¡Hasta luego! Conduce seguro 🚚",
+        "ro": "Pe curând! Drum bun 🚚",
+        "ca": "Fins aviat! Conducció segura 🚚"
+      }
+    }
+  },
+  {
+    "id": "help",
+    "priority": 50,
+    "type": "static",
+    "patterns_any": [
+      "ayuda", "me ayudas", "help", "necesito ayuda", "que puedes hacer", "qué puedes hacer",
+      "como me ayudas", "cómo me ayudas", "que haces", "qué haces", "que sabes hacer",
+      "explicame que haces", "explícame qué haces", "que funciones tienes", "qué funciones tienes",
+      "ajutor", "ajuta-ma", "ajută-mă", "cu ce ma ajuti", "cu ce mă ajuți",
+      "que pots fer", "què pots fer", "com m'ajudes", "com m’ajudes", "ajuda'm", "ajuda’m"
+    ],
+    "negative_any": [
+      "quiero llegar a", "como llego a", "cómo llego a", "ir a", "navegar a",
+      "camara", "cámara", "camera", "camere", "càmera", "abre", "abrir", "ver"
+    ],
+    "response": {
+      "text": {
+        "es": "Puedo: 1) abrir cámaras por nombre, 2) darte rutas y abrir Google Maps, 3) decirte tu ITV/CAP/carnet/ADR y resumen de nómina, y 4) listar terminales, parkings y servicios. Dime, ¿qué necesitas?",
+        "ro": "Pot: 1) deschide camere după nume, 2) oferi rute și deschide Google Maps, 3) spune datele tale ITV/CAP/permis/ADR și rezumatul de salariu, 4) lista terminale, parcări și servicii. Spune-mi ce ai nevoie.",
+        "ca": "Puc: 1) obrir càmeres pel nom, 2) donar rutes i obrir Google Maps, 3) dir-te la teva ITV/CAP/carnet/ADR i resum de nòmina, 4) llistar terminals, pàrquings i serveis. Què necessites?"
+      }
+    }
+  }
+]
