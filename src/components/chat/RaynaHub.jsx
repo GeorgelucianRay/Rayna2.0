@@ -4,7 +4,7 @@ import styles from "./Chatbot.module.css";
 
 // —— auth & NLU
 import { useAuth } from "../../AuthContext";
-import { detectIntent } from "../../nlu"; // re-export din src/nlu/index.js
+import { detectIntent } from "../../nlu";
 
 // —— hooks
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
@@ -26,9 +26,17 @@ import {
   handleWhoAmI,
   handleParkingNearStart,
   handleParkingNext,
+
+  // ⬇️ IMPORTURI NOI — obligatorii
+  handleDriverSelfInfo,
+  handleVehItvTruck,
+  handleVehItvTrailer,
+  handleVehOilStatus,
+  handleVehAdblueFilterStatus,
+  handleProfileCompletionStart,
 } from "./actions";
 
-// 👉 încarcă toate intențiile prin agregator (sigur în build)
+// —— agregatorul de intenții (src/intents/index.js export default all)
 import ALL_INTENTS from "../../intents";
 
 // ✅ avatar Rayna din /public
@@ -95,7 +103,8 @@ export default function RaynaHub() {
     }
   }
 
-    async function dispatchAction(intent, slots) {
+  // —— dispecer pentru acțiuni (map clar ⇢ handler)
+  async function dispatchAction(intent, slots) {
     const actionKey = intent.action || intent.id;
 
     const table = {
@@ -134,8 +143,6 @@ export default function RaynaHub() {
 
     if (table[actionKey]) return table[actionKey]();
 
-    setMessages((m) => [...m, { from: "bot", reply_text: "Tengo la intención, pero aún no tengo handler para esta acción." }]);
-  }
     // fallback dacă nu avem handler mapat
     setMessages((m) => [
       ...m,
@@ -165,7 +172,7 @@ export default function RaynaHub() {
       return;
     }
 
-    // 2) detectare intent (folosește NLU modular)
+    // 2) detectare intent
     const { intent, slots } = detectIntent(userText, intentsData);
 
     // 3) dispecer pe tip
