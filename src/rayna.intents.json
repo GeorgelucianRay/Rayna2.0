@@ -557,7 +557,32 @@
     }
   }
 },
-
+{
+   "id": "who_am_i",
+    "type": "action",
+    "priority": 70,
+    "patterns_any": ["quien soy yo", "cine sunt eu", "qui soc jo"],
+    "response": {
+      "text": {
+        "es": "Hola, esto es lo que sé de ti:",
+        "ro": "Salut, iată ce știu despre tine:",
+        "ca": "Hola, això és el que sé de tu:"
+      }
+    }
+  },
+  {
+    "id": "open_my_truck",
+    "type": "action",
+    "priority": 70,
+    "patterns_any": ["ver mi camion", "ficha camion", "camionul meu"],
+    "response": {
+      "text": {
+        "es": "Claro, aquí tienes la ficha de tu camión.",
+        "ro": "Desigur, aici e fișa camionului tău.",
+        "ca": "Aquí tens la fitxa del teu camió."
+      }
+    }
+  },
   {
     "id": "fallback",
     "priority": 0,
