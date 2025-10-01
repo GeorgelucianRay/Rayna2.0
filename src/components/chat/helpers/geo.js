@@ -1,13 +1,21 @@
 // src/components/chat/helpers/geo.js
 
-// "41.385,2.17" -> {lat, lon}  sau null
-export function parseCoords(s) {
-  if (!s) return null;
-  const [latStr, lonStr] = String(s).split(",").map(t => t.trim());
-  const lat = Number(latStr), lon = Number(lonStr);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return { lat, lon };
-}
+// "41.385,2.17" / "41.385 2.17" / "41,385;2,17" -> {lat, lon}  sau null
+ export function parseCoords(s) {
+   if (!s) return null;
+   const normalized = String(s)
+     .trim()
+     .replace(/[; ]+/g, ",")   // spațiu / ; -> ,
+     .replace(/，/g, ",");      // comma „exotică”
+   const [latStrRaw, lonStrRaw] = normalized.split(",").map(t => t.trim());
+   if (!latStrRaw || !lonStrRaw) return null;
+   const toNum = (v) => Number(String(v).replace(",", ".")); // suport „virgulă zecimală”
+   const lat = toNum(latStrRaw);
+   const lon = toNum(lonStrRaw);
+   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+   if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+   return { lat, lon };
+ }
 
 // Haversine (km)
 export function haversineKm(a, b) {
