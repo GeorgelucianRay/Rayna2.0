@@ -2,28 +2,38 @@
 import React from "react";
 import styles from "../Chatbot.module.css";
 
-// funcție helper pentru traducerea rolului la spaniolă
-function mapRole(role) {
-  switch (role) {
-    case "sofer": return "chofer";
-    case "dispecer": return "Jefe de Tráfico";
-    case "mecanic": return "mecánico";
-    default: return role || "usuario";
-  }
+/* ——— util mic: mapare rol RO/EN → ES pentru afișare */
+function roleToEs(raw) {
+  const r = String(raw || "").toLowerCase();
+  if (["driver", "sofer", "șofer", "soferi", "chauffeur", "conductor"].includes(r)) return "chofer";
+  if (["dispecer", "dispatcher", "jefe", "trafic", "traffic", "jefe de trafico", "jefe de tráfico"].includes(r)) return "jefe de tráfico";
+  if (["mecanic", "mecánico", "mechanic"].includes(r)) return "mecánico";
+  return r || "chofer";
 }
 
-/**
- * Cine sunt eu? ("¿De dónde sabes quién soy?")
- */
+/* ——— helpers de citire profil (tolerant la câmpuri) */
+const getTruck = (p) => p?.camioane || p?.truck || null;
+const getTrailer = (p) => p?.remorci || p?.trailer || null;
+
+const pick = (obj, ...keys) => keys.find((k) => obj?.[k] != null) && obj[keys.find((k) => obj?.[k] != null)];
+const txt = (v, def = "—") => (v == null || v === "" ? def : String(v));
+
+/* ——— WHO AM I */
 export async function handleWhoAmI({ profile, setMessages }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
-  const role   = mapRole(profile?.role);
+  const roleEs = roleToEs(profile?.role || "driver");
 
-  let line = `Hola, tú eres **${nombre}** (${role}).`;
+  const truck = getTruck(profile);
+  const tMarca = truck?.marca || truck?.brand;
+  const tPlate = truck?.matricula || truck?.plate;
+
+  const line =
+    `Hola, tú eres **${nombre}** (${roleEs}).` +
+    (tMarca || tPlate ? ` Conduces un camión ${txt(tMarca, "")}${tMarca && tPlate ? " · " : ""}${txt(tPlate, "")}.` : "");
 
   setMessages((m) => [
     ...m,
-    { from: "bot", reply_text: line },
+    { from: "bot", reply_text: line.trim() },
     {
       from: "bot",
       reply_text: "¿Quieres ver tu perfil?",
@@ -31,9 +41,7 @@ export async function handleWhoAmI({ profile, setMessages }) {
         <div className={styles.card}>
           <div className={styles.cardTitle}>Perfil</div>
           <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
-              Ver perfil
-            </a>
+            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">Ver perfil</a>
           </div>
         </div>
       ),
@@ -41,14 +49,12 @@ export async function handleWhoAmI({ profile, setMessages }) {
   ]);
 }
 
-/**
- * Abrir camión asignado
- */
+/* ——— OPEN MY TRUCK */
 export async function handleOpenMyTruck({ profile, setMessages }) {
-  const truckId   = profile?.camion_id || profile?.camioane?.id;
-  const truck     = profile?.camioane || null;
-  const marca     = truck?.marca || truck?.brand || "Camión";
-  const matricula = truck?.matricula || truck?.plate || "";
+  const truckId = profile?.camion_id || getTruck(profile)?.id;
+  const truck = getTruck(profile);
+  const marca = truck?.marca || truck?.brand || "Camión";
+  const plate = truck?.matricula || truck?.plate || "";
 
   if (!truckId) {
     setMessages((m) => [
@@ -56,14 +62,12 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
       { from: "bot", reply_text: "No tienes un camión asignado por ahora." },
       {
         from: "bot",
-        reply_text: "Puedes revisar o actualizar tus datos desde tu perfil.",
+        reply_text: "Puedes revisar o completar tus datos desde tu perfil.",
         render: () => (
           <div className={styles.card}>
             <div className={styles.cardTitle}>Perfil</div>
             <div className={styles.cardActions}>
-              <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
-                Ver perfil
-              </a>
+              <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">Ver perfil</a>
             </div>
           </div>
         ),
@@ -76,14 +80,12 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
     ...m,
     {
       from: "bot",
-      reply_text: `Claro, aquí tienes la ficha del camión ${marca}${matricula ? " · " + matricula : ""}.`,
+      reply_text: `Claro, aquí tienes la ficha del camión ${marca}${plate ? " · " + plate : ""}.`,
       render: () => (
         <div className={styles.card}>
           <div className={styles.cardTitle}>Mi camión</div>
           <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${truckId}`}>
-              Ver camión
-            </a>
+            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${truckId}`}>Ver camión</a>
           </div>
         </div>
       ),
@@ -91,86 +93,93 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
   ]);
 }
 
-/**
- * Qué sabe Rayna de mí
- */
-export async function handleProfileWhatYouKnow({ profile, setMessages }) {
-  const adr     = profile?.adr ? "tienes ADR" : "no tienes ADR";
-  const camion  = profile?.camioane?.marca || null;
-  const remolque = profile?.remolque?.marca || null;
+/* ——— DRIVER SELF INFO (intenții cu action: "driver_self_info") */
+export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
+  const topic = intent?.meta?.topic;
 
-  if (camion && remolque) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: `Mira, sé que ${adr}. Conduces un conjunto formado por camión **${camion}** y remolque **${remolque}**.` },
-    ]);
-  } else {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: `Mira, sé que ${adr}. Ahh! No tienes el conjunto completado. ¿Quieres hacerlo ahora conmigo?` },
-    ]);
+  const truck = getTruck(profile);
+  const trailer = getTrailer(profile);
+  const driver = profile?.driver || profile || {};
+
+  const out = [];
+  switch (topic) {
+    case "truck_itv":
+      out.push(`La ITV de tu camión es **${txt(truck?.itv)}**.`);
+      break;
+    case "trailer_itv":
+      out.push(`La ITV de tu remolque es **${txt(trailer?.itv)}**.`);
+      break;
+    case "driver_credentials":
+      out.push(`CAP: **${txt(driver?.cap)}** · Carnet: **${txt(driver?.lic || driver?.permiso)}** · ADR: **${txt(driver?.adr)}**`);
+      break;
+    case "plates":
+      out.push(`Camión: **${txt(truck?.plate || truck?.matricula)}** · Remolque: **${txt(trailer?.plate || trailer?.matricula)}**`);
+      break;
+    case "payroll_summary":
+      const pr = profile?.payroll || {};
+      out.push(`Este mes: **${txt(pr.dias)}** días · **${txt(pr.km)}** km · **${txt(pr.conts)}** conts · D${txt(pr.desayunos, 0)}/C${txt(pr.cenas, 0)}/P${txt(pr.procenas, 0)}`);
+      break;
+    case "vacation_balance":
+      const vac = profile?.vac || {};
+      out.push(`Vacaciones: **${txt(vac.total)}** total · usadas **${txt(vac.usadas)}** · pendientes **${txt(vac.pendientes)}** · disponibles **${txt(vac.disponibles)}**`);
+      break;
+    default:
+      out.push("No tengo claro qué dato necesitas de tu perfil.");
   }
+
+  setMessages((m) => [...m, { from: "bot", reply_text: out.join("\n") }]);
 }
 
-/**
- * Inicia completarea profilului
- */
-export async function handleProfileComplete({ setMessages }) {
+/* ——— Vehicul: intenții cu id/action veh_* */
+export async function handleVehItvTruck({ profile, setMessages }) {
+  const truck = getTruck(profile);
   setMessages((m) => [
     ...m,
-    { from: "bot", reply_text: "Perfecto. Vamos a completar tu perfil paso a paso." },
-    {
-      from: "bot",
-      reply_text: "Abre el editor de perfil:",
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Perfil</div>
-          <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil/edit">
-              Completar perfil
-            </a>
-          </div>
-        </div>
-      ),
-    },
+    { from: "bot", reply_text: `Consultado ✅ ITV camión: **${txt(truck?.itv)}**.` },
+  ]);
+}
+export async function handleVehItvTrailer({ profile, setMessages }) {
+  const trailer = getTrailer(profile);
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: `Consultado ✅ ITV remolque: **${txt(trailer?.itv)}**.` },
+  ]);
+}
+export async function handleVehOilStatus({ profile, setMessages }) {
+  const oil = profile?.vehicle?.oil || {};
+  const last = oil.last || profile?.oil_last;
+  const next = oil.next || profile?.oil_next;
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: `Aceite: último **${txt(last)}** · próximo **${txt(next)}**.` },
+  ]);
+}
+export async function handleVehAdblueFilterStatus({ profile, setMessages }) {
+  const ad = profile?.vehicle?.adblue || {};
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: `Filtro AdBlue: último **${txt(ad.last || profile?.adblue_last)}** · próximo **${txt(ad.next || profile?.adblue_next)}**.` },
   ]);
 }
 
-/**
- * Răspuns negativ („No quiero completarlo”)
- */
-export async function handleProfileCompleteNo({ setMessages }) {
+/* ——— Flow: “completar mi perfil” */
+export async function handleProfileCompletionStart({ setMessages }) {
   setMessages((m) => [
     ...m,
     {
       from: "bot",
       reply_text:
-        "Ahh! Ok, pero tengo que decirte que es muy importante que lo tengas completado, te va a dar muchas ventajas. Tú mismo.",
-    },
-  ]);
-}
-
-/**
- * Avantajes del perfil completado
- */
-export async function handleProfileAdvantages({ setMessages }) {
-  setMessages((m) => [
-    ...m,
-    { from: "bot", reply_text: "Mira aquí te he preparado un vídeo sobre por qué está bien tenerlo completado y cómo rellenarlo." },
-    {
-      from: "bot",
-      reply_text: "Cuando esté listo el vídeo aparecerá aquí:",
+        "¡Perfecto! Completar tu perfil te da ventajas (accesos rápidos, recordatorios de ITV/CAP/ADR, rutas personalizadas). Te dejo un vídeo corto con el porqué y cómo hacerlo. Si no te apañas, dime **“quiero completar mi perfil”** y lo hacemos juntos.",
       render: () => (
         <div className={styles.card}>
-          <div className={styles.cardTitle}>Ventajas de completar tu perfil</div>
+          <div className={styles.cardTitle}>Completar mi perfil</div>
           <div className={styles.cardActions}>
-            <button className={styles.actionBtn} disabled>
-              🎬 Próximamente
-            </button>
+            {/* Placeholder video – adaugi URL când îl ai */}
+            <a className={styles.actionBtn} href="#" onClick={(e)=>e.preventDefault()}>Ver vídeo (pronto)</a>
+            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil?edit=1">Ir a editar</a>
           </div>
         </div>
       ),
     },
-    { from: "bot", reply_text: "Si no lo consigues solo dime: *quiero completar mi perfil* y yo te ayudo." },
   ]);
 }
