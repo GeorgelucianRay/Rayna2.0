@@ -95,8 +95,7 @@ export default function RaynaHub() {
     }
   }
 
-  // —— dispecer pentru acțiuni
-  async function dispatchAction(intent, slots) {
+    async function dispatchAction(intent, slots) {
     const actionKey = intent.action || intent.id;
 
     const table = {
@@ -109,20 +108,34 @@ export default function RaynaHub() {
       gps_place_info: () => handleGpsInfo({ intent, slots, setMessages }),
       gps_list: () => handleGpsLists({ intent, setMessages }),
 
-      // profil (rayna.intents.perfil.json)
-      open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
+      // profil
       who_am_i: () => handleWhoAmI({ profile, setMessages }),
+      open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
 
-      // parking „cerca de / por el camino”
+      // self-info generic pe meta.topic (din me_* intents)
+      driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
+
+      // vehicul
+      veh_itv_truck: () => handleVehItvTruck({ profile, setMessages }),
+      veh_itv_trailer: () => handleVehItvTrailer({ profile, setMessages }),
+      veh_oil_status: () => handleVehOilStatus({ profile, setMessages }),
+      veh_adblue_filter_status: () => handleVehAdblueFilterStatus({ profile, setMessages }),
+
+      // parking
       gps_find_parking_near: async () => {
-        const userPos = await tryGetUserPos(); // poate fi null; handlerul se descurcă
+        const userPos = await tryGetUserPos();
         return handleParkingNearStart({ slots, setMessages, setParkingCtx, userPos });
       },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
+
+      // completar perfil
+      profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
     };
 
     if (table[actionKey]) return table[actionKey]();
 
+    setMessages((m) => [...m, { from: "bot", reply_text: "Tengo la intención, pero aún no tengo handler para esta acción." }]);
+  }
     // fallback dacă nu avem handler mapat
     setMessages((m) => [
       ...m,
