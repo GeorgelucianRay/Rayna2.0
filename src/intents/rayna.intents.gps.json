@@ -1,0 +1,165 @@
+[
+  {
+    "id": "gps_navegar_a",
+    "priority": 95,
+    "type": "action",
+    "patterns_any": [
+      "quiero llegar a", "llevar a", "ir a", "navegar a", "como llego a", "cómo llego a",
+      "llévame a", "búscame ruta a", "búscame la ruta hasta", "camino a", "ruta hasta",
+      "necesito llegar a", "enséñame la ruta a", "abrir mapa a", "abrir google maps a",
+      "mostrar ruta a", "voy a", "destino", "quiero ir a", "dirígeme a",
+      "vreau sa ajung la", "vreau să ajung la", "vreau sa merg la", "vreau să merg la",
+      "navigheaza la", "navighează la", "cum ajung la", "cauta ruta spre", "arata ruta spre",
+      "vull arribar a", "portar a", "anar a", "com arribo a", "navega cap a", "ruta cap a"
+    ],
+    "stopwords": ["a", "la", "al", "el", "către", "pe", "en"],
+    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "gps_route_preview",
+    "response": {
+      "text": {
+        "es": "Aquí tienes la ruta a **{{place.name}}**.",
+        "ro": "Iată ruta către **{{place.name}}**.",
+        "ca": "Aquí tens la ruta a **{{place.name}}**."
+      }
+    }
+  },
+  {
+    "id": "gps_buscar_parking_cerca_de",
+    "priority": 94,
+    "type": "action",
+    "patterns_any": [
+      "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de", 
+      "aparcar cerca de", "aparcamiento cerca de", "aparcamiento próximo a", 
+      "necesito un parking cerca de", "búscame un sitio para aparcar en", 
+      "donde aparcar en", "sácame un parking en", "parking por el camino", 
+      "quiero aparcar cerca de", "búscame estacionamiento junto a", 
+      "búscame aparcamiento en", "aparca cerca de", "un parking próximo a", 
+      "encuéntrame parking cerca de", "necesito aparcamiento cerca de", 
+      "parcare aproape de", "parcare lângă", "cauta un parking langa", "caută un parking lângă", 
+      "un aparcament al costat de", "pàrquing proper a", "pàrquing a prop de"
+    ],
+    "stopwords": ["de", "la", "el", "del", "al", "lângă", "langă"],
+    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "gps_find_parking_near",
+    "response": {
+      "text": {
+        "es": "Aquí tienes opciones de aparcamiento:",
+        "ro": "Aici ai opțiuni de parcare:",
+        "ca": "Aquí tens opcions d’aparcament:"
+      }
+    }
+  },
+  {
+    "id": "gps_otro_parking",
+    "priority": 93,
+    "type": "action",
+    "patterns_any": [
+      "otro parking", "otra opcion", "otra opción", "otra alternativa", 
+      "dame otra", "otro sitio para aparcar", "no me convence este", 
+      "muéstrame otro", "otro más", "algo más", "alguna otra opción",
+      "necesito otro parking", "no hay más opciones", "dame otro parking",
+      "mai ai altul", "altul", "altă parcare", "mai ai altă opțiune", 
+      "un altre", "una altra opció", "algun altre parking", "mostra'm un altre"
+    ],
+    "action": "gps_parking_next_suggestion",
+    "response": {
+      "text": {
+        "es": "Aquí tienes otra alternativa:",
+        "ro": "Iată o altă opțiune:",
+        "ca": "Aquí tens una altra opció:"
+      }
+    }
+  },
+  {
+    "id": "gps_info_de",
+    "priority": 87,
+    "type": "action",
+    "patterns_any": [
+      "que hay en", "qué hay en", "que pasa en", "qué pasa en", "que sabes de", "qué sabes de",
+      "que me puedes decir de", "qué me puedes decir de", "informacion de", "información de", 
+      "dime sobre", "háblame de", "cuéntame de", "qué tienes de", "que opinas de", 
+      "donde esta", "dónde está", "que ubicacion es", "qué lugar es", 
+      "ce poți să-mi spui despre", "ce poti spune despre", "ce știi despre", 
+      "unde este", "unde e", "informații despre", "descrie-mi", 
+      "què hi ha a", "què passa a", "què saps de", "què em pots dir de", 
+      "on és", "on es", "quina informació tens de"
+    ],
+    "stopwords": ["de", "la", "el", "en", "del", "al", "despre", "pe", "a"],
+    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "gps_place_info",
+    "response": {
+      "text": {
+        "es": "Esto es lo que tengo de **{{place.name}}**:",
+        "ro": "Iată ce am despre **{{place.name}}**:",
+        "ca": "Això és el que tinc de **{{place.name}}**:"
+      }
+    }
+  },
+  {
+    "id": "gps_list_terminale",
+    "priority": 62,
+    "type": "action",
+    "patterns_any": [
+      "que terminales hay", "qué terminales hay", "lista terminales", "ver terminales",
+      "mostrar terminales", "muéstrame terminales", "terminales disponibles", 
+      "qué terminales existen", "que terminales tenemos", "abrir terminales", 
+      "enséñame terminales", "listado de terminales", "terminales activos", 
+      "terminales en gps", "todas las terminales",
+      "ce terminale sunt", "lista terminale", "vezi terminale", 
+      "quins terminals hi ha", "llista terminals", "veure terminals", "terminals disponibles"
+    ],
+    "action": "gps_list",
+    "meta": { "table": "gps_terminale", "label": "Terminales" },
+    "response": {
+      "text": {
+        "es": "Estas son las terminales disponibles:",
+        "ro": "Acestea sunt terminalele disponibile:",
+        "ca": "Aquests són els terminals disponibles:"
+      }
+    }
+  },
+  {
+    "id": "gps_list_parkings",
+    "priority": 61,
+    "type": "action",
+    "patterns_any": [
+      "que parkings hay", "qué parkings hay", "lista parkings", "ver parkings",
+      "mostrar parkings", "muéstrame parkings", "aparcamientos disponibles", 
+      "que parkings tenemos", "todos los parkings", "abrir lista parkings", 
+      "dime los parkings", "cuales son los parkings", "parkings activos",
+      "ce parcari sunt", "lista parcari", "vezi parcari", "parcari disponibile", 
+      "quins pàrquings hi ha", "llista pàrquings", "veure pàrquings"
+    ],
+    "action": "gps_list",
+    "meta": { "table": "gps_parkings", "label": "Parkings" },
+    "response": {
+      "text": {
+        "es": "Estos son los parkings disponibles:",
+        "ro": "Acestea sunt parcările disponibile:",
+        "ca": "Aquests són els pàrquings disponibles:"
+      }
+    }
+  },
+  {
+    "id": "gps_list_servicios",
+    "priority": 60,
+    "type": "action",
+    "patterns_any": [
+      "que servicios hay", "qué servicios hay", "lista servicios", "ver servicios",
+      "mostrar servicios", "muéstrame servicios", "servicios disponibles", 
+      "qué servicios tenemos", "abrir lista servicios", "dime servicios", 
+      "listado de servicios", "todos los servicios", 
+      "ce servicii sunt", "lista servicii", "vezi servicii", "servicii disponibile", 
+      "quins serveis hi ha", "llista serveis", "veure serveis"
+    ],
+    "action": "gps_list",
+    "meta": { "table": "gps_servicios", "label": "Servicios" },
+    "response": {
+      "text": {
+        "es": "Estos son los servicios disponibles:",
+        "ro": "Acestea sunt serviciile disponibile:",
+        "ca": "Aquests són els serveis disponibles:"
+      }
+    }
+  }
+]
