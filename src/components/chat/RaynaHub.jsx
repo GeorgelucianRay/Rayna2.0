@@ -21,7 +21,9 @@ import {
   handleGpsNavigate,
   handleGpsInfo,
   handleGpsLists,
-  handleProfileStiff.jsx,
+  // ⬇️ noile acțiuni, exportate denumit din ./actions/index.js
+  handleOpenMyTruck,
+  handleWhoAmI,
 } from "./actions";
 
 // ✅ avatar Rayna din /public
@@ -62,7 +64,8 @@ export default function RaynaHub() {
       : saludoDefault;
 
     setMessages([{ from: "bot", reply_text: saludo }]);
-  }, [loading, profile]); // nu include messages.length aici ca să nu retragă salutul
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, profile]); // nu include messages în deps ca să nu refacă salutul
 
   const send = async () => {
     const userText = text.trim();
@@ -107,45 +110,36 @@ export default function RaynaHub() {
     }
 
     if (intent.type === "action") {
-      if (intent.action === "open_camera")
-        return await handleOpenCamera({ intent, slots, setMessages });
-
-      if (intent.action === "show_announcement")
-        return await handleShowAnnouncement({ intent, setMessages });
-
-      if (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview")
-        return await handleGpsNavigate({ intent, slots, setMessages });
-
-      if (intent.id === "gps_info_de")
-        return await handleGpsInfo({ intent, slots, setMessages });
-
-      if (intent.action === "gps_list")
-        return await handleGpsLists({ intent, setMessages });
-    }
-
-        if (intent.type === "action") {
+      // acțiuni existente
       if (intent.action === "open_camera") {
-        return await handleOpenCamera({ intent, slots, setMessages });
+        await handleOpenCamera({ intent, slots, setMessages });
+        return;
       }
       if (intent.action === "show_announcement") {
-        return await handleShowAnnouncement({ intent, setMessages });
+        await handleShowAnnouncement({ intent, setMessages });
+        return;
       }
       if (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview") {
-        return await handleGpsNavigate({ intent, slots, setMessages });
+        await handleGpsNavigate({ intent, slots, setMessages });
+        return;
       }
       if (intent.id === "gps_info_de") {
-        return await handleGpsInfo({ intent, slots, setMessages });
+        await handleGpsInfo({ intent, slots, setMessages });
+        return;
       }
       if (intent.action === "gps_list") {
-        return await handleGpsLists({ intent, setMessages });
+        await handleGpsLists({ intent, setMessages });
+        return;
       }
 
-      // 🔹 NOILE ACȚIUNI
+      // 🔹 NOILE ACȚIUNI (profil)
       if (intent.action === "open_my_truck") {
-        return await handleOpenMyTruck({ profile, setMessages });
+        await handleOpenMyTruck({ profile, setMessages });
+        return;
       }
       if (intent.action === "who_am_i") {
-        return await handleWhoAmI({ profile, setMessages });
+        await handleWhoAmI({ profile, setMessages });
+        return;
       }
     }
 
