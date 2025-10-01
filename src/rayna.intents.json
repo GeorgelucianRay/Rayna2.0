@@ -584,16 +584,20 @@
     }
   },
   {
-  "id": "gps_buscar_parking_cerca_de",
+    "id": "gps_buscar_parking_cerca_de",
   "priority": 94,
   "type": "action",
   "patterns_any": [
-    "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de",
-    "aparcamiento cerca de", "parcare aproape de", "cauta un parking langa", "caută un parking lângă",
-    "parcare langa", "parcare lângă",
-    "un parking por el camino", "parking por el camino", "necesito un parking por el camino"
+    "buscame un parking cerca de", "búscame un parking cerca de",
+    "buscame un parking serca de", "búscame un parking serca de",   // ⬅️ typo acoperit
+    "parking cerca de", "parking serca de",                         // ⬅️ typo acoperit
+    "aparcamiento cerca de",
+    "parcare aproape de", "parcare langa", "parcare lângă",
+    "cauta un parking langa", "caută un parking lângă",
+    "un parking por el camino", "parking por el camino",
+    "necesito un parking por el camino"
   ],
-  "stopwords": ["de", "la", "el", "del", "al", "lângă", "langă", "de"],
+  "stopwords": ["de", "la", "el", "del", "al", "lângă", "langă"],
   "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
   "action": "gps_find_parking_near",
   "response": {
@@ -608,6 +612,26 @@
       "es": "No he encontrado el sitio \"{{query}}\". ¿Puedes repetir el nombre?",
       "ro": "Nu am găsit locul „{{query}}”. Repeți te rog numele?",
       "ca": "No he trobat el lloc \"{{query}}\". Pots repetir el nom?"
+    }
+  }
+},
+{
+  "id": "gps_otro_parking",
+  "priority": 93,
+  "type": "action",
+  "patterns_any": [
+    "algo mas", "algo más", "otra opcion", "otra opción",
+    "otro parking", "otro sitio para aparcar",
+    "no me queda disco", "no me queda disco hasta aquí",
+    "altul", "mai ai altul", "mai ai alta optiune", "mai ai altă opțiune",
+    "un altre", "una altra opció"
+  ],
+  "action": "gps_parking_next_suggestion",
+  "response": {
+    "text": {
+      "es": "Ah, perdona. Aquí tienes otra opción:",
+      "ro": "Aha, scuze. Uite o altă opțiune:",
+      "ca": "Ah, perdona. Aquí tens una altra opció:"
     }
   }
 },
