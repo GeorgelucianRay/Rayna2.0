@@ -21,6 +21,7 @@ import {
   handleGpsNavigate,
   handleGpsInfo,
   handleGpsLists,
+  handleProfileStiff.jsx,
 } from "./actions";
 
 // ✅ avatar Rayna din /public
@@ -120,6 +121,32 @@ export default function RaynaHub() {
 
       if (intent.action === "gps_list")
         return await handleGpsLists({ intent, setMessages });
+    }
+
+        if (intent.type === "action") {
+      if (intent.action === "open_camera") {
+        return await handleOpenCamera({ intent, slots, setMessages });
+      }
+      if (intent.action === "show_announcement") {
+        return await handleShowAnnouncement({ intent, setMessages });
+      }
+      if (intent.id === "gps_navegar_a" || intent.action === "gps_route_preview") {
+        return await handleGpsNavigate({ intent, slots, setMessages });
+      }
+      if (intent.id === "gps_info_de") {
+        return await handleGpsInfo({ intent, slots, setMessages });
+      }
+      if (intent.action === "gps_list") {
+        return await handleGpsLists({ intent, setMessages });
+      }
+
+      // 🔹 NOILE ACȚIUNI
+      if (intent.action === "open_my_truck") {
+        return await handleOpenMyTruck({ profile, setMessages });
+      }
+      if (intent.action === "who_am_i") {
+        return await handleWhoAmI({ profile, setMessages });
+      }
     }
 
     // fallback
