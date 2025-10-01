@@ -5,7 +5,8 @@ import { localizeIntent } from "./localize.js";
 import { hasActionCue, CAMERA_NOUNS, CAMERA_VERBS } from "./cues.js";
 import { captureCameraName, capturePlaceName } from "./slots.js";
 import { normalize } from "./normalize.js";
-import { quickDetectSelf } from "./selfquick.js"; // ← nume exact ca fișierul!
+// src/nlu/detect.js
+import { quickDetectSelf } from "./selfQuick.js"; // ✅ Q mare, extensia .js inclusă // ← nume exact ca fișierul!
 
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
