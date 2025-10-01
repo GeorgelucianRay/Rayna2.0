@@ -4,7 +4,7 @@ import styles from "./Chatbot.module.css";
 
 // —— auth & NLU
 import { useAuth } from "../../AuthContext";
-import { detectIntent } from "../../nlu";
+import { detectIntent } from "../../nlu"; // re-export din src/nlu/index.js
 
 // —— hooks
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
@@ -13,7 +13,7 @@ import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 
-// —— handlers (actions) — existente în proiectul tău
+// —— handlers (actions)
 import {
   handleStatic,
   handleDialog,
@@ -27,6 +27,9 @@ import {
   handleParkingNearStart,
   handleParkingNext,
 } from "./actions";
+
+// 👉 încarcă toate intențiile prin agregator (sigur în build)
+import ALL_INTENTS from "../../intents";
 
 // ✅ avatar Rayna din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
@@ -46,20 +49,8 @@ export default function RaynaHub() {
   // —— context „parking” (lista de sugestii & cursorul curent)
   const [parkingCtx, setParkingCtx] = useState(null);
 
-  // —— AUTO-LOAD: toate fișierele de intents din /intents
-  // Ex: rayna.intents.saludos.json, rayna.intents.anuncios.json,
-  //     rayna.intents.gps.json, rayna.intents.camaras.json,
-  //     rayna.intents.perfil.json, rayna.intents.vehiculo.json, etc.
-  const intentsData = useMemo(() => {
-    // Vite: importă toate fișierele JSON care respectă tiparul
-    const modules = import.meta.glob("../../intents/rayna.intents.*.json", { eager: true });
-    const all = Object.values(modules)
-      .map((m) => (m && m.default ? m.default : m)) // fiecare modul exportă default-ul JSON
-      .flat()
-      .filter(Boolean);
-    // sortăm o singură dată după priority desc (optimizare mică)
-    return all.sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
-  }, []);
+  // —— memorăm intențiile (deja sortate/validate de agregator)
+  const intentsData = useMemo(() => ALL_INTENTS || [], []);
 
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
@@ -85,9 +76,9 @@ export default function RaynaHub() {
 
     setMessages([{ from: "bot", reply_text: saludo }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, profile, intentsData]);
+  }, [loading, profile]);
 
-  // —— geolocație (pentru „parking por el camino”); best-effort
+  // —— geolocație (best-effort pentru „parking por el camino”)
   async function tryGetUserPos() {
     if (!("geolocation" in navigator)) return null;
     try {
@@ -104,7 +95,7 @@ export default function RaynaHub() {
     }
   }
 
-  // —— dispecer pentru acțiuni (map clar ⇢ handler)
+  // —— dispecer pentru acțiuni
   async function dispatchAction(intent, slots) {
     const actionKey = intent.action || intent.id;
 
@@ -118,27 +109,19 @@ export default function RaynaHub() {
       gps_place_info: () => handleGpsInfo({ intent, slots, setMessages }),
       gps_list: () => handleGpsLists({ intent, setMessages }),
 
-      // profil (din rayna.intents.perfil.json)
+      // profil (rayna.intents.perfil.json)
       open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
       who_am_i: () => handleWhoAmI({ profile, setMessages }),
 
-      // parking „cerca de / por el camino” (din rayna.intents.gps.json sau parking.json dacă ai separat)
+      // parking „cerca de / por el camino”
       gps_find_parking_near: async () => {
-        const userPos = await tryGetUserPos(); // poate fi null, handlerul se descurcă
+        const userPos = await tryGetUserPos(); // poate fi null; handlerul se descurcă
         return handleParkingNearStart({ slots, setMessages, setParkingCtx, userPos });
       },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
-
-      // ——— Dacă ai (sau vei avea) handler-e pentru vehicul, mapează-le aici, ex.:
-      // veh_itv_truck:    () => handleVehItvTruck({ profile, setMessages }),
-      // veh_oil_status:   () => handleVehOilStatus({ profile, setMessages }),
-      // veh_adblue_filter_status: () => handleVehAdblueFilterStatus({ profile, setMessages }),
-      // etc.
     };
 
-    if (table[actionKey]) {
-      return table[actionKey]();
-    }
+    if (table[actionKey]) return table[actionKey]();
 
     // fallback dacă nu avem handler mapat
     setMessages((m) => [
@@ -169,7 +152,7 @@ export default function RaynaHub() {
       return;
     }
 
-    // 2) detectare intent
+    // 2) detectare intent (folosește NLU modular)
     const { intent, slots } = detectIntent(userText, intentsData);
 
     // 3) dispecer pe tip
