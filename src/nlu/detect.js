@@ -1,10 +1,11 @@
+// src/nlu/detect.js
 import { includesAny, hasToken } from "./fuzzy.js";
 import { detectLanguage } from "./lang.js";
 import { localizeIntent } from "./localize.js";
 import { hasActionCue, CAMERA_NOUNS, CAMERA_VERBS } from "./cues.js";
 import { captureCameraName, capturePlaceName } from "./slots.js";
 import { normalize } from "./normalize.js";
-import { quickDetectSelf } from "./selfQuick.js";
+import { quickDetectSelf } from "./selfquick.js"; // ← nume exact ca fișierul!
 
 export function detectIntent(message, intentsJson) {
   const text = String(message ?? "");
@@ -26,12 +27,16 @@ export function detectIntent(message, intentsJson) {
     if (rawIntent.id === "fallback") continue;
 
     // 2) potrivire pe patterns (fuzzy fraze + token)
-    let ok = includesAny(text, rawIntent.patterns_any) || hasToken(text, rawIntent.patterns_any);
+    const pats = Array.isArray(rawIntent.patterns_any) ? rawIntent.patterns_any : [];
+    let ok = includesAny(text, pats) || hasToken(text, pats);
 
     // 2.1) negative_any — inhibă
-    if (ok && rawIntent.negative_any) {
-      const negHit = includesAny(text, rawIntent.negative_any) || hasToken(text, rawIntent.negative_any);
-      if (negHit) ok = false;
+    if (ok) {
+      const negs = Array.isArray(rawIntent.negative_any) ? rawIntent.negative_any : [];
+      if (negs.length) {
+        const negHit = includesAny(text, negs) || hasToken(text, negs);
+        if (negHit) ok = false;
+      }
     }
 
     // 2.2) Nu trata salut dacă e clară o acțiune sau mesajul e lung
@@ -74,7 +79,8 @@ export function detectIntent(message, intentsJson) {
 
   // 6) fallback (din lista primită sau default)
   const fbRaw = intents.find(i => i?.id === "fallback") || {
-    id: "fallback", type: "static",
+    id: "fallback",
+    type: "static",
     response: { text: { es: "No te he entendido.", ro: "Nu te-am înțeles.", ca: "No t'he entès." } }
   };
   const intent = localizeIntent(fbRaw, lang);
