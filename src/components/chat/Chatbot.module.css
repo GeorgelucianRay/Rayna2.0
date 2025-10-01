@@ -22,14 +22,30 @@
     inset 0 -1px 0 rgba(0,0,0,.25);
 }
 
-/* ===== Container & background ===== */
+/* Rayna ocupă tot ecranul, fără să lase pagina să deruleze */
 .shell{
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  min-height:100vh;
-  padding:12px;
-  border-radius:var(--radius-xl);
+  position: fixed;        /* ⬅️ important: decuplează de layout-ul paginii */
+  inset: 0;               /* full-viewport */
+  z-index: 9999;          /* peste restul site-ului */
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;         /* stabile, iOS-friendly */
+  overflow: hidden;       /* ⬅️ blochează scroll-ul aici */
+
+  padding: 12px;
+  border-radius: 0;       /* e full-screen; păstrează dacă vrei colțuri */
+
+  background-image:
+    radial-gradient(1200px 900px at 80% 10%, rgba(0,0,0,.25), transparent 60%),
+    linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.25)),
+    url("/Chatwalpaper.JPG");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+
+  /* opțional: evită „bounce” care ar mișca pagina de dedesubt */
+  overscroll-behavior: none;
+}
 
   /* wallpaper din /public */
   background-image:
@@ -84,20 +100,24 @@
 .closeBtn:hover{transform:translateY(-1px);filter:brightness(1.05)}
 
 /* ===== Chat area ===== */
+/* DOAR containerul de chat derulează */
 .chat{
-  /* ocupă tot spațiul rămas */
-  flex:1;
-  margin-top:14px;
-  padding:16px;
-  overflow:auto;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
+  flex: 1;
+  min-height: 0;                 /* esențial ca overflow să funcționeze într-un flex */
+  overflow: auto;                /* ⬅️ singurul scroll */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;  /* nu propagă scroll-ul în afară */
 
-  border-radius:var(--radius-lg);
-  background:var(--glass-strong);        /* sticlă fără blur */
-  border:1px solid var(--stroke-soft);
-  box-shadow:var(--shadow-inset), var(--shadow-outer);
+  margin-top: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke-soft);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
 }
 
 /* un mic „buffer” jos ca să nu se acopere de input bar la scroll */
