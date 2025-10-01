@@ -1,0 +1,68 @@
+[
+  {
+    "id": "set_anuncio",
+    "priority": 85,
+    "type": "dialog",
+    "patterns_any": [
+      "quiero poner un anuncio", "poner anuncio", "publicar anuncio", "crear anuncio",
+      "actualiza el anuncio", "actualizar anuncio", "cambiar anuncio", "edita el anuncio",
+      "escribe un anuncio", "anadir anuncio", "añadir anuncio", "sube un anuncio",
+      "lanza un anuncio", "nuevo anuncio", "anuncio nuevo",
+      "vreau sa pun un anunt", "vreau să pun un anunț", "publica anunt", "publică anunț",
+      "seteaza anunt", "setează anunț", "modifica anunt", "modifică anunț",
+      "schimba anuntul", "schimbă anunțul", "adauga anunt", "adaugă anunț",
+      "vull posar un anunci", "publicar anunci", "crear anunci", "actualitza l'anunci",
+      "canvia l'anunci", "edita l'anunci", "afegir anunci",
+      "quiero escribir el aviso", "poner aviso", "actualiza el aviso",
+      "sube aviso", "nuevo aviso"
+    ],
+    "roles_allowed": ["admin", "dispecer"],
+    "dialog": {
+      "await_key": "anuncio_text",
+      "ask_text": {
+        "es": "Claro, ¿qué anuncio quieres?",
+        "ro": "Sigur, ce anunț vrei?",
+        "ca": "És clar, quin anunci vols?"
+      },
+      "save_action": "save_announcement",
+      "save_ok": {
+        "es": "¡Anuncio actualizado con éxito!",
+        "ro": "Anunț actualizat cu succes!",
+        "ca": "Anunci actualitzat amb èxit!"
+      },
+      "save_err": {
+        "es": "Ha ocurrido un error al guardar el anuncio.",
+        "ro": "A apărut o eroare la salvarea anunțului.",
+        "ca": "S'ha produït un error en desar l'anunci."
+      }
+    }
+  },
+  {
+    "id": "ver_anuncio",
+    "priority": 70,
+    "type": "action",
+    "patterns_any": [
+      "que anuncio hay", "qué anuncio hay", "ver anuncio", "muestrame el anuncio",
+      "mostrar anuncio", "lee el anuncio", "leer anuncio", "ver el aviso",
+      "que pone el anuncio", "qué pone el anuncio", "hay algun anuncio", "hay algún anuncio",
+      "anuncios", "aviso", "ver aviso", "abrir anuncio",
+      "ce anunt avem", "ce anunț avem", "arata anuntul", "arată anunțul",
+      "vezi anuntul", "vezi anunțul", "citeste anuntul", "citește anunțul",
+      "exista vreun anunt", "există vreun anunț",
+      "quin anunci hi ha", "veure anunci", "mostra l'anunci", "llegeix l'anunci",
+      "hi ha algun anunci", "anuncis", "obrir anunci",
+      "muestrame el ultimo anuncio", "qué hay de anuncio", "ver comunicado", "comunicado"
+    ],
+    "action": "show_announcement",
+    "response": {
+      "text": {
+        "es": "Este es el anuncio vigente:",
+        "ro": "Acesta este anunțul curent:",
+        "ca": "Aquest és l'anunci vigent:"
+      },
+      "objects": [
+        { "type": "announcement_box", "content": "{{announcement.content}}" }
+      ]
+    }
+  }
+]
