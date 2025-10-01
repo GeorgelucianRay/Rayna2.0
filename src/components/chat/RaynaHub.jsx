@@ -13,7 +13,7 @@ import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 
-// —— handlers (actions)
+// —— handlers (actions) — existente în proiectul tău
 import {
   handleStatic,
   handleDialog,
@@ -27,16 +27,6 @@ import {
   handleParkingNearStart,
   handleParkingNext,
 } from "./actions";
-
-// —— intents split (concatenează-le într-un array unic)
-import SALUDOS from "../../intents/rayna.intents.saludos.json";
-import ANUNCIOS from "../../intents/rayna.intents.anuncios.json";
-import GPS from "../../intents/rayna.intents.gps.json";
-import CAMARAS from "../../intents/rayna.intents.camaras.json";
-import PERFIL from "../../intents/rayna.intents.perfil.json";
-import VEHICULO from "../../intents/rayna.intents.vehiculo.json";
-// opțional (smalltalk/glume)
-// import SMALLTALK from "../../intents/rayna.intents.smalltalk.json";
 
 // ✅ avatar Rayna din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
@@ -56,10 +46,19 @@ export default function RaynaHub() {
   // —— context „parking” (lista de sugestii & cursorul curent)
   const [parkingCtx, setParkingCtx] = useState(null);
 
-  // —— agregăm intents din fișiere
+  // —— AUTO-LOAD: toate fișierele de intents din /intents
+  // Ex: rayna.intents.saludos.json, rayna.intents.anuncios.json,
+  //     rayna.intents.gps.json, rayna.intents.camaras.json,
+  //     rayna.intents.perfil.json, rayna.intents.vehiculo.json, etc.
   const intentsData = useMemo(() => {
-    const parts = [SALUDOS, ANUNCIOS, GPS, CAMARAS, PERFIL, VEHICULO /*, SMALLTALK*/];
-    return parts.flat().filter(Boolean);
+    // Vite: importă toate fișierele JSON care respectă tiparul
+    const modules = import.meta.glob("../../intents/rayna.intents.*.json", { eager: true });
+    const all = Object.values(modules)
+      .map((m) => (m && m.default ? m.default : m)) // fiecare modul exportă default-ul JSON
+      .flat()
+      .filter(Boolean);
+    // sortăm o singură dată după priority desc (optimizare mică)
+    return all.sort((a, b) => (b?.priority || 0) - (a?.priority || 0));
   }, []);
 
   const endRef = useRef(null);
@@ -71,7 +70,7 @@ export default function RaynaHub() {
     if (messages.length > 0) return;
 
     const saludoDefault =
-      (intentsData.find((i) => i.id === "saludo")?.response?.text) ||
+      intentsData.find((i) => i.id === "saludo")?.response?.text ||
       "¡Hola! ¿En qué te puedo ayudar hoy?";
 
     const firstName = (() => {
@@ -119,19 +118,22 @@ export default function RaynaHub() {
       gps_place_info: () => handleGpsInfo({ intent, slots, setMessages }),
       gps_list: () => handleGpsLists({ intent, setMessages }),
 
-      // profil
+      // profil (din rayna.intents.perfil.json)
       open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
       who_am_i: () => handleWhoAmI({ profile, setMessages }),
 
-      // parking „cerca de / por el camino”
+      // parking „cerca de / por el camino” (din rayna.intents.gps.json sau parking.json dacă ai separat)
       gps_find_parking_near: async () => {
         const userPos = await tryGetUserPos(); // poate fi null, handlerul se descurcă
         return handleParkingNearStart({ slots, setMessages, setParkingCtx, userPos });
       },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
 
-      // (opțional) wizard-ul tău de adăugare locație în chat
-      // start_gps_add_chat: () => openAddGpsWizardModal(),  // TODO: implementează când e gata wizard-ul
+      // ——— Dacă ai (sau vei avea) handler-e pentru vehicul, mapează-le aici, ex.:
+      // veh_itv_truck:    () => handleVehItvTruck({ profile, setMessages }),
+      // veh_oil_status:   () => handleVehOilStatus({ profile, setMessages }),
+      // veh_adblue_filter_status: () => handleVehAdblueFilterStatus({ profile, setMessages }),
+      // etc.
     };
 
     if (table[actionKey]) {
@@ -141,7 +143,7 @@ export default function RaynaHub() {
     // fallback dacă nu avem handler mapat
     setMessages((m) => [
       ...m,
-      { from: "bot", reply_text: "Aún no tengo handler para esta acción." },
+      { from: "bot", reply_text: "Tengo la intención, pero aún no tengo handler para esta acción." },
     ]);
   }
 
