@@ -1,0 +1,97 @@
+[
+  {
+    "id": "ver_camara",
+    "priority": 80,
+    "type": "action",
+    "patterns_any": [
+      "ver camara", "ver cámara", "abrir camara", "abrir cámara", "abre la cámara", "abre camara",
+      "muestra cámara", "mostrar camara", "desplegar camara", "quiero ver la cámara",
+      "enséñame la cámara", "muéstrame camara", "abre video", "abrir video", "abrir feed",
+      "deschide camera", "vreau sa vad camera", "vreau să văd camera", "vizualizeaza camera",
+      "arata camera", "arată camera", "camara de la", "camera de la",
+      "obre la càmera", "veure càmera", "enséñame càmera", "mostra càmera", "obrir càmera"
+    ],
+    "negative_any": [
+      "lista", "listado", "todas", "totes", "toate", "veure totes les càmeres", "ver todas las camaras",
+      "lista camaras", "todas las cámaras", "listado camaras", "lista camere"
+    ],
+    "stopwords": [
+      "abre", "abrir", "ver", "muestra", "mostrar", "desplegar", "deschide", "obre",
+      "quiero", "pf", "pls", "por", "favor", "la", "el", "una", "un",
+      "ok", "vale", "de", "del", "al", "en", "a", "pe", "către", "catre"
+    ],
+    "slots": { "cameraName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+    "action": "open_camera",
+    "response": {
+      "text": {
+        "es": "Aquí tienes **{{camera.name}}**. Pulsa el botón para abrirla.",
+        "ro": "Uite **{{camera.name}}**. Apasă butonul ca să o deschizi.",
+        "ca": "Aquí tens **{{camera.name}}**. Prem el botó per obrir-la."
+      },
+      "objects": [
+        {
+          "type": "card",
+          "title": "{{camera.name}}",
+          "actions": [{ "type": "open", "label": "Abrir cámara", "route": "{{camera.url}}", "newTab": true }]
+        }
+      ]
+    },
+    "not_found": {
+      "text": {
+        "es": "No he encontrado la cámara \"{{query}}\".",
+        "ro": "Nu am găsit camera „{{query}}”.",
+        "ca": "No he trobat la càmera \"{{query}}\"."
+      }
+    }
+  },
+  {
+    "id": "gps_list_camaras",
+    "priority": 81,
+    "type": "action",
+    "patterns_any": [
+      "lista camaras", "listado camaras", "que camaras hay", "qué cámaras hay",
+      "ver todas las camaras", "mostrar todas las cámaras", "enséñame todas las cámaras",
+      "todas las cámaras disponibles", "listado de cámaras", "muéstrame las cámaras",
+      "qué camaras tenemos", "qué cámaras existen", "camere disponibile",
+      "lista camere", "toate camerele", "vezi camerele", "ce camere sunt",
+      "llista de càmeres", "veure totes les càmeres", "mostra totes les càmeres", "quines càmeres hi ha"
+    ],
+    "action": "list_all_cameras",
+    "response": {
+      "text": {
+        "es": "Aquí tienes todas las cámaras disponibles:",
+        "ro": "Aici sunt toate camerele disponibile:",
+        "ca": "Aquí tens totes les càmeres disponibles:"
+      }
+    }
+  },
+  {
+    "id": "admin_add_camara",
+    "priority": 86,
+    "type": "dialog",
+    "patterns_any": [
+      "añadir camara", "añadir cámara", "agregar camara", "agregar cámara",
+      "crear camara", "crear cámara", "nueva camara", "nueva cámara",
+      "quiero añadir una cámara", "quiero crear una camara", "meter nueva cámara",
+      "instalar cámara", "subir cámara", "añadir feed",
+      "adauga camera", "adaugă cameră", "vreau sa adaug o camera", "vreau să adaug o cameră",
+      "adaugare camera", "creează cameră", "creeaza camera",
+      "vull afegir una càmera", "afegir càmera", "crear càmera", "nova càmera", "instal·lar càmera"
+    ],
+    "roles_allowed": ["admin"],
+    "dialog": {
+      "form": "add_camera_inline",
+      "save_action": "insert_camera",
+      "save_ok": {
+        "es": "¡Listo! Cámara **{{camera.name}}** añadida.",
+        "ro": "Gata! Camera **{{camera.name}}** a fost adăugată.",
+        "ca": "Fet! Càmera **{{camera.name}}** afegida."
+      },
+      "save_err": {
+        "es": "No pude añadir la cámara. Revisa el URL.",
+        "ro": "Nu am putut adăuga camera. Verifică URL-ul.",
+        "ca": "No he pogut afegir la càmera. Revisa l'URL."
+      }
+    }
+  }
+]
