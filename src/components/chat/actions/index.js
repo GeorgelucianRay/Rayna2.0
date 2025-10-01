@@ -6,4 +6,6 @@ export { default as handleGpsNavigate } from "./handleGpsNavigate.jsx";
 export { default as handleOpenCamera } from "./handleOpenCamera.jsx";
 export { default as handleShowAnnouncement } from "./handleShowAnnouncement.jsx";
 export { default as handleStatic } from "./handleStatic.jsx";
-export * from "./handleProfileStuff.jsx"; // ⬅️ nou
+
+// ⬇️ exporturi NUMITE din handleProfileStuff.jsx
+export { handleOpenMyTruck, handleWhoAmI } from "./handleProfileStuff.jsx";
