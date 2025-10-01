@@ -7,6 +7,15 @@ export { default as handleOpenCamera } from "./handleOpenCamera.jsx";
 export { default as handleShowAnnouncement } from "./handleShowAnnouncement.jsx";
 export { default as handleStatic } from "./handleStatic.jsx";
 
-// noile acțiuni (exporturi denumite)
-export { handleWhoAmI, handleOpenMyTruck } from "./handleProfileStuff.jsx";
+export {
+  handleWhoAmI,
+  handleOpenMyTruck,
+  handleDriverSelfInfo,
+  handleVehItvTruck,
+  handleVehItvTrailer,
+  handleVehOilStatus,
+  handleVehAdblueFilterStatus,
+  handleProfileCompletionStart,
+} from "./handleProfileStuff.jsx";
+
 export { handleParkingNearStart, handleParkingNext } from "./handleParkingNear.jsx";
