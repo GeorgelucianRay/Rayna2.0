@@ -46,20 +46,39 @@ const fuzzyEq = (a, b) => {
   return ed(a, b) <= tol;
 };
 
-// ——— Potrivire fără sub-șiruri accidentale
+// ——— Potrivire fără sub-șiruri accidentale + fraze fuzzy
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-function includesAny(text, arr) {
+/** Potrivește un pattern multi-cuvânt fuzzy, aliniind pe ferestre de mărimea frazei. */
+function fuzzyPhraseInTokens(textTokens, patternTokens) {
+  if (patternTokens.length === 0) return false;
+  if (textTokens.length < patternTokens.length) return false;
+  for (let i = 0; i <= textTokens.length - patternTokens.length; i++) {
+    let all = true;
+    for (let j = 0; j < patternTokens.length; j++) {
+      if (!fuzzyEq(textTokens[i + j], patternTokens[j])) { all = false; break; }
+    }
+    if (all) return true;
+  }
+  return false;
+}
+
+function includesAny(rawText, arr) {
   if (!Array.isArray(arr) || !arr.length) return false;
-  const n = normalize(text);
+  const n = normalize(rawText);
   const toks = n.split(" ").filter(Boolean);
   return arr.some(p => {
     const np = normalize(p);
     if (!np) return false;
     if (np.includes(" ")) {
+      // 1) întâi încercăm match exact pe frază (limitată la margini / spații)
       const re = new RegExp(`(?:^|\\s)${esc(np)}(?:\\s|$)`);
-      return re.test(n);
+      if (re.test(n)) return true;
+      // 2) apoi încercăm fuzzy pe fiecare token al frazei
+      const ptoks = np.split(" ").filter(Boolean);
+      return fuzzyPhraseInTokens(toks, ptoks);
     } else {
+      // token singular — fuzzy
       return toks.some(tk => fuzzyEq(tk, np));
     }
   });
@@ -237,7 +256,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // >>> NOU: „ver mi camión / ficha camión”
+  // „ver mi camión / ficha camión”
   const seeMyTruckCue =
     (has("mi") && (has("camion","camión","camio","camió"))) ||
     ((has("ver") || has("ficha") || has("mostrar")) && has("mi") && (has("camion","camión","camio","camió")));
@@ -257,7 +276,7 @@ function quickDetectSelf(message) {
     };
   }
 
-  // >>> NOU: „¿quién soy yo? / cine sunt eu?”
+  // „¿quién soy yo? / cine sunt eu?”
   const whoAmICue =
     (has("quien","quién","cine") && (has("soy","sunt") || has("yo","eu"))) ||
     n.includes("quien soy yo") || n.includes("quién soy yo") || n.includes("cine sunt eu");
