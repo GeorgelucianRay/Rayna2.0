@@ -24,6 +24,8 @@ import {
   // noile acțiuni (named)
   handleOpenMyTruck,
   handleWhoAmI,
+  handleParkingNearStart,
+  handleParkingNext,
 } from "./actions";
 
 // ✅ avatar Rayna din /public
@@ -35,12 +37,16 @@ export default function RaynaHub() {
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
-  const [messages, setMessages] = useState([]); // începem fără mesaje
+  // stare chat
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
-  const endRef = useRef(null);
 
+  // context „parking” (lista de sugestii & cursorul curent)
+  const [parkingCtx, setParkingCtx] = useState(null);
+
+  const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
   // ——— Salut personalizat imediat ce avem profilul
@@ -63,9 +69,25 @@ export default function RaynaHub() {
       : saludoDefault;
 
     setMessages([{ from: "bot", reply_text: saludo }]);
-    // nu adăugăm `messages` în deps ca să nu re-trimită salutul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
+
+  // geoloc opțională (folosită pentru „parking por el camino”)
+  async function tryGetUserPos() {
+    if (!("geolocation" in navigator)) return null;
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => resolve({ lat: coords.latitude, lon: coords.longitude }),
+          () => resolve(null), // nu stricăm fluxul dacă userul refuză
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+      return pos;
+    } catch {
+      return null;
+    }
+  }
 
   const send = async () => {
     const userText = text.trim();
@@ -74,7 +96,7 @@ export default function RaynaHub() {
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // pași de dialog ce așteaptă input (ex: anuncio)
+    // pași de dialog care așteaptă input (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
         userText,
@@ -132,13 +154,31 @@ export default function RaynaHub() {
         return;
       }
 
-      // 🔹 NOU: acțiuni legate de profil
+      // 🔹 NOU: profil
       if (intent.action === "open_my_truck") {
         await handleOpenMyTruck({ profile, setMessages });
         return;
       }
       if (intent.action === "who_am_i") {
         await handleWhoAmI({ profile, setMessages });
+        return;
+      }
+
+      // 🔹 NOU: parking „cerca de … / por el camino”
+      if (intent.action === "gps_find_parking_near" || intent.id === "gps_buscar_parking_cerca_de") {
+        const userPos = await tryGetUserPos(); // e ok și dacă e null
+        await handleParkingNearStart({
+          slots,
+          setMessages,
+          setParkingCtx,
+          userPos,
+        });
+        return;
+      }
+
+      // 🔹 NOU: „otro / algo más / no me queda disco …”
+      if (intent.action === "gps_parking_next_suggestion" || intent.id === "gps_otro_parking") {
+        await handleParkingNext({ parkingCtx, setMessages });
         return;
       }
     }
