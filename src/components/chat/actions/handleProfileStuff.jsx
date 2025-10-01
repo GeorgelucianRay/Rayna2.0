@@ -1,25 +1,25 @@
 // src/components/chat/actions/handleProfileStuff.jsx
 import React from "react";
-import styles from "../Chatbot.module.css"; // ← e corect dacă fișierul e în /chat/actions/
+import styles from "../Chatbot.module.css";
 
-// Dacă la tine Chatbot.module.css e în alt loc, ajustează: "../../Chatbot.module.css"
+// funcție helper pentru traducerea rolului la spaniolă
+function mapRole(role) {
+  switch (role) {
+    case "sofer": return "chofer";
+    case "dispecer": return "Jefe de Tráfico";
+    case "mecanic": return "mecánico";
+    default: return role || "usuario";
+  }
+}
 
 /**
- * Răspunde cu un mic rezumat "cine sunt eu".
- * profile provine din AuthContext (RaynaHub i-l va pasa).
+ * Cine sunt eu? ("¿De dónde sabes quién soy?")
  */
 export async function handleWhoAmI({ profile, setMessages }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
-  const role   = profile?.role || "driver";
-
-  const truck  = profile?.camioane || null;     // vezi MiPerfilPage: profile.camioane
-  const marca  = truck?.marca || truck?.brand || "";
-  const plate  = truck?.matricula || truck?.plate || "";
+  const role   = mapRole(profile?.role);
 
   let line = `Hola, tú eres **${nombre}** (${role}).`;
-  if (marca || plate) {
-    line += ` Llevas un camión ${marca ? marca : ""}${marca && plate ? " · " : ""}${plate ? plate : ""}.`;
-  }
 
   setMessages((m) => [
     ...m,
@@ -31,7 +31,6 @@ export async function handleWhoAmI({ profile, setMessages }) {
         <div className={styles.card}>
           <div className={styles.cardTitle}>Perfil</div>
           <div className={styles.cardActions}>
-            {/* Folosesc data-variant="primary" ca să evit clasa .primary separată */}
             <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
               Ver perfil
             </a>
@@ -43,8 +42,7 @@ export async function handleWhoAmI({ profile, setMessages }) {
 }
 
 /**
- * Deschide "fișa camionului meu".
- * Dacă lipsește camionul, spune asta cu grație și oferă buton spre profil.
+ * Abrir camión asignado
  */
 export async function handleOpenMyTruck({ profile, setMessages }) {
   const truckId   = profile?.camion_id || profile?.camioane?.id;
@@ -90,5 +88,89 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
         </div>
       ),
     },
+  ]);
+}
+
+/**
+ * Qué sabe Rayna de mí
+ */
+export async function handleProfileWhatYouKnow({ profile, setMessages }) {
+  const adr     = profile?.adr ? "tienes ADR" : "no tienes ADR";
+  const camion  = profile?.camioane?.marca || null;
+  const remolque = profile?.remolque?.marca || null;
+
+  if (camion && remolque) {
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: `Mira, sé que ${adr}. Conduces un conjunto formado por camión **${camion}** y remolque **${remolque}**.` },
+    ]);
+  } else {
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: `Mira, sé que ${adr}. Ahh! No tienes el conjunto completado. ¿Quieres hacerlo ahora conmigo?` },
+    ]);
+  }
+}
+
+/**
+ * Inicia completarea profilului
+ */
+export async function handleProfileComplete({ setMessages }) {
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: "Perfecto. Vamos a completar tu perfil paso a paso." },
+    {
+      from: "bot",
+      reply_text: "Abre el editor de perfil:",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Perfil</div>
+          <div className={styles.cardActions}>
+            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil/edit">
+              Completar perfil
+            </a>
+          </div>
+        </div>
+      ),
+    },
+  ]);
+}
+
+/**
+ * Răspuns negativ („No quiero completarlo”)
+ */
+export async function handleProfileCompleteNo({ setMessages }) {
+  setMessages((m) => [
+    ...m,
+    {
+      from: "bot",
+      reply_text:
+        "Ahh! Ok, pero tengo que decirte que es muy importante que lo tengas completado, te va a dar muchas ventajas. Tú mismo.",
+    },
+  ]);
+}
+
+/**
+ * Avantajes del perfil completado
+ */
+export async function handleProfileAdvantages({ setMessages }) {
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: "Mira aquí te he preparado un vídeo sobre por qué está bien tenerlo completado y cómo rellenarlo." },
+    {
+      from: "bot",
+      reply_text: "Cuando esté listo el vídeo aparecerá aquí:",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Ventajas de completar tu perfil</div>
+          <div className={styles.cardActions}>
+            <button className={styles.actionBtn} disabled>
+              🎬 Próximamente
+            </button>
+          </div>
+        </div>
+      ),
+    },
+    { from: "bot", reply_text: "Si no lo consigues solo dime: *quiero completar mi perfil* y yo te ayudo." },
   ]);
 }
