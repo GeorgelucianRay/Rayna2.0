@@ -88,7 +88,7 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
       )
     }
   ]);
-},
+}
 /* ——— util: traduce rolul intern la ES ——— */
 function roleToEs(role = "") {
   const r = String(role).toLowerCase().trim();
