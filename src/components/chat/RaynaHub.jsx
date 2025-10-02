@@ -31,6 +31,8 @@ import {
   handleWhatDoYouKnowAboutMe,
   handleShowAprenderPerfil,
   handleProfileAdvantagesVideo,
+  handleProfileWizardStart,   // ⬅️ NOU
+  handleProfileWizardStep,
 
   // vehicul
   handleVehItvTruck,
@@ -136,6 +138,11 @@ profile_show_advantages_video: () => handleProfileAdvantagesVideo({ setMessages 
 // «¿qué sabes de mí?»
 profile_what_you_know: () =>
   handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
+  
+        // ✅ Pornește asistentul interactiv de completare profil
+      profile_complete_start: () =>
+        handleProfileWizardStart({ setMessages, setAwaiting }),
+        
       // self-info generic pe meta.topic (din me_* intents)
       driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
 
