@@ -19,6 +19,8 @@ export {
   handleWhatDoYouKnowAboutMe,     // ✅ nou
   handleProfileAdvantagesVideo,   // ✅ nou
   handleShowAprenderPerfil        // ✅ doar dacă îl folosești efectiv
+  handleProfileWizardStart,   // ⬅️ nou
+  handleProfileWizardStep 
 } from "./handleProfileStuff.jsx";
 
 export {
