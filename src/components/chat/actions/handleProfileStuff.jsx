@@ -26,8 +26,8 @@ export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
 
   setMessages((m) => [
     ...m,
-    { from: "bot", reply_text: `Hola, tú eres **${nombre}** (${rolEs}).${extra}` },
-    { from: "bot", reply_text: "¿Quieres ver tu perfil? (sí / no)" }
+    from: "bot", 
+    reply_text: `Hola, tú eres **${nombre}** (${rolEs}).${extra} ¿Quieres ver tu perfil?`
   ]);
 
   // 🔸 aşteptăm confirmarea userului
