@@ -25,10 +25,12 @@ export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
     : "";
 
   setMessages((m) => [
-    ...m,
-    from: "bot", 
+  ...m,
+  {
+    from: "bot",
     reply_text: `Hola, tú eres **${nombre}** (${rolEs}).${extra} ¿Quieres ver tu perfil?`
-  ]);
+  }
+]);
 
   // 🔸 aşteptăm confirmarea userului
   setAwaiting("confirm_view_profile");
