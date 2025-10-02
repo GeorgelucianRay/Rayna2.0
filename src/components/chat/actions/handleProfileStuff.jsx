@@ -282,7 +282,6 @@ export async function handleShowAprenderPerfil({ setMessages }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // WIZARD: completar perfil en chat (CAP, carnet, ADR, camión, remolque)
 // ─────────────────────────────────────────────────────────────────────────────
-import { supabase } from "../../../supabaseClient";
 
 /** Parsează “orice” dată într-un YYYY-MM-DD (acceptă 12/5/26, 12-05-2026, 2026-05-12 etc.) */
 function parseDateLoose(input) {
@@ -360,7 +359,7 @@ export async function handleProfileWizardStart({ setMessages, setAwaiting }) {
 
 /** Un singur handler pentru toți pașii wizard-ului */
 export async function handleProfileWizardStep({ awaiting, userText, profile, setMessages, setAwaiting }) {
-  const userId = profile?.id;
+  const userId = profile?.id || profile?.user_id;
 
   // helper “reciclabil” pentru întrebare invalidă la dată
   const askRetry = (msg) => {
