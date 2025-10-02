@@ -149,3 +149,91 @@ export async function handleProfileCompletionStart({ setMessages }) {
     }
   ]);
 }
+export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }) {
+  const nombre = profile?.nombre_completo || profile?.username || "usuario";
+  const rolEs  = (function roleToEs(role = "") {
+    const r = String(role).toLowerCase().trim();
+    if (["sofer","şofer","șofer","driver"].includes(r)) return "chofer";
+    if (["dispecer","dispatcher"].includes(r)) return "Jefe de Tráfico";
+    if (["mecanic","mechanic"].includes(r)) return "mecánico";
+    return r || "chofer";
+  })(profile?.role);
+
+  // date profil
+  const drv = profile?.driver || {};
+  const truck = profile?.camioane || profile?.truck || {};
+  const trailer = profile?.remolque || profile?.trailer || {};
+
+  // bullets dinamice
+  const bullets = [];
+
+  bullets.push(`• Te llamas **${nombre}** (${rolEs}).`);
+
+  if (drv?.adr != null) {
+    bullets.push(`• ADR: **${drv.adr ? "sí" : "no"}**.`);
+  }
+  if (drv?.lic) {
+    bullets.push(`• Carnet: **${drv.lic}**.`);
+  }
+  if (drv?.cap) {
+    bullets.push(`• CAP: **${drv.cap}**.`);
+  }
+
+  if (truck?.marca || truck?.brand || truck?.matricula || truck?.plate) {
+    const tMarca = truck?.marca || truck?.brand || "Camión";
+    const tPlaca = truck?.matricula || truck?.plate || "";
+    bullets.push(`• Camión: **${tMarca}${tPlaca ? " · " + tPlaca : ""}**.`);
+  }
+  if (trailer?.marca || trailer?.brand || trailer?.matricula || trailer?.plate) {
+    const rMarca = trailer?.marca || trailer?.brand || "Remolque";
+    const rPlaca = trailer?.matricula || trailer?.plate || "";
+    bullets.push(`• Remolque: **${rMarca}${rPlaca ? " · " + rPlaca : ""}**.`);
+  }
+
+  const hasCore =
+    (drv?.adr != null) || drv?.lic || drv?.cap ||
+    truck?.marca || truck?.brand || truck?.matricula || truck?.plate ||
+    trailer?.marca || trailer?.brand || trailer?.matricula || trailer?.plate;
+
+  if (hasCore) {
+    // ✅ Avem informații — le arătăm
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Esto es lo que sé de ti:" },
+      { from: "bot", reply_text: bullets.join("\n") },
+    ]);
+    return;
+  }
+
+  // ❌ Nu avem (aproape) nimic în profil
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: "De momento solo sé cómo te llamas, pero puedes contarme más completando tu perfil. ¿Quieres que te ayude?" }
+  ]);
+
+  // intrăm în așteptare pt. confirmare (sí/no)
+  setAwaiting && setAwaiting("confirm_complete_profile");
+}
+
+/* opțional: handler pentru buton/video „Aprender: Perfil completado” */
+export async function handleShowAprenderPerfil({ setMessages }) {
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: "Mira, te he preparado un vídeo sobre la importancia de completar el perfil y cómo hacerlo." },
+    {
+      from: "bot",
+      reply_text: "Pulsa el botón para verlo.",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Aprender</div>
+          <div className={styles.cardActions}>
+            {/* dacă ai un slug/filtru, schimbă la /aprender?slug=perfil-completado */}
+            <a className={styles.actionBtn} data-variant="primary" href="/aprender" target="_blank" rel="noopener noreferrer">
+              Aprender: Perfil completado
+            </a>
+          </div>
+        </div>
+      ),
+    },
+  ]);
+}
