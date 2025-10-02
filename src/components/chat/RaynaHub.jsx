@@ -227,6 +227,42 @@ profile_what_you_know: () =>
         setMessages((m) => [...m, { from: "bot", reply_text: "¡Entendido! ¿En qué más te puedo ayudar?" }]);
         return;
       }
+          // 0.b) confirmarea la „¿Quieres que te ayude?” (wizard profil)
+    if (awaiting === "confirm_complete_profile") {
+      const n = normalize(userText);
+      const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
+      const NO  = ["no","nop","nu","nope"];
+
+      if (YES.includes(n)) {
+        setAwaiting(null);
+        await handleProfileWizardStart({ setMessages, setAwaiting });
+        return;
+      }
+      if (NO.includes(n)) {
+        setAwaiting(null);
+        setMessages(m => [
+          ...m,
+          { from: "bot", reply_text: "¡Entendido! Si cambias de idea, dime «quiero completar mi perfil»." }
+        ]);
+        return;
+      }
+
+      // răspuns ambiguu → mai întrebăm o dată
+      setMessages(m => [...m, { from: "bot", reply_text: "¿Sí o no? (para empezar a completarlo aquí mismo)" }]);
+      return;
+    }
+
+    // 0.c) pașii asistentului de profil (toate stările care încep cu „pf_”)
+    if (awaiting && awaiting.startsWith("pf_")) {
+      await handleProfileWizardStep({
+        awaiting,
+        userText,
+        profile,
+        setMessages,
+        setAwaiting,
+      });
+      return;
+    }
 
       // răspuns ambiguu -> mai întrebăm o dată
       setAwaiting("confirm_view_profile");
