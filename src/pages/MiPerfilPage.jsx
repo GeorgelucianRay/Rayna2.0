@@ -4,16 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabaseClient';
 
-// Layout & Stiluri
+// Layout & estilos
 import Layout from '../components/Layout';
 import styles from './MiPerfilPage.module.css';
 
-// Componente UI & Widget-uri
+// UI & widgets
 import { EditIcon, CameraIcon } from '../components/ui/Icons';
 import VacacionesWidget from '../components/widgets/VacacionesWidget';
 import NominaWidget from '../components/widgets/NominaWidget';
 
-// Componente Modale
+// Modales
 import EditProfileModal from '../components/modales/EditProfileModal';
 import UploadAvatarModal from '../components/modales/UploadAvatarModal';
 
@@ -21,132 +21,185 @@ export default function MiPerfilPage() {
   const { user, profile, loading, setProfile } = useAuth();
   const navigate = useNavigate();
 
-  // Starea paginii
+  // Estado local
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
-  const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
-  const [nominaMarks, setNominaMarks] = useState(new Set());
-  const currentDate = new Date();
 
-  // 🔹 Vacaciones widget info (TOTAL / USADAS / PENDIENTES / DISPONIBLES)
+  const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
+  const [nominaMarks, setNominaMarks] = useState([]); // array para serializar bien
+
   const [vacInfo, setVacInfo] = useState({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
 
-  /* ================== Nómina (luna curentă) ================== */
+  // Carga explícita de camión/remolque por ID (el contexto trae sólo IDs)
+  const [truck, setTruck] = useState(null);
+  const [trailer, setTrailer] = useState(null);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+
+  // Fecha fija por render (evita loops)
+  const today = useMemo(() => new Date(), []);
+
+  /* ================== Fetch Camión / Remolque ================== */
+  useEffect(() => {
+    const loadAssets = async () => {
+      if (!profile) return;
+      const { camion_id, remorca_id } = profile;
+
+      if (!camion_id && !remorca_id) {
+        setTruck(null);
+        setTrailer(null);
+        return;
+      }
+
+      setLoadingAssets(true);
+      try {
+        const queries = [];
+        if (camion_id) {
+          queries.push(
+            supabase.from('camioane').select('id, matricula, fecha_itv').eq('id', camion_id).maybeSingle()
+          );
+        } else {
+          setTruck(null);
+        }
+        if (remorca_id) {
+          queries.push(
+            supabase.from('remorci').select('id, matricula, fecha_itv').eq('id', remorca_id).maybeSingle()
+          );
+        } else {
+          setTrailer(null);
+        }
+
+        const results = await Promise.allSettled(queries);
+
+        // results[0] puede ser camión o remolque según lo que exista
+        let t = truck, r = trailer;
+        let idx = 0;
+        if (camion_id) {
+          const res = results[idx++];
+          if (res.status === 'fulfilled' && res.value?.data) t = res.value.data;
+        }
+        if (remorca_id) {
+          const res = results[idx++];
+          if (res.status === 'fulfilled' && res.value?.data) r = res.value.data;
+        }
+        setTruck(t || null);
+        setTrailer(r || null);
+      } catch (e) {
+        console.error('Error cargando camión/remolque:', e);
+        setTruck(null);
+        setTrailer(null);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+    loadAssets();
+  }, [profile]);
+
+  /* ================== Nómina (mes actual) ================== */
   useEffect(() => {
     const fetchNomina = async () => {
       if (!user) return;
-      const y = currentDate.getFullYear();
-      const m = currentDate.getMonth() + 1;
+      try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
 
-      const { data } = await supabase
-        .from('pontaje_curente')
-        .select('pontaj_complet')
-        .eq('user_id', user.id)
-        .eq('an', y)
-        .eq('mes', m)
-        .maybeSingle();
+        const { data, error } = await supabase
+          .from('pontaje_curente')
+          .select('pontaj_complet')
+          .eq('user_id', user.id)
+          .eq('an', y)
+          .eq('mes', m)
+          .maybeSingle();
 
-      const zile = data?.pontaj_complet?.zilePontaj || [];
-      let D = 0, C = 0, P = 0, KM = 0, CT = 0;
-      const marks = new Set();
+        if (error) throw error;
 
-      zile.forEach((zi, idx) => {
-        if (!zi) return;
-        const d = idx + 1;
-        const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
-        if (zi.desayuno) D++;
-        if (zi.cena) C++;
-        if (zi.procena) P++;
-        if (kmZi > 0) KM += kmZi;
-        if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
-        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
-          marks.add(d);
+        const zile = data?.pontaj_complet?.zilePontaj || [];
+        let D = 0, C = 0, P = 0, KM = 0, CT = 0;
+        const marks = new Set();
+
+        for (let idx = 0; idx < zile.length; idx++) {
+          const zi = zile[idx];
+          if (!zi) continue;
+          const d = idx + 1;
+          const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+          if (zi.desayuno) D++;
+          if (zi.cena) C++;
+          if (zi.procena) P++;
+          if (kmZi > 0) KM += kmZi;
+          const conts = zi.contenedores || 0;
+          if (conts > 0) CT += conts;
+          if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || conts > 0 || (zi.suma_festivo || 0) > 0) {
+            marks.add(d);
+          }
         }
-      });
 
-      setNominaSummary({
-        desayunos: D, cenas: C, procenas: P,
-        km: Math.round(KM), conts: CT, dias: marks.size
-      });
-      setNominaMarks(marks);
+        setNominaSummary({ desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size });
+        setNominaMarks([...marks]); // array
+      } catch (e) {
+        console.error('Error obteniendo nómina:', e);
+        setNominaSummary({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
+        setNominaMarks([]);
+      }
     };
     fetchNomina();
-  }, [user, currentDate]);
+  }, [user]);
 
-  /* ================== Vacaciones (an curent) ================== */
+  /* ================== Vacaciones (año actual) ================== */
   useEffect(() => {
-    async function loadVacacionesInfo() {
+    const loadVacacionesInfo = async () => {
       if (!user) return;
-      const year = currentDate.getFullYear();
+      try {
+        const year = today.getFullYear();
 
-      // Helpers locale
-      const fmt = (d) => {
-        const x = new Date(d);
-        const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
-        return z.toISOString().slice(0, 10);
-      };
-      const daysBetween = (a, b) => {
-        const A = new Date(fmt(a)), B = new Date(fmt(b));
-        return Math.floor((B - A) / 86400000) + 1;
-      };
-      const overlapDaysWithinYear = (ev) => {
-        const yStart = new Date(`${year}-01-01T00:00:00`);
-        const yEnd   = new Date(`${year}-12-31T23:59:59`);
-        const s0 = new Date(ev.start_date);
-        const e0 = new Date(ev.end_date);
-        const s = s0 < yStart ? yStart : s0;
-        const e = e0 > yEnd   ? yEnd   : e0;
-        if (e < s) return 0;
-        return daysBetween(s, e);
-      };
+        const [{ data: cfg, error: e1 }, { data: ex, error: e2 }] = await Promise.all([
+          supabase.from('vacaciones_parametros_anio').select('*').eq('anio', year).maybeSingle(),
+          supabase.from('vacaciones_asignaciones_extra').select('dias_extra').eq('user_id', user.id).eq('anio', year).maybeSingle()
+        ]);
+        if (e1) throw e1;
+        if (e2) throw e2;
 
-      // 1) Parametrii an
-      const { data: cfg } = await supabase
-        .from('vacaciones_parametros_anio')
-        .select('*')
-        .eq('anio', year)
-        .maybeSingle();
+        const dias_base = cfg?.dias_base ?? 23;
+        const dias_personales = cfg?.dias_personales ?? 2;
+        const dias_pueblo = cfg?.dias_pueblo ?? 0;
+        const dias_extra = ex?.dias_extra ?? 0;
+        const total = dias_base + dias_personales + dias_pueblo + dias_extra;
 
-      const dias_base = cfg?.dias_base ?? 23;
-      const dias_personales = cfg?.dias_personales ?? 2;
-      const dias_pueblo = cfg?.dias_pueblo ?? 0;
+        const { data: evs, error: e3 } = await supabase
+          .from('vacaciones_eventos')
+          .select('id, state, start_date, end_date')
+          .eq('user_id', user.id)
+          .gte('end_date', `${year}-01-01`)
+          .lte('start_date', `${year}-12-31`);
+        if (e3) throw e3;
 
-      // 2) Extra user/an
-      const { data: ex } = await supabase
-        .from('vacaciones_asignaciones_extra')
-        .select('dias_extra')
-        .eq('user_id', user.id)
-        .eq('anio', year)
-        .maybeSingle();
-      const dias_extra = ex?.dias_extra ?? 0;
+        const toDateOnly = (d) => new Date(`${d}T00:00:00`);
+        const clampDays = (s0, e0) => {
+          const yS = toDateOnly(`${year}-01-01`);
+          const yE = toDateOnly(`${year}-12-31`);
+          const s = s0 < yS ? yS : s0;
+          const e = e0 > yE ? yE : e0;
+          if (e < s) return 0;
+          return Math.floor((e - s) / 86400000) + 1; // inclusivo
+        };
 
-      const total = (dias_base || 0) + (dias_personales || 0) + (dias_pueblo || 0) + (dias_extra || 0);
+        let usadas = 0, pendientes = 0;
+        (evs || []).forEach(ev => {
+          const days = clampDays(toDateOnly(ev.start_date), toDateOnly(ev.end_date));
+          if (ev.state === 'aprobado') usadas += days;
+          else if (ev.state === 'pendiente' || ev.state === 'conflicto') pendientes += days;
+        });
 
-      // 3) Evenimente user care ating anul
-      const yearStart = `${year}-01-01`;
-      const yearEnd   = `${year}-12-31`;
-      const { data: evs } = await supabase
-        .from('vacaciones_eventos')
-        .select('id,tipo,state,start_date,end_date')
-        .eq('user_id', user.id)
-        .or(`and(start_date.lte.${yearEnd},end_date.gte.${yearStart})`);
-
-      const usadas = (evs || [])
-        .filter(e => e.state === 'aprobado')
-        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
-
-      const pendientes = (evs || [])
-        .filter(e => e.state === 'pendiente' || e.state === 'conflicto')
-        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
-
-      const disponibles = Math.max(total - usadas - pendientes, 0);
-
-      setVacInfo({ total, usadas, pendientes, disponibles });
-    }
+        const disponibles = Math.max(total - usadas - pendientes, 0);
+        setVacInfo({ total, usadas, pendientes, disponibles });
+      } catch (e) {
+        console.error('Error cargando vacaciones:', e);
+        setVacInfo({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
+      }
+    };
     loadVacacionesInfo();
-  }, [user, currentDate]);
+  }, [user, today]);
 
-  /* ================== Salvare profil ================== */
+  /* ================== Guardar perfil ================== */
   const handleSaveProfile = async (editableProfile) => {
     try {
       const { error } = await supabase
@@ -155,51 +208,45 @@ export default function MiPerfilPage() {
         .eq('id', user.id);
       if (error) throw error;
 
-      // Actualizează profile în context (non-destructiv)
       setProfile(prev => ({ ...prev, ...editableProfile }));
-      alert('Perfil actualizado correctamente!');
+      // reemplaza alert por toast si tienes uno
+      alert('¡Perfil actualizado correctamente!');
       setIsEditOpen(false);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('Error guardando perfil:', error);
       alert('Error al guardar el perfil');
     }
   };
 
   /* ================== Upload avatar ================== */
   const handleAvatarUpload = async (newAvatarUrl) => {
-    console.log('Avatar uploaded successfully:', newAvatarUrl);
-
-    setProfile(prev => ({ ...(prev || {}), avatar_url: newAvatarUrl }));
-
     try {
-      const { data: updatedProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      if (updatedProfile) setProfile(updatedProfile);
-    } catch (error) {
-      console.error('Error refreshing profile:', error);
+      await supabase.from('profiles').update({ avatar_url: newAvatarUrl }).eq('id', user.id);
+      setProfile(prev => ({ ...(prev || {}), avatar_url: newAvatarUrl }));
+    } catch (e) {
+      console.error('Error actualizando avatar:', e);
+    } finally {
+      setIsPhotoOpen(false);
     }
-    setIsPhotoOpen(false);
   };
 
   const initials = useMemo(() => {
     const n = (profile?.nombre_completo || '').trim();
     if (!n) return '...';
-    return n.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '...';
+    return n.split(/\s+/).map(s => s[0]?.toUpperCase()).slice(0, 2).join('') || '...';
   }, [profile]);
 
-  // Debug logging
-  useEffect(() => {
-    if (user) console.log('Current user in MiPerfilPage:', { id: user.id, email: user.email });
-    if (profile) console.log('Current profile:', {
-      avatar_url: profile.avatar_url,
-      nombre_completo: profile.nombre_completo,
-      camioane: profile.camioane,
-      remorci: profile.remorci
-    });
-  }, [user, profile]);
+  // Prefetch simple para evitar “lag” al abrir ficha
+  const prefetchAsset = async (tipo, id) => {
+    try {
+      if (!id) return null;
+      const table = tipo === 'camion' ? 'camioane' : 'remorci';
+      const { data } = await supabase.from(table).select('*').eq('id', id).maybeSingle();
+      return data || null;
+    } catch {
+      return null;
+    }
+  };
 
   if (loading || !profile) {
     return (
@@ -214,19 +261,16 @@ export default function MiPerfilPage() {
       <Layout>
         <div className={styles.loading}>
           <p>No has iniciado sesión</p>
-          <button onClick={() => navigate('/login')}>Iniciar sesión</button>
+          <button className={styles.primaryBtn} onClick={() => navigate('/login')}>Iniciar sesión</button>
         </div>
       </Layout>
     );
   }
 
-  /* Helpers UI */
-  const truck = profile?.camioane || null;
-  const trailer = profile?.remorci || null;
-
   return (
     <Layout>
       <div className={styles.page}>
+        {/* Encabezado */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.avatarXxl} onClick={() => setIsPhotoOpen(true)}>
@@ -235,10 +279,7 @@ export default function MiPerfilPage() {
                   src={profile.avatar_url}
                   alt="Avatar"
                   className={styles.avatarImg}
-                  onError={(e) => {
-                    console.error('Error loading avatar:', profile.avatar_url);
-                    e.currentTarget.style.display = 'none';
-                  }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
                 <div className={styles.avatarFallbackXl}>{initials}</div>
@@ -247,10 +288,8 @@ export default function MiPerfilPage() {
               <button
                 className={styles.avatarCamBtn}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPhotoOpen(true);
-                }}
+                onClick={(e) => { e.stopPropagation(); setIsPhotoOpen(true); }}
+                aria-label="Cambiar foto"
               >
                 <CameraIcon />
               </button>
@@ -264,6 +303,7 @@ export default function MiPerfilPage() {
           </div>
         </div>
 
+        {/* Tarjetas */}
         <div className={styles.cardsGrid}>
           {/* Conductor */}
           <section className={styles.card}>
@@ -294,20 +334,29 @@ export default function MiPerfilPage() {
               <div className={styles.cardTitle}>Camión</div>
               <button
                 className={styles.ghostBtn}
-                onClick={() => profile?.camion_id && navigate(`/camion/${profile.camion_id}`)}
+                onClick={async () => {
+                  const d = await prefetchAsset('camion', profile?.camion_id);
+                  navigate(`/camion/${profile?.camion_id}`, { state: { prefetch: d } });
+                }}
                 disabled={!profile?.camion_id}
+                aria-disabled={!profile?.camion_id}
               >
                 Ver ficha
               </button>
             </div>
+
             <div className={styles.rows2}>
               <div>
                 <span className={styles.k}>Matrícula</span>
-                <span className={styles.v}>{truck?.matricula || 'No asignado'}</span>
+                <span className={styles.v}>
+                  {loadingAssets ? '—' : (truck?.matricula || 'No asignado')}
+                </span>
               </div>
               <div>
                 <span className={styles.k}>ITV</span>
-                <span className={styles.v}>{truck?.fecha_itv || '—'}</span>
+                <span className={styles.v}>
+                  {loadingAssets ? '—' : (truck?.fecha_itv || '—')}
+                </span>
               </div>
             </div>
           </section>
@@ -318,8 +367,12 @@ export default function MiPerfilPage() {
               <div className={styles.cardTitle}>Remolque</div>
               <button
                 className={styles.ghostBtn}
-                onClick={() => profile?.remorca_id && navigate(`/remorca/${profile.remorca_id}`)}
+                onClick={async () => {
+                  const d = await prefetchAsset('remolque', profile?.remorca_id);
+                  navigate(`/remorca/${profile?.remorca_id}`, { state: { prefetch: d } });
+                }}
                 disabled={!profile?.remorca_id}
+                aria-disabled={!profile?.remorca_id}
               >
                 Ver ficha
               </button>
@@ -327,31 +380,36 @@ export default function MiPerfilPage() {
             <div className={styles.rows2}>
               <div>
                 <span className={styles.k}>Matrícula</span>
-                <span className={styles.v}>{trailer?.matricula || 'No asignado'}</span>
+                <span className={styles.v}>
+                  {loadingAssets ? '—' : (trailer?.matricula || 'No asignado')}
+                </span>
               </div>
               <div>
                 <span className={styles.k}>ITV</span>
-                <span className={styles.v}>{trailer?.fecha_itv || '—'}</span>
+                <span className={styles.v}>
+                  {loadingAssets ? '—' : (trailer?.fecha_itv || '—')}
+                </span>
               </div>
             </div>
           </section>
         </div>
 
+        {/* Widgets */}
         <div className={styles.widgetsGrid}>
           <NominaWidget
             summary={nominaSummary}
             marks={nominaMarks}
-            date={currentDate}
+            date={today}
             onNavigate={() => navigate('/calculadora-nomina')}
           />
 
-          {/* 🔹 Widget Vacaciones alimentat din DB, nu din profile */}
           <VacacionesWidget
             info={vacInfo}
             onNavigate={() => navigate('/vacaciones-standalone')}
           />
         </div>
 
+        {/* Modales */}
         <EditProfileModal
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
@@ -359,7 +417,6 @@ export default function MiPerfilPage() {
           onSave={handleSaveProfile}
         />
 
-        {/* IMPORTANT: Transmite userId ca prop la UploadAvatarModal */}
         <UploadAvatarModal
           isOpen={isPhotoOpen}
           onClose={() => setIsPhotoOpen(false)}
