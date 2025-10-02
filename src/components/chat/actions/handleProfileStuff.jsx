@@ -81,32 +81,6 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
   ]);
 }
 
-  // avem URL → trimitem card către acel link
-  setMessages(m => [
-    ...m,
-    {
-      from: "bot",
-      reply_text:
-        "Mira, te he preparado un vídeo de por qué está bien tenerlo completado y cómo rellenarlo. Si no lo consigues, dime «quiero completar mi perfil» y te ayudo.",
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Ventajas de completar el perfil</div>
-          <div className={styles.cardActions}>
-            <a
-              className={styles.actionBtn}
-              data-variant="primary"
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ver vídeo
-            </a>
-          </div>
-        </div>
-      )
-    }
-  ]);
-}
 /* ——— util: traduce rolul intern la ES ——— */
 function roleToEs(role = "") {
   const r = String(role).toLowerCase().trim();
