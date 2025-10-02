@@ -93,11 +93,19 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const { data: baseProfile, error: profErr } = await supabase
-        .from('profiles')
-        .select('id, role, nombre_completo, email, camion_id, remorca_id, ultima_aparitie_feedback, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, avatar_url')
-        .eq('id', current.user.id)
-        .maybeSingle();
+      // ÎNLOCUIEȘTE cu acest SELECT relațional
+const { data: baseProfile, error: profErr } = await supabase
+  .from('profiles')
+  .select(`
+    id, role, nombre_completo, email,
+    cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad,
+    camion_id, remorca_id,
+    ultima_aparitie_feedback, avatar_url,
+    camioane:camion_id ( id, marca, matricula ),
+    remorci:remorca_id ( id, matricula, tipo )
+  `)
+  .eq('id', current.user.id)
+  .maybeSingle();
 
       if (profErr) {
         console.warn('profiles select error:', profErr.message);
