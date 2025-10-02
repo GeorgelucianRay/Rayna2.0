@@ -15,9 +15,13 @@ export {
   handleVehItvTrailer,
   handleVehOilStatus,
   handleVehAdblueFilterStatus,
-  handleProfileCompletionStart,
-  handleWhatDoYouKnowAboutMe,   // 👈 nou
-  handleShowAprenderPerfil 
+  handleProfileCompletionStart,   // ✅ doar o singură dată aici
+  handleWhatDoYouKnowAboutMe,     // ✅ nou
+  handleProfileAdvantagesVideo,   // ✅ nou
+  handleShowAprenderPerfil        // ✅ doar dacă îl folosești efectiv
 } from "./handleProfileStuff.jsx";
 
-export { handleParkingNearStart, handleParkingNext } from "./handleParkingNear.jsx";
+export {
+  handleParkingNearStart,
+  handleParkingNext
+} from "./handleParkingNear.jsx";
