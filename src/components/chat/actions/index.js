@@ -15,15 +15,12 @@ export {
   handleVehItvTrailer,
   handleVehOilStatus,
   handleVehAdblueFilterStatus,
-  handleProfileCompletionStart,   // ✅ doar o singură dată aici
-  handleWhatDoYouKnowAboutMe,     // ✅ nou
-  handleProfileAdvantagesVideo,   // ✅ nou
-  handleShowAprenderPerfil        // ✅ doar dacă îl folosești efectiv
-  handleProfileWizardStart,   // ⬅️ nou
+  handleProfileCompletionStart,   // doar o singură dată
+  handleWhatDoYouKnowAboutMe,
+  handleShowAprenderPerfil,       // ← aici lipsea virgula
+  handleProfileAdvantagesVideo,
+  handleProfileWizardStart,
   handleProfileWizardStep,
 } from "./handleProfileStuff.jsx";
 
-export {
-  handleParkingNearStart,
-  handleParkingNext
-} from "./handleParkingNear.jsx";
+export { handleParkingNearStart, handleParkingNext } from "./handleParkingNear.jsx";
