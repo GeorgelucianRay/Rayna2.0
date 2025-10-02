@@ -4,21 +4,16 @@ import styles from "../Chatbot.module.css";
 // ⬆️ la începutul fișierului, lângă celelalte importuri:
 import { supabase } from "../../../supabaseClient";
 
-/* ——— VIDEO: ventajas de completar el perfil (busca en aprender_links) ——— */
 export async function handleProfileAdvantagesVideo({ setMessages }) {
-  // variante de titlu acceptate (case-insensitive)
   const NEEDLES = [
-    "perfil completado",
-    "perfil completo",
-    "ventajas perfil",
-    "por qué completar el perfil",
-    "completar perfil"
+    // ES
+    "perfil completado", "perfil completo", "ventajas perfil",
+    "por qué completar el perfil", "completar perfil",
+    // RO / CA – ca în lista ta din screenshot
+    "profil completat", "perfil completat"
   ];
 
-  // try #1: căutare OR cu ilike în titlu
-  const orFilter = NEEDLES
-    .map(t => `title.ilike.%${t}%`)
-    .join(",");
+  const orFilter = NEEDLES.map(t => `title.ilike.%${t}%`).join(",");
 
   let url = null;
   try {
@@ -29,21 +24,17 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
       .order("title", { ascending: true })
       .limit(1);
 
-    if (!error && data && data.length > 0) {
-      url = data[0].url;
-    }
-  } catch (_) {
-    // ignorăm, avem fallback mai jos
-  }
+    if (!error && data?.length) url = data[0].url;
+  } catch { /* ignorăm; avem fallback */ }
 
   if (!url) {
-    // fallback prietenos dacă nu există intrare cu acel titlu
+    // fallback: oferă card către /aprender (nu dă 404 dacă ruta există / user logat)
     setMessages(m => [
       ...m,
       {
         from: "bot",
         reply_text:
-          "Aún no tengo el vídeo guardado en Aprender con ese título. Puedo llevarte a la sección «Aprender» por si lo encuentras útil."
+          "Aún no tengo guardado el vídeo con ese título. Te llevo a «Aprender» por si te sirve."
       },
       {
         from: "bot",
@@ -52,7 +43,7 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
           <div className={styles.card}>
             <div className={styles.cardTitle}>Aprender</div>
             <div className={styles.cardActions}>
-              <a className={styles.actionBtn} data-variant="primary" href="/aprender" target="_self" rel="noreferrer">
+              <a className={styles.actionBtn} data-variant="primary" href="/aprender">
                 Abrir Aprender
               </a>
             </div>
@@ -62,6 +53,33 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
     ]);
     return;
   }
+
+  // URL găsit în Supabase → buton extern direct la video
+  setMessages(m => [
+    ...m,
+    {
+      from: "bot",
+      reply_text:
+        "Mira, te he preparado un vídeo sobre la importancia de completar el perfil y cómo hacerlo.",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Ventajas de completar el perfil</div>
+          <div className={styles.cardActions}>
+            <a
+              className={styles.actionBtn}
+              data-variant="primary"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ver vídeo
+            </a>
+          </div>
+        </div>
+      )
+    }
+  ]);
+}
 
   // avem URL → trimitem card către acel link
   setMessages(m => [
