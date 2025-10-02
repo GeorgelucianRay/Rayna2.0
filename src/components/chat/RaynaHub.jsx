@@ -4,7 +4,7 @@ import styles from "./Chatbot.module.css";
 
 // —— auth & NLU
 import { useAuth } from "../../AuthContext";
-import { detectIntent } from "../../nlu"; // re-export corect din src/nlu/index.js
+import { detectIntent, normalize } from "../../nlu";
 
 // —— hooks
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
