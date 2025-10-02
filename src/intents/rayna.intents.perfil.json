@@ -104,60 +104,24 @@
   },
 
   {
-    "id": "profile_what_you_know",
+    "id": "perfil_que_sabes_de_mi",
+    "priority": 121,
     "type": "action",
-    "priority": 105,
     "patterns_any": [
-      "que sabes de mi",
-      "qué sabes de mí",
-      "que sabes sobre mi",
-      "qué sabes sobre mí",
-      "que conoces de mi",
-      "qué conoces de mí",
-      "que tienes de mi",
-      "qué tienes de mí",
-      "que datos tienes de mi",
-      "qué datos tienes de mí",
-      "que información tienes de mi",
-      "qué información tienes de mí",
-      "que guarda mi perfil",
-      "que dice mi perfil",
-      "resumen de mi perfil",
-      "dime mi info",
-      "mi información personal",
-      "mis credenciales",
-      "mis datos",
-      "mis papeles",
-      "ce știi despre mine",
+      "que sabes de mi","qué sabes de mi","qué sabes de mí",
+      "que sabes mas de mi","qué sabes más de mí","que mas sabes de mi",
+      "que conoces de mi","qué conoces de mí",
+      "que informacion tienes de mi","qué información tienes de mí",
+      "que tienes sobre mi","qué tienes sobre mí",
+      "que sabes sobre mi","qué sabes sobre mí",
+      "que datos tienes de mi","qué datos tienes de mí",
+      "ce știi despre mine","ce stii despre mine","ce știi de mine",
       "ce date ai despre mine",
-      "què saps de mi",
-      "informació del meu perfil"
+      "què saps de mi","què saps sobre mi","quines dades tens de mi",
+      "de donde sabes quien soy","¿de dónde sabes quién soy?"
     ],
     "action": "profile_what_you_know",
-    "meta": {
-      "needs": ["driver.adr", "truck.brand", "trailer.brand"]
-    },
-    "response": {
-      "text": {
-        "es": "Mira, sé que **ADR: {{driver.adr_status_es}}**. Conduces un conjunto formado por camión **{{truck.brand}}** y remolque **{{trailer.brand}}**.",
-        "ro": "Uite, știu că **ADR: {{driver.adr_status_ro}}**. Conduci un ansamblu format din camion **{{truck.brand}}** și remorcă **{{trailer.brand}}**.",
-        "ca": "Mira, sé que **ADR: {{driver.adr_status_ca}}**. Condueixes un conjunt format per camió **{{truck.brand}}** i remolc **{{trailer.brand}}**."
-      },
-      "alt_missing": {
-        "es": "¡Ah! No tienes el conjunto completado. ¿Quieres hacerlo ahora conmigo?",
-        "ro": "Ah! Nu ai completat ansamblul. Vrei să-l completăm acum împreună?",
-        "ca": "Ah! No tens el conjunt completat. Vols fer-ho ara amb mi?"
-      },
-      "objects": [
-        {
-          "type": "card",
-          "title": "Perfil",
-          "actions": [
-            { "type": "open", "label": "Ver perfil", "route": "/perfil", "newTab": false }
-          ]
-        }
-      ]
-    }
+    "response": { "text": { "es": "Un segundo, reviso tu perfil…", "ro": "Un moment, verific profilul tău…", "ca": "Un moment, reviso el teu perfil…" } }
   },
 
   {
@@ -234,51 +198,19 @@
   },
 
   {
-    "id": "profile_advantages",
+    "id": "perfil_mostrar_ventajas_video",
+    "priority": 120,
     "type": "action",
-    "priority": 102,
     "patterns_any": [
-      "que ventajas",
-      "qué ventajas",
-      "para que sirve completar el perfil",
-      "por que es importante el perfil",
-      "por qué es importante el perfil",
-      "de que me sirve completar el perfil",
-      "beneficios de completar perfil",
-      "ventajas de completar perfil",
-      "por que debo completar el perfil",
-      "por qué debo completar el perfil",
-      "que gano con el perfil",
-      "que obtengo si lo completo",
-      "explicame ventajas del perfil",
-      "explícame ventajas del perfil",
-      "ajuta-ma cu avantajele",
-      "care sunt avantajele",
-      "per què serveix completar el perfil",
-      "avantatges de completar el perfil",
-      "beneficis del perfil",
-      "video ventajas perfil",
-      "muestrame por que",
-      "muéstrame por qué",
-      "porque es bueno completar perfil",
-      "why complete profile"
+      "que ventajas","qué ventajas","ventajas perfil",
+      "por que es importante completar el perfil","¿por qué es importante completar el perfil?",
+      "video perfil","video completar perfil","ver video perfil",
+      "mostrar aprender perfil","aprender perfil completado",
+      "vreau sa vad video profil","de ce e important profilul",
+      "per què és important completar el perfil","video perfil completat"
     ],
-    "action": "profile_advantages_video",
-    "response": {
-      "text": {
-        "es": "Mira, te he preparado un vídeo de por qué está bien tenerlo completado y cómo rellenarlo. Si no lo consigues, solo dime: «quiero completar mi perfil» y te ayudo.",
-        "ro": "Uite, ți-am pregătit un video despre de ce e bine să fie completat și cum îl completezi. Dacă nu reușești, spune-mi «vreau să completez profilul» și te ajut.",
-        "ca": "Mira, t’he preparat un vídeo sobre per què va bé tenir-lo completat i com omplir-lo. Si no te’n surts, digue’m «vull completar el meu perfil» i t’ajudo."
-      },
-      "objects": [
-        {
-          "type": "card",
-          "title": "Ventajas de completar el perfil",
-          "actions": [
-            { "type": "open", "label": "Ver vídeo", "route": "#", "newTab": true }
-          ]
-        }
-      ]
-    }
+    "action": "profile_show_advantages_video",
+    "response": { "text": { "es": "Te paso el vídeo.", "ro": "Îți trimit videoclipul.", "ca": "Et passo el vídeo." } }
   }
 ]
+ 
