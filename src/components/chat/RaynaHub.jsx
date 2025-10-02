@@ -125,19 +125,17 @@ export default function RaynaHub() {
       gps_list: () => handleGpsLists({ intent, setMessages }),
 
       // profil
-      who_am_i: () => handleWhoAmI({ profile, setMessages, setAwaiting }), // ← PASĂM setAwaiting!
-      open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
-      profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
-      profile_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }), // ⬅️ ADĂUGAT
-      
-      // completar perfil
-   profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
-   // «¿qué ventajas?» → caută linkul în Supabase și deschide direct URL-ul găsit
-   profile_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }),
-   // «¿qué sabes de mí?»
-   profile_what_you_know: () =>
-     handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
+who_am_i: () => handleWhoAmI({ profile, setMessages, setAwaiting }),
+open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
+profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
 
+// «¿qué ventajas?» — mapez AMBELE chei posibile la același handler
+profile_advantages_video:      () => handleProfileAdvantagesVideo({ setMessages }),
+profile_show_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }),
+
+// «¿qué sabes de mí?»
+profile_what_you_know: () =>
+  handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
       // self-info generic pe meta.topic (din me_* intents)
       driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
 
