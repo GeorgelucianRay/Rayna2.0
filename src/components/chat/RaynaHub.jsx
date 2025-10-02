@@ -68,31 +68,61 @@ export default function RaynaHub() {
   const [parkingCtx, setParkingCtx] = useState(null);
   
   // ——— acțiuni rapide din header ———
-function quickAprender() {
-  // simulez mesajul utilizatorului
-  setMessages((m) => [
-    ...m,
-    { from: "user", text: "Quiero aprender" },
-    {
-      from: "bot",
-      reply_text:
-        "¿Qué quieres aprender? Aquí tienes una lista de tutoriales y guías:",
-    },
-    {
-      from: "bot",
-      reply_text: "Abre la sección Aprender:",
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Aprender</div>
-          <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href="/aprender">
-              Ver tutoriales
-            </a>
+async function quickAprender() {
+  // mesajul userului
+  setMessages(m => [...m, { from:"user", text:"Quiero aprender" }]);
+
+  try {
+    const { data, error } = await supabase
+      .from("aprender_links")              // <- tabela ta cu tutoriale
+      .select("id,title,url")
+      .order("title", { ascending: true });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      setMessages(m => [
+        ...m,
+        { from:"bot", reply_text:"Aún no tengo tutoriales guardados." }
+      ]);
+      return;
+    }
+
+    // randăm o listă de butoane ⇢ fiecare merge la link-ul lui
+    setMessages(m => [
+      ...m,
+      { from:"bot", reply_text:"¿Qué quieres aprender? Aquí tienes los tutoriales:" },
+      {
+        from:"bot",
+        reply_text:"Lista de tutoriales:",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Aprender</div>
+            <div className={styles.cardActionsColumn}>
+              {data.map(item => (
+                <a
+                  key={item.id}
+                  className={styles.actionBtn}
+                  data-variant="secondary"
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {item.title}
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
-      ),
-    },
-  ]);
+        )
+      }
+    ]);
+  } catch (e) {
+    console.error("[quickAprender]", e);
+    setMessages(m => [
+      ...m,
+      { from:"bot", reply_text:"No he podido cargar los tutoriales ahora mismo." }
+    ]);
+  }
 }
 
 function quickReport() {
@@ -416,7 +446,13 @@ if (awaiting === "report_error_text") {
     <div className={styles.tagline}>Tu transportista virtual</div>
   </div>
 
-  {/* ——— butoanele noi ——— */}
+
+  <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
+</header>
+      </header>
+
+{/* barra secundară, sub header */}
+<div className={styles.subHeaderBar}>
   <div className={styles.headerQuickActions}>
     <button
       type="button"
@@ -430,15 +466,12 @@ if (awaiting === "report_error_text") {
       type="button"
       className={styles.quickBtn}
       onClick={quickReport}
-      aria-label="Reportar problema"
+      aria-label="Reclamar un error"
     >
-      Reportar
+      Reclamar
     </button>
   </div>
-
-  <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
-</header>
-      </header>
+</div>
 
       <main className={styles.chat}>
         {messages.map((m, i) =>
