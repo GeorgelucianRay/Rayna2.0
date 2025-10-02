@@ -44,6 +44,7 @@ const all = [
   ...camaras,
   ...anuncios,
   ...perfil,   // 👈 adăugat
+  ...vehiculo,
 ];
 
 if (import.meta && import.meta.env && import.meta.env.DEV) {
