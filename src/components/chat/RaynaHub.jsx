@@ -348,17 +348,35 @@ if (awaiting === "report_error_text") {
   }
 
   try {
-    const email = profile?.email || null;
-    const user_id = profile?.id || null;
-
-    const { error } = await supabase
-      .from("feedback_utilizatori")
+    const { data, error } = await supabase
+      .from('feedback_utilizatori')
       .insert({
-        user_id,
-        email,                // emailul autorului
-        continut: trimmed,    // textul raportului (aceeași coloană ca la feedback)
-        source: "chat_report" // diferențiem de modal
-      });
+        continut: trimmed,                          // textul din chat
+        origen: 'chat',                             // vine din chat
+        categoria: 'reclamo',                       // etichetă utilă
+        severidad: 'media',                         // opțional
+        contexto: { ruta: window.location?.pathname || null } // meta opțional
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Gracias. He registrado el reporte. Me encargo de revisarlo." }
+    ]);
+  } catch (e) {
+    console.error("[report_error_text] insert error:", e);
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Lo siento, no he podido registrar el reporte ahora mismo." }
+    ]);
+  } finally {
+    setAwaiting(null);
+  }
+  return;
+}
 
     if (error) throw error;
 
