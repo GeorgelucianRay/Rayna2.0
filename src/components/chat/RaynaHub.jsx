@@ -78,16 +78,6 @@ async function quickAprender() {
       .select("id,title,url")
       .order("title", { ascending: true });
 
-    if (error) throw error;
-
-    if (!data || data.length === 0) {
-      setMessages(m => [
-        ...m,
-        { from:"bot", reply_text:"Aún no tengo tutoriales guardados." }
-      ]);
-      return;
-    }
-
     // randăm o listă de butoane ⇢ fiecare merge la link-ul lui
     setMessages(m => [
       ...m,
