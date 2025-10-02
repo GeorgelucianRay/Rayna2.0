@@ -26,8 +26,8 @@ import {
   // profil
   handleWhoAmI,
   handleOpenMyTruck,
-  handleDriverSelfInfo,          // ← self-info (CAP/lic/ADR/ITV/plates/payroll/etc, via meta.topic)
-  handleProfileCompletionStart,  // ← wizard completare profil
+  handleDriverSelfInfo,
+  handleProfileCompletionStart,
 
   // vehicul
   handleVehItvTruck,
@@ -122,7 +122,7 @@ export default function RaynaHub() {
       gps_list: () => handleGpsLists({ intent, setMessages }),
 
       // profil
-      who_am_i: () => handleWhoAmI({ profile, setMessages }),
+      who_am_i: () => handleWhoAmI({ profile, setMessages, setAwaiting }), // ← PASĂM setAwaiting!
       open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
       profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
 
@@ -143,7 +143,6 @@ export default function RaynaHub() {
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
     };
 
-    // DEBUG: vezi exact ce se cere + ce avem în masă
     console.debug("[RaynaHub] dispatchAction →", {
       id: intent?.id,
       action: intent?.action,
@@ -156,7 +155,6 @@ export default function RaynaHub() {
       if (table[actionKey]) {
         return await table[actionKey]();
       }
-      // fallback dacă nu avem handler mapat
       setMessages((m) => [
         ...m,
         { from: "bot", reply_text: `Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` },
@@ -178,6 +176,47 @@ export default function RaynaHub() {
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
+    // 0) confirmarea la "¿Quieres ver tu perfil?"
+    if (awaiting === "confirm_view_profile") {
+      const n = normalize(userText);
+      setAwaiting(null);
+
+      const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
+      const NO  = ["no","nop","nu","nope"];
+
+      if (YES.includes(n)) {
+        setMessages((m) => [
+          ...m,
+          { from: "bot", reply_text: "Perfecto, aquí lo tienes:" },
+          {
+            from: "bot",
+            reply_text: "Pulsa el botón para abrir tu perfil.",
+            render: () => (
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Perfil</div>
+                <div className={styles.cardActions}>
+                  <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
+                    Ver perfil
+                  </a>
+                </div>
+              </div>
+            ),
+          },
+        ]);
+        return;
+      }
+
+      if (NO.includes(n)) {
+        setMessages((m) => [...m, { from: "bot", reply_text: "¡Entendido! ¿En qué más te puedo ayudar?" }]);
+        return;
+      }
+
+      // răspuns ambiguu -> mai întrebăm o dată
+      setAwaiting("confirm_view_profile");
+      setMessages((m) => [...m, { from: "bot", reply_text: "¿Sí o no?" }]);
+      return;
+    }
+
     // 1) pași de dialog blocați (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
@@ -194,8 +233,6 @@ export default function RaynaHub() {
 
     // 2) detectare intent
     const { intent, slots, lang } = detectIntent(userText, intentsData);
-
-    // DEBUG: ce a detectat NLU
     console.debug("[RaynaHub] detectIntent →", { intent, slots, lang });
 
     if (!intent || !intent.type) {
