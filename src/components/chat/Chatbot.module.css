@@ -239,3 +239,85 @@
   backdrop-filter: blur(6px);
 }
 .quickBtn:active { transform: translateY(1px); }
+
+/* 1) Containerul general ocupă ecranul */
+.shell{
+  display:flex;
+  flex-direction:column;
+  height:100dvh;        /* iOS friendly */
+  min-height:100dvh;
+}
+
+/* 2) Headerul rămâne “auto” (nu e afectat de subheader) */
+.header{
+  flex:0 0 auto;
+  padding:12px 16px;    /* păstrează ce aveai tu */
+  /* restul stilurilor tale existente */
+}
+
+/* 3) Bara cu butoanele, imediat SUB header */
+.subHeaderBar{
+  flex:0 0 auto;
+  padding:8px 16px 4px;   /* un pic de aer */
+}
+
+/* 4) Chat-ul ocupă TOT spațiul rămas */
+.chat{
+  flex:1 1 auto;
+  min-height:0;          /* important pt. overflow corect */
+  overflow:auto;
+}
+
+/* 5) Footer fix la bază */
+.inputBar{
+  flex:0 0 auto;
+}
+
+/* ————— Butoanele din subheader ————— */
+.headerQuickActions{
+  display:flex;
+  gap:12px;
+  /* butoanele pe centru pe rânduri înguste */
+  flex-wrap:wrap;
+}
+
+.quickBtn{
+  appearance:none;
+  border:0;
+  border-radius:16px;
+  padding:10px 16px;
+  font-size:16px;         /* mai mare */
+  font-weight:700;
+  background:rgba(255,255,255,.16);
+  color:#fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ————— Lista “Aprender” pe VERTICALĂ, full-width ————— */
+.cardActionsColumn{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  width:100%;
+}
+
+.listCard{                          /* wrapper-ul cardului */
+  display:block;
+  width:100%;
+}
+
+.listBtn{                           /* fiecare link ca buton plin */
+  display:block;
+  width:100%;
+  text-align:left;
+  text-decoration:none;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-weight:600;
+  line-height:1.2;
+  outline:1px solid rgba(255,255,255,.18);
+}
+.listBtn:active { transform: scale(.995); }
