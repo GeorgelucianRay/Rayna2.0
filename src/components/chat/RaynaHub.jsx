@@ -130,13 +130,13 @@ export default function RaynaHub() {
       profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
       profile_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }), // ⬅️ ADĂUGAT
       
-      // 🔹 „¿qué sabes de mí?”
-    profile_what_you_know: () =>
-      handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
-
-    // 🔹 deschide „Aprender” pe tema „perfil completado”
-    profile_show_advantages_video: () =>
-      handleShowAprenderPerfil({ setMessages }),
+      // completar perfil
+   profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
+   // «¿qué ventajas?» → caută linkul în Supabase și deschide direct URL-ul găsit
+   profile_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }),
+   // «¿qué sabes de mí?»
+   profile_what_you_know: () =>
+     handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
 
       // self-info generic pe meta.topic (din me_* intents)
       driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
