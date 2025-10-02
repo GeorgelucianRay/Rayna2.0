@@ -20,7 +20,7 @@ export {
   handleProfileAdvantagesVideo,   // ✅ nou
   handleShowAprenderPerfil        // ✅ doar dacă îl folosești efectiv
   handleProfileWizardStart,   // ⬅️ nou
-  handleProfileWizardStep 
+  handleProfileWizardStep,
 } from "./handleProfileStuff.jsx";
 
 export {
