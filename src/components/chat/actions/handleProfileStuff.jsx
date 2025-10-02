@@ -1,7 +1,94 @@
 // src/components/chat/actions/handleProfileStuff.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
+// ⬆️ la începutul fișierului, lângă celelalte importuri:
+import { supabase } from "../../../supabaseClient";
 
+/* ——— VIDEO: ventajas de completar el perfil (busca en aprender_links) ——— */
+export async function handleProfileAdvantagesVideo({ setMessages }) {
+  // variante de titlu acceptate (case-insensitive)
+  const NEEDLES = [
+    "perfil completado",
+    "perfil completo",
+    "ventajas perfil",
+    "por qué completar el perfil",
+    "completar perfil"
+  ];
+
+  // try #1: căutare OR cu ilike în titlu
+  const orFilter = NEEDLES
+    .map(t => `title.ilike.%${t}%`)
+    .join(",");
+
+  let url = null;
+  try {
+    const { data, error } = await supabase
+      .from("aprender_links")
+      .select("id,title,url")
+      .or(orFilter)
+      .order("title", { ascending: true })
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      url = data[0].url;
+    }
+  } catch (_) {
+    // ignorăm, avem fallback mai jos
+  }
+
+  if (!url) {
+    // fallback prietenos dacă nu există intrare cu acel titlu
+    setMessages(m => [
+      ...m,
+      {
+        from: "bot",
+        reply_text:
+          "Aún no tengo el vídeo guardado en Aprender con ese título. Puedo llevarte a la sección «Aprender» por si lo encuentras útil."
+      },
+      {
+        from: "bot",
+        reply_text: "Abre la sección de aprendizaje:",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Aprender</div>
+            <div className={styles.cardActions}>
+              <a className={styles.actionBtn} data-variant="primary" href="/aprender" target="_self" rel="noreferrer">
+                Abrir Aprender
+              </a>
+            </div>
+          </div>
+        )
+      }
+    ]);
+    return;
+  }
+
+  // avem URL → trimitem card către acel link
+  setMessages(m => [
+    ...m,
+    {
+      from: "bot",
+      reply_text:
+        "Mira, te he preparado un vídeo de por qué está bien tenerlo completado y cómo rellenarlo. Si no lo consigues, dime «quiero completar mi perfil» y te ayudo.",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Ventajas de completar el perfil</div>
+          <div className={styles.cardActions}>
+            <a
+              className={styles.actionBtn}
+              data-variant="primary"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ver vídeo
+            </a>
+          </div>
+        </div>
+      )
+    }
+  ]);
+},
 /* ——— util: traduce rolul intern la ES ——— */
 function roleToEs(role = "") {
   const r = String(role).toLowerCase().trim();
