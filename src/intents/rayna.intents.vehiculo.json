@@ -4,15 +4,26 @@
     "priority": 90,
     "type": "action",
     "patterns_any": [
-      "cuando me caduca la itv del camión", "cuando caduca la itv del camion",
-      "itv camion", "itv camión", "caduca itv camion", "cuando pasa itv el camion",
-      "cuando vence la itv del camion", "proxima itv camion", "próxima itv camión",
-      "fecha itv camion", "cuando tengo itv del camion", "itv del tractor",
-      "revision itv camion", "ver itv camion", "consultar itv camion",
-      "cand imi expira itv la camion", "cand expira itv camion", "când expiră itv camion",
-      "când am itv la camion", "verifica itv camion", "verifică itv camion",
-      "quan em caduca la itv del camió", "quan caduca itv camió",
-      "data itv camio", "pròxima itv camió"
+      "cuando me caduca la itv del camión",
+      "cuando caduca la itv del camion",
+      "itv camión",
+      "itv camion",
+      "fecha itv camion",
+      "proxima itv camion",
+      "próxima itv camión",
+      "consulta itv camion",
+      "ver itv camión",
+      "caducidad itv camión",
+      "cand îmi expiră itv la camion",
+      "când îmi expiră itv la camion",
+      "itv camion ro",
+      "itp camion",
+      "cand expira itp camion",
+      "itp la camion",
+      "quan em caduca la itv del camió",
+      "itv camió",
+      "consulta itv camió",
+      "pròxima itv camió"
     ],
     "action": "veh_itv_truck",
     "response": {
@@ -25,17 +36,29 @@
   },
   {
     "id": "veh_itv_trailer",
-    "priority": 90,
+    "priority": 89,
     "type": "action",
     "patterns_any": [
-      "cuando caduca la itv del remolque", "itv remolque", "itv del remolque",
-      "proxima itv remolque", "próxima itv remolque", "fecha itv remolque",
-      "cuando pasa itv el remolque", "cuando vence la itv del remolque",
-      "revision itv remolque", "consultar itv remolque",
-      "cand expira itv remorca", "când expiră itv remorcă", "când am itv la remorcă",
-      "verifica itv remorca", "verifică itv remorcă",
-      "quan caduca itv del remolc", "quan caduca la itv del remolc",
-      "pròxima itv remolc", "data itv remolc"
+      "itv del remolque",
+      "caduca itv remolque",
+      "cuando caduca la itv del remolque",
+      "fecha itv remolque",
+      "próxima itv remolque",
+      "consulta itv remolque",
+      "ver itv remolque",
+      "caducidad itv remolque",
+      "itp remorca",
+      "cand expira itp remorca",
+      "itp la remorca",
+      "itv remorca",
+      "cand expira itv remorca",
+      "când expiră itv remorcă",
+      "itv del remolc",
+      "quan caduca itv remolc",
+      "consulta itv remolc",
+      "proper itv remolc",
+      "itv remolc",
+      "data itv remolc"
     ],
     "action": "veh_itv_trailer",
     "response": {
@@ -48,19 +71,29 @@
   },
   {
     "id": "veh_oil_status",
-    "priority": 92,
+    "priority": 88,
     "type": "action",
     "patterns_any": [
-      "cuando cambie el aceite", "cuando hice el cambio de aceite",
-      "ultimo cambio de aceite", "último cambio de aceite",
-      "proximo cambio de aceite", "próximo cambio de aceite",
-      "cuanto me queda de aceite", "cuánto me queda para el aceite",
-      "historial aceite", "revisar aceite", "mantenimiento aceite",
-      "cand am schimbat uleiul", "ultimul schimb de ulei",
-      "cât mai am până la ulei", "cat mai am pana la ulei",
-      "urmatorul schimb de ulei", "verifica ulei", "verifică ulei",
-      "quan vaig canviar l'oli", "últim canvi d'oli",
-      "proper canvi d'oli", "historial d'oli"
+      "cuando cambie el aceite",
+      "cuando hice el cambio de aceite",
+      "ultimo cambio de aceite",
+      "último cambio de aceite",
+      "próximo cambio de aceite",
+      "proximo cambio de aceite",
+      "cuanto me queda de aceite",
+      "estado aceite",
+      "kilometros hasta aceite",
+      "km hasta aceite",
+      "cand am schimbat uleiul",
+      "ultimul schimb de ulei",
+      "cât mai am până la ulei",
+      "cat mai am pana la ulei",
+      "urmatorul schimb de ulei",
+      "quan vaig canviar l'oli",
+      "últim canvi d'oli",
+      "proper canvi d'oli",
+      "quant em queda per l'oli",
+      "estat oli"
     ],
     "action": "veh_oil_status",
     "response": {
@@ -73,16 +106,29 @@
   },
   {
     "id": "veh_adblue_filter_status",
-    "priority": 91,
+    "priority": 87,
     "type": "action",
     "patterns_any": [
-      "cuando cambie el filtro de adblue", "ultimo filtro adblue",
-      "último filtro adblue", "proximo filtro adblue", "próximo filtro adblue",
-      "historial filtro adblue", "cambio filtro adblue",
-      "cand am schimbat filtrul de adblue", "ultimul filtru adblue",
-      "urmatorul filtru adblue", "verifica filtru adblue", "verifică filtru adblue",
-      "quan vaig canviar el filtre d'adblue", "últim filtre adblue",
-      "proper filtre adblue", "historial filtre adblue"
+      "cuando cambie el filtro de adblue",
+      "ultimo filtro adblue",
+      "último filtro adblue",
+      "próximo filtro adblue",
+      "proximo filtro adblue",
+      "estado filtro adblue",
+      "revisar filtro adblue",
+      "filtro adblue proximo",
+      "cand am schimbat filtrul de adblue",
+      "ultimul filtru adblue",
+      "urmatorul filtru adblue",
+      "stare filtru adblue",
+      "revizuire filtru adblue",
+      "quan vaig canviar el filtre d'adblue",
+      "últim filtre adblue",
+      "proper filtre adblue",
+      "estat filtre adblue",
+      "revisar filtre adblue",
+      "data filtre adblue",
+      "quan toca filtre adblue"
     ],
     "action": "veh_adblue_filter_status",
     "response": {
@@ -92,35 +138,5 @@
         "ca": "Reviso el teu filtre AdBlue…"
       }
     }
-  },
-
-  /* ——— (opțional, pentru răspuns instant cu date) self-info vechi ——— */
-  {
-    "id": "me_itv_camion",
-    "priority": 120,
-    "type": "action",
-    "patterns_any": [
-      "itv del camion", "itv camión", "caduca itv camion",
-      "cuando caduca itv camion", "cuando caduca la itv del camion",
-      "itv la camion", "cuando vence la itv del camion",
-      "cand expira itv camion", "când expiră itv camion", "când îmi expiră itv la camion",
-      "itv del camio", "itv del camió", "quan caduca itv camio", "quan caduca itv camió"
-    ],
-    "action": "driver_self_info",
-    "meta": { "topic": "truck_itv" },
-    "response": { "text": { "es": "La ITV de tu camión es **{{truck.itv}}**.", "ro": "ITV-ul camionului tău este **{{truck.itv}}**.", "ca": "La ITV del teu camió és **{{truck.itv}}**." } }
-  },
-  {
-    "id": "me_itv_remolque",
-    "priority": 119,
-    "type": "action",
-    "patterns_any": [
-      "itv del remolque", "caduca itv remolque", "cuando caduca la itv del remolque",
-      "itv remorca", "cand expira itv remorca", "când expiră itv remorcă",
-      "itv del remolc", "quan caduca itv remolc"
-    ],
-    "action": "driver_self_info",
-    "meta": { "topic": "trailer_itv" },
-    "response": { "text": { "es": "La ITV de tu remolque es **{{trailer.itv}}**.", "ro": "ITV-ul remorcii tale este **{{trailer.itv}}**.", "ca": "La ITV del teu remolc és **{{trailer.itv}}**." } }
   }
 ]
