@@ -12,6 +12,7 @@ import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 // —— UI locale
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
+import { supabase } from "../../supabaseClient";
 
 // —— handlers (actions)
 import {
@@ -65,6 +66,44 @@ export default function RaynaHub() {
 
   // —— context „parking” (lista de sugestii & cursorul curent)
   const [parkingCtx, setParkingCtx] = useState(null);
+  
+  // ——— acțiuni rapide din header ———
+function quickAprender() {
+  // simulez mesajul utilizatorului
+  setMessages((m) => [
+    ...m,
+    { from: "user", text: "Quiero aprender" },
+    {
+      from: "bot",
+      reply_text:
+        "¿Qué quieres aprender? Aquí tienes una lista de tutoriales y guías:",
+    },
+    {
+      from: "bot",
+      reply_text: "Abre la sección Aprender:",
+      render: () => (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Aprender</div>
+          <div className={styles.cardActions}>
+            <a className={styles.actionBtn} data-variant="primary" href="/aprender">
+              Ver tutoriales
+            </a>
+          </div>
+        </div>
+      ),
+    },
+  ]);
+}
+
+function quickReport() {
+  setMessages((m) => [
+    ...m,
+    { from: "user", text: "Quiero reclamar un error" },
+    { from: "bot", reply_text: "Claro, dime qué problema hay. Me encargo de resolverlo." },
+  ]);
+  // următorul mesaj al utilizatorului va fi textul raportului
+  setAwaiting("report_error_text");
+}
 
   // —— memorăm intențiile (agregate + eventual validate în /intents/index.js)
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
@@ -270,6 +309,45 @@ profile_what_you_know: () =>
       return;
     }
 
+    // 0.a) raportare eroare (venită din butonul Reportar)
+if (awaiting === "report_error_text") {
+  const trimmed = userText.trim();
+  if (!trimmed) {
+    setMessages((m) => [...m, { from: "bot", reply_text: "Necesito que me escribas el problema para poder reportarlo." }]);
+    return;
+  }
+
+  try {
+    const email = profile?.email || null;
+    const user_id = profile?.id || null;
+
+    const { error } = await supabase
+      .from("feedback_utilizatori")
+      .insert({
+        user_id,
+        email,                // emailul autorului
+        continut: trimmed,    // textul raportului (aceeași coloană ca la feedback)
+        source: "chat_report" // diferențiem de modal
+      });
+
+    if (error) throw error;
+
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "Gracias. He registrado el reporte. Me encargo de revisarlo." },
+    ]);
+  } catch (e) {
+    console.error("[report_error_text] insert error:", e);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "Lo siento, no he podido registrar el reporte ahora mismo." },
+    ]);
+  } finally {
+    setAwaiting(null);
+  }
+  return;
+}
+
     // 1) pași de dialog blocați (ex: anuncio)
     if (awaiting === "anuncio_text") {
       await handleDialog.stepAnuncio({
@@ -326,17 +404,40 @@ profile_what_you_know: () =>
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <img
-          src={RAYNA_AVATAR}
-          alt="Rayna"
-          className={styles.avatar}
-          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-        />
-        <div className={styles.headerTitleWrap}>
-          <div className={styles.brand}>Rayna 2.0</div>
-          <div className={styles.tagline}>Tu transportista virtual</div>
-        </div>
-        <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
+        <header className={styles.header}>
+  <img
+    src={RAYNA_AVATAR}
+    alt="Rayna"
+    className={styles.avatar}
+    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+  />
+  <div className={styles.headerTitleWrap}>
+    <div className={styles.brand}>Rayna 2.0</div>
+    <div className={styles.tagline}>Tu transportista virtual</div>
+  </div>
+
+  {/* ——— butoanele noi ——— */}
+  <div className={styles.headerQuickActions}>
+    <button
+      type="button"
+      className={styles.quickBtn}
+      onClick={quickAprender}
+      aria-label="Abrir Aprender"
+    >
+      Aprender
+    </button>
+    <button
+      type="button"
+      className={styles.quickBtn}
+      onClick={quickReport}
+      aria-label="Reportar problema"
+    >
+      Reportar
+    </button>
+  </div>
+
+  <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
+</header>
       </header>
 
       <main className={styles.chat}>
