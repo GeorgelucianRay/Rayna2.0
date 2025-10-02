@@ -1,101 +1,168 @@
 /* src/pages/MiPerfilPage.module.css */
-.page {
-  padding: 88px 24px 24px;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.avatarXxl {
-  width: 90px;
-  height: 90px;
-  flex-shrink: 0;
-  position: relative;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(9,12,20,.6), rgba(17,24,39,.55));
-}
-.avatarImg {
-  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-}
-.avatarFallbackXl {
-  width: 100%; height: 100%; display: grid; place-items: center; font-weight: 900; font-size: 1.6rem;
-}
-.avatarOverlay {
-  position: absolute; inset: 0; border-radius: 50%;
-}
-.avatarCamBtn {
-  position: absolute; right: -4px; bottom: -4px; width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2;
-  border: 2px solid rgba(255,255,255,.95);
-  background: radial-gradient(120% 120% at 30% 20%, rgba(255,140,58,.95), rgba(255,106,0,.9));
-  color: #fff;
-}
-.editBtn, .ghostBtn {
-  padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border);
-  background: rgba(255,255,255,.08); color: #fff; font-weight: 700; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 8px;
-}
-.cardsGrid {
-  display: grid; gap: 14px; grid-template-columns: 1fr;
-}
-.widgetsGrid {
-  display: grid; gap: 14px; margin-top: 16px; grid-template-columns: 1fr;
-}
-@media (min-width: 900px) {
-  .cardsGrid { grid-template-columns: repeat(3, 1fr); }
-}
-@media (min-width: 1000px) {
-  .widgetsGrid { grid-template-columns: 1fr 1fr; }
-}
-.card {
-  background: var(--glass);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 16px;
+/* ===== Theme tokens (hereda de :root global que pegaste) ===== */
+:root{
+  --text-strong:#eaf3ff;
+  --text-soft:#b7c7e6;
+
+  --stroke:rgba(255,255,255,.30);
+  --stroke-soft:rgba(255,255,255,.18);
+  --glass:rgba(255,255,255,.06);
+  --glass-strong:rgba(255,255,255,.10);
+
+  --green:#3be476;
+
+  --radius-xl:26px;
+  --radius-lg:18px;
+  --radius-md:12px;
+
+  --shadow-outer:0 12px 36px rgba(0,0,0,.35);
+  --shadow-inset:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.25);
 }
 
-/* MODIFICAT: Titlul cardului are acum efectul de gradient */
-.cardTitle {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* ===== Página ===== */
+.page{
+  padding:14px;
+  color:var(--text-strong);
 }
-.cardTitleRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.rows2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-.k {
-  display: block;
-  font-size: .84rem;
-  color: var(--muted);
-}
-.v {
-  display: block;
-  font-weight: 800;
-  font-size: 1.05rem;
-  color: var(--text);
-}
-.loading { display: grid; place-items: center; min-height: 60vh; color: #fff; font-size: 1.25rem; }
 
-/* MODIFICAT: Titlul principal al paginii are acum efectul de gradient */
-.pageTitle {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, #fff, #ffd7b1, #ff8c3a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* ===== Header ===== */
+.header{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin-bottom:14px;
+  padding:14px 16px;
+  border-radius:var(--radius-lg);
+  background:var(--glass);
+  border:1px solid var(--stroke-soft);
+  box-shadow:var(--shadow-inset);
+}
+
+.headerLeft{display:flex; align-items:center; gap:14px}
+
+/* Avatar grande */
+.avatarXxl{
+  position:relative;
+  width:92px;height:92px;border-radius:50%;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid var(--stroke);
+  box-shadow:0 10px 24px rgba(0,0,0,.35);
+  overflow:hidden; cursor:pointer;
+}
+.avatarImg{width:100%;height:100%;object-fit:cover;display:block}
+.avatarFallbackXl{
+  width:100%;height:100%; display:grid; place-items:center;
+  font-weight:800; font-size:28px; color:var(--text-strong);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+}
+.avatarOverlay{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.12));
+  pointer-events:none;
+}
+.avatarCamBtn{
+  position:absolute; right:-4px; bottom:-4px;
+  width:44px;height:44px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.7);
+  background:linear-gradient(180deg, rgba(255,167,38,.95), rgba(255,167,38,.82));
+  color:#1b1305; display:grid; place-items:center;
+  box-shadow:0 10px 26px rgba(255,167,38,.35), var(--shadow-inset);
+}
+
+/* Botón editar */
+.editBtn{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 14px; border-radius:28px;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong); font-weight:700;
+  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  cursor:pointer;
+}
+
+/* ===== Cards grid ===== */
+.cardsGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+  margin-top:6px;
+}
+
+.card{
+  padding:14px;
+  border-radius:var(--radius-lg);
+  background:var(--glass-strong);
+  border:1px solid var(--stroke);
+  box-shadow:0 10px 26px rgba(0,0,0,.28), var(--shadow-inset);
+}
+
+.cardTitleRow{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:8px;
+}
+
+.cardTitle{
+  font-weight:800; letter-spacing:.2px;
+}
+
+.rows2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px 18px;
+}
+
+.k{ display:block; font-size:13px; color:var(--text-soft) }
+.v{ display:block; font-weight:700; color:var(--text-strong) }
+
+/* Botón fantasma (Ver ficha) */
+.ghostBtn{
+  padding:10px 14px; border-radius:28px;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong);
+  font-weight:700; letter-spacing:.2px;
+  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  cursor:pointer;
+}
+.ghostBtn[disabled], .ghostBtn[aria-disabled="true"]{
+  opacity:.5; cursor:not-allowed;
+}
+
+/* ===== Widgets grid ===== */
+.widgetsGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+  margin-top:12px;
+}
+
+/* ===== Loading ===== */
+.loading{
+  margin:40px auto;
+  padding:16px;
+  max-width:480px;
+  text-align:center;
+  border-radius:var(--radius-lg);
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  color:var(--text-strong);
+  box-shadow:var(--shadow-inset), var(--shadow-outer);
+}
+
+/* Botón primario (login) */
+.primaryBtn{
+  margin-top:12px;
+  padding:12px 18px; border-radius:30px;
+  border:1px solid rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012; font-weight:800;
+  box-shadow:0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
+}
+
+/* ===== Responsive ===== */
+@media (max-width:720px){
+  .rows2{ grid-template-columns:1fr; }
 }
