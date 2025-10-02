@@ -30,7 +30,6 @@ import {
   handleProfileCompletionStart,
   handleWhatDoYouKnowAboutMe,
   handleShowAprenderPerfil,
-  handleProfileCompletionStart,
   handleProfileAdvantagesVideo,
 
   // vehicul
