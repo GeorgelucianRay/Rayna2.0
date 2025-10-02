@@ -28,6 +28,8 @@ import {
   handleOpenMyTruck,
   handleDriverSelfInfo,
   handleProfileCompletionStart,
+  handleWhatDoYouKnowAboutMe,
+  handleShowAprenderPerfil,
 
   // vehicul
   handleVehItvTruck,
@@ -125,6 +127,14 @@ export default function RaynaHub() {
       who_am_i: () => handleWhoAmI({ profile, setMessages, setAwaiting }), // ← PASĂM setAwaiting!
       open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
       profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
+      
+      // 🔹 „¿qué sabes de mí?”
+    profile_what_you_know: () =>
+      handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
+
+    // 🔹 deschide „Aprender” pe tema „perfil completado”
+    profile_show_advantages_video: () =>
+      handleShowAprenderPerfil({ setMessages }),
 
       // self-info generic pe meta.topic (din me_* intents)
       driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
