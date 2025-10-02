@@ -230,13 +230,67 @@ export async function handleProfileCompletionStart({ setMessages }) {
 }
 export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
-  const rolEs  = (function roleToEs(role = "") {
-    const r = String(role).toLowerCase().trim();
+
+  // — rol → ES
+  const rolEs = (() => {
+    const r = String(profile?.role || "").toLowerCase().trim();
     if (["sofer","şofer","șofer","driver"].includes(r)) return "chofer";
     if (["dispecer","dispatcher"].includes(r)) return "Jefe de Tráfico";
     if (["mecanic","mechanic"].includes(r)) return "mecánico";
     return r || "chofer";
-  })(profile?.role);
+  })();
+
+  // ---------- NORMALIZĂRI / FALLBACK-URI din profilul tău ----------
+  // driver
+  const adr = (profile?.driver?.adr ?? profile?.tiene_adr ?? null);  // boolean sau null
+  const cap = profile?.driver?.cap || profile?.cap_expirare || "";   // dată sau ""
+  const lic = profile?.driver?.lic || profile?.carnet_caducidad || "";// dată sau ""
+
+  // camion
+  const truckObj = profile?.camioane || profile?.truck || {};
+  const truckBrand = truckObj?.marca || truckObj?.brand || profile?.camion_marca || "";
+  const truckPlate = truckObj?.matricula || truckObj?.plate || profile?.camion_matricula || "";
+
+  // remorcă (ai "remorci" în unele locuri)
+  const trailerObj = profile?.remolque || profile?.trailer || profile?.remorci || {};
+  const trailerBrand = trailerObj?.marca || trailerObj?.brand || profile?.remorca_marca || "";
+  const trailerPlate = trailerObj?.matricula || trailerObj?.plate || profile?.remorca_matricula || "";
+
+  const bullets = [];
+  bullets.push(`• Te llamas **${nombre}** (${rolEs}).`);
+
+  if (adr !== null) bullets.push(`• ADR: **${adr ? "sí" : "no"}**.`);
+  if (lic)         bullets.push(`• Carnet: **${lic}**.`);
+  if (cap)         bullets.push(`• CAP: **${cap}**.`);
+
+  if (truckBrand || truckPlate) {
+    bullets.push(`• Camión: **${truckBrand || "—"}${truckPlate ? " · " + truckPlate : ""}**.`);
+  }
+  if (trailerBrand || trailerPlate) {
+    bullets.push(`• Remolque: **${trailerBrand || "—"}${trailerPlate ? " · " + trailerPlate : ""}**.`);
+  }
+
+  const hasCore =
+    adr !== null || !!lic || !!cap ||
+    !!truckBrand || !!truckPlate ||
+    !!trailerBrand || !!trailerPlate;
+
+  if (hasCore) {
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Esto es lo que sé de ti:" },
+      { from: "bot", reply_text: bullets.join("\n") },
+    ]);
+    return;
+  }
+
+  // nu avem destule date → propune completarea profilului
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: "De momento solo sé cómo te llamas, pero puedes contarme más completando tu perfil. ¿Quieres que te ayude?" }
+  ]);
+  setAwaiting && setAwaiting("confirm_complete_profile");
+}
 
   // date profil
   const drv = profile?.driver || {};
