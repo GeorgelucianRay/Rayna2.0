@@ -16,6 +16,8 @@ export {
   handleVehOilStatus,
   handleVehAdblueFilterStatus,
   handleProfileCompletionStart,
+  handleWhatDoYouKnowAboutMe,   // 👈 nou
+  handleShowAprenderPerfil 
 } from "./handleProfileStuff.jsx";
 
 export { handleParkingNearStart, handleParkingNext } from "./handleParkingNear.jsx";
