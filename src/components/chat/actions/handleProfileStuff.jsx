@@ -208,39 +208,76 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
 
-  // Normalizează câmpurile (acoperă structuri diferite ale profilului)
+  // ————— normalizări info driver
   const adr = (profile?.driver?.adr ?? profile?.tiene_adr ?? null);
   const cap = profile?.driver?.cap || profile?.cap_expirare || "";
   const lic = profile?.driver?.lic || profile?.carnet_caducidad || "";
 
-  const truckObj   = profile?.camioane || profile?.truck || {};
-  const truckBrand = truckObj?.marca || truckObj?.brand || profile?.camion_marca || "";
-  const truckPlate = truckObj?.matricula || truckObj?.plate || profile?.camion_matricula || "";
-  const truckAny   = !!(truckBrand || truckPlate || profile?.camion_id);
+  // ————— normalizări inițiale camion/remorcă din profile
+  const truckObj    = profile?.camioane || profile?.truck || {};
+  const trailerObj  = profile?.remolque || profile?.trailer || profile?.remorci || {};
 
-  const trailerObj   = profile?.remolque || profile?.trailer || profile?.remorci || {};
-  const trailerBrand = trailerObj?.marca || trailerObj?.brand || profile?.remorca_marca || "";
-  const trailerPlate = trailerObj?.matricula || trailerObj?.plate || profile?.remorca_matricula || "";
-  const trailerAny   = !!(trailerBrand || trailerPlate || profile?.remorca_id);
+  let tMarca = truckObj?.marca || truckObj?.brand || profile?.camion_marca || "";
+  let tPlaca = truckObj?.matricula || truckObj?.plate || profile?.camion_matricula || "";
+  let rMarca = trailerObj?.marca || trailerObj?.brand || profile?.remorca_marca || "";
+  let rPlaca = trailerObj?.matricula || trailerObj?.plate || profile?.remorca_matricula || "";
 
+  // ————— dacă avem ID dar lipsesc detalii → le luăm din DB
+  try {
+    // camion
+    const truckId = profile?.camion_id || truckObj?.id;
+    if (truckId && !tMarca && !tPlaca) {
+      const { data: t, error: terr } = await supabase
+        .from("camioane")
+        .select("marca,matricula,brand,plate")
+        .eq("id", truckId)
+        .maybeSingle();
+      if (!terr && t) {
+        tMarca = t.marca || t.brand || "";
+        tPlaca = t.matricula || t.plate || "";
+      }
+    }
+    // remorcă (tabela ta pare a fi „remorci”; schimbă la „remolques” dacă așa se numește)
+    const trailerId = profile?.remorca_id || trailerObj?.id;
+    if (trailerId && !rMarca && !rPlaca) {
+      const { data: r, error: rerr } = await supabase
+        .from("remorci")
+        .select("marca,matricula,brand,plate")
+        .eq("id", trailerId)
+        .maybeSingle();
+      if (!rerr && r) {
+        rMarca = r.marca || r.brand || "";
+        rPlaca = r.matricula || r.plate || "";
+      }
+    }
+  } catch (_) {
+    // best-effort: ignorăm erorile aici ca să nu stricăm răspunsul
+  }
+
+  // ————— compunem răspunsul
   const bullets = [];
   bullets.push(`• Te llamas **${nombre}** (${rolEs}).`);
   if (adr !== null) bullets.push(`• ADR: **${adr ? "sí" : "no"}**.`);
   if (lic)          bullets.push(`• Carnet: **${lic}**.`);
   if (cap)          bullets.push(`• CAP: **${cap}**.`);
-  if (truckBrand || truckPlate) {
-    bullets.push(`• Camión: **${truckBrand || "—"}${truckPlate ? " · " + truckPlate : ""}**.`);
-  } else if (truckAny) {
+
+  const hadTruckId   = !!(profile?.camion_id || truckObj?.id);
+  const hadTrailerId = !!(profile?.remorca_id || trailerObj?.id);
+
+  if (tMarca || tPlaca) {
+    bullets.push(`• Camión: **${tMarca || "—"}${tPlaca ? " · " + tPlaca : ""}**.`);
+  } else if (hadTruckId) {
     bullets.push("• Tienes un camión asignado.");
   }
-  if (trailerBrand || trailerPlate) {
-    bullets.push(`• Remolque: **${trailerBrand || "—"}${trailerPlate ? " · " + trailerPlate : ""}**.`);
-  } else if (trailerAny) {
+
+  if (rMarca || rPlaca) {
+    bullets.push(`• Remolque: **${rMarca || "—"}${rPlaca ? " · " + rPlaca : ""}**.`);
+  } else if (hadTrailerId) {
     bullets.push("• Tienes un remolque asignado.");
   }
 
   const hasCore =
-    adr !== null || !!lic || !!cap || truckAny || trailerAny;
+    adr !== null || !!lic || !!cap || (tMarca || tPlaca || hadTruckId) || (rMarca || rPlaca || hadTrailerId);
 
   if (hasCore) {
     setMessages(m => [
