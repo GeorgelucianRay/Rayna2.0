@@ -12,37 +12,26 @@ function roleToEs(role = "") {
 }
 
 /* ——— QUIÉN SOY ——— */
-export async function handleWhoAmI({ profile, setMessages }) {
+export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
+  // folosim utilul tău existent:
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
 
   const truck  = profile?.camioane || profile?.truck || null;
   const marca  = truck?.marca || truck?.brand || "";
   const plate  = truck?.matricula || truck?.plate || "";
-  const line1  = `Hola, tú eres **${nombre}** (${rolEs}).`;
-  const line2  = "¿Quieres ver tu perfil?";
+  const extra  = (marca || plate)
+    ? ` Llevas un camión ${[marca, plate].filter(Boolean).join(" · ")}.`
+    : "";
 
-  const extra =
-    marca || plate ? ` Llevas un camión ${[marca, plate].filter(Boolean).join(" · ")}.` : "";
-
-  setMessages(m => [
+  setMessages((m) => [
     ...m,
-    { from: "bot", reply_text: line1 + extra },
-    {
-      from: "bot",
-      reply_text: line2,
-      render: () => (
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Perfil</div>
-          <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
-              Ver perfil
-            </a>
-          </div>
-        </div>
-      )
-    }
+    { from: "bot", reply_text: `Hola, tú eres **${nombre}** (${rolEs}).${extra}` },
+    { from: "bot", reply_text: "¿Quieres ver tu perfil? (sí / no)" }
   ]);
+
+  // 🔸 aşteptăm confirmarea userului
+  setAwaiting("confirm_view_profile");
 }
 
 /* ——— ABRIR MI CAMIÓN ——— */
