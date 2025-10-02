@@ -220,3 +220,22 @@
   .header{padding:12px}
   .bubble{max-width:94%}
 }
+
+/* ——— Quick actions în header ——— */
+.quickBar {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;      /* împinge spre dreapta */
+  margin-right: 8px;
+}
+.quickBtn {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.quickBtn:active { transform: translateY(1px); }
