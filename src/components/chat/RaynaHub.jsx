@@ -4,7 +4,7 @@ import styles from "./Chatbot.module.css";
 
 // —— auth & NLU
 import { useAuth } from "../../AuthContext";
-import { detectIntent } from "../../nlu";
+import { detectIntent } from "../../nlu"; // re-export corect din src/nlu/index.js
 
 // —— hooks
 import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
@@ -22,18 +22,22 @@ import {
   handleGpsNavigate,
   handleGpsInfo,
   handleGpsLists,
-  handleOpenMyTruck,
-  handleWhoAmI,
-  handleParkingNearStart,
-  handleParkingNext,
 
-  // ⬇️ IMPORTURI NOI — obligatorii
-  handleDriverSelfInfo,
+  // profil
+  handleWhoAmI,
+  handleOpenMyTruck,
+  handleDriverSelfInfo,          // ← self-info (CAP/lic/ADR/ITV/plates/payroll/etc, via meta.topic)
+  handleProfileCompletionStart,  // ← wizard completare profil
+
+  // vehicul
   handleVehItvTruck,
   handleVehItvTrailer,
   handleVehOilStatus,
   handleVehAdblueFilterStatus,
-  handleProfileCompletionStart,
+
+  // parking
+  handleParkingNearStart,
+  handleParkingNext,
 } from "./actions";
 
 // —— agregatorul de intenții (src/intents/index.js export default all)
@@ -57,7 +61,7 @@ export default function RaynaHub() {
   // —— context „parking” (lista de sugestii & cursorul curent)
   const [parkingCtx, setParkingCtx] = useState(null);
 
-  // —— memorăm intențiile (deja sortate/validate de agregator)
+  // —— memorăm intențiile (agregate + eventual validate în /intents/index.js)
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
 
   const endRef = useRef(null);
@@ -105,7 +109,7 @@ export default function RaynaHub() {
 
   // —— dispecer pentru acțiuni (map clar ⇢ handler)
   async function dispatchAction(intent, slots) {
-    const actionKey = intent.action || intent.id;
+    const actionKey = (intent?.action || intent?.id || "").trim();
 
     const table = {
       // camere / anunț
@@ -120,6 +124,7 @@ export default function RaynaHub() {
       // profil
       who_am_i: () => handleWhoAmI({ profile, setMessages }),
       open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
+      profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
 
       // self-info generic pe meta.topic (din me_* intents)
       driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
@@ -136,18 +141,33 @@ export default function RaynaHub() {
         return handleParkingNearStart({ slots, setMessages, setParkingCtx, userPos });
       },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
-
-      // completar perfil
-      profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
     };
 
-    if (table[actionKey]) return table[actionKey]();
+    // DEBUG: vezi exact ce se cere + ce avem în masă
+    console.debug("[RaynaHub] dispatchAction →", {
+      id: intent?.id,
+      action: intent?.action,
+      actionKey,
+      hasHandler: !!table[actionKey],
+      slots,
+    });
 
-    // fallback dacă nu avem handler mapat
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "Tengo la intención, pero aún no tengo handler para esta acción." },
-    ]);
+    try {
+      if (table[actionKey]) {
+        return await table[actionKey]();
+      }
+      // fallback dacă nu avem handler mapat
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: `Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` },
+      ]);
+    } catch (err) {
+      console.error("[RaynaHub] Handler error:", err);
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "Ups, algo ha fallado al ejecutar la acción. Intenta de nuevo." },
+      ]);
+    }
   }
 
   // —— trimitere mesaje
@@ -173,7 +193,15 @@ export default function RaynaHub() {
     }
 
     // 2) detectare intent
-    const { intent, slots } = detectIntent(userText, intentsData);
+    const { intent, slots, lang } = detectIntent(userText, intentsData);
+
+    // DEBUG: ce a detectat NLU
+    console.debug("[RaynaHub] detectIntent →", { intent, slots, lang });
+
+    if (!intent || !intent.type) {
+      setMessages((m) => [...m, { from: "bot", reply_text: "No te he entendido." }]);
+      return;
+    }
 
     // 3) dispecer pe tip
     if (intent.type === "static") {
