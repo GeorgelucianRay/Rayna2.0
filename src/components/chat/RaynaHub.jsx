@@ -245,204 +245,186 @@ profile_what_you_know: () =>
   }
 
   // —— trimitere mesaje
-  const send = async () => {
-    const userText = text.trim();
-    if (!userText) return;
+const send = async () => {
+  const userText = text.trim();
+  if (!userText) return;
 
-    setMessages((m) => [...m, { from: "user", text: userText }]);
-    setText("");
+  setMessages((m) => [...m, { from: "user", text: userText }]);
+  setText("");
 
-    // 0) confirmarea la "¿Quieres ver tu perfil?"
-    if (awaiting === "confirm_view_profile") {
-      const n = normalize(userText);
+  // 0.a) raportare eroare (Reclamar) — FRAȚE, NU în interiorul altui if
+  if (awaiting === "report_error_text") {
+    const trimmed = userText.trim();
+    if (!trimmed) {
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "Necesito que me escribas el problema para poder reportarlo." }
+      ]);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('feedback_utilizatori')
+        .insert({
+          continut: trimmed,                          // textul raportului
+          origen: 'chat',                             // sursa
+          categoria: 'reclamo',                       // etichetă utilă
+          severidad: 'media',                         // opțional
+          contexto: { ruta: window.location?.pathname || null } // meta opțional
+        });
+
+      if (error) throw error;
+
+      setMessages(m => [
+        ...m,
+        { from: "bot", reply_text: "Gracias. He registrado el reporte. Me encargo de revisarlo." }
+      ]);
+    } catch (e) {
+      console.error("[report_error_text] insert error:", e);
+      setMessages(m => [
+        ...m,
+        { from: "bot", reply_text: "Lo siento, no he podido registrar el reporte ahora mismo." }
+      ]);
+    } finally {
       setAwaiting(null);
-
-      const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
-      const NO  = ["no","nop","nu","nope"];
-
-      if (YES.includes(n)) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: "Perfecto, aquí lo tienes:" },
-          {
-            from: "bot",
-            reply_text: "Pulsa el botón para abrir tu perfil.",
-            render: () => (
-              <div className={styles.card}>
-                <div className={styles.cardTitle}>Perfil</div>
-                <div className={styles.cardActions}>
-                  <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
-                    Ver perfil
-                  </a>
-                </div>
-              </div>
-            ),
-          },
-        ]);
-        return;
-      }
-
-      if (NO.includes(n)) {
-        setMessages((m) => [...m, { from: "bot", reply_text: "¡Entendido! ¿En qué más te puedo ayudar?" }]);
-        return;
-      }
-          // 0.b) confirmarea la „¿Quieres que te ayude?” (wizard profil)
-    if (awaiting === "confirm_complete_profile") {
-      const n = normalize(userText);
-      const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
-      const NO  = ["no","nop","nu","nope"];
-
-      if (YES.includes(n)) {
-        setAwaiting(null);
-        await handleProfileWizardStart({ setMessages, setAwaiting });
-        return;
-      }
-      if (NO.includes(n)) {
-        setAwaiting(null);
-        setMessages(m => [
-          ...m,
-          { from: "bot", reply_text: "¡Entendido! Si cambias de idea, dime «quiero completar mi perfil»." }
-        ]);
-        return;
-      }
-
-      // răspuns ambiguu → mai întrebăm o dată
-      setMessages(m => [...m, { from: "bot", reply_text: "¿Sí o no? (para empezar a completarlo aquí mismo)" }]);
-      return;
     }
-
-    // 0.c) pașii asistentului de profil (toate stările care încep cu „pf_”)
-    if (awaiting && awaiting.startsWith("pf_")) {
-      await handleProfileWizardStep({
-        awaiting,
-        userText,
-        profile,
-        setMessages,
-        setAwaiting,
-      });
-      return;
-    }
-
-      // răspuns ambiguu -> mai întrebăm o dată
-      setAwaiting("confirm_view_profile");
-      setMessages((m) => [...m, { from: "bot", reply_text: "¿Sí o no?" }]);
-      return;
-    }
-
-    // 0.a) raportare eroare (venită din butonul Reportar)
-if (awaiting === "report_error_text") {
-  const trimmed = userText.trim();
-  if (!trimmed) {
-    setMessages((m) => [...m, { from: "bot", reply_text: "Necesito que me escribas el problema para poder reportarlo." }]);
     return;
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('feedback_utilizatori')
-      .insert({
-        continut: trimmed,                          // textul din chat
-        origen: 'chat',                             // vine din chat
-        categoria: 'reclamo',                       // etichetă utilă
-        severidad: 'media',                         // opțional
-        contexto: { ruta: window.location?.pathname || null } // meta opțional
-      })
-      .select('id')
-      .single();
-
-    if (error) throw error;
-
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: "Gracias. He registrado el reporte. Me encargo de revisarlo." }
-    ]);
-  } catch (e) {
-    console.error("[report_error_text] insert error:", e);
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: "Lo siento, no he podido registrar el reporte ahora mismo." }
-    ]);
-  } finally {
+  // 0.b) confirmarea la "¿Quieres ver tu perfil?"
+  if (awaiting === "confirm_view_profile") {
+    const n = normalize(userText);
     setAwaiting(null);
+
+    const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
+    const NO  = ["no","nop","nu","nope"];
+
+    if (YES.includes(n)) {
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "Perfecto, aquí lo tienes:" },
+        {
+          from: "bot",
+          reply_text: "Pulsa el botón para abrir tu perfil.",
+          render: () => (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>Perfil</div>
+              <div className={styles.cardActions}>
+                <a className={styles.actionBtn} data-variant="primary" href="/mi-perfil">
+                  Ver perfil
+                </a>
+              </div>
+            </div>
+          ),
+        },
+      ]);
+      return;
+    }
+
+    if (NO.includes(n)) {
+      setMessages((m) => [...m, { from: "bot", reply_text: "¡Entendido! ¿En qué más te puedo ayudar?" }]);
+      return;
+    }
+
+    // răspuns ambiguu -> mai întrebăm o dată
+    setAwaiting("confirm_view_profile");
+    setMessages((m) => [...m, { from: "bot", reply_text: "¿Sí o no?" }]);
+    return;
   }
-  return;
-}
 
-    if (error) throw error;
+  // 0.c) confirmarea la „¿Quieres que te ayude?” (wizard profil)
+  if (awaiting === "confirm_complete_profile") {
+    const n = normalize(userText);
+    const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
+    const NO  = ["no","nop","nu","nope"];
 
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "Gracias. He registrado el reporte. Me encargo de revisarlo." },
-    ]);
-  } catch (e) {
-    console.error("[report_error_text] insert error:", e);
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "Lo siento, no he podido registrar el reporte ahora mismo." },
-    ]);
-  } finally {
-    setAwaiting(null);
+    if (YES.includes(n)) {
+      setAwaiting(null);
+      await handleProfileWizardStart({ setMessages, setAwaiting });
+      return;
+    }
+    if (NO.includes(n)) {
+      setAwaiting(null);
+      setMessages(m => [
+        ...m,
+        { from: "bot", reply_text: "¡Entendido! Si cambias de idea, dime «quiero completar mi perfil»." }
+      ]);
+      return;
+    }
+
+    setMessages(m => [...m, { from: "bot", reply_text: "¿Sí o no? (para empezar a completarlo aquí mismo)" }]);
+    return;
   }
-  return;
-}
 
-    // 1) pași de dialog blocați (ex: anuncio)
-    if (awaiting === "anuncio_text") {
-      await handleDialog.stepAnuncio({
-        userText,
-        role,
-        setMessages,
-        setAwaiting,
-        saving,
-        setSaving,
-        intentsData,
-      });
-      return;
-    }
+  // 0.d) pașii asistentului de profil (toate stările care încep cu „pf_”)
+  if (awaiting && awaiting.startsWith("pf_")) {
+    await handleProfileWizardStep({
+      awaiting,
+      userText,
+      profile,
+      setMessages,
+      setAwaiting,
+    });
+    return;
+  }
 
-    // 2) detectare intent
-    const { intent, slots, lang } = detectIntent(userText, intentsData);
-    console.debug("[RaynaHub] detectIntent →", { intent, slots, lang });
+  // 1) pași de dialog blocați (ex: anuncio)
+  if (awaiting === "anuncio_text") {
+    await handleDialog.stepAnuncio({
+      userText,
+      role,
+      setMessages,
+      setAwaiting,
+      saving,
+      setSaving,
+      intentsData,
+    });
+    return;
+  }
 
-    if (!intent || !intent.type) {
-      setMessages((m) => [...m, { from: "bot", reply_text: "No te he entendido." }]);
-      return;
-    }
+  // 2) detectare intent
+  const { intent, slots, lang } = detectIntent(userText, intentsData);
+  console.debug("[RaynaHub] detectIntent →", { intent, slots, lang });
 
-    // 3) dispecer pe tip
-    if (intent.type === "static") {
-      await handleStatic({ intent, setMessages });
-      return;
-    }
+  if (!intent || !intent.type) {
+    setMessages((m) => [...m, { from: "bot", reply_text: "No te he entendido." }]);
+    return;
+  }
 
-    if (intent.type === "dialog") {
-      const handled = await handleDialog.entry({
-        intent,
-        role,
-        setMessages,
-        setAwaiting,
-        saving,
-        setSaving,
-      });
-      if (handled) return;
-    }
+  // 3) dispecer pe tip
+  if (intent.type === "static") {
+    await handleStatic({ intent, setMessages });
+    return;
+  }
 
-    if (intent.type === "action") {
-      await dispatchAction(intent, slots);
-      return;
-    }
+  if (intent.type === "dialog") {
+    const handled = await handleDialog.entry({
+      intent,
+      role,
+      setMessages,
+      setAwaiting,
+      saving,
+      setSaving,
+    });
+    if (handled) return;
+  }
 
-    // 4) fallback
-    const fb =
-      intentsData.find((i) => i.id === "fallback")?.response?.text ||
-      "No te he entendido.";
-    setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
-  };
+  if (intent.type === "action") {
+    await dispatchAction(intent, slots);
+    return;
+  }
+
+  // 4) fallback
+  const fb =
+    intentsData.find((i) => i.id === "fallback")?.response?.text ||
+    "No te he entendido.";
+  setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
+};
 
   return (
     <div className={styles.shell}>
-      <header className={styles.header}>
-        <header className={styles.header}>
+<header className={styles.header}>
   <img
     src={RAYNA_AVATAR}
     alt="Rayna"
@@ -453,11 +435,8 @@ if (awaiting === "report_error_text") {
     <div className={styles.brand}>Rayna 2.0</div>
     <div className={styles.tagline}>Tu transportista virtual</div>
   </div>
-
-
   <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
 </header>
-      </header>
 
 {/* barra secundară, sub header */}
 <div className={styles.subHeaderBar}>
