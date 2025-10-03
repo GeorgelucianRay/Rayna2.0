@@ -1,7 +1,7 @@
 [
   {
     "id": "gps_navegar_a",
-    "priority": 95,
+    "priority": 120,
     "type": "action",
     "patterns_any": [
       "quiero llegar a", "llevar a", "ir a", "navegar a", "como llego a", "cómo llego a",
@@ -25,7 +25,7 @@
   },
   {
     "id": "gps_buscar_parking_cerca_de",
-    "priority": 94,
+    "priority": 119,
     "type": "action",
     "patterns_any": [
       "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de", 
@@ -51,7 +51,7 @@
   },
   {
     "id": "gps_otro_parking",
-    "priority": 93,
+    "priority": 118,
     "type": "action",
     "patterns_any": [
       "otro parking", "otra opcion", "otra opción", "otra alternativa", 
@@ -71,33 +71,27 @@
     }
   },
   {
-    "id": "gps_info_de",
-    "priority": 87,
-    "type": "action",
-    "patterns_any": [
-      "que hay en", "qué hay en", "que pasa en", "qué pasa en", "que sabes de", "qué sabes de",
-      "que me puedes decir de", "qué me puedes decir de", "informacion de", "información de", 
-      "dime sobre", "háblame de", "cuéntame de", "qué tienes de", "que opinas de", 
-      "donde esta", "dónde está", "que ubicacion es", "qué lugar es", 
-      "ce poți să-mi spui despre", "ce poti spune despre", "ce știi despre", 
-      "unde este", "unde e", "informații despre", "descrie-mi", 
-      "què hi ha a", "què passa a", "què saps de", "què em pots dir de", 
-      "on és", "on es", "quina informació tens de"
-    ],
-    "stopwords": ["de", "la", "el", "en", "del", "al", "despre", "pe", "a"],
-    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_place_info",
-    "response": {
-      "text": {
-        "es": "Esto es lo que tengo de **{{place.name}}**:",
-        "ro": "Iată ce am despre **{{place.name}}**:",
-        "ca": "Això és el que tinc de **{{place.name}}**:"
-      }
-    }
-  },
+  "id": "gps_info_de",
+  "priority": 121,
+  "type": "action",
+  "patterns_any": [
+    "que hay en", "qué hay en", "que pasa en", "qué pasa en", "que sabes de", "qué sabes de",
+    "que me puedes decir de", "qué me puedes decir de", "informacion de", "información de", 
+    "dime sobre", "háblame de", "cuéntame de", "qué tienes de", "que opinas de", 
+    "donde esta", "dónde está", "que ubicacion es", "qué lugar es", 
+    "ce poți să-mi spui despre", "ce poti spune despre", "ce știi despre", 
+    "unde este", "unde e", "informații despre", "descrie-mi", 
+    "què hi ha a", "què passa a", "què saps de", "què em pots dir de", 
+    "on és", "on es", "quina informació tens de"
+  ],
+  "stopwords": ["de", "la", "el", "en", "del", "al", "despre", "pe", "a"],
+  "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+  "action": "gps_place_info",
+  "response": { "text": { "es": "Esto es lo que tengo de **{{place.name}}**.", "ro": "Iată ce am despre **{{place.name}}**.", "ca": "Això és el que tinc de **{{place.name}}**." } }
+},
   {
     "id": "gps_list_terminale",
-    "priority": 62,
+    "priority": 117,
     "type": "action",
     "patterns_any": [
       "que terminales hay", "qué terminales hay", "lista terminales", "ver terminales",
@@ -120,7 +114,7 @@
   },
   {
     "id": "gps_list_parkings",
-    "priority": 61,
+    "priority": 116,
     "type": "action",
     "patterns_any": [
       "que parkings hay", "qué parkings hay", "lista parkings", "ver parkings",
@@ -142,7 +136,7 @@
   },
   {
     "id": "gps_list_servicios",
-    "priority": 60,
+    "priority": 115,
     "type": "action",
     "patterns_any": [
       "que servicios hay", "qué servicios hay", "lista servicios", "ver servicios",
