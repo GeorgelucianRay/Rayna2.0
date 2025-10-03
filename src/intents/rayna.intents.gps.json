@@ -25,7 +25,7 @@
   },
   {
     "id": "gps_buscar_parking_cerca_de",
-    "priority": 119,
+    "priority": 150,
     "type": "action",
     "patterns_any": [
       "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de", 
@@ -51,7 +51,7 @@
   },
   {
     "id": "gps_otro_parking",
-    "priority": 118,
+    "priority": 149,
     "type": "action",
     "patterns_any": [
       "otro parking", "otra opcion", "otra opción", "otra alternativa", 
