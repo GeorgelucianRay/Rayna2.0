@@ -1,87 +1,200 @@
-/* src/components/HomepageSofer.module.css */
+/* ================= Rayna 2.0 — HomepageSofer.module.css ================= */
+/* Requiere variables :root ya definidas (text, glass, stroke, radios, sombras) */
 
-.announcementsCard {
-  background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 1.5rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  color: white;
+/* -------- Página / contenedor -------- */
+.homepage-background {} /* llega desde <Layout>, lo dejamos por si aplicas fondo */
+
+.announcementsCard{
+  margin:14px;
+  padding:16px;
+  border-radius:var(--radius-lg);
+  background:var(--glass-strong);
+  border:1px solid var(--stroke);
+  color:var(--text-strong);
+  box-shadow:var(--shadow-inset), var(--shadow-outer);
 }
 
-.announcementsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+/* -------- Anuncios -------- */
+.announcementsHeader{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:10px;
+}
+.announcementsHeaderTitle{
+  display:flex; align-items:center; gap:10px;
+  color:var(--text-strong);
+}
+.announcementsTitle{
+  margin:0;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.announcementsContent{
+  white-space:pre-wrap;
+  color:var(--text-strong);
+  line-height:1.45;
+  background:var(--glass);
+  border:1px solid var(--stroke-soft);
+  border-radius:var(--radius-md);
+  padding:12px;
+  box-shadow:var(--shadow-inset);
 }
 
-.announcementsHeaderTitle {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white;
+/* Editor (admin) */
+.textarea{
+  width:100%;
+  min-height:120px;
+  resize:vertical;
+  border-radius:var(--radius-md);
+  border:1px solid var(--stroke);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color:var(--text-strong);
+  padding:12px;
+  outline:none;
+  box-shadow:var(--shadow-inset);
+}
+.textarea::placeholder{ color:var(--text-soft); }
+
+/* Botones */
+.saveBtn{
+  padding:10px 14px; border-radius:28px;
+  border:1px solid rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012; font-weight:800; letter-spacing:.2px;
+  box-shadow:0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .2s ease, filter .2s ease;
+}
+.saveBtn:hover{ transform:translateY(-1px); }
+.saveBtn:disabled{ opacity:.6; cursor:not-allowed; }
+
+.secondaryBtn{
+  padding:10px 14px; border-radius:28px;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong); font-weight:700;
+  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  cursor:pointer;
+}
+.secondaryBtn:disabled{ opacity:.6; cursor:not-allowed; }
+
+/* -------- Bloques de enlaces externos -------- */
+.externalLinksContainer{
+  display:grid;
+  gap:12px;
+  margin:14px;
 }
 
-.announcementsTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
+/* Fila de cámaras (solo texto) */
+.linksRow{
+  display:flex; flex-wrap:wrap; gap:10px;
 }
 
-.announcementsContent {
-    white-space: pre-wrap;
+.socialLink{
+  position:relative;
+  display:inline-flex; align-items:center;
+  gap:8px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  color:var(--text-strong);
+  text-decoration:none;
+  font-weight:700;
+  box-shadow:0 8px 18px rgba(0,0,0,.25), var(--shadow-inset);
+  transition:transform .12s ease, filter .12s ease, box-shadow .2s ease;
+}
+.socialLink:hover{ transform:translateY(-1px); }
+
+/* Cámara (sin icono, estilo pastilla) */
+.cameraLink{
+  background:var(--glass-strong);
+  border-color:var(--stroke);
+}
+.cameraLink > a{
+  color:var(--text-strong);
+  text-decoration:none;
 }
 
-.externalLinksContainer {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* Botón eliminar (admin) */
+.deleteBtn{
+  position:absolute; top:-8px; right:-8px;
+  width:24px; height:24px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.75);
+  background: radial-gradient(100% 100% at 50% 20%, #ff9d9d, #e53935);
+  color:#fff; line-height:1;
+  display:grid; place-items:center;
+  box-shadow:0 8px 18px rgba(229,57,53,.35), var(--shadow-inset);
+  cursor:pointer;
 }
 
-.linksRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
+/* Fila social (Instagram / TikTok / WhatsApp) */
+.socialLinksRow{
+  display:flex; flex-wrap:wrap; gap:10px;
 }
 
-.socialLinksRow {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
+/* Variantes cromáticas sutiles por marca (sin logos extra, solo borde/brillo) */
+.instagramLink{
+  border-color: rgba(255, 99, 132, .55);
+  box-shadow:0 10px 24px rgba(255, 99, 132, .22), var(--shadow-inset);
+}
+.tiktokLink{
+  border-color: rgba(0, 242, 234, .5);
+  box-shadow:0 10px 24px rgba(0, 242, 234, .18), var(--shadow-inset);
+}
+.whatsappLink{
+  border-color: rgba(37, 211, 102, .55);
+  box-shadow:0 10px 24px rgba(37, 211, 102, .22), var(--shadow-inset);
 }
 
-.socialLink {
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-  transition: transform 200ms;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 600;
+/* -------- Panel admin: añadir cámara -------- */
+.adminPanel{
+  margin:14px;
+  padding:14px;
+  border-radius:var(--radius-lg);
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  color:var(--text-strong);
+  box-shadow:var(--shadow-inset), var(--shadow-outer);
+}
+.adminPanelTitle{
+  margin:0 0 10px 0;
+  font-weight:800;
+}
+.formRow{
+  display:grid;
+  grid-template-columns:1fr 1fr auto;
+  gap:10px;
 }
 
-.socialLink:hover {
-  transform: scale(1.05) translateY(-5px);
+.input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:20px;
+  border:1px solid var(--stroke);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color:var(--text-strong);
+  outline:none;
+  box-shadow:var(--shadow-inset);
 }
+.input::placeholder{ color:var(--text-soft); }
 
-.socialLink span {
-  margin-left: 0.5rem;
+.addBtn{
+  padding:12px 18px; border-radius:26px;
+  border:1px solid rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012; font-weight:800;
+  box-shadow:0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
+  cursor:pointer;
 }
+.addBtn:disabled{ opacity:.6; cursor:not-allowed; }
 
-.instagramLink { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-.tiktokLink { background: linear-gradient(45deg, #25f4ee, #000000, #fe2c55); }
-.whatsappLink { background: #25d366; }
-
-.cameraLink {
-  background-color: rgba(251, 146, 60, 0.2);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(251, 146, 60, 0.4);
-  background-image: linear-gradient(45deg, rgba(251, 146, 60, 0.3), rgba(249, 115, 22, 0.4));
+/* -------- Responsivo -------- */
+@media (max-width:880px){
+  .formRow{ grid-template-columns:1fr; }
+}
+@media (max-width:560px){
+  .announcementsCard, .externalLinksContainer, .adminPanel{ margin:12px; }
+  .socialLink{ width:100%; justify-content:center; }
+  .linksRow > .socialLink,
+  .socialLinksRow > .socialLink{ flex:1 1 100%; }
 }
