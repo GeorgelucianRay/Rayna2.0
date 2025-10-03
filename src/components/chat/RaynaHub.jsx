@@ -172,7 +172,7 @@ function quickReport() {
   }
 
   // —— dispecer pentru acțiuni (map clar ⇢ handler)
-  async function dispatchAction(intent, slots) {
+  async function dispatchAction(intent, slots, userText) {
     const actionKey = (intent?.action || intent?.id || "").trim();
 
     const table = {
@@ -213,9 +213,15 @@ profile_what_you_know: () =>
 
       // parking
       gps_find_parking_near: async () => {
-        const userPos = await tryGetUserPos();
-        return handleParkingNearStart({ slots, setMessages, setParkingCtx, userPos });
-      },
+  const userPos = await tryGetUserPos();
+  return handleParkingNearStart({
+    slots,
+    userText,          // <— NOU: trimitem textul brut
+    setMessages,
+    setParkingCtx,
+    userPos
+  });
+},
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
     };
 
@@ -411,9 +417,9 @@ const send = async () => {
   }
 
   if (intent.type === "action") {
-    await dispatchAction(intent, slots);
-    return;
-  }
+  await dispatchAction(intent, slots, userText);
+  return;
+}
 
   // 4) fallback
   const fb =
