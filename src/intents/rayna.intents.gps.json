@@ -33,18 +33,13 @@
     "búscame estacionamiento junto a", "búscame aparcamiento en",
     "quiero aparcar cerca de", "encuéntrame parking cerca de",
     "parking por el camino",
-
-    "buscame un parking cerca", "búscame un parking cerca", "parking cerca",        // sin “de”
-    "buscame un parking serca", "búscame un parking serca", "parking serca",         // typo
-
+    "buscame un parking cerca", "búscame un parking cerca", "parking cerca",
+    "buscame un parking serca", "búscame un parking serca", "parking serca",
     "necesito un parking cerca de", "donde aparcar en", "sácame un parking en",
-
     "parcare aproape de", "parcare aproape", "parcare langa", "parcare lângă",
     "cauta un parking langa", "caută un parking lângă",
-
     "un aparcament al costat de", "pàrquing proper a", "pàrquing a prop de",
     "un aparcament a prop de", "aparcar a prop de",
-
     "parking near", "find parking near", "parking next to", "find parking next to"
   ],
   "stopwords": [
