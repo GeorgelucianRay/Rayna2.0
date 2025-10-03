@@ -5,7 +5,20 @@ import { findPlaceByName, listTable } from "../data/queries";
 import { getMapsLinkFromRecord } from "../helpers/gps";
 import { parseCoords, haversineKm, pointToSegmentKm } from "../helpers/geo";
 
-// card UI
+// ——— mic utilitar: curăță slotul de „cerca de / aproape de” & articole ———
+function cleanupPlace(raw) {
+  return (raw || "")
+    // ES
+    .replace(/^(?:un|una)?\s*parking\s+cerca\s+de\s+/i, "")
+    .replace(/^(?:cerca\s+de|al\s+lado\s+de)\s+/i, "")
+    // RO
+    .replace(/^(?:o|un)?\s*parcare\s+(?:aproape\s+de|lângă)\s+/i, "")
+    // articole comune
+    .replace(/^\s*(?:de|la|el|del|al|a|în|din)\s+/i, "")
+    .trim();
+}
+
+// ——— UI: card pentru parking ———
 function ParkingCard({ p, distKm }) {
   const km = Number.isFinite(distKm) ? `· ${distKm.toFixed(1)} km` : "";
   const link = getMapsLinkFromRecord(p) || "#";
@@ -24,74 +37,72 @@ function ParkingCard({ p, distKm }) {
   );
 }
 
-/**
- * 1) Caută cea mai apropiată parcare de DEST (sau de traseu între user->DEST dacă avem userPos)
- *    și memorează o listă de sugestii în parkingCtx (în RaynaHub).
- */
+/** 1) Caută parcarea potrivită lângă DEST (sau pe traseu user→DEST). */
 export async function handleParkingNearStart({
-  slots, setMessages, setParkingCtx, userPos // userPos = {lat, lon} sau null
+  slots, setMessages, setParkingCtx, userPos
 }) {
-  const placeName = slots?.placeName || null;
+  const raw = slots?.placeName || "";
+  const placeName = cleanupPlace(raw);
+
   if (!placeName) {
-    setMessages(m => [...m, { from: "bot", reply_text: "Necesito el nombre del sitio. Ej: \"Búscame un parking cerca de TCB\"." }]);
+    setMessages(m => [...m, { from:"bot", reply_text:'Necesito el nombre del sitio. Ej.: "Búscame un parking cerca de TCB".' }]);
     return;
   }
 
-  // 1) găsește destinația (TCB / Venso etc.)
+  // 1) găsește destinația în tabelele tale
   const dest = await findPlaceByName(placeName);
   if (!dest) {
-    setMessages(m => [...m, { from: "bot", reply_text: `No he encontrado el sitio "${placeName}".` }]);
+    setMessages(m => [...m, { from:"bot", reply_text:`No he encontrado el sitio «${placeName}».` }]);
     return;
   }
   const destPos = parseCoords(dest.coordenadas);
+  if (!destPos) {
+    setMessages(m => [...m, { from:"bot", reply_text:`El sitio «${dest.nombre}» no tiene coordenadas válidas.` }]);
+    return;
+  }
 
-  // 2) ia parcările din DB
-  const { data: parksRaw } = await listTable("gps_parkings");
+  // 2) ia parcările (cu coordenadas)
+  const { data: parksRaw, error } = await listTable("gps_parkings");
+  if (error) console.warn("[gps_parkings] error:", error);
   const parks = (parksRaw || [])
     .map(p => ({ ...p, _pos: parseCoords(p.coordenadas) }))
     .filter(p => p._pos);
 
   if (!parks.length) {
-    setMessages(m => [...m, { from: "bot", reply_text: "No tengo parkings en la base de datos." }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"No tengo parkings en la base de datos." }]);
     return;
   }
 
-  // 3) scoruri: dacă avem userPos => prioritizăm „por el camino” (aproape de segment user->dest)
-  let scored = parks.map(p => {
+  // 3) scoruri: apropiere de traseu (dacă avem userPos) + distanță la dest
+  const scored = parks.map(p => {
     const dToDest = haversineKm(p._pos, destPos);
-    let segDist = Number.POSITIVE_INFINITY;
-    if (userPos && destPos) segDist = pointToSegmentKm(p._pos, userPos, destPos);
+    const segDist = (userPos && destPos) ? pointToSegmentKm(p._pos, userPos, destPos) : Infinity;
     return { p, dToDest, segDist };
   });
 
-  // sortare: dacă avem userPos, mai întâi după proximitate la segment, apoi după distanță către dest
-  if (userPos) {
-    scored.sort((a, b) => (a.segDist - b.segDist) || (a.dToDest - b.dToDest));
-  } else {
-    scored.sort((a, b) => a.dToDest - b.dToDest);
-  }
+  // 4) sortare: cu userPos -> întâi lângă traseu, apoi lângă dest; altfel doar lângă dest
+  if (userPos) scored.sort((a,b) => (a.segDist - b.segDist) || (a.dToDest - b.dToDest));
+  else scored.sort((a,b) => a.dToDest - b.dToDest);
 
-  // 4) pregătește sugestiile (primele 6)
   const suggestions = scored.slice(0, 6);
-
-  if (!suggestions.length) {
-    setMessages(m => [...m, { from: "bot", reply_text: "No he encontrado parkings adecuados." }]);
-    return;
-  }
-
-  // 5) prima sugestie (răspuns inițial)
   const first = suggestions[0];
+
   setMessages(m => [
     ...m,
-    { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
+    { from:"bot", reply_text:`He encontrado opciones cerca de **${dest.nombre}**. Te propongo esta:` },
     {
-      from: "bot",
-      reply_text: "",
-      render: () => <ParkingCard p={first.p} distKm={userPos ? haversineKm(first.p._pos, userPos) : first.dToDest} />
+      from:"bot",
+      reply_text:"",
+      render: () => (
+        <ParkingCard
+          p={first.p}
+          distKm={userPos ? haversineKm(first.p._pos, userPos) : first.dToDest}
+        />
+      )
     }
   ]);
 
-  // 6) salvează contextul în RaynaHub (ca să poți da „otro”)
+  // 5) cursor pentru „otro parking”
   setParkingCtx({
     type: "parking",
     dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
@@ -101,31 +112,27 @@ export async function handleParkingNearStart({
   });
 }
 
-/**
- * 2) Dă următoarea sugestie („otro / algo más / no me queda disco…”)
- */
-export async function handleParkingNext({
-  parkingCtx, setMessages
-}) {
+/** 2) Următoarea sugestie („otro parking”) */
+export async function handleParkingNext({ parkingCtx, setMessages }) {
   if (!parkingCtx || parkingCtx.type !== "parking" || !parkingCtx.suggestions?.length) {
-    setMessages(m => [...m, { from: "bot", reply_text: "No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." }]);
     return;
   }
+
   const { suggestions, index, userPos } = parkingCtx;
   const nextIdx = index + 1;
-
   if (nextIdx >= suggestions.length) {
-    setMessages(m => [...m, { from: "bot", reply_text: "No tengo más opciones cercanas. ¿Quieres que busque más lejos?" }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"No tengo más opciones cercanas. ¿Quieres que busque más lejos?" }]);
     return;
   }
 
   const next = suggestions[nextIdx];
   setMessages(m => [
     ...m,
-    { from: "bot", reply_text: "Ah, perdona. Aquí hay otro parking:" },
+    { from:"bot", reply_text:"Aquí tienes otra alternativa:" },
     {
-      from: "bot",
-      reply_text: "",
+      from:"bot",
+      reply_text:"",
       render: () => (
         <ParkingCard
           p={next.p}
