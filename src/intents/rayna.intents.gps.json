@@ -25,7 +25,7 @@
   },
   {
   "id": "gps_buscar_parking_cerca_de",
-  "priority": 119,
+  "priority": 140,
   "type": "action",
   "patterns_any": [
     "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de",
@@ -41,6 +41,10 @@
     "un aparcament al costat de", "pàrquing proper a", "pàrquing a prop de",
     "un aparcament a prop de", "aparcar a prop de",
     "parking near", "find parking near", "parking next to", "find parking next to"
+  ],
+  "negative_any": [
+    "parking", "aparcar", "aparcamiento", "estacionamiento",
+    "parcare", "pàrquing"
   ],
   "stopwords": [
     "de","la","el","del","al",
