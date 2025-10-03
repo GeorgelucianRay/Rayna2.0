@@ -249,19 +249,35 @@ const { data: baseProfile, error: profErr } = await supabase
     }
   };
 
-  const handleFeedbackSubmit = async (feedbackText) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user || !feedbackText) return;
-    try {
-      await supabase
-        .from('feedback_utilizatori')
-        .insert({ user_id: session.user.id, continut: feedbackText });
-    } finally {
-      // închide oricum, chiar dacă inserția durează
-      await handleFeedbackClose();
-      alert('Mulțumim pentru sugestie!');
+  // în AuthProvider, înlocuiește complet funcția asta:
+const handleFeedbackSubmit = async (feedbackText) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user || !feedbackText) return;
+
+  try {
+    const { error } = await supabase
+      .from('feedback_utilizatori')
+      .insert({
+        user_id: session.user.id,                 // cine a trimis
+        email: profile?.email ?? null,            // email-ul din profil (dacă există)
+        continut: feedbackText,                   // textul din modal
+        origen: 'modal',                          // sursa: modalul de feedback
+        categoria: 'sugerencia',                  // poți seta 'idea' / 'feedback' etc.
+        severidad: 'baja',                        // implicit scăzută pt. sugestii
+        contexto: { ruta: window.location?.pathname || null }  // meta util
+      });
+
+    if (error) {
+      console.error('Insert feedback_utilizatori:', error);
+      alert(`De momento no se ha podido guardar el feedback-ul: ${error.message}`);
+      return;
     }
-  };
+  } finally {
+    // închide modalul oricum
+    await handleFeedbackClose();
+    alert('Muchas Gracias por tu contribución!');
+  }
+};
 
   const value = {
     session,
