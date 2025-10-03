@@ -32,12 +32,11 @@ function ParkingCard({ p, distKm }) {
 
 /* ============================================================
    Fallback robust: extrage numele locului din text liber
-   Exemple de intrare:
+   Exemple:
      "búscame un parking cerca de venso"
      "buscame un parking serca TCB"
      "parcare lângă Maersk"
      "find parking near Cosco"
-   Returnează "venso", "tcb", "maersk", "cosco"
    ============================================================ */
 function normalizeSimple(s = "") {
   return s
@@ -51,34 +50,27 @@ function normalizeSimple(s = "") {
 function extractPlaceNameFromText(text = "") {
   let t = normalizeSimple(text);
 
-  // 1) încearcă să ia tot ce e după expresiile tip „cerca de / near / lângă”
+  // 1) ia tot ce vine după “cerca de / near / lângă / next to …”
   const AFTER_PATTERNS = [
     /cerca de\s+(.+)/i,
     /serca de\s+(.+)/i,
     /aproape de\s+(.+)/i,
     /langa\s+(.+)/i,
-    /langa de\s+(.+)/i,
-    /langa\s+de\s+(.+)/i,
     /lângă\s+(.+)/i,
     /near\s+(.+)/i,
     /next to\s+(.+)/i,
     /junto a\s+(.+)/i,
     /a prop de\s+(.+)/i,
-    /proper a\s+(.+)/i,
-    /a prop\s+(.+)/i,
+    /proper a\s+(.+)/i
   ];
   for (const rx of AFTER_PATTERNS) {
     const m = t.match(rx);
-    if (m && m[1]) {
-      t = m[1].trim();
-      break;
-    }
+    if (m && m[1]) { t = m[1].trim(); break; }
   }
 
-  // 2) dacă încă începe cu „buscame/buscame/búscame” etc., taie trigger-ele la început
+  // 2) taie trigger-ele de început (“búscame un parking …”)
   const LEADERS = [
     /^buscame(?:\s+un)?\s+parking(?:\s+(?:cerca|serca))?\s+(?:de\s+)?/,
-    /^buscame(?:\s+un)?\s+aparcamiento\s+(?:cerca\s+de\s+)?/,
     /^búscame(?:\s+un)?\s+parking(?:\s+(?:cerca|serca))?\s+(?:de\s+)?/,
     /^encuentrame\s+un\s+parking\s+(?:cerca\s+de\s+)?/,
     /^quiero\s+aparcar\s+(?:cerca\s+de\s+)?/,
@@ -87,49 +79,30 @@ function extractPlaceNameFromText(text = "") {
     /^parking\s+(?:cerca\s+de\s+)?/,
     /^parcare\s+(?:aproape\s+de\s+|langa\s+|lângă\s+)?/,
     /^find\s+parking\s+(?:near\s+|next to\s+)?/,
-    /^parking\s+(?:near\s+|next to\s+)?/,
+    /^parking\s+(?:near\s+|next to\s+)?/
   ];
-  for (const rx of LEADERS) {
-    t = t.replace(rx, "").trim();
-  }
+  for (const rx of LEADERS) t = t.replace(rx, "").trim();
 
-  // 3) scoruri: calculează distanța la DEST + (opțional) distanța la segmentul user→dest
-let scored = parks.map(p => {
-  const dToDest = haversineKm(p._pos, destPos);
-  const segDist = (userPos && destPos) ? pointToSegmentKm(p._pos, userPos, destPos) : Number.POSITIVE_INFINITY;
-  return { p, dToDest, segDist };
-});
-
-// —— vrei prioritar „cerca del destino”.
-// Când avem userPos, folosim proximitatea la traseu DOAR ca tie-breaker.
-scored.sort((a, b) => {
-  const byDest = a.dToDest - b.dToDest;
-  if (byDest !== 0) return byDest;
-  return a.segDist - b.segDist;
-});
-  // 4) curăță ghilimele și punctuație de final
+  // 3) curăță ghilimele/punctuație la margini
   t = t.replace(/^[«"“”'`]+|[»"“”'`]+$/g, "").replace(/[.?!]$/g, "").trim();
 
-  // 5) dacă a rămas foarte scurt (<=1), nul
+  // 4) fallback: păstrează ultimele 4 cuvinte (nume compuse)
   if (t.length <= 1) return null;
-
-  // 6) păstrează doar ultimele 4 cuvinte (unele nume au 2-3)
-  const parts = t.split(" ");
+  const parts = t.split(" ").filter(Boolean);
   if (parts.length > 4) t = parts.slice(-4).join(" ");
-
   return t;
 }
 
 /**
- * 1) Caută cea mai apropiată parcare de DEST (sau de traseu user->DEST)
- *    și memorează o listă de sugestii în parkingCtx (în RaynaHub).
+ * 1) Caută parcarea cea mai apropiată de DEST (tie-breaker: aproape de traseu user→DEST).
+ *    Salvează o listă de sugestii în parkingCtx pentru “otro”.
  */
 export async function handleParkingNearStart({
   slots,
-  userText,                 // ← IMPORTANT: textul brut de la utilizator
+  userText,                 // textul brut al utilizatorului
   setMessages,
   setParkingCtx,
-  userPos // {lat, lon} sau null
+  userPos                   // {lat, lon} sau null
 }) {
   // 0) determină numele locului
   let placeName = (slots?.placeName || "").trim();
@@ -139,79 +112,75 @@ export async function handleParkingNearStart({
   }
 
   if (!placeName) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "Necesito el nombre del sitio. Ej.: «Búscame un parking cerca de TCB»." }
-    ]);
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "Necesito el nombre del sitio. Ej.: «Búscame un parking cerca de TCB»."
+    }]);
     return;
   }
 
-  // 1) găsește destinația (TCB / Venso etc.)
+  // 1) caută destinația
   const dest = await findPlaceByName(placeName);
   if (!dest) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: `No he encontrado el sitio «${placeName}». Intenta con el nombre tal y como aparece en GPS.` }
-    ]);
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: `No he encontrado el sitio «${placeName}». Intenta con el nombre tal y como aparece en GPS.`
+    }]);
     return;
   }
   const destPos = parseCoords(dest.coordenadas);
 
-  // 2) ia parcările din DB
-  const { data: parksRaw, error: parksErr } = await listTable("gps_parkings");
-  if (parksErr) {
-    console.error("[parkingNear] listTable error:", parksErr);
-  }
+  // 2) ia parcările
+  const { data: parksRaw } = await listTable("gps_parkings");
   const parks = (parksRaw || [])
-    .map((p) => ({ ...p, _pos: parseCoords(p.coordenadas) }))
-    .filter((p) => p._pos);
+    .map(p => ({ ...p, _pos: parseCoords(p.coordenadas) }))
+    .filter(p => p._pos);
 
   if (!parks.length) {
-    setMessages((m) => [...m, { from: "bot", reply_text: "No tengo parkings en la base de datos." }]);
+    setMessages(m => [...m, { from: "bot", reply_text: "No tengo parkings en la base de datos." }]);
     return;
   }
 
   // 3) scoruri
-  let scored = parks.map((p) => {
+  let scored = parks.map(p => {
     const dToDest = haversineKm(p._pos, destPos);
-    let segDist = Number.POSITIVE_INFINITY;
-    if (userPos && destPos) segDist = pointToSegmentKm(p._pos, userPos, destPos);
+    const segDist = (userPos && destPos)
+      ? pointToSegmentKm(p._pos, userPos, destPos)
+      : Number.POSITIVE_INFINITY;
     return { p, dToDest, segDist };
   });
 
-  // 4) sortare
+  // 4) sortare — aproape de DEST înainte de orice; segDist doar tie-breaker
   if (userPos) {
-    scored.sort((a, b) => (a.segDist - b.segDist) || (a.dToDest - b.dToDest));
+    scored.sort((a, b) => {
+      const byDest = a.dToDest - b.dToDest;
+      if (Math.abs(byDest) > 0.05) return byDest;  // ~50 m
+      return a.segDist - b.segDist;
+    });
   } else {
     scored.sort((a, b) => a.dToDest - b.dToDest);
   }
 
-  // 5) pregătește sugestiile (primele 6)
+  // 5) primele 6 sugestii
   const suggestions = scored.slice(0, 6);
   if (!suggestions.length) {
-    setMessages((m) => [...m, { from: "bot", reply_text: "No he encontrado parkings adecuados." }]);
+    setMessages(m => [...m, { from: "bot", reply_text: "No he encontrado parkings adecuados." }]);
     return;
   }
 
-  // 6) prima sugestie (răspuns inițial)
+  // 6) prima sugestie (distanța afișată = față de DEST)
   const first = suggestions[0];
-setMessages(m => [
-  ...m,
-  { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
-  {
-    from: "bot",
-    reply_text: "",
-    render: () => (
-      <ParkingCard
-        p={first.p}
-        // distanța afișată = spre DEST, mereu
-        distKm={first.dToDest}
-      />
-    )
-  }
-]);
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
+    {
+      from: "bot",
+      reply_text: "",
+      render: () => <ParkingCard p={first.p} distKm={first.dToDest} />
+    }
+  ]);
 
-  // 7) salvează contextul în RaynaHub (pentru „otro”)
+  // 7) context pentru “otro”
   setParkingCtx({
     type: "parking",
     dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
@@ -222,43 +191,31 @@ setMessages(m => [
 }
 
 /**
- * 2) Dă următoarea sugestie („otro / algo más / no me queda disco…”)
+ * 2) Următoarea sugestie (“otro / algo más”)
  */
 export async function handleParkingNext({ parkingCtx, setMessages }) {
   if (!parkingCtx || parkingCtx.type !== "parking" || !parkingCtx.suggestions?.length) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: "No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." }]);
     return;
   }
-  const { suggestions, index, userPos } = parkingCtx;
+  const { suggestions, index } = parkingCtx;
   const nextIdx = index + 1;
 
   if (nextIdx >= suggestions.length) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "No tengo más opciones cercanas. ¿Quieres que busque más lejos?" }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: "No tengo más opciones cercanas. ¿Quieres que busque más lejos?" }]);
     return;
   }
 
   const next = suggestions[nextIdx];
-  setMessages((m) => [
+  setMessages(m => [
     ...m,
     { from: "bot", reply_text: "Ah, perdona. Aquí hay otro parking:" },
     {
       from: "bot",
       reply_text: "",
-      render: () => (
-  <ParkingCard
-    p={next.p}
-    distKm={next.dToDest}   // ← spre DEST
-  />
-)
+      render: () => <ParkingCard p={next.p} distKm={next.dToDest} />
     }
   ]);
 
-  // avansează cursorul
-  parkingCtx.index = nextIdx;
+  parkingCtx.index = nextIdx; // avansează cursorul
 }
