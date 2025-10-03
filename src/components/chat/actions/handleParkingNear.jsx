@@ -8,10 +8,10 @@ import { parseCoords, haversineKm, pointToSegmentKm } from "../helpers/geo";
 // ——— mic utilitar: curăță slotul de „cerca de / aproape de” & articole ———
 function cleanupPlace(raw) {
   return (raw || "")
-    // ES
+    // spaniolă
     .replace(/^(?:un|una)?\s*parking\s+cerca\s+de\s+/i, "")
     .replace(/^(?:cerca\s+de|al\s+lado\s+de)\s+/i, "")
-    // RO
+    // română
     .replace(/^(?:o|un)?\s*parcare\s+(?:aproape\s+de|lângă)\s+/i, "")
     // articole comune
     .replace(/^\s*(?:de|la|el|del|al|a|în|din)\s+/i, "")
