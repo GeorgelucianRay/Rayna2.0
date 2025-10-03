@@ -93,10 +93,20 @@ function extractPlaceNameFromText(text = "") {
     t = t.replace(rx, "").trim();
   }
 
-  // 3) scoate „stopwords” la început dacă au rămas
-  const STOP_LEADING = /\b(de|la|el|al|del|en|a|la|un|una|the)\b\s*/g;
-  t = t.replace(STOP_LEADING, "").trim();
+  // 3) scoruri: calculează distanța la DEST + (opțional) distanța la segmentul user→dest
+let scored = parks.map(p => {
+  const dToDest = haversineKm(p._pos, destPos);
+  const segDist = (userPos && destPos) ? pointToSegmentKm(p._pos, userPos, destPos) : Number.POSITIVE_INFINITY;
+  return { p, dToDest, segDist };
+});
 
+// —— vrei prioritar „cerca del destino”.
+// Când avem userPos, folosim proximitatea la traseu DOAR ca tie-breaker.
+scored.sort((a, b) => {
+  const byDest = a.dToDest - b.dToDest;
+  if (byDest !== 0) return byDest;
+  return a.segDist - b.segDist;
+});
   // 4) curăță ghilimele și punctuație de final
   t = t.replace(/^[«"“”'`]+|[»"“”'`]+$/g, "").replace(/[.?!]$/g, "").trim();
 
@@ -185,20 +195,21 @@ export async function handleParkingNearStart({
 
   // 6) prima sugestie (răspuns inițial)
   const first = suggestions[0];
-  setMessages((m) => [
-    ...m,
-    { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
-    {
-      from: "bot",
-      reply_text: "",
-      render: () => (
-        <ParkingCard
-          p={first.p}
-          distKm={userPos ? haversineKm(first.p._pos, userPos) : first.dToDest}
-        />
-      )
-    }
-  ]);
+setMessages(m => [
+  ...m,
+  { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
+  {
+    from: "bot",
+    reply_text: "",
+    render: () => (
+      <ParkingCard
+        p={first.p}
+        // distanța afișată = spre DEST, mereu
+        distKm={first.dToDest}
+      />
+    )
+  }
+]);
 
   // 7) salvează contextul în RaynaHub (pentru „otro”)
   setParkingCtx({
@@ -240,11 +251,11 @@ export async function handleParkingNext({ parkingCtx, setMessages }) {
       from: "bot",
       reply_text: "",
       render: () => (
-        <ParkingCard
-          p={next.p}
-          distKm={userPos ? haversineKm(next.p._pos, userPos) : next.dToDest}
-        />
-      )
+  <ParkingCard
+    p={next.p}
+    distKm={next.dToDest}   // ← spre DEST
+  />
+)
     }
   ]);
 
