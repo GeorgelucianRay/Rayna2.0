@@ -214,13 +214,7 @@ profile_what_you_know: () =>
       // parking
       gps_find_parking_near: async () => {
   const userPos = await tryGetUserPos();
-  return handleParkingNearStart({
-    slots,
-    userText,          // <— NOU: trimitem textul brut
-    setMessages,
-    setParkingCtx,
-    userPos
-  });
+  return handleParkingNearStart({ slots, userText, setMessages, setParkingCtx, userPos });
 },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
     };
