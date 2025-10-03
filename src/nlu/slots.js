@@ -12,18 +12,29 @@ function extractTailMeaningful(raw, extraStop = [], maxWords = 3) {
   return /^[a-z0-9._ -]{2,}$/i.test(joined) ? joined : null;
 }
 
-/* ——— ADĂUGĂ helper-ul acesta ——— */
+/* helper pt. „cerca de / lângă / near …” */
 function cleanupLeadingStops(str) {
+  if (!str) return null;
   const STOP = new Set(["de","la","el","al","del","en","a","un","una","the"]);
   const toks = normalize(str).split(" ").filter(Boolean).filter(w => !STOP.has(w));
   return toks.slice(0, 4).join(" ").trim() || null;
 }
 
-/* ——— ÎNLOCUIEȘTE FUNCȚIA ASTA CU VERSIUNEA NOUĂ ——— */
+/* ——— RĂMÂNE exportată (folosită de detect.js) ——— */
+export function captureCameraName(raw, stopwords = []) {
+  const EXTRA = [
+    ...(stopwords || []),
+    "la","el","una","un","de","del","al","en",
+    "camara","cámara","camera","camaras","cámaras","camere"
+  ];
+  return extractTailMeaningful(raw, EXTRA, 3);
+}
+
+/* ——— Versiunea nouă pentru locuri ——— */
 export function capturePlaceName(raw, stopwords = []) {
   const n = normalize(raw);
 
-  // 1) Mai întâi încearcă „cerca de / lângă / near / next to …”
+  // 1) pattern-uri „aproape de X”
   const AFTER = [
     /(?:cerca|serca)\s+de\s+(.+)$/,
     /langa\s+(.+)$/,
@@ -37,21 +48,17 @@ export function capturePlaceName(raw, stopwords = []) {
   ];
   for (const rx of AFTER) {
     const m = n.match(rx);
-    if (m && m[1]) {
-      return cleanupLeadingStops(m[1]);   // → „venso”, „tcb”, etc.
-    }
+    if (m && m[1]) return cleanupLeadingStops(m[1]); // ex: „Venso”
   }
 
-  // 2) Fallback: ținem CORECT doar numele la finalul frazei
+  // 2) fallback: păstrează doar numele de la final, cu stoplist extins
   const EXTRA = [
     ...(stopwords || []),
-    // determinere: scoatem tot ce ține de „a căuta parcare”
     "buscame","búscame","buscar","encuentrame","encuéntrame",
     "quiero","necesito","sacame","sácame",
     "un","una","de","del","al","la","el","en","a",
     "parking","aparcamiento","aparcar","parcare","aparcament",
     "cerca","serca","aproape","langa","lângă","near","next","to","junto","prop","proper"
   ];
-  // până la 4 cuvinte – multe nume au 2–3
   return extractTailMeaningful(raw, EXTRA, 4);
 }
