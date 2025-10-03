@@ -62,25 +62,31 @@
     }
   },
   {
-    "id": "saludo_general",
-    "priority": 100,
-    "type": "static",
-    "patterns_any": [
-      "hola", "ola", "holaa", "holaaa", "ey", "ei", "hey", "buenas", "buenass",
-      "hola rayna", "ei rayna", "hey rayna", "hola que tal", "hola qué tal",
-      "que tal", "qué tal", "como va", "cómo va", "todo bien",
-      "salut", "buna", "bună", "servus", "ciao",
-      "hola què tal", "bones", "ep!", "ei bon dia", "hola buenas",
-      "alo", "aló"
-    ],
-    "response": {
-      "text": {
-        "es": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?",
-        "ro": "Salut! Sunt **Rayna**, transportistul tău virtual. Cu ce te pot ajuta?",
-        "ca": "Hola! Sóc **Rayna**, la teva transportista virtual. En què t'ajudo?"
-      }
+  "id": "saludo_general",
+  "priority": 80,
+  "type": "static",
+  "patterns_any": [
+    "hola", "ola", "holaa", "holaaa", "ey", "ei", "hey", "buenas", "buenass",
+    "hola rayna", "ei rayna", "hey rayna", "hola que tal", "hola qué tal",
+    "que tal", "qué tal", "como va", "cómo va", "todo bien",
+    "salut", "buna", "bună", "servus", "ciao",
+    "hola què tal", "bones", "ep!", "ei bon dia", "hola buenas",
+    "alo", "aló"
+  ],
+  "negative_regex_any": [
+    "^\\s*que\\s+(clientes?|terminales?|parkings?|servicios?|par[ck]u?([íi])?metro|sabes?)\\b",
+    "^\\s*que\\s+hay\\b",
+    "\\binfo(rmaci[oó]n)?\\s+de\\b",
+    "\\b(donde|dónde)\\b"
+  ],
+  "response": {
+    "text": {
+      "es": "¡Hola! Soy **Rayna**, tu transportista virtual. ¿En qué te ayudo?",
+      "ro": "Salut! Sunt **Rayna**, transportistul tău virtual. Cu ce te pot ajuta?",
+      "ca": "Hola! Sóc **Rayna**, la teva transportista virtual. En què t'ajudo?"
     }
-  },
+  }
+},
   {
     "id": "quien_eres",
     "priority": 95,
