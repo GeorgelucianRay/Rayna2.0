@@ -24,31 +24,43 @@
     }
   },
   {
-    "id": "gps_buscar_parking_cerca_de",
-    "priority": 150,
-    "type": "action",
-    "patterns_any": [
-      "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de", 
-      "aparcar cerca de", "aparcamiento cerca de", "aparcamiento próximo a", 
-      "necesito un parking cerca de", "búscame un sitio para aparcar en", 
-      "donde aparcar en", "sácame un parking en", "parking por el camino", 
-      "quiero aparcar cerca de", "búscame estacionamiento junto a", 
-      "búscame aparcamiento en", "aparca cerca de", "un parking próximo a", 
-      "encuéntrame parking cerca de", "necesito aparcamiento cerca de", 
-      "parcare aproape de", "parcare lângă", "cauta un parking langa", "caută un parking lângă", 
-      "un aparcament al costat de", "pàrquing proper a", "pàrquing a prop de"
-    ],
-    "stopwords": ["de", "la", "el", "del", "al", "lângă", "langă"],
-    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_find_parking_near",
-    "response": {
-      "text": {
-        "es": "Aquí tienes opciones de aparcamiento:",
-        "ro": "Aici ai opțiuni de parcare:",
-        "ca": "Aquí tens opcions d’aparcament:"
-      }
+  "id": "gps_buscar_parking_cerca_de",
+  "priority": 119,
+  "type": "action",
+  "patterns_any": [
+    "buscame un parking cerca de", "búscame un parking cerca de", "parking cerca de",
+    "aparcar cerca de", "aparcamiento cerca de", "aparcamiento próximo a",
+    "búscame estacionamiento junto a", "búscame aparcamiento en",
+    "quiero aparcar cerca de", "encuéntrame parking cerca de",
+    "parking por el camino",
+
+    "buscame un parking cerca", "búscame un parking cerca", "parking cerca",        // sin “de”
+    "buscame un parking serca", "búscame un parking serca", "parking serca",         // typo
+
+    "necesito un parking cerca de", "donde aparcar en", "sácame un parking en",
+
+    "parcare aproape de", "parcare aproape", "parcare langa", "parcare lângă",
+    "cauta un parking langa", "caută un parking lângă",
+
+    "un aparcament al costat de", "pàrquing proper a", "pàrquing a prop de",
+    "un aparcament a prop de", "aparcar a prop de",
+
+    "parking near", "find parking near", "parking next to", "find parking next to"
+  ],
+  "stopwords": [
+    "de","la","el","del","al",
+    "cerca","serca","aproape","langa","lângă","near","junto","a","prop","proper","en"
+  ],
+  "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
+  "action": "gps_find_parking_near",
+  "response": {
+    "text": {
+      "es": "Aquí tienes opciones de aparcamiento:",
+      "ro": "Aici ai opțiuni de parcare:",
+      "ca": "Aquí tens opcions d’aparcament:"
     }
-  },
+  }
+},
   {
     "id": "gps_otro_parking",
     "priority": 149,
