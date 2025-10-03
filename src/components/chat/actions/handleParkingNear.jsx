@@ -80,6 +80,26 @@ export async function handleParkingNearStart({
     return { p, dToDest, segDist };
   });
 
+// după: const placeName = slots?.placeName || null;
+let target = placeName;
+
+if (!target) {
+  const raw = (slots?.__raw || "").toLowerCase(); // sau direct userText dacă îl ai la îndemână
+  // regex tolerant la variante: cerca/serca/aproape/near/junto a/al costat de/a prop de
+  const m = raw.match(/(?:cerc[a]?|serca|aproape(?:\s+de)?|near|junto\s+a|al\s+costat\s+de|a\s+prop\s+de)\s+(.+)/i);
+  if (m && m[1]) target = m[1].trim();
+}
+
+// curăță articole/prepoziții din față
+if (target) {
+  target = target.replace(/^(de|del|la|el|al|a|en|în|la)\s+/i, "").trim();
+}
+
+if (!target) {
+  setMessages(m => [...m, { from:"bot", reply_text:"Necesito el nombre del sitio. Ej.: «Búscame un parking cerca de TCB»." }]);
+  return;
+}
+
   // 4) sortare: cu userPos -> întâi lângă traseu, apoi lângă dest; altfel doar lângă dest
   if (userPos) scored.sort((a,b) => (a.segDist - b.segDist) || (a.dToDest - b.dToDest));
   else scored.sort((a,b) => a.dToDest - b.dToDest);
