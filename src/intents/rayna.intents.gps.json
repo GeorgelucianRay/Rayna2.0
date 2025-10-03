@@ -135,6 +135,28 @@
     }
   },
   {
+  "id": "gps_list_clientes",
+  "priority": 116,
+  "type": "action",
+  "patterns_any": [
+    "que clientes hay", "qué clientes hay", "lista clientes", "ver clientes",
+    "mostrar clientes", "muéstrame clientes", "clientes disponibles",
+    "qué clientes tenemos", "abrir lista clientes", "dime clientes",
+    "listado de clientes", "todos los clientes",
+    "ce clienti sunt", "lista clienti", "vezi clienti",
+    "quins clients hi ha", "llista clients", "veure clients"
+  ],
+  "action": "gps_list",
+  "meta": { "table": "gps_clientes", "label": "Clientes" },
+  "response": {
+    "text": {
+      "es": "Estos son los clientes disponibles:",
+      "ro": "Aceștia sunt clienții disponibili:",
+      "ca": "Aquests són els clients disponibles:"
+    }
+  }
+},
+  {
     "id": "gps_list_servicios",
     "priority": 115,
     "type": "action",
