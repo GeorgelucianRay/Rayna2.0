@@ -12,6 +12,10 @@
       "navigheaza la", "navighează la", "cum ajung la", "cauta ruta spre", "arata ruta spre",
       "vull arribar a", "portar a", "anar a", "com arribo a", "navega cap a", "ruta cap a"
     ],
+    "negative_any": [
+    "parking", "aparcar", "aparcamiento", "estacionamiento",
+    "parcare", "pàrquing"
+  ],
     "stopwords": ["a", "la", "al", "el", "către", "pe", "en"],
     "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
     "action": "gps_route_preview",
@@ -42,10 +46,7 @@
     "un aparcament a prop de", "aparcar a prop de",
     "parking near", "find parking near", "parking next to", "find parking next to"
   ],
-  "negative_any": [
-    "parking", "aparcar", "aparcamiento", "estacionamiento",
-    "parcare", "pàrquing"
-  ],
+  
   "stopwords": [
     "de","la","el","del","al",
     "cerca","serca","aproape","langa","lângă","near","junto","a","prop","proper","en"
