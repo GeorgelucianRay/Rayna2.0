@@ -14,8 +14,7 @@ export default function AdminFeedback() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // (opțional) gard simplu – pagina e doar pentru admini
-  const isAdmin = (profile?.role === 'admin');
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +79,24 @@ export default function AdminFeedback() {
     });
   }, [items, q]);
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+    try {
+      const { error } = await supabase
+        .from('feedback_utilizatori')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setItems((list) => list.filter((x) => x.id !== id));
+      setSelected((sel) => (sel?.id === id ? null : sel));
+    } catch (e) {
+      console.error('delete error:', e);
+      setError(e.message || 'No se ha podido eliminar.');
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className={styles.page}>
@@ -124,6 +141,7 @@ export default function AdminFeedback() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th className={styles.colActions}> </th>
                   <th>Fecha</th>
                   <th>Categoría</th>
                   <th>Origen</th>
@@ -141,12 +159,32 @@ export default function AdminFeedback() {
                     onClick={() => setSelected(fb)}
                     title="Ver detalles"
                   >
+                    <td className={styles.colActions}>
+                      <button
+                        type="button"
+                        className={`${styles.iconBtn} ${styles.danger}`}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(fb.id); }}
+                        title="Eliminar"
+                        aria-label="Eliminar"
+                      >
+                        ×
+                      </button>
+                    </td>
+
                     <td>{new Date(fb.created_at).toLocaleString()}</td>
                     <td><Badge>{fb.categoria || '—'}</Badge></td>
                     <td><Badge tone="neutral">{fb.origen || '—'}</Badge></td>
-                    <td><Badge tone={fb.severidad === 'alta' ? 'danger' : fb.severidad === 'media' ? 'warn' : 'ok'}>
-                      {fb.severidad || '—'}
-                    </Badge></td>
+                    <td>
+                      <Badge
+                        tone={
+                          fb.severidad === 'alta' ? 'danger'
+                            : fb.severidad === 'media' ? 'warn'
+                            : 'ok'
+                        }
+                      >
+                        {fb.severidad || '—'}
+                      </Badge>
+                    </td>
                     <td>{fb.profiles?.nombre_completo || '—'}</td>
                     <td>{fb.email || fb.profiles?.email || '—'}</td>
                     <td>{fb.profiles?.role || '—'}</td>
@@ -231,9 +269,16 @@ function Badge({ children, tone = 'info' }) {
                         { bg: 'rgba(255,255,255,.10)', brd: 'rgba(255,255,255,.25)', col: '#dfe8ff' };
   return (
     <span style={{
-      display:'inline-block', padding:'2px 8px', borderRadius:12,
-      background:t.bg, border:`1px solid ${t.brd}`, color:t.col,
-      fontSize:12, lineHeight:'18px'
-    }}>{children}</span>
+      display:'inline-block',
+      padding:'2px 8px',
+      borderRadius:12,
+      background:t.bg,
+      border:`1px solid ${t.brd}`,
+      color:t.col,
+      fontSize:12,
+      lineHeight:'18px'
+    }}>
+      {children}
+    </span>
   );
 }
