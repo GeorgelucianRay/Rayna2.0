@@ -187,3 +187,47 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* === Coloană acțiuni (prima coloană din tabel) === */
+.colActions {
+  width: 44px;           /* lățime fixă pentru buton */
+  min-width: 44px;
+  text-align: center;
+  padding: 8px 6px;      /* un pic mai îngust */
+}
+
+/* === Buton icon mic (folosit pentru Delete) === */
+.iconBtn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-weight: 800;
+  line-height: 26px;     /* centrarea X-ului */
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform .12s ease, filter .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.iconBtn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.iconBtn:active { transform: translateY(0); }
+.iconBtn:focus-visible { outline: 2px solid rgba(59,130,246,.6); outline-offset: 2px; }
+
+/* Variante de ton – roșu pentru acțiuni periculoase (Delete) */
+.iconBtn.danger {
+  border-color: rgba(229,57,53,.5);
+  background: radial-gradient(100% 100% at 50% 20%, #ff9d9d33, #e5393526);
+  color: #ffd6d4;
+  box-shadow: 0 6px 18px rgba(229,57,53,.25);
+}
+.iconBtn.danger:hover {
+  filter: brightness(1.08);
+  background: radial-gradient(100% 100% at 50% 20%, #ff9d9d44, #e5393540);
+  box-shadow: 0 10px 24px rgba(229,57,53,.35);
+}
+
+/* Ca să nu se coloreze rândul când treci peste buton */
+.row .iconBtn:hover { background-blend-mode: normal; }
