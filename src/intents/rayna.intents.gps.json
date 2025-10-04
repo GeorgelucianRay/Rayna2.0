@@ -83,6 +83,25 @@
     }
   },
   {
+  "id": "gps_parking_cant_reach",
+  "priority": 150,
+  "type": "action",
+  "patterns_any": [
+    "no llego", "no me da el disco", "no me queda disco",
+    "dame otro parking", "buscame otro parking", "búscame otro parking",
+    "otro parking por favor",
+    "nu ajung", "nu imi ajunge timpul", "caută alt parking"
+  ],
+  "action": "gps_parking_ask_time",
+  "response": {
+    "text": {
+      "es": "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)",
+      "ro": "Cât disc ți-a rămas? (ex.: 1:25 sau 45 min)",
+      "ca": "Quant disc et queda? (ex.: 1:25 o 45 min)"
+    }
+  }
+},
+  {
   "id": "gps_info_de",
   "priority": 121,
   "type": "action",
