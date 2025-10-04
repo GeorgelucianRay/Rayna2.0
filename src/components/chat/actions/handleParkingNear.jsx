@@ -10,8 +10,19 @@ import { parseCoords, haversineKm, pointToSegmentKm } from "../helpers/geo";
    ============================================================ */
 
 // „viteza” eficientă în linie dreaptă pentru drumuri șerpuite
-// 0.5 km/min ≈ 30 km/h (conservator)
-const EFFECTIVE_KM_PER_MIN = 0.5;
+// Parametri pentru estimare drum real
+const TRUCK_MAX_KMH = 90;       // limitarea fizică
+const TRUCK_AVG_KMH = 70;       // medie realistă pe drum
+const DRUM_FACTOR = 1.4;        // cât e mai lung drumul real față de linie dreaptă
+
+// Conversie: minute disponibile → distanță maximă în linie dreaptă
+export function estimateReachableKm(minutes) {
+  if (!minutes) return 0;
+  // câți km reali poate face camionul
+  const realKm = (minutes / 60) * TRUCK_AVG_KMH;
+  // conversie în echivalent „linie dreaptă”
+  return realKm / DRUM_FACTOR;
+}
 
 /* ============================================================
    Parsare timp „disco” -> minute
