@@ -218,6 +218,14 @@ profile_what_you_know: () =>
 },
       gps_parking_next_suggestion: () => handleParkingNext({ parkingCtx, setMessages }),
     };
+    gps_parking_ask_time: () => {
+  if (!parkingCtx?.dest) {
+    setMessages(m => [...m, { from:"bot", reply_text:"Primero pídeme un parking cerca de un sitio." }]);
+    return;
+  }
+  setMessages(m => [...m, { from:"bot", reply_text:"¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }]);
+  setAwaiting("parking_time_left");
+},
 
     console.debug("[RaynaHub] dispatchAction →", {
       id: intent?.id,
@@ -382,6 +390,17 @@ const send = async () => {
     });
     return;
   }
+  if (awaiting === "parking_time_left") {
+  setAwaiting(null);
+  const mins = parseTimeToMinutes(userText);     // din handleParkingNear.jsx
+  if (!mins) {
+    setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. Dime 1:25 o 45 min." }]);
+    setAwaiting("parking_time_left");
+    return;
+  }
+  await handleParkingRecomputeByTime({ parkingCtx, minutes: mins, setMessages, setParkingCtx });
+  return;
+}
 
   // 2) detectare intent
   const { intent, slots, lang } = detectIntent(userText, intentsData);
