@@ -173,6 +173,55 @@ function quickReport() {
       return null;
     }
   }
+  
+    // ——— Cere interactiv geolocația (cu buton) și actualizează parkingCtx
+  async function askUserLocationInteractive() {
+    // randăm bulă cu buton – pe iOS e nevoie de gest de utilizator
+    setMessages(m => [
+      ...m,
+      {
+        from: "bot",
+        reply_text: "",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Necesito tu ubicación</div>
+            <div className={styles.cardSubtitle}>
+              Para calcular si llegas a otro parking, necesito saber dónde estás.
+            </div>
+            <div className={styles.cardActions}>
+              <button
+                className={styles.actionBtn}
+                data-variant="primary"
+                onClick={() => {
+                  if (!("geolocation" in navigator)) {
+                    alert("La geolocalización no está disponible en este dispositivo.");
+                    return;
+                  }
+                  navigator.geolocation.getCurrentPosition(
+                    ({ coords }) => {
+                      const pos = { lat: coords.latitude, lon: coords.longitude };
+                      setParkingCtx((ctx) => ({ ...(ctx || {}), userPos: pos }));
+                      setMessages(mm => [
+                        ...mm,
+                        { from: "bot", reply_text: "¡Listo! Ya tengo tu ubicación. ¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+                      ]);
+                      setAwaiting("parking_time_left");
+                    },
+                    (err) => {
+                      alert(`No he podido obtener la ubicación: ${err?.message || "desconocido"}`);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                  );
+                }}
+              >
+                Usar mi ubicación
+              </button>
+            </div>
+          </div>
+        ),
+      },
+    ]);
+  }
 
   // —— dispecer pentru acțiuni (map clar ⇢ handler)
 async function dispatchAction(intent, slots, userText) {
@@ -213,21 +262,21 @@ async function dispatchAction(intent, slots, userText) {
       handleParkingNext({ parkingCtx, setMessages }),
 
     // ⬇️ NOU: INTENȚIA CARE ÎNTREABĂ TIMPUL RĂMAS
-    gps_parking_ask_time: () => {
+    gps_parking_ask_time: async () => {
       if (!parkingCtx?.dest) {
-        setMessages((m) => [
-          ...m,
-          { from: "bot", reply_text: "Primero pídeme un parking cerca de un sitio." },
-        ]);
-        return;
-      }
-      setMessages((m) => [
-        ...m,
-        { from: "bot", reply_text: "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" },
-      ]);
-      setAwaiting("parking_time_left"); // vom capta următorul mesaj ca minute
-    },
-  };
+         setMessages(m => [...m, { from:"bot", reply_text:"Primero pídeme un parking cerca de un sitio." }]);
+         return;
+       }
+       if (!parkingCtx?.userPos) {
+         await askUserLocationInteractive();   // cere explicit locația
+         return;
+       }
+       setMessages(m => [
+         ...m,
+         { from:"bot", reply_text:"¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+       ]);
+       setAwaiting("parking_time_left");
+     },
 
   console.debug("[RaynaHub] dispatchAction →", {
     id: intent?.id,
