@@ -22,7 +22,7 @@ import Map3DPage from './components/depot/map/Map3DPage';
 
 // --- Restul paginilor existente ---
 import GpsProPage from './components/GpsPro/GpsProPage.jsx';
-import GpsPage from './components/GpsPage.jsx';
+import GpsPage from '@/components/rutas/GpsPage';
 import CamionPage from './components/CamionPage.jsx';
 import RemorcaPage from './components/RemorcaPage.jsx';
 import TallerPage from './components/TallerPage.jsx';
