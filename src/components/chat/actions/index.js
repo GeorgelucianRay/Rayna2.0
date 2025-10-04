@@ -1,6 +1,4 @@
 // src/components/chat/actions/index.js
-
-// ==== acțiuni simple ====
 export { default as handleDialog } from "./handleDialog.jsx";
 export { default as handleGpsInfo } from "./handleGpsInfo.jsx";
 export { default as handleGpsLists } from "./handleGpsLists.jsx";
@@ -9,7 +7,6 @@ export { default as handleOpenCamera } from "./handleOpenCamera.jsx";
 export { default as handleShowAnnouncement } from "./handleShowAnnouncement.jsx";
 export { default as handleStatic } from "./handleStatic.jsx";
 
-// ==== profil ====
 export {
   handleWhoAmI,
   handleOpenMyTruck,
@@ -26,10 +23,13 @@ export {
   handleProfileWizardStep,
 } from "./handleProfileStuff.jsx";
 
-// ==== parking ====
+// 🚗 Parking
 export {
   handleParkingNearStart,
   handleParkingNext,
   handleParkingRecomputeByTime,
   parseTimeToMinutes,
 } from "./handleParkingNear.jsx";
+
+// ❗ nou: „nu ajung / otro parking -> întreabă timpul”
+export { default as handleParkingAskTime } from "./handleParkingAskTime.jsx";
