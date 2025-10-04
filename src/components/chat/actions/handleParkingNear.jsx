@@ -273,7 +273,7 @@ export async function handleParkingRecomputeByTime({
     const destPos = dest.pos;
 
     // 1) radio atins în linie dreaptă cu timpul rămas
-    const reachKm = minutes * EFFECTIVE_KM_PER_MIN;
+    const reachKm = estimateReachableKm(minutes);
 
     // 2) ia toate parcările (din nou — DB se poate schimba)
     const { data: parksRaw } = await listTable("gps_parkings");
