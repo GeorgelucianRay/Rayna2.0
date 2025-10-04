@@ -46,7 +46,6 @@ import {
   handleParkingNext,
   handleParkingRecomputeByTime,
   parseTimeToMinutes,
-  handleParkingAskTime,
 } from "./actions";
 
 // —— agregatorul de intenții (src/intents/index.js export default all)
@@ -277,6 +276,7 @@ async function dispatchAction(intent, slots, userText) {
        ]);
        setAwaiting("parking_time_left");
      },
+    };
 
   console.debug("[RaynaHub] dispatchAction →", {
     id: intent?.id,
