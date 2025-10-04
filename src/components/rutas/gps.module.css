@@ -1,211 +1,198 @@
-/* aspect general */
-.centerHint {
-  color: #e5e7eb;
-  text-align: center;
-  padding: 16px;
-  opacity: .9;
+/* ===== Theme (același vibe ca RaynaHub) ===== */
+:root{
+  --text-strong:#eaf3ff;
+  --text-soft:#b7c7e6;
+
+  --stroke:rgba(255,255,255,.30);
+  --stroke-soft:rgba(255,255,255,.18);
+  --glass:rgba(255,255,255,.06);
+  --glass-strong:rgba(255,255,255,.10);
+
+  --green:#3be476;
+  --blue:#60a5fa;
+
+  --radius-xl:26px;
+  --radius-lg:18px;
+  --radius-md:12px;
+
+  --shadow-outer:0 12px 36px rgba(0,0,0,.35);
+  --shadow-inset:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.25);
 }
 
-/* Tabs */
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin: 8px 0 16px;
+/* ===== Header (tab-uri) ===== */
+.depotHeader{
+  display:flex; gap:10px; flex-wrap:wrap;
+  margin:12px 0 16px;
 }
-.tabBtn {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.6);
-  color: #e5e7eb;
-  cursor: pointer;
-  transition: transform .1s ease, background .15s ease;
+.depotTabButton{
+  appearance:none; border:1px solid var(--stroke);
+  background:var(--glass);
+  color:#fff; font-weight:700;
+  border-radius:16px; padding:10px 14px;
+  box-shadow:var(--shadow-inset), 0 6px 16px rgba(0,0,0,.25);
+  cursor:pointer; transition:transform .12s ease, filter .12s ease;
 }
-.tabBtn:hover { transform: translateY(-1px); }
-.active { background: rgba(59,130,246,.2); border-color: rgba(59,130,246,.45); }
-
-/* Toolbar */
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 6px 0 16px;
-}
-.searchBar {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.6);
-  color: #e5e7eb;
-  padding: 0 12px;
-  height: 40px;
-  border-radius: 10px;
-}
-.searchBar input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: inherit;
-}
-.addButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(59,228,118,.5);
-  background: linear-gradient(180deg, #22c55e, #16a34a);
-  color: #0b1220;
-  font-weight: 700;
-  cursor: pointer;
+.depotTabButton:active{ transform: translateY(1px); }
+.depotTabButton.active{
+  background:linear-gradient(180deg, rgba(125,211,252,.95), rgba(125,211,252,.80));
+  color:#0f1a2b; border-color:rgba(255,255,255,.7);
 }
 
-/* Grid cards */
-.locationGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 14px;
+/* ===== Toolbar (search + add) ===== */
+.toolbar{
+  display:flex; gap:12px; flex-wrap:wrap;
+  margin-bottom:14px;
 }
-.locationCard {
-  position: relative;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.6);
-  cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease;
+.searchBar{
+  flex:1; display:flex; gap:10px; align-items:center;
+  padding:10px 12px; border-radius:14px;
+  border:1px solid var(--stroke-soft);
+  background:var(--glass);
+  color:var(--text-strong);
+  box-shadow:var(--shadow-inset);
 }
-.locationCard:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
-.locationCardImage {
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  display: block;
+.searchBar input{
+  flex:1; border:0; outline:none; background:transparent;
+  color:var(--text-strong);
 }
-.locationCardOverlay {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 10px 12px;
-  background: linear-gradient(180deg, transparent, rgba(2,6,23,.8));
-}
-.locationCardTitle {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
-}
-.locationCardEditBtn {
-  position: absolute;
-  right: 8px; top: 8px;
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(148,163,184,.4);
-  background: rgba(2,6,23,.6);
-  color: #e5e7eb;
+.addButton{
+  appearance:none; display:flex; align-items:center; gap:8px;
+  padding:10px 14px; border-radius:16px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012; font-weight:800;
+  box-shadow:0 12px 26px rgba(20,180,90,.38), inset 0 1px 0 rgba(255,255,255,.6);
 }
 
-/* Pagination */
-.paginationContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin: 18px 0;
+/* ===== Grid card-uri ===== */
+.locationGrid{
+  display:grid; gap:12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
-.paginationButton {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.6);
-  color: #e5e7eb;
-  cursor: pointer;
+.locationCard{
+  position:relative; border-radius:16px; overflow:hidden;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+  cursor:pointer;
 }
-.pageIndicator { color: #94a3b8; }
-
-/* Modal */
-.modalOverlay {
-  position: fixed; inset: 0;
-  background: rgba(2,6,23,.6);
-  backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 40; padding: 16px;
+.locationCardImage{ width:100%; height:160px; object-fit:cover; display:block; }
+.locationCardOverlay{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:10px 12px;
+  background:linear-gradient(180deg, transparent, rgba(0,0,0,.55));
 }
-.modalContent {
-  width: 100%; max-width: 820px;
-  border-radius: 16px;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.9);
-  box-shadow: 0 20px 60px rgba(0,0,0,.45);
-  color: #e5e7eb;
-}
-.locationModal { overflow: hidden; }
-
-.modalHeader {
-  padding: 14px 16px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid rgba(148,163,184,.18);
-}
-.modalTitle { margin: 0; font-size: 18px; font-weight: 800; }
-.modalHeaderActions { display: flex; gap: 8px; }
-.iconBtn {
-  width: 36px; height: 36px; border-radius: 10px;
-  border: 1px solid rgba(148,163,184,.4);
-  background: rgba(2,6,23,.6); color: #e5e7eb; cursor: pointer;
+.locationCardTitle{ color:#fff; font-weight:800; text-shadow:0 2px 8px rgba(0,0,0,.6); }
+.locationCardEditBtn{
+  position:absolute; top:10px; right:10px;
+  width:36px; height:36px; border-radius:10px;
+  display:grid; place-items:center;
+  border:1px solid var(--stroke);
+  background:rgba(0,0,0,.35); color:#fff; cursor:pointer;
 }
 
-.modalBody {
-  display: grid; gap: 16px; grid-template-columns: 1fr 1fr;
-  padding: 16px;
+/* ===== Paginare ===== */
+.paginationContainer{
+  margin-top:14px; display:flex; align-items:center; justify-content:center; gap:12px;
 }
-.locationModalImage {
-  width: 100%; height: 240px; object-fit: cover; border-radius: 12px;
+.paginationButton{
+  appearance:none; padding:8px 12px; border-radius:12px; cursor:pointer;
+  border:1px solid var(--stroke); background:var(--glass); color:#fff;
 }
-.locationDetails p { margin: 0 0 8px; }
+.pageIndicator{ color:var(--text-soft); }
 
-.modalFooter {
-  padding: 14px 16px;
-  display: flex; gap: 10px; justify-content: flex-end;
-  border-top: 1px solid rgba(148,163,184,.18);
+/* ===== Modal (scrollabil, formular în coloană) ===== */
+.modalOverlay{
+  position:fixed; inset:0; z-index:60;
+  background:rgba(2,6,23,.6); backdrop-filter: blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  padding:14px;
 }
-.modalButton {
-  height: 38px; padding: 0 14px;
-  border-radius: 10px; border: 1px solid transparent;
-  font-weight: 700; cursor: pointer;
+.modalContent{
+  width:min(980px, 100%);
+  max-height: calc(100dvh - 28px);
+  overflow:hidden;          /* scroll pe corp, nu pe overlay */
+  border-radius:20px;
+  border:1px solid var(--stroke);
+  background:rgba(12,18,30,.90);
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+  color:var(--text-strong);
+  display:flex; flex-direction:column;
 }
-.modalButtonPrimary {
-  background: linear-gradient(180deg, #60a5fa, #3b82f6);
-  color: #0b1220; border-color: rgba(59,130,246,.5);
+.modalHeader{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; border-bottom:1px solid var(--stroke-soft);
 }
-.modalButtonSecondary {
-  background: rgba(17,24,39,.6);
-  color: #e5e7eb; border-color: rgba(148,163,184,.35);
+.modalTitle{ font-size:20px; font-weight:800; }
+.modalHeaderActions{ display:flex; gap:8px; }
+.editButtonModal,
+.closeButton{
+  width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+  border:1px solid var(--stroke); background:var(--glass); color:#fff; cursor:pointer;
 }
-.irButton { text-decoration: none; display: inline-flex; align-items: center; }
 
-.formWrapper { padding: 0 16px 16px; }
-.inputGroup { display: grid; gap: 6px; margin: 12px 0; }
-.inputGroupFullWidth textarea { width: 100%; }
+.formWrapper{ display:flex; flex-direction:column; min-height:0; }
+.modalBody{
+  padding:14px 16px;
+  overflow:auto;           /* AICI se derulează conținutul */
+}
+.modalFooter{
+  padding:12px 16px; border-top:1px solid var(--stroke-soft);
+  display:flex; gap:10px; justify-content:flex-end;
+}
+
+/* ===== Formular: grid responsiv + câmpuri solide ===== */
+.formGrid{
+  display:grid; gap:12px;
+  grid-template-columns:1fr;     /* mobil: o coloană */
+}
+@media (min-width: 720px){
+  .formGrid{ grid-template-columns:1fr 1fr; } /* desktop: două coloane */
+}
+.inputGroup{ display:flex; flex-direction:column; gap:6px; }
+.inputGroupFullWidth{ grid-column: 1 / -1; }
+
+.inputGroup label{ color:var(--text-soft); font-weight:700; }
 .inputGroup input,
-.inputGroup textarea {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(148,163,184,.25);
-  background: rgba(2,6,23,.55);
-  color: #e5e7eb;
-  padding: 10px 12px;
-  outline: none;
+.inputGroup textarea{
+  width:100%;
+  border-radius:14px; padding:12px 14px; resize:vertical;
+  border:1px solid var(--stroke);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color:var(--text-strong); outline:none;
+  box-shadow:var(--shadow-inset);
 }
-.geolocationGroup {
-  display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center;
+.inputGroup textarea{ min-height:110px; }
+
+/* coordonate + buton GPS */
+.geolocationGroup{ display:grid; grid-template-columns:1fr auto; gap:8px; }
+.geolocationButton{
+  width:44px; border-radius:12px; cursor:pointer;
+  border:1px solid var(--stroke);
+  background:var(--glass); color:#fff;
 }
-.geolocationButton {
-  height: 40px; border-radius: 10px; border: 1px solid rgba(148,163,184,.25);
-  background: rgba(17,24,39,.6); color: #e5e7eb; cursor: pointer;
+
+/* butoanele modale */
+.modalButton{
+  appearance:none; padding:10px 14px; border-radius:14px; cursor:pointer;
+  border:1px solid var(--stroke); background:var(--glass); color:#fff;
+  font-weight:700;
 }
-.inputHint { font-size: 12px; opacity: .8; margin-top: 6px; }
-.previewImg { margin-top: 8px; max-width: 100%; border-radius: 6px; }
+.modalButtonPrimary{
+  border-color: rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(96,165,250,.95), rgba(96,165,250,.82));
+  color:#0e1726; box-shadow:0 12px 26px rgba(96,165,250,.38), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.modalButtonSecondary{}
+
+/* detalii locație */
+.locationModalImage{
+  width:100%; max-height:260px; object-fit:cover;
+  border-radius:14px; border:1px solid var(--stroke);
+}
+.locationDetails{ margin-top:10px; color:var(--text-strong); }
+
+/* buton Google Maps din footer */
+.irButton{ text-decoration:none; display:inline-grid; place-items:center; }
