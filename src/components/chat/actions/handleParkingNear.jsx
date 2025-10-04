@@ -231,29 +231,29 @@ export async function handleParkingNearStart({
   ]);
 
   // 7) context
-  const userToDestKm = userPos ? haversineKm(userPos, destPos) : null;
-  setParkingCtx({
-    type: "parking",
-    dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
-    userPos: userPos || null,
-    userToDestKm,
-    suggestions,
-    index: 0,
-  });
-}
+const userToDestKm = userPos ? haversineKm(userPos, destPos) : null;
+setParkingCtx({
+  type: "parking",
+  dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
+  userPos: userPos || null,
+  userToDestKm,
+  suggestions,
+  index: 0,
+});
 
-// dacă userul a zis și "no llego", intrăm direct în modul timp
+// 🔥 aici mutăm blocul "no llego"
 if (/no llego/i.test(userText)) {
   if (!userPos) {
     await askUserLocationInteractive();
   } else {
-    setMessages(m => [
+    setMessages((m) => [
       ...m,
-      { from:"bot", reply_text:"¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+      { from: "bot", reply_text: "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
     ]);
     setAwaiting("parking_time_left");
   }
 }
+
 
 /* ============================================================
    1.5) Recalcul după timp: „n-o llego → ¿cuánto disco te queda?”
