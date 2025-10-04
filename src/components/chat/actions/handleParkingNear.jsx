@@ -242,6 +242,19 @@ export async function handleParkingNearStart({
   });
 }
 
+// dacă userul a zis și "no llego", intrăm direct în modul timp
+if (/no llego/i.test(userText)) {
+  if (!userPos) {
+    await askUserLocationInteractive();
+  } else {
+    setMessages(m => [
+      ...m,
+      { from:"bot", reply_text:"¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+    ]);
+    setAwaiting("parking_time_left");
+  }
+}
+
 /* ============================================================
    1.5) Recalcul după timp: „n-o llego → ¿cuánto disco te queda?”
    Filtrăm doar parcările la care poți ajunge în timpul rămas
