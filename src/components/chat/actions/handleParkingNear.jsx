@@ -248,25 +248,50 @@ export async function handleParkingNearStart({
     return;
   }
 
-  // 3) scoruri
-  let scored = parks.map(p => {
-    const dToDest = haversineKm(p._pos, destPos);
-    const segDist = (userPos && destPos)
-      ? pointToSegmentKm(p._pos, userPos, destPos)
-      : Number.POSITIVE_INFINITY;
-    return { p, dToDest, segDist };
-  });
+  // 3) scoruri & filtrare după „pot ajunge”
+let scored = parks.map(p => {
+  const dToDest    = haversineKm(p._pos, destPos);
+  const dFromUser  = haversineKm(p._pos, userPos);
+  const segDist    = pointToSegmentKm(p._pos, userPos, destPos);
+  return { p, dToDest, dFromUser, segDist };
+});
 
-  // 4) sortare — aproape de DEST înainte de orice; segDist doar tie-breaker
-  if (userPos) {
-    scored.sort((a, b) => {
-      const byDest = a.dToDest - b.dToDest;
-      if (Math.abs(byDest) > 0.05) return byDest;  // ~50 m
-      return a.segDist - b.segDist;
-    });
-  } else {
-    scored.sort((a, b) => a.dToDest - b.dToDest);
-  }
+// ——— Filtrăm 1) ajungibil în timpul rămas și 2) „în față”, nu în spatele tău.
+// Heuristic „în față”: parking-ul trebuie să fie MAI APROAPE de destinație decât ești tu acum.
+const userToDestNow = haversineKm(userPos, destPos);
+const reachKm = minutes * EFFECTIVE_KM_PER_MIN;
+
+let reachable = scored.filter(x =>
+  x.dFromUser <= reachKm &&           // ajungibil cu timpul rămas (în linie dreaptă)
+  x.dToDest   <  userToDestNow + 0.3  // „în față” (cu o marjă de ~300 m)
+);
+
+// fallback: dacă nu găsim nimic, relaxăm la 1.2× reachKm
+let relaxed = false;
+if (!reachable.length) {
+  reachable = scored.filter(x =>
+    x.dFromUser <= reachKm * 1.2 && x.dToDest < userToDestNow + 0.3
+  );
+  relaxed = reachable.length > 0;
+}
+
+if (!reachable.length) {
+  setMessages(m => [
+    ...m,
+    { from:"bot", reply_text:`Con ${minutes} min (~${reachKm.toFixed(0)} km en línea recta) no alcanzo ningún parking por delante. ¿Te muestro el más cercano igualmente?` }
+  ]);
+  return;
+}
+
+// 4) sortare: prioritate DEST, apoi „pe traseu”, apoi apropiere de tine
+reachable.sort((a, b) =>
+  (a.dToDest - b.dToDest) ||
+  (a.segDist - b.segDist) ||
+  (a.dFromUser - b.dFromUser)
+);
+
+const suggestions = reachable.slice(0, 6);
+const first = suggestions[0];
 
   // 5) primele 6 sugestii
   const suggestions = scored.slice(0, 6);
@@ -288,14 +313,15 @@ export async function handleParkingNearStart({
   ]);
 
   // 7) context pentru “otro”
-  setParkingCtx({
-    type: "parking",
-    dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
-    userPos: userPos || null,
-    suggestions,
-    index: 0
-  });
-}
+const userToDestKm = userPos ? haversineKm(userPos, destPos) : null;
+setParkingCtx({
+  type: "parking",
+  dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
+  userPos: userPos || null,
+  userToDestKm,          // ← distanța inițială user→dest (ne ajută să filtrăm „în față”)
+  suggestions,
+  index: 0
+});
 
 /**
  * 2) Următoarea sugestie (“otro / algo más”)
