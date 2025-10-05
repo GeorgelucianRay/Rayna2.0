@@ -1,37 +1,49 @@
-// Curăță un nume de loc extras din text liber (spanish/ro/en)
+// Curăță un nume de loc extras din text liber (ES/RO/EN uzual)
 export function cleanPlaceName(raw = "") {
-  let t = String(raw || "").trim();
+  let original = String(raw || "").trim();
+  if (!original) return "";
 
-  // jos literele + fără diacritice (doar pt. pattern-uri)
-  const low = t.toLowerCase()
-    .normalize("NFD").replace(/\p{Diacritic}/gu, ""); // nu stricăm forma originală pt. afișat
+  // versiune lowercase fără diacritice (pentru pattern-uri)
+  const low = original
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
-  // Taie formule tipice de început: “quiero llegar a”, “llegar a”, “ir a”, “voy a”, “ruta a” etc.
+  // formule frecvente de început (spaniolă; poți adăuga altele)
   const leaders = [
-    /^quiero\s+llegar\s+a\s+/i,
-    /^quiero\s+ir\s+a\s+/i,
-    /^llegar\s+a\s+/i,
-    /^ir\s+a\s+/i,
-    /^voy\s+a\s+/i,
-    /^ruta\s+(?:hasta|a)\s+/i,
-    /^navegar\s+a\s+/i,
-    /^como\s+llego\s+a\s+/i,
-    /^como\s+lllego\s+a\s+/i,   // typo tolerant
+    /^quiero\s+llegar\s+a\s+/,
+    /^quiero\s+ir\s+a\s+/,
+    /^llegar\s+a\s+/,
+    /^ir\s+a\s+/,
+    /^voy\s+a\s+/,
+    /^ruta\s+(?:hasta|a)\s+/,
+    /^navegar\s+a\s+/,
+    /^como\s+llego\s+a\s+/,
+    /^cómo\s+llego\s+a\s+/,
+    // variante română
+    /^vreau\s+s[ăa]\s+ajung\s+la\s+/,
+    /^vreau\s+s[ăa]\s+merg\s+la\s+/,
+    /^navigheaz[ăa]\s+la\s+/,
+    /^cum\s+ajung\s+la\s+/
   ];
+
+  // dacă se potrivește un leader în `low`, tăiem aceeași lungime din original
   for (const rx of leaders) {
-    if (rx.test(low)) {
-      // taie în funcție de poziția din șirul original (nu din low)
-      const m = (t.match(rx) || [])[0];
-      if (m) t = t.slice(m.length);
+    const m = low.match(rx);
+    if (m && m[0]) {
+      original = original.slice(m[0].length);
       break;
     }
   }
 
-  // Taie ghilimele / punctuație pe margini
-  t = t.replace(/^[«"“”'`]+|[»"“”'`]+$/g, "").replace(/[.?!]$/g, "").trim();
+  // curăță ghilimele/punctuație la margini
+  original = original
+    .replace(/^[«"“”'`]+|[»"“”'`]+$/g, "")
+    .replace(/[.?!]$/g, "")
+    .trim();
 
-  // Dacă cumva a rămas un “llegar/ir/quiero” izolat, scapă de el
-  t = t.replace(/^(?:llegar|ir|quiero|voy|a|al|la|el)\s+/i, "").trim();
+  // mică igienizare de articole rămase la început
+  original = original.replace(/^(?:a|al|la|el)\s+/i, "").trim();
 
-  return t;
+  return original;
 }
