@@ -232,7 +232,8 @@ async function dispatchAction(intent, slots, userText) {
     show_announcement: () => handleShowAnnouncement({ intent, setMessages }),
 
     // GPS
-    gps_route_preview: () => handleGpsNavigate({ intent, slots, setMessages }),
+    // GPS
+    gps_route_preview: () => handleGpsNavigate({ intent, slots, setMessages, userText }),
     gps_place_info: () => handleGpsInfo({ intent, slots, setMessages }),
     gps_list: () => handleGpsLists({ intent, setMessages }),
 
