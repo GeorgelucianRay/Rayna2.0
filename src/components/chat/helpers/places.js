@@ -1,49 +1,41 @@
-// Curăță un nume de loc extras din text liber (ES/RO/EN uzual)
+// Curăță articole/ghilimele etc.
 export function cleanPlaceName(raw = "") {
-  let original = String(raw || "").trim();
-  if (!original) return "";
+  let s = String(raw || "").trim();
+  if (!s) return "";
+  s = s.replace(/^[«"“”'`]+|[»"“”'`]+$/g, "").replace(/[.?!]$/g, "").trim();
+  // taie articolele/spaniola uzuale la început
+  s = s.replace(/^(?:a|al|la|el|los|las)\s+/i, "").trim();
+  return s;
+}
 
-  // versiune lowercase fără diacritice (pentru pattern-uri)
-  const low = original
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
+/**
+ * Extrage numele locului dintr-o frază lungă de tip:
+ *  - "hola quiero llegar a saltoki pero no tengo disco búscame un parking cerca"
+ *  - "quiero llegar a saltoki, búscame un parking cerca"
+ *  - "llegar saltoki"
+ *  - "quiero ir a TCB"
+ *
+ * Regula: capturăm ceea ce vine după (llegar|ir|navegar|voy|dirígeme...) [a] ...,
+ * până la: virgulă/punct/„pero/y/que/buscame/búscame/parking/aparcar/aparcamiento/…”
+ */
+export function extractNavigateTargetFromText(userText = "") {
+  if (!userText) return "";
 
-  // formule frecvente de început (spaniolă; poți adăuga altele)
-  const leaders = [
-    /^quiero\s+llegar\s+a\s+/,
-    /^quiero\s+ir\s+a\s+/,
-    /^llegar\s+a\s+/,
-    /^ir\s+a\s+/,
-    /^voy\s+a\s+/,
-    /^ruta\s+(?:hasta|a)\s+/,
-    /^navegar\s+a\s+/,
-    /^como\s+llego\s+a\s+/,
-    /^cómo\s+llego\s+a\s+/,
-    // variante română
-    /^vreau\s+s[ăa]\s+ajung\s+la\s+/,
-    /^vreau\s+s[ăa]\s+merg\s+la\s+/,
-    /^navigheaz[ăa]\s+la\s+/,
-    /^cum\s+ajung\s+la\s+/
-  ];
+  // lucrăm pe original (nu lowercase), dar regexul e case-insensitive
+  const rx = new RegExp(
+    String.raw`(?:^|\b)(?:quiero\s+)?(?:llegar|ir|navegar|dirigirme|dirigeme|voy)\s+(?:a\s+)?` +
+    String.raw`(.+?)` + // ← capturăm non-greedy numele
+    String.raw`(?=(?:,|\.|;|\)|\(|\bpero\b|\by\b|\bque\b|\bbuscame\b|\bbúscame\b|\bparking\b|\baparcar\b|\baparcamiento\b|\bestacionamiento\b|$))`,
+    "i"
+  );
 
-  // dacă se potrivește un leader în `low`, tăiem aceeași lungime din original
-  for (const rx of leaders) {
-    const m = low.match(rx);
-    if (m && m[0]) {
-      original = original.slice(m[0].length);
-      break;
-    }
-  }
+  const m = userText.match(rx);
+  if (m && m[1]) return cleanPlaceName(m[1]);
 
-  // curăță ghilimele/punctuație la margini
-  original = original
-    .replace(/^[«"“”'`]+|[»"“”'`]+$/g, "")
-    .replace(/[.?!]$/g, "")
-    .trim();
+  // fallback: dacă NLU ți-a dat „llegar saltoki” fără „a”
+  const rx2 = /(?:^|\b)(?:llegar|ir|navegar|voy)\s+([^\.,;]+)$/i;
+  const m2 = userText.match(rx2);
+  if (m2 && m2[1]) return cleanPlaceName(m2[1]);
 
-  // mică igienizare de articole rămase la început
-  original = original.replace(/^(?:a|al|la|el)\s+/i, "").trim();
-
-  return original;
+  return "";
 }
