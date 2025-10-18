@@ -1,4 +1,4 @@
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../../../supabaseClient';
 
 /**
  * Aduce TOATE containerele cu debugging detaliat
