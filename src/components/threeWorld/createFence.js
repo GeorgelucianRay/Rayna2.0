@@ -1,4 +1,3 @@
-// src/components/threeWorld/createFence.js
 import * as THREE from 'three';
 
 /**
@@ -8,7 +7,7 @@ export default function createFence({
   width = 80,
   depth = 50,
   postEvery = 10,
-  excludeSide = null, // Opțiune nouă: 'north', 'south', 'east', 'west'
+  excludeSide = null, // Opțiune: 'north', 'south', 'east', 'west'
   gate = { side: 'south', width: 8, centerX: 0, centerZ: 0 },
 } = {}) {
   const g = new THREE.Group();
@@ -22,67 +21,67 @@ export default function createFence({
   const addPost = (x, z) => {
     const p = new THREE.Mesh(postGeo, postMat);
     p.position.set(x, 0.9, z);
+    p.castShadow = true;
     g.add(p);
   };
 
-  // --- Stâlpi --- (Am adăugat condiții pentru excludere)
   if (excludeSide !== 'south') { for (let x = -w; x <= w; x += postEvery) addPost(x, -d); }
   if (excludeSide !== 'north') { for (let x = -w; x <= w; x += postEvery) addPost(x, d); }
   if (excludeSide !== 'west') { for (let z = -d; z <= d; z += postEvery) addPost(-w, z); }
   if (excludeSide !== 'east') { for (let z = -d; z <= d; z += postEvery) addPost(w, z); }
 
-  // --- Helperi pentru traverse ---
-  const cutHorizontal = (z, y, side) => {
-    if (excludeSide === side) return; // <-- NU desena traversa dacă latura e exclusă
-    // ... restul funcției cutHorizontal rămâne la fel
-    const cx = (gate.centerX ?? 0) + (gate.tweakX ?? 0);
-    const half = (gate.width ?? 0) / 2;
-    if (gate.side !== side) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.1, 0.1), railMat);
-      rail.position.set(0, y, z);
-      g.add(rail);
-      return;
+  const createRail = (len, isVertical) => {
+    const railGeo = isVertical ? new THREE.BoxGeometry(0.1, 0.1, len) : new THREE.BoxGeometry(len, 0.1, 0.1);
+    const rail = new THREE.Mesh(railGeo, railMat);
+    rail.castShadow = true;
+    return rail;
+  };
+  
+  const addSideRails = (side) => {
+    if (excludeSide === side) return;
+
+    const isGateSide = gate.side === side;
+    const isVertical = side === 'west' || side === 'east';
+    const totalLength = isVertical ? depth : width;
+    const center = isVertical ? gate.centerZ : gate.centerX;
+    const halfDim = isVertical ? d : w;
+
+    const createAndAddRail = (pos, len, y) => {
+        const rail = createRail(len, isVertical);
+        if (isVertical) {
+            rail.position.set(side === 'west' ? -w : w, y, pos);
+        } else {
+            rail.position.set(pos, y, side === 'south' ? -d : d);
+        }
+        g.add(rail);
+    };
+
+    if (!isGateSide || gate.width <= 0) {
+        createAndAddRail(0, totalLength, 1.5);
+        createAndAddRail(0, totalLength, 0.8);
+    } else {
+        const halfGate = gate.width / 2;
+        const firstSegmentLen = Math.max(0.01, center - halfGate - (-halfDim));
+        const secondSegmentLen = Math.max(0.01, halfDim - (center + halfGate));
+
+        const firstSegmentPos = (-halfDim + (center - halfGate)) / 2;
+        const secondSegmentPos = ((center + halfGate) + halfDim) / 2;
+
+        if (firstSegmentLen > 0.01) {
+            createAndAddRail(firstSegmentPos, firstSegmentLen, 1.5);
+            createAndAddRail(firstSegmentPos, firstSegmentLen, 0.8);
+        }
+        if (secondSegmentLen > 0.01) {
+            createAndAddRail(secondSegmentPos, secondSegmentLen, 1.5);
+            createAndAddRail(secondSegmentPos, secondSegmentLen, 0.8);
+        }
     }
-    const leftLen  = Math.max(0.001, cx - half - (-w));
-    const rightLen = Math.max(0.001, w - (cx + half));
-    const left = new THREE.Mesh(new THREE.BoxGeometry(leftLen, 0.1, 0.1), railMat);
-    left.position.set((-w + (cx - half)) / 2, y, z);
-    g.add(left);
-    const right = new THREE.Mesh(new THREE.BoxGeometry(rightLen, 0.1, 0.1), railMat);
-    right.position.set((cx + half + w) / 2, y, z);
-    g.add(right);
   };
 
-  const cutVertical = (x, y, side) => {
-    if (excludeSide === side) return; // <-- NU desena traversa dacă latura e exclusă
-    // ... restul funcției cutVertical rămâne la fel
-    const cz = (gate.centerZ ?? 0) + (gate.tweakZ ?? 0);
-    const half = (gate.width ?? 0) / 2;
-    if (gate.side !== side) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, depth), railMat);
-      rail.position.set(x, y, 0);
-      g.add(rail);
-      return;
-    }
-    const bottomLen = Math.max(0.001, cz - half - (-d));
-    const topLen    = Math.max(0.001, d - (cz + half));
-    const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, bottomLen), railMat);
-    bottom.position.set(x, y, (-d + (cz - half)) / 2);
-    g.add(bottom);
-    const top = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, topLen), railMat);
-    top.position.set(x, y, (cz + half + d) / 2);
-    g.add(top);
-  };
-
-  // --- Traverse ---
-  cutHorizontal(-d, 1.5, 'south');
-  cutHorizontal( d, 1.5, 'north');
-  cutHorizontal(-d, 0.8, 'south');
-  cutHorizontal( d, 0.8, 'north');
-  cutVertical(-w, 1.5, 'west');
-  cutVertical( w, 1.5, 'east');
-  cutVertical(-w, 0.8, 'west');
-  cutVertical( w, 0.8, 'east');
+  addSideRails('south');
+  addSideRails('north');
+  addSideRails('west');
+  addSideRails('east');
 
   return g;
 }

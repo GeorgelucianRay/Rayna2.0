@@ -1,32 +1,37 @@
 [
-  {
-    "id": "gps_navegar_a",
-    "priority": 120,
-    "type": "action",
-    "patterns_any": [
-      "quiero llegar a", "llevar a", "ir a", "navegar a", "como llego a", "cómo llego a",
-      "llévame a", "búscame ruta a", "búscame la ruta hasta", "camino a", "ruta hasta",
-      "necesito llegar a", "enséñame la ruta a", "abrir mapa a", "abrir google maps a",
-      "mostrar ruta a", "voy a", "destino", "quiero ir a", "dirígeme a",
-      "vreau sa ajung la", "vreau să ajung la", "vreau sa merg la", "vreau să merg la",
-      "navigheaza la", "navighează la", "cum ajung la", "cauta ruta spre", "arata ruta spre",
-      "vull arribar a", "portar a", "anar a", "com arribo a", "navega cap a", "ruta cap a"
-    ],
-    "negative_any": [
+{
+  "id": "gps_navegar_a",
+  "priority": 120,
+  "type": "action",
+  "patterns_any": [
+    "quiero llegar a", "llevar a", "ir a", "navegar a", "como llego a", "cómo llego a",
+    "llévame a", "búscame ruta a", "búscame la ruta hasta", "camino a", "ruta hasta",
+    "necesito llegar a", "enséñame la ruta a", "abrir mapa a", "abrir google maps a",
+    "mostrar ruta a", "voy a", "destino", "quiero ir a", "dirígeme a",
+    "vreau sa ajung la", "vreau să ajung la", "vreau sa merg la", "vreau să merg la",
+    "navigheaza la", "navighează la", "cum ajung la", "cauta ruta spre", "arata ruta spre",
+    "vull arribar a", "portar a", "anar a", "com arribo a", "navega cap a", "ruta cap a"
+  ],
+  "negative_any": [
     "parking", "aparcar", "aparcamiento", "estacionamiento",
     "parcare", "pàrquing"
   ],
-    "stopwords": ["a", "la", "al", "el", "către", "pe", "en"],
-    "slots": { "placeName": { "from": "tail_after_patterns_or_single_token", "min_len": 2 } },
-    "action": "gps_route_preview",
-    "response": {
-      "text": {
-        "es": "Aquí tienes la ruta a **{{place.name}}**.",
-        "ro": "Iată ruta către **{{place.name}}**.",
-        "ca": "Aquí tens la ruta a **{{place.name}}**."
-      }
+  "stopwords": ["a", "la", "al", "el", "de", "del", "en", "către", "pe"],
+  "slots": {
+    "placeName": {
+      "from": "tail_after_patterns_or_single_token",
+      "min_len": 1
     }
   },
+  "action": "gps_route_preview",
+  "response": {
+    "text": {
+      "es": "Aquí tienes la ruta a **{{place.name}}**.",
+      "ro": "Iată ruta către **{{place.name}}**.",
+      "ca": "Aquí tens la ruta a **{{place.name}}**."
+    }
+  }
+},
   {
   "id": "gps_buscar_parking_cerca_de",
   "priority": 140,

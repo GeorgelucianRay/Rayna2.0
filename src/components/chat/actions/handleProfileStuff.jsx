@@ -92,6 +92,42 @@ export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
   setAwaiting("confirm_view_profile");
 }
 
+function fmtDateDDMMYYYY(raw) {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(+d)) return null;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+async function getTruckItvByProfile(profile) {
+  const truckId = profile?.camion_id;
+  if (!truckId) return null;
+  const { data, error } = await supabase
+    .from("camioane")
+    .select("fecha_itv")
+    .eq("id", truckId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv || null;
+}
+
+async function getTrailerItvByProfile(profile) {
+  const trailerId = profile?.remorca_id;
+  if (!trailerId) return null;
+  const { data, error } = await supabase
+    .from("remorci")
+    .select("fecha_itv")
+    .eq("id", trailerId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv || null;
+}
+
+
+
 /* ——— ABRIR MI CAMIÓN ——— */
 export async function handleOpenMyTruck({ profile, setMessages }) {
   const truckId   = profile?.camion_id || profile?.camioane?.id || profile?.truck?.id;
@@ -143,35 +179,80 @@ export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   const topic = intent?.meta?.topic;
 
   if (topic === "truck_itv") {
-    const itv = profile?.camioane?.itv || profile?.truck?.itv || "—";
-    setMessages(m => [...m, { from: "bot", reply_text: `La ITV de tu camión es **${itv}**.` }]);
-    return;
-  }
-  if (topic === "trailer_itv") {
-    const itv = profile?.remolque?.itv || profile?.trailer?.itv || "—";
-    setMessages(m => [...m, { from: "bot", reply_text: `La ITV de tu remolque es **${itv}**.` }]);
-    return;
-  }
-  if (topic === "driver_credentials") {
-    const cap = profile?.driver?.cap || "—";
-    const lic = profile?.driver?.lic || "—";
-    const adr = profile?.driver?.adr || "—";
-    setMessages(m => [...m, { from: "bot", reply_text: `CAP: **${cap}** · Carnet: **${lic}** · ADR: **${adr}**` }]);
+    const itv =
+      profile?.camioane?.itv ||
+      profile?.truck?.itv ||
+      profile?.camion_fecha_itv ||
+      profile?.fecha_itv ||
+      "—";
+    setMessages(m => [...m, { from: "bot", reply_text: `ITV camion: **${itv}**.` }]);
     return;
   }
 
-  setMessages(m => [...m, { from: "bot", reply_text: "No tengo aún ese dato en tu perfil." }]);
+  if (topic === "trailer_itv") {
+    const itv =
+      profile?.remolque?.itv ||
+      profile?.trailer?.itv ||
+      profile?.remorca_fecha_itv ||
+      "—";
+    setMessages(m => [...m, { from: "bot", reply_text: `ITV remolque: **${itv}**.` }]);
+    return;
+  }
+
+  if (topic === "driver_credentials") {
+    const capRaw = profile?.cap_expirare ?? null;
+    const licRaw = profile?.carnet_caducidad ?? null;
+    const hasAdr = profile?.tiene_adr ?? null;   // true/false/null
+    const adrRaw = profile?.adr_caducidad ?? null;
+
+    const cap = fmtDateDDMMYYYY(capRaw) || capRaw || "—";
+    const lic = fmtDateDDMMYYYY(licRaw) || licRaw || "—";
+
+    let adrOut = "—";
+    if (hasAdr === true) {
+      adrOut = fmtDateDDMMYYYY(adrRaw) || adrRaw || "Si";
+    } else if (hasAdr === false) {
+      adrOut = "No";
+    }
+
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: `CAP: **${cap}** · Carnet: **${lic}** · ADR: **${adrOut}**` }
+    ]);
+    return;
+  }
+
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: "No tengo aun ese dato en tu perfil." }
+  ]);
 }
+
+
 
 /* ——— VEHÍCULO: ITV / ACEITE / ADBLUE ——— */
 export async function handleVehItvTruck({ profile, setMessages }) {
-  const itv = profile?.camioane?.itv || profile?.truck?.itv || "—";
-  setMessages(m => [...m, { from: "bot", reply_text: `ITV camión: **${itv}**.` }]);
+  const itv = await getTruckItvByProfile(profile);
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: itv
+      ? `ITV camión: **${itv}**.`
+      : "No encuentro la ITV del camión asociado a tu perfil." }
+  ]);
 }
+
+
 export async function handleVehItvTrailer({ profile, setMessages }) {
-  const itv = profile?.remolque?.itv || profile?.trailer?.itv || "—";
-  setMessages(m => [...m, { from: "bot", reply_text: `ITV remolque: **${itv}**.` }]);
+  const itv = await getTrailerItvByProfile(profile);
+  setMessages(m => [
+    ...m,
+    { from: "bot", reply_text: itv
+      ? `ITV remolque: **${itv}**.`
+      : "No encuentro la ITV del remolque asociado a tu perfil." }
+  ]);
 }
+
+
 export async function handleVehOilStatus({ profile, setMessages }) {
   const last = profile?.mantenimientos?.aceite?.ultimo || "—";
   const next = profile?.mantenimientos?.aceite?.proximo || "—";

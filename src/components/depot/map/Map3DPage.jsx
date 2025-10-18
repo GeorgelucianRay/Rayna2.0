@@ -1,142 +1,209 @@
-// src/components/depot/map/Map3DPage.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { useNavigate } from 'react-router-dom';
+import gsap from 'gsap';
 
 import styles from './Map3DStandalone.module.css';
 
-// helpers 3D
-import createGround from '../../threeWorld/createGround';
-import createSky from '../../threeWorld/createSky';
+// Importurile componentelor
+import createGround from './threeWorld/createGround';
+import createFence from './threeWorld/createFence';
+import createContainersLayer from './threeWorld/createContainersLayer';
+import fetchContainers from './threeWorld/fetchContainers';
+import createSky from './threeWorld/createSky';
+import createLandscape from './threeWorld/createLandscape';
+import ContainerInfoCard from './ContainerInfoCard';
+import SearchBox from './SearchBox';
+import { slotToWorld } from './threeWorld/slotToWorld';
 
-export default function Map3DPage() {
+/* ===================== CONFIG DEPOZIT ===================== */
+const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
+const STEP = 6.06 + 0.06, ABC_CENTER_OFFSET_X = 5 * STEP;
+const CFG = {
+  ground: { width: YARD_WIDTH, depth: YARD_DEPTH, color: YARD_COLOR, abcOffsetX: ABC_CENTER_OFFSET_X, defOffsetX: 32.3, abcToDefGap: -6.2 },
+  fence: { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
+};
+/* ====================================================================== */
+
+export default function MapPage() {
+  const mountRef = useRef(null);
+  const cameraRef = useRef();
+  const controlsRef = useRef();
+  const isAnimatingRef = useRef(false);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  
+  const [selectedContainer, setSelectedContainer] = useState(null);
+  const [allContainers, setAllContainers] = useState([]);
+  const [flyToTarget, setFlyToTarget] = useState(null);
 
-  const wrapRef = useRef(null);
-  const rendererRef = useRef(null);
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const controlsRef = useRef(null);
-  const rafRef = useRef(0);
-  const skyRef = useRef(null);
-
-  // ui: zi / noapte
-  const [mode, setMode] = useState('day'); // 'day' | 'night'
-
+  // Efectul principal pentru inițializarea scenei 3D
   useEffect(() => {
-    // ----- init renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    rendererRef.current = renderer;
-
-    // canvas sizing
-    const resize = () => {
-      if (!wrapRef.current) return;
-      const w = wrapRef.current.clientWidth;
-      const h = wrapRef.current.clientHeight;
-      renderer.setSize(w, h);
-      if (cameraRef.current) {
-        cameraRef.current.aspect = w / h;
-        cameraRef.current.updateProjectionMatrix();
-      }
-    };
-
-    // ----- scene + camera
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
+    
     const scene = new THREE.Scene();
-    sceneRef.current = scene;
-
-    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
-    camera.position.set(70, 55, 95);
-    camera.lookAt(0, 0, 0);
+    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+    camera.position.set(20, 8, 20);
     cameraRef.current = camera;
-
-    // ----- orbit
+    
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.target.set(0, 0, 0);
-    controls.maxPolarAngle = Math.PI * 0.49;
+    controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // ----- sky + lights
-    const sky = createSky({ mode: 'day' });
-    scene.add(sky.group);
-    skyRef.current = sky;
+    // Logica pentru detectarea click-ului (Raycasting)
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let depotGroup = null;
 
-    // ----- ground (asfalt + marcaje)
-    // Parametrii de poziționare pot fi reglați rapid aici:
-    const ground = createGround({
-      width: 120,     // lățimea totală a asfaltului (X)
-      depth: 95,      // lungimea totală (Z)
-      color: 0x2b2f33,
+    function onClick(event) {
+      if (event.target.closest(`.${styles.searchContainer}`)) return;
+      mouse.x = (event.clientX / mount.clientWidth) * 2 - 1;
+      mouse.y = - (event.clientY / mount.clientHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
 
-      // bloc ABC (orizontal), 10 sloturi
-      abc: {
-        // poziționare relativă: start la stânga, la 12 unități de margine
-        marginLeft: 12,
-        centerZ: -8,        // coboră/urcă benzile pe Z
-        reverseNumbers: true, // numerotare 10→1 la A/C
-      },
-
-      // bloc DEF (vertical), 7 sloturi
-      def: {
-        marginRight: 10, // cât spațiu lăsăm până la marginea din dreapta a asfaltului
-        startZ: -2,      // punctul de plecare pe Z
-        gapToABC: 18,    // distanța vizuală față de ABC
-      },
-    });
-    scene.add(ground);
-
-    // ----- mount
-    wrapRef.current.appendChild(renderer.domElement);
-    resize();
-    window.addEventListener('resize', resize);
-
-    // ----- animate
-    const loop = () => {
-      controls.update();
-      renderer.render(scene, camera);
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    loop();
-
-    // cleanup
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-      controls.dispose();
-      renderer.dispose();
-      if (wrapRef.current && renderer.domElement.parentNode === wrapRef.current) {
-        wrapRef.current.removeChild(renderer.domElement);
+      if (depotGroup) {
+        const intersects = raycaster.intersectObjects(depotGroup.children, true);
+        if (intersects.length > 0) {
+          const firstIntersected = intersects[0].object;
+          if (firstIntersected.userData.__record) {
+            setSelectedContainer(firstIntersected.userData.__record);
+            return;
+          }
+        }
       }
+      setSelectedContainer(null);
+    }
+    
+    mount.addEventListener('click', onClick);
+
+    // Setup lumini, cer, peisaj, pământ, etc.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
+    scene.add(new THREE.DirectionalLight(0xffffff, 0.8));
+    scene.add(createSky());
+    scene.add(createLandscape());
+    const earthGeo = new THREE.PlaneGeometry(1000, 1000);
+    const earthMat = new THREE.MeshStandardMaterial({ color: 0x78904c });
+    const earth = new THREE.Mesh(earthGeo, earthMat);
+    earth.rotation.x = -Math.PI / 2;
+    earth.position.y = -0.5;
+    scene.add(earth);
+    
+    depotGroup = new THREE.Group();
+    const ground = createGround(CFG.ground);
+    const fence = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
+    depotGroup.add(ground, fence);
+    scene.add(depotGroup);
+
+    let containersLayer;
+    (async () => {
+      try {
+        const data = await fetchContainers();
+        setAllContainers(data.containers);
+        containersLayer = createContainersLayer(data, CFG.ground);
+        depotGroup.add(containersLayer);
+      } catch (e) { console.warn(e); setError('Nu am putut încărca containerele.'); } 
+      finally { setLoading(false); }
+    })();
+    
+    const minX = -YARD_WIDTH / 2 + 5, maxX = YARD_WIDTH / 2 + 5;
+    const minZ = -YARD_DEPTH / 2 + 5, maxZ = YARD_DEPTH / 2 + 5;
+    
+    const animate = () => {
+      requestAnimationFrame(animate);
+      containersLayer?.userData?.tick?.();
+      controls.update();
+      
+      if (!isAnimatingRef.current) {
+        controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
+        controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
+      }
+
+      renderer.render(scene, camera);
+    };
+    animate();
+    
+    const onResize = () => {
+        const w = mount.clientWidth, h = mount.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => { 
+        mount.removeEventListener('click', onClick);
+        // ... restul cleanup-ului ...
     };
   }, []);
 
-  // aplică mod zi/noapte asupra cerului
+  // Efectul pentru animația camerei
   useEffect(() => {
-    if (!skyRef.current) return;
-    skyRef.current.setMode(mode);
-  }, [mode]);
+    if (!flyToTarget) return;
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+
+    const pos = flyToTarget.posicion.trim().toUpperCase();
+    const match = pos.match(/^([A-F])(\d{1,2})([A-Z])?$/);
+    if (!match) return;
+
+    const worldPos = slotToWorld(
+      { lane: match[1], index: Number(match[2]), tier: match[3] || 'A' },
+      { ...CFG.ground, abcNumbersReversed: true }
+    );
+    
+    const targetPosition = worldPos.position;
+    const offset = new THREE.Vector3(10, 8, 10);
+    const cameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
+    
+    gsap.to(controls.target, {
+      ...targetPosition,
+      duration: 1.5,
+      ease: 'power3.out',
+      onStart: () => { isAnimatingRef.current = true; },
+      onComplete: () => { isAnimatingRef.current = false; }
+    });
+    
+    gsap.to(camera.position, {
+      ...cameraPosition,
+      duration: 1.5,
+      ease: 'power3.out',
+    });
+    
+    setSelectedContainer(flyToTarget);
+    setFlyToTarget(null);
+  }, [flyToTarget]);
 
   return (
-    <div className={styles.page}>
-      <header className={styles.hud}>
-        <button className={styles.back} onClick={() => navigate('/depot')}>← Volver al Depot</button>
-        <h1 className={styles.title}>Mapa 3D · Depósito</h1>
-        <button
-          className={styles.mode}
-          onClick={() => setMode(m => (m === 'day' ? 'night' : 'day'))}
-          title="Cambiar modo"
-        >
-          {mode === 'day' ? '🌙 Noche' : '🌞 Día'}
-        </button>
-      </header>
+    <div className={styles.fullscreenRoot}>
+      <div className={styles.searchContainer}>
+        <SearchBox 
+          containers={allContainers} 
+          onContainerSelect={setFlyToTarget}
+        />
+      </div>
+      
+      <div className={styles.topBar}>
+        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
+      </div>
+      
+      <div ref={mountRef} className={styles.canvasHost} />
 
-      <div className={styles.canvasWrap} ref={wrapRef} />
+      <ContainerInfoCard 
+        container={selectedContainer} 
+        onClose={() => setSelectedContainer(null)} 
+      />
     </div>
   );
 }

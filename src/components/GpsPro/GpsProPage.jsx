@@ -12,12 +12,12 @@ export default function GpsProPage() {
   const [tab, setTab] = useState('clientes');
   const navigate = useNavigate();
 
-  if (profile?.role !== 'dispecer') {
+  if (profile?.role !== 'admin') {
     return (
       <div className={styles.frame}>
         <div className={styles.guard}>
           <h2>Acceso restringido</h2>
-          <p>Esta sección es solo para <strong>dispecer</strong>.</p>
+          <p>Esta sección es solo para <strong>admin</strong>.</p>
         </div>
       </div>
     );
