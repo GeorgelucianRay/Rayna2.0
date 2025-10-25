@@ -35,10 +35,17 @@ function loadTex(path) {
   return t;
 }
 
+function tryLoad(paths) {
+  for (const p of paths) {
+    try { return loadTex(p); } catch (_) {}
+  }
+  return null;
+}
+
 function normBrand(name = '') {
   const s = String(name).toLowerCase();
   if (s.includes('maersk') || s.includes('msk')) return 'maersk';
-  // TODO: adaugă aici și alte branduri când ai texturile lor
+  // extensibil pentru alte branduri
   return 'generic';
 }
 
@@ -47,24 +54,25 @@ function makeMaterialsFor(brand, sizeFt = 40) {
   const fallback = new THREE.MeshStandardMaterial({
     color: 0x8b5e3c, metalness: 0.1, roughness: 0.7
   });
+
   if (brand !== 'maersk') {
     // 6 materiale identice (BoxGeometry are groups → necesită array de 6)
     return [fallback, fallback, fallback, fallback, fallback, fallback];
   }
 
   const dir = `${TEXROOT}/maersk`;
-  const side = loadTex(`${dir}/maersk_40_side_texture.png`);
-  const front = loadTex(`${dir}/maersk_40_front_texture.png`);
-  const back  = loadTex(`${dir}/maersk_40_back_texture.png`);
-  const top   = loadTex(`${dir}/maersk_40_top_texture.png`);
 
-  // ordine materiale pentru BoxGeometry:
+  const side  = tryLoad([`${dir}/maersk_40_side_texture.png`, `${dir}/maersk_40_side.png`]);
+  const front = tryLoad([`${dir}/maersk_40_front_texture.png`, `${dir}/maersk_40_front.png`]);
+  const back  = tryLoad([`${dir}/maersk_40_back_texture.png`, `${dir}/maersk_40_back.png`]);
+  const top   = tryLoad([`${dir}/maersk_40_top_texture.png`, `${dir}/maersk_40_top.png`]);
+
   // 0=right, 1=left, 2=top, 3=bottom, 4=front, 5=back
   return [
     new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 }),
     new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 }),
     new THREE.MeshStandardMaterial({ map: top,   metalness: 0.1, roughness: 0.85 }),
-    new THREE.MeshStandardMaterial({ color: 0x8a8f95, metalness: 0.1, roughness: 0.9 }), // bottom simplu
+    new THREE.MeshStandardMaterial({ color: 0x8a8f95, metalness: 0.1, roughness: 0.9 }), // bottom
     new THREE.MeshStandardMaterial({ map: front, metalness: 0.1, roughness: 0.8 }),
     new THREE.MeshStandardMaterial({ map: back,  metalness: 0.1, roughness: 0.8 }),
   ];
@@ -72,22 +80,13 @@ function makeMaterialsFor(brand, sizeFt = 40) {
 
 /* -------------------------- LAYER PRINCIPAL --------------------------- */
 
-/**
- * Optimized container layer using instanced meshes for better performance
- */
 export default function createContainersLayerOptimized(data, layout) {
   const layer = new THREE.Group();
   const allContainers = data?.containers || [];
+  if (allContainers.length === 0) return layer;
 
-  if (allContainers.length === 0) {
-    console.log('No containers to render');
-    return layer;
-  }
-
-  // Group pentru instancing (acum ținem cont și de brand)
   const containerGroups = new Map();
 
-  // Parse position helper
   function parsePos(any) {
     const s = String(any || '').trim().toUpperCase();
     const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/);
@@ -95,7 +94,6 @@ export default function createContainersLayerOptimized(data, layout) {
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
   }
 
-  // Grupare
   allContainers.forEach(rec => {
     const parsed = parsePos(rec.pos ?? rec.posicion);
     if (!parsed) return;
@@ -107,7 +105,7 @@ export default function createContainersLayerOptimized(data, layout) {
     const navieraRaw = (rec.naviera || '').trim().toUpperCase();
     const brand = normBrand(navieraRaw);
 
-    // culoare de fallback (doar pentru branduri fără texturi)
+    // culoare fallback pentru branduri fără texturi
     let colorHex;
     if (isRoto) {
       colorHex = 0xef4444;
@@ -122,7 +120,7 @@ export default function createContainersLayerOptimized(data, layout) {
       }
     }
 
-    // cheie de grup — includem brand (ca să putem da material diferit)
+    // cheie de grup – includem brandul
     const groupKey = `${tipo}_${brand}_${isProgramado}`;
 
     if (!containerGroups.has(groupKey)) {
@@ -130,23 +128,20 @@ export default function createContainersLayerOptimized(data, layout) {
         tipo,
         brand,
         isProgramado,
-        colorHex,       // păstrăm pentru fallback
+        colorHex,
         containers: []
       });
     }
-
     containerGroups.get(groupKey).containers.push({ parsed, record: rec });
   });
 
-  // Instanced meshes per grup
   containerGroups.forEach(group => {
     const count = group.containers.length;
-    if (count === 0) return;
+    if (!count) return;
 
     const dims = SIZE_BY_TIPO[group.tipo] || SIZE_BY_TIPO['40bajo'];
     const geometry = new THREE.BoxGeometry(dims.L, dims.H, dims.W);
 
-    // materiale: texturi dacă avem set pentru brand; altfel vopsit
     let materials;
     if (group.brand === 'maersk') {
       const sizeFt = group.tipo.startsWith('20') ? 20 : 40;
@@ -162,7 +157,6 @@ export default function createContainersLayerOptimized(data, layout) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    // set matrix per instance
     const matrix = new THREE.Matrix4();
     const position = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
@@ -171,7 +165,6 @@ export default function createContainersLayerOptimized(data, layout) {
     group.containers.forEach((container, i) => {
       const { parsed } = container;
 
-      // calculează world position din slot (helper-ul tău)
       const worldPos = slotToWorld(
         { lane: parsed.band, index: parsed.index, tier: parsed.level },
         { ...layout, abcNumbersReversed: true }
@@ -193,6 +186,9 @@ export default function createContainersLayerOptimized(data, layout) {
 
     mesh.instanceMatrix.needsUpdate = true;
 
+    // mapare pentru click: instanceId -> record
+    mesh.userData.records = group.containers.map(c => c.record);
+
     if (group.isProgramado) {
       mesh.userData.isProgramado = true;
       mesh.userData.pulsePhases = new Float32Array(count);
@@ -202,7 +198,7 @@ export default function createContainersLayerOptimized(data, layout) {
     layer.add(mesh);
   });
 
-  // Animation tick pentru puls
+  // animația de puls
   layer.userData.tick = () => {
     const matrix = new THREE.Matrix4();
     const position = new THREE.Vector3();
@@ -223,7 +219,6 @@ export default function createContainersLayerOptimized(data, layout) {
         matrix.compose(position, quaternion, scale);
         mesh.setMatrixAt(i, matrix);
       }
-
       mesh.instanceMatrix.needsUpdate = true;
     });
   };
@@ -239,9 +234,8 @@ export default function createContainersLayerOptimized(data, layout) {
 }
 
 /* ---------------------- Low-detail (fallback LOD) ---------------------- */
-function createLowDetailContainers(containers, layout) {
+function createLowDetailContainers(/* containers, layout */) {
   const layer = new THREE.Group();
-  // Poți păstra implementarea ta simplificată aici
-  // (box-uri fără texturi, grupate pe culoare)
+  // poți pune o versiune foarte simplă (box-uri fără texturi)
   return layer;
 }

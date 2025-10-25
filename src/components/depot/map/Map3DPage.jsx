@@ -6,10 +6,11 @@ import gsap from 'gsap';
 
 import styles from './Map3DStandalone.module.css';
 
-// Importurile componentelor
+// Importuri scene
 import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
-import createContainersLayer from './threeWorld/createContainersLayer';
+// IMPORTANT: folosim varianta optimizată (cu texturi)
+import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
 import fetchContainers from './threeWorld/fetchContainers';
 import createSky from './threeWorld/createSky';
 import createLandscape from './threeWorld/createLandscape';
@@ -35,12 +36,11 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  
+
   const [selectedContainer, setSelectedContainer] = useState(null);
   const [allContainers, setAllContainers] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
 
-  // Efectul principal pentru inițializarea scenei 3D
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
@@ -50,137 +50,153 @@ export default function MapPage() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
-    
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
-    
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // Logica pentru detectarea click-ului (Raycasting)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let depotGroup = null;
+    let containersLayer = null;
 
     function onClick(event) {
       if (event.target.closest(`.${styles.searchContainer}`)) return;
-      mouse.x = (event.clientX / mount.clientWidth) * 2 - 1;
-      mouse.y = - (event.clientY / mount.clientHeight) * 2 + 1;
+
+      const rect = mount.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
       raycaster.setFromCamera(mouse, camera);
 
       if (depotGroup) {
         const intersects = raycaster.intersectObjects(depotGroup.children, true);
         if (intersects.length > 0) {
-          const firstIntersected = intersects[0].object;
-          if (firstIntersected.userData.__record) {
-            setSelectedContainer(firstIntersected.userData.__record);
+          const hit = intersects[0];
+          const obj = hit.object;
+
+          // a) InstancedMesh: record prin instanceId
+          if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+            const rec = obj.userData.records[hit.instanceId];
+            if (rec) { setSelectedContainer(rec); return; }
+          }
+
+          // b) fallback: obiect simplu cu __record
+          if (obj.userData?.__record) {
+            setSelectedContainer(obj.userData.__record);
             return;
           }
         }
       }
       setSelectedContainer(null);
     }
-    
+
     mount.addEventListener('click', onClick);
 
-    // Setup lumini, cer, peisaj, pământ, etc.
+    // lights, sky, landscape, ground
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
-    scene.add(new THREE.DirectionalLight(0xffffff, 0.8));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(5, 10, 5);
+    scene.add(dir);
+
     scene.add(createSky());
     scene.add(createLandscape());
+
     const earthGeo = new THREE.PlaneGeometry(1000, 1000);
     const earthMat = new THREE.MeshStandardMaterial({ color: 0x78904c });
     const earth = new THREE.Mesh(earthGeo, earthMat);
     earth.rotation.x = -Math.PI / 2;
     earth.position.y = -0.5;
     scene.add(earth);
-    
+
     depotGroup = new THREE.Group();
     const ground = createGround(CFG.ground);
     const fence = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(ground, fence);
     scene.add(depotGroup);
 
-    let containersLayer;
     (async () => {
       try {
         const data = await fetchContainers();
         setAllContainers(data.containers);
-        containersLayer = createContainersLayer(data, CFG.ground);
+        containersLayer = createContainersLayerOptimized(data, CFG.ground);
         depotGroup.add(containersLayer);
-      } catch (e) { console.warn(e); setError('Nu am putut încărca containerele.'); } 
-      finally { setLoading(false); }
+      } catch (e) {
+        console.warn(e);
+        setError('Nu am putut încărca containerele.');
+      } finally {
+        setLoading(false);
+      }
     })();
-    
+
     const minX = -YARD_WIDTH / 2 + 5, maxX = YARD_WIDTH / 2 + 5;
     const minZ = -YARD_DEPTH / 2 + 5, maxZ = YARD_DEPTH / 2 + 5;
-    
+
     const animate = () => {
       requestAnimationFrame(animate);
       containersLayer?.userData?.tick?.();
       controls.update();
-      
       if (!isAnimatingRef.current) {
         controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
         controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
       }
-
       renderer.render(scene, camera);
     };
     animate();
-    
+
     const onResize = () => {
-        const w = mount.clientWidth, h = mount.clientHeight;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
+      const w = mount.clientWidth, h = mount.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
-    return () => { 
-        mount.removeEventListener('click', onClick);
-        // ... restul cleanup-ului ...
+    return () => {
+      mount.removeEventListener('click', onClick);
+      window.removeEventListener('resize', onResize);
+      renderer.dispose();
     };
   }, []);
 
-  // Efectul pentru animația camerei
+  // Fly-to
   useEffect(() => {
     if (!flyToTarget) return;
     const camera = cameraRef.current;
     const controls = controlsRef.current;
     if (!camera || !controls) return;
 
-    const pos = flyToTarget.posicion.trim().toUpperCase();
-    const match = pos.match(/^([A-F])(\d{1,2})([A-Z])?$/);
+    const pos = flyToTarget.posicion?.trim().toUpperCase();
+    const match = pos?.match?.(/^([A-F])(\d{1,2})([A-Z])?$/);
     if (!match) return;
 
     const worldPos = slotToWorld(
       { lane: match[1], index: Number(match[2]), tier: match[3] || 'A' },
       { ...CFG.ground, abcNumbersReversed: true }
     );
-    
+
     const targetPosition = worldPos.position;
     const offset = new THREE.Vector3(10, 8, 10);
     const cameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
-    
+
     gsap.to(controls.target, {
-      ...targetPosition,
-      duration: 1.5,
-      ease: 'power3.out',
+      x: targetPosition.x, y: targetPosition.y, z: targetPosition.z,
+      duration: 1.5, ease: 'power3.out',
       onStart: () => { isAnimatingRef.current = true; },
       onComplete: () => { isAnimatingRef.current = false; }
     });
-    
+
     gsap.to(camera.position, {
-      ...cameraPosition,
-      duration: 1.5,
-      ease: 'power3.out',
+      x: cameraPosition.x, y: cameraPosition.y, z: cameraPosition.z,
+      duration: 1.5, ease: 'power3.out',
     });
-    
+
     setSelectedContainer(flyToTarget);
     setFlyToTarget(null);
   }, [flyToTarget]);
@@ -188,21 +204,21 @@ export default function MapPage() {
   return (
     <div className={styles.fullscreenRoot}>
       <div className={styles.searchContainer}>
-        <SearchBox 
-          containers={allContainers} 
+        <SearchBox
+          containers={allContainers}
           onContainerSelect={setFlyToTarget}
         />
       </div>
-      
+
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
-      
+
       <div ref={mountRef} className={styles.canvasHost} />
 
-      <ContainerInfoCard 
-        container={selectedContainer} 
-        onClose={() => setSelectedContainer(null)} 
+      <ContainerInfoCard
+        container={selectedContainer}
+        onClose={() => setSelectedContainer(null)}
       />
     </div>
   );
