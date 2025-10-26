@@ -99,7 +99,8 @@ export default function Navbar3D({
   containers = [],
   onSelectContainer,
   onToggleFP,
-  onAdd
+  onAdd,
+  onOpenWorldItems
 }) {
   const [dockOpen, setDockOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -137,6 +138,8 @@ export default function Navbar3D({
           <IconBtn title="Căutare" onClick={() => { setSearchOpen(v=>!v); setDockOpen(false); }}>🔍</IconBtn>
           <IconBtn title="Walk / First-Person" onClick={() => { onToggleFP?.(); setDockOpen(false); }}>👤</IconBtn>
           <IconBtn title="Adaugă" onClick={() => { setAddOpen(true); setDockOpen(false); }}>＋</IconBtn>
+          // în lista de IconBtn din DOCK:
+<IconBtn title="Items (scene)" onClick={() => { onOpenWorldItems?.(); setDockOpen(false); }}>📋</IconBtn>
         </div>
       )}
 
