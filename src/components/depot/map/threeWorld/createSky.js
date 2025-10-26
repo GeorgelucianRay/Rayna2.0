@@ -1,23 +1,22 @@
-// src/components/threeWorld/createSky.js
+// Cer simplu, sigur: o “cutie” uriașă cu textura ta pe interior.
 import * as THREE from 'three';
 
-const TEX_SKY = '/textures/lume/sky_textura.jpg';
+const TEX = '/textures/lume/sky_textura.jpg';
 
 export default function createSky() {
   const loader = new THREE.TextureLoader();
-  const map = loader.load(TEX_SKY, t => {
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.ClampToEdgeWrapping;
-    t.repeat.set(1, 1);
+  const map = loader.load(TEX);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(1, 1);
+
+  const geo = new THREE.BoxGeometry(4000, 4000, 4000);
+  const mat = new THREE.MeshBasicMaterial({
+    map,
+    side: THREE.BackSide,
+    depthWrite: false,
   });
-
-  // Sferă imensă inversată; MeshBasic => nu se întunecă
-  const geo = new THREE.SphereGeometry(1500, 32, 16);
-  geo.scale(-1, 1, 1);
-
-  const mat = new THREE.MeshBasicMaterial({ map, depthWrite: false });
   const sky = new THREE.Mesh(geo, mat);
-  sky.name = 'SkyDome';
+  sky.renderOrder = -10;     // asigurăm randarea în spate
   return sky;
 }
