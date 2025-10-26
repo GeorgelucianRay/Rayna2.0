@@ -92,8 +92,9 @@ function AddItemModal({ open, onClose, onSubmit }) {
  * Props:
  *  - containers: array pentru căutare
  *  - onSelectContainer(container)
- *  - onToggleFP()  ← pornește/oprește First-Person
- *  - onAdd(form)   ← trimite formularul “Add”
+ *  - onToggleFP()         – pornește/oprește First-Person
+ *  - onAdd(form)          – trimite formularul “Add”
+ *  - onOpenWorldItems()   – deschide lista de obiecte (scene items)
  */
 export default function Navbar3D({
   containers = [],
@@ -138,8 +139,8 @@ export default function Navbar3D({
           <IconBtn title="Căutare" onClick={() => { setSearchOpen(v=>!v); setDockOpen(false); }}>🔍</IconBtn>
           <IconBtn title="Walk / First-Person" onClick={() => { onToggleFP?.(); setDockOpen(false); }}>👤</IconBtn>
           <IconBtn title="Adaugă" onClick={() => { setAddOpen(true); setDockOpen(false); }}>＋</IconBtn>
-          // în lista de IconBtn din DOCK:
-<IconBtn title="Items (scene)" onClick={() => { onOpenWorldItems?.(); setDockOpen(false); }}>📋</IconBtn>
+          {/* Items (scene) */}
+          <IconBtn title="Items (scene)" onClick={() => { onOpenWorldItems?.(); setDockOpen(false); }}>📋</IconBtn>
         </div>
       )}
 
