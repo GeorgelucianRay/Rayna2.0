@@ -1,7 +1,6 @@
 // src/components/depot/map/Map3DPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
-import createBuildController from './world/buildController';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
@@ -19,6 +18,7 @@ import { slotToWorld } from './threeWorld/slotToWorld';
 import createFirstPerson from './threeWorld/firstPerson';
 import Navbar3D from './Navbar3D';
 import BuildPalette from './build/BuildPalette';            // 🧱 paleta de build
+import createBuildController from './world/buildController';
 
 // controllerul de build (opțional)
 let createBuildControllerSafe = null;
