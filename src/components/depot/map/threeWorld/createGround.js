@@ -1,4 +1,4 @@
-// src/components/threeWorld/createGround.js
+// src/components/depot/map/threeWorld/createGround.js
 import * as THREE from 'three';
 
 const SLOT_LEN = 6.06, SLOT_W = 2.44, SLOT_GAP = 0.06, STEP = SLOT_LEN + SLOT_GAP;
@@ -21,7 +21,10 @@ function paintSlot({ x = 0, z = 0, along = 'X' }) {
   const sizeX = along === 'X' ? STEP : SLOT_W;
   const sizeZ = along === 'X' ? SLOT_W : STEP;
   const geo = new THREE.PlaneGeometry(sizeX, sizeZ);
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.18,
+    side: THREE.DoubleSide, depthWrite: false
+  });
   const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI/2; m.position.set(x, 0.02, z); return m;
 }
 
@@ -31,7 +34,7 @@ export default function createGround({
 } = {}) {
   const g = new THREE.Group();
 
-  // placă asfalt + material cu textura ta
+  // === placă asfalt (mesh-ul pe care facem raycast) ===
   const thickness = 0.5;
   const geo = new THREE.BoxGeometry(width, thickness, depth);
   geo.translate(0, -thickness / 2, 0);
@@ -45,10 +48,14 @@ export default function createGround({
   const dirt    = new THREE.MeshStandardMaterial({ color: 0x6f7f49 });
 
   const slab = new THREE.Mesh(geo, [dirt, dirt, asphalt, dirt, dirt, dirt]);
+  slab.name = 'groundSlab';
   slab.receiveShadow = true;
   g.add(slab);
 
-  // coordonate pentru marcaje (aceleași ca înainte)
+  // <<< CHEIA: expunem mesh-ul principal pentru raycast din buildController
+  g.userData.groundMesh = slab;
+
+  // === marcaje ABC ===
   const ABC_BASE_Z = -4.0;
   const ABC_ROW_Z = {
     A: ABC_BASE_Z,
@@ -64,7 +71,6 @@ export default function createGround({
     F: DEF_BASE_X + 2 * (SLOT_W + 0.10),
   };
 
-  // ABC – sloturi + litere + numere (1..10 inversate)
   for (const row of ['A','B','C']) {
     const z = ABC_ROW_Z[row];
     for (let col = 1; col <= 10; col++) {
@@ -81,7 +87,7 @@ export default function createGround({
     const nC = makePaintedText(String(label), { size: 1.2 }); nC.position.set(xNum, 0.03, ABC_ROW_Z.C - 1.6); g.add(nC);
   }
 
-  // DEF – sloturi + litere + numere (1..7)
+  // === marcaje DEF ===
   for (const k of ['D','E','F']) {
     const x = DEF_COL_X[k];
     for (let r = 1; r <= 7; r++) {
