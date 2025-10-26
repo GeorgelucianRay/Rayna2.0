@@ -16,6 +16,7 @@ import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import SearchBox from './SearchBox';
 import { slotToWorld } from './threeWorld/slotToWorld';
+import createFirstPerson from './threeWorld/firstPerson';
 
 /* ===================== CONFIG DEPOZIT ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -31,6 +32,11 @@ export default function MapPage() {
   const cameraRef = useRef();
   const controlsRef = useRef();
   const isAnimatingRef = useRef(false);
+
+  // First-Person
+  const fpRef = useRef(null);
+  const clockRef = useRef(new THREE.Clock());
+  const [isFP, setIsFP] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,11 +86,12 @@ export default function MapPage() {
           const hit = intersects[0];
           const obj = hit.object;
 
+          // InstancedMesh: record via instanceId
           if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
             const rec = obj.userData.records[hit.instanceId];
             if (rec) { setSelectedContainer(rec); return; }
           }
-
+          // Fallback: obiect simplu cu __record
           if (obj.userData?.__record) {
             setSelectedContainer(obj.userData.__record);
             return;
@@ -96,25 +103,30 @@ export default function MapPage() {
 
     mount.addEventListener('click', onClick);
 
-    // lights, sky, landscape, ground
+    // Lumină, cer, peisaj
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(5, 10, 5);
     scene.add(dir);
 
-    // — cerul —
     scene.add(createSky());
-
-    // — peisajul: IMPORTANT — îi dăm dimensiunile curții
     scene.add(createLandscape({ ground: CFG.ground }));
 
-    // !!! am scos planul "earth" care călca peste peisaj
-
+    // Grupul curții
     depotGroup = new THREE.Group();
     const ground = createGround(CFG.ground);
     const fence = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(ground, fence);
     scene.add(depotGroup);
+
+    // First-Person bounds (aceleași ca la clamp)
+    const bounds = {
+      minX: -YARD_WIDTH / 2 + 3,
+      maxX:  YARD_WIDTH / 2 - 3,
+      minZ: -YARD_DEPTH / 2 + 3,
+      maxZ:  YARD_DEPTH / 2 - 3,
+    };
+    fpRef.current = createFirstPerson(camera, renderer.domElement, bounds);
 
     (async () => {
       try {
@@ -135,9 +147,14 @@ export default function MapPage() {
 
     const animate = () => {
       requestAnimationFrame(animate);
+      const delta = clockRef.current.getDelta();
+
       containersLayer?.userData?.tick?.();
-      controls.update();
-      if (!isAnimatingRef.current) {
+
+      if (!isFP) controls.update();
+      fpRef.current?.update(delta);
+
+      if (!isAnimatingRef.current && !isFP) {
         controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
         controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
       }
@@ -156,9 +173,10 @@ export default function MapPage() {
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
+      fpRef.current?.removeListeners?.();
       renderer.dispose();
     };
-  }, []);
+  }, [isFP]);
 
   // Fly-to
   useEffect(() => {
@@ -196,6 +214,27 @@ export default function MapPage() {
     setFlyToTarget(null);
   }, [flyToTarget]);
 
+  // Toggle First-Person
+  const toggleFP = () => {
+    const fp = fpRef.current;
+    const orbit = controlsRef.current;
+    const cam = cameraRef.current;
+    if (!fp || !orbit || !cam) return;
+
+    if (!isFP) {
+      orbit.enabled = false;
+      cam.position.y = 1.6;        // “ochii”
+      fp.addListeners();
+      fp.enable();
+      setIsFP(true);
+    } else {
+      fp.disable();
+      fp.removeListeners();
+      orbit.enabled = true;
+      setIsFP(false);
+    }
+  };
+
   return (
     <div className={styles.fullscreenRoot}>
       <div className={styles.searchContainer}>
@@ -208,6 +247,18 @@ export default function MapPage() {
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
+
+      {/* Toggle First-Person (mută-l în burger dacă vrei) */}
+      <button
+        onClick={toggleFP}
+        title={isFP ? 'Ieși din Walk' : 'Walk mode'}
+        style={{
+          position:'absolute', right:12, bottom:12, zIndex:5,
+          width:48, height:48, borderRadius:24, border:'none',
+          background:isFP ? '#10b981' : '#1f2937', color:'#fff',
+          fontSize:22, boxShadow:'0 2px 10px rgba(0,0,0,.25)'
+        }}
+      >👤</button>
 
       <div ref={mountRef} className={styles.canvasHost} />
 
