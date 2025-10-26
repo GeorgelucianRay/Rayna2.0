@@ -21,11 +21,10 @@ function IconBtn({ title, onClick, children }) {
   );
 }
 
-/** Modal “Add item” – adaptează câmpurile după formularul tău din Depot */
+/** Modal “Add item” – (exemplu minimal) */
 function AddItemModal({ open, onClose, onSubmit }) {
-  const [form, setForm] = useState({ matricula: '', lane: 'A', index: '1', tier: 'A' });
+  const [form, setForm] = useState({ name: '' });
   if (!open) return null;
-
   return (
     <div style={{
       position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:20,
@@ -36,44 +35,15 @@ function AddItemModal({ open, onClose, onSubmit }) {
         borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)'
       }}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-          <h3 style={{margin:0, fontSize:18}}>Adaugă container</h3>
+          <h3 style={{margin:0, fontSize:18}}>Adaugă</h3>
           <button onClick={onClose} style={{fontSize:20, background:'transparent', color:'#fff', border:'none'}}>✕</button>
         </div>
 
         <label style={{display:'grid', gap:6, fontSize:13, marginBottom:10}}>
-          <span style={{opacity:.85}}>Matriculă</span>
+          <span style={{opacity:.85}}>Nume exemplu</span>
           <input
-            value={form.matricula}
-            onChange={e=>setForm({...form, matricula:e.target.value})}
-            style={{background:'#0b1220', border:'1px solid #1f2a44', borderRadius:8, padding:'8px 10px', color:'#fff'}}
-          />
-        </label>
-
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10}}>
-          <label style={{display:'grid', gap:6, fontSize:13}}>
-            <span style={{opacity:.85}}>Coloană (A–F)</span>
-            <input
-              value={form.lane}
-              onChange={e=>setForm({...form, lane:e.target.value.toUpperCase()})}
-              style={{background:'#0b1220', border:'1px solid #1f2a44', borderRadius:8, padding:'8px 10px', color:'#fff'}}
-            />
-          </label>
-          <label style={{display:'grid', gap:6, fontSize:13}}>
-            <span style={{opacity:.85}}>Index (1–20)</span>
-            <input
-              type="number" min="1" max="20"
-              value={form.index}
-              onChange={e=>setForm({...form, index:e.target.value})}
-              style={{background:'#0b1220', border:'1px solid #1f2a44', borderRadius:8, padding:'8px 10px', color:'#fff'}}
-            />
-          </label>
-        </div>
-
-        <label style={{display:'grid', gap:6, fontSize:13}}>
-          <span style={{opacity:.85}}>Tier (A–F)</span>
-          <input
-            value={form.tier}
-            onChange={e=>setForm({...form, tier:e.target.value.toUpperCase()})}
+            value={form.name}
+            onChange={e=>setForm({...form, name:e.target.value})}
             style={{background:'#0b1220', border:'1px solid #1f2a44', borderRadius:8, padding:'8px 10px', color:'#fff'}}
           />
         </label>
@@ -90,18 +60,20 @@ function AddItemModal({ open, onClose, onSubmit }) {
 /**
  * Navbar3D – mini tools dock
  * Props:
- *  - containers: array pentru căutare
+ *  - containers
  *  - onSelectContainer(container)
- *  - onToggleFP()         – pornește/oprește First-Person
- *  - onAdd(form)          – trimite formularul “Add”
- *  - onOpenWorldItems()   – deschide lista de obiecte (scene items)
+ *  - onToggleFP()
+ *  - onAdd(form)
+ *  - onOpenBuild()        ← 🧱 deschide paleta de build
+ *  - onOpenWorldItems()   ← 📋 deschide lista de obiecte plasate
  */
 export default function Navbar3D({
   containers = [],
   onSelectContainer,
   onToggleFP,
   onAdd,
-  onOpenWorldItems
+  onOpenBuild,
+  onOpenWorldItems,
 }) {
   const [dockOpen, setDockOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -138,17 +110,17 @@ export default function Navbar3D({
         }}>
           <IconBtn title="Căutare" onClick={() => { setSearchOpen(v=>!v); setDockOpen(false); }}>🔍</IconBtn>
           <IconBtn title="Walk / First-Person" onClick={() => { onToggleFP?.(); setDockOpen(false); }}>👤</IconBtn>
-          <IconBtn title="Adaugă" onClick={() => { setAddOpen(true); setDockOpen(false); }}>＋</IconBtn>
-          {/* Items (scene) */}
+          <IconBtn title="Build" onClick={() => { onOpenBuild?.(); setDockOpen(false); }}>🧱</IconBtn>
           <IconBtn title="Items (scene)" onClick={() => { onOpenWorldItems?.(); setDockOpen(false); }}>📋</IconBtn>
+          <IconBtn title="Adaugă (exemplu)" onClick={() => { setAddOpen(true); setDockOpen(false); }}>＋</IconBtn>
         </div>
       )}
 
-      {/* Modal Add */}
+      {/* Modal Add (exemplu) */}
       <AddItemModal
         open={addOpen}
         onClose={()=>setAddOpen(false)}
-        onSubmit={(data)=>{ onAdd?.(data); }}
+        onSubmit={(data)=>{ onAdd?.(data); setAddOpen(false); }}
       />
     </>
   );
