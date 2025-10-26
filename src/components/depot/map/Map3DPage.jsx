@@ -1,4 +1,4 @@
-// Map3DPage.jsx
+// src/components/depot/map/Map3DPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -11,12 +11,12 @@ import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
 import fetchContainers from './threeWorld/fetchContainers';
-import createSky from './threeWorld/createSky';                // <- primește { scene, renderer, hdrPath, ... }
+import createSky from './threeWorld/createSky';                // primește { scene, renderer, hdrPath, ... }
 import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
-import SearchBox from './SearchBox';
 import { slotToWorld } from './threeWorld/slotToWorld';
-import createFirstPerson from './threeWorld/firstPerson';       // <- controller FP
+import createFirstPerson from './threeWorld/firstPerson';       // controller FP
+import Navbar3D from './Navbar3D';                               // 🔧 nou
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -173,7 +173,7 @@ export default function MapPage() {
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // first-person (controller încapsulat)
+    // first-person
     fpRef.current = createFirstPerson(camera, bounds);
     fpReadyRef.current = true;
     if (pendingEnableRef.current) { enableFPInternal(); pendingEnableRef.current = false; }
@@ -187,7 +187,7 @@ export default function MapPage() {
       createSky({
         scene,
         renderer,
-        hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', // <— fișierul tău
+        hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', // fișierul tău
         exposure: 1.1,
       })
     );
@@ -211,7 +211,7 @@ export default function MapPage() {
       } finally { setLoading(false); }
     })();
 
-    // click pick
+    // pick
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
@@ -295,12 +295,28 @@ export default function MapPage() {
     setSelectedContainer(flyToTarget); setFlyToTarget(null);
   }, [flyToTarget]);
 
+  /* ---------- CALLBACK-URI PENTRU NAVBAR3D ---------- */
+  const handleSelectFromSearch = (container) => {
+    setFlyToTarget(container);
+  };
+  const handleToggleFP = () => {
+    toggleFP();
+  };
+  const handleAdd = (formData) => {
+    // TODO: integrează cu Supabase / fluxul tău existent
+    console.log('Add from Navbar3D:', formData);
+  };
+
   /* ---------- RENDER ---------- */
   return (
     <div className={styles.fullscreenRoot}>
-      <div className={styles.searchContainer}>
-        <SearchBox containers={allContainers} onContainerSelect={setFlyToTarget} />
-      </div>
+      {/* Navbar mic cu tool-uri */}
+      <Navbar3D
+        containers={allContainers}
+        onSelectContainer={handleSelectFromSearch}
+        onToggleFP={handleToggleFP}
+        onAdd={handleAdd}
+      />
 
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
@@ -319,16 +335,6 @@ export default function MapPage() {
           />
         </>
       )}
-      <button
-        onClick={toggleFP}
-        title={isFP ? 'Ieși din Walk' : 'Walk mode'}
-        style={{
-          position:'absolute', right:12, bottom:90, zIndex:5,
-          width:48, height:48, borderRadius:24, border:'none',
-          background: isFP ? '#10b981' : '#1f2937', color:'#fff',
-          fontSize:22, boxShadow:'0 2px 10px rgba(0,0,0,.25)'
-        }}
-      >👤</button>
 
       <div ref={mountRef} className={styles.canvasHost} />
 
