@@ -1,25 +1,38 @@
-// world/propRegistry.js
+// src/components/depot/map/world/propRegistry.js
 import { makeRoadSegment } from './prefabs/RoadSegment';
 import { makeFencePanel } from './prefabs/FencePanel';
-import { makeHillTile } from './prefabs/HillTile';
-import { makeTree } from './prefabs/Tree';
-import { makeBuildingBox } from './prefabs/BuildingBox';
+import { makeHillTile }   from './prefabs/HillTile';   // opțional (poți lăsa stub)
+import { makeTree }       from './prefabs/Tree';       // opțional (poți lăsa stub)
+import { makeBuildingBox }from './prefabs/BuildingBox';// opțional (poți lăsa stub)
 
+/** Tipurile care apar în UI (Navbar3D) */
 export const PROP_TYPES = [
-  { key:'road.segment', label:'Șosea 2×4m' },
-  { key:'fence.panel', label:'Panou gard 2m' },
-  { key:'hill.tile',   label:'Bucată munte' },
-  { key:'tree',        label:'Copac' },
-  { key:'building.box',label:'Clădire box' },
+  { key: 'road.segment',  label: 'Șosea 2×4 m' },
+  { key: 'fence.panel',   label: 'Panou gard 2 m' },
+  { key: 'hill.tile',     label: 'Bucată munte' },
+  { key: 'tree',          label: 'Copac' },
+  { key: 'building.box',  label: 'Clădire (box)' },
 ];
 
-export function createMeshFor(type, params) {
-  switch (type) {
-    case 'road.segment': return makeRoadSegment(params);
-    case 'fence.panel':  return makeFencePanel(params);
-    case 'hill.tile':    return makeHillTile(params);
-    case 'tree':         return makeTree(params);
-    case 'building.box': return makeBuildingBox(params);
-    default: return null;
-  }
+/** Mapare key -> factory */
+const FACTORIES = {
+  'road.segment':  (params) => makeRoadSegment(params),
+  'fence.panel':   (params) => makeFencePanel(params),
+  'hill.tile':     (params) => makeHillTile?.(params),
+  'tree':          (params) => makeTree?.(params),
+  'building.box':  (params) => makeBuildingBox?.(params)
+};
+
+/** Creează mesh pentru un tip */
+export function createMeshFor(type, params = {}) {
+  const f = FACTORIES[type];
+  return f ? f(params) : null;
+}
+
+/** Pentru UI: listează tipuri + etichete */
+export function listPropTypes() {
+  return PROP_TYPES.map(t => t.key);
+}
+export function getLabelFor(type) {
+  return PROP_TYPES.find(t => t.key === type)?.label ?? type;
 }
