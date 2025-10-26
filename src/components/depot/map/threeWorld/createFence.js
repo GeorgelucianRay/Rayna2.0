@@ -1,87 +1,111 @@
 import * as THREE from 'three';
 
 /**
- * Creează gardul perimetral, cu opțiunea de a exclude o latură.
+ * Creează gardul împrejurul plăcii.
+ * @param {object} opt
+ *  - width, depth: dimensiunile interioare (în metri)
+ *  - margin: distanța de la marginea plăcii (default 0.5)
+ *  - postEvery: distanța între stâlpi (default 5m)
+ *  - height: înălțimea plasei (default 1.8m)
+ *  - texturePath: PNG cu transparență pentru plasă
  */
-export default function createFence({
-  width = 80,
-  depth = 50,
-  postEvery = 10,
-  excludeSide = null, // Opțiune: 'north', 'south', 'east', 'west'
-  gate = { side: 'south', width: 8, centerX: 0, centerZ: 0 },
-} = {}) {
-  const g = new THREE.Group();
-  const w = width / 2;
-  const d = depth / 2;
+export default function createFence(opt = {}) {
+  const {
+    width = 90,
+    depth = 60,
+    margin = 0.5,
+    postEvery = 5,
+    height = 1.8,
+    texturePath = '/textures/lume/gard_textura.png'
+  } = opt;
 
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x9aaabc, metalness: 0.15, roughness: 0.8 });
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xa7b4c8, metalness: 0.15, roughness: 0.8 });
-  const postGeo = new THREE.BoxGeometry(0.22, 1.8, 0.22);
+  const group = new THREE.Group();
 
-  const addPost = (x, z) => {
-    const p = new THREE.Mesh(postGeo, postMat);
-    p.position.set(x, 0.9, z);
-    p.castShadow = true;
-    g.add(p);
-  };
+  // ── TEXTURA PLASEI ─────────────────────────────────────────────
+  const tex = new THREE.TextureLoader().load(texturePath);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
 
-  if (excludeSide !== 'south') { for (let x = -w; x <= w; x += postEvery) addPost(x, -d); }
-  if (excludeSide !== 'north') { for (let x = -w; x <= w; x += postEvery) addPost(x, d); }
-  if (excludeSide !== 'west') { for (let z = -d; z <= d; z += postEvery) addPost(-w, z); }
-  if (excludeSide !== 'east') { for (let z = -d; z <= d; z += postEvery) addPost(w, z); }
+  // materialul panoului de plasă (fundal transparent)
+  const meshMat = new THREE.MeshStandardMaterial({
+    map: tex,
+    transparent: true,       // respectă canalul alpha din PNG
+    alphaTest: 0.25,         // elimină complet pixelii aproape transparenți
+    roughness: 0.9,
+    metalness: 0.2,
+    side: THREE.DoubleSide,
+    depthWrite: false        // reduce artefactele de sortare pentru forme subțiri
+  });
 
-  const createRail = (len, isVertical) => {
-    const railGeo = isVertical ? new THREE.BoxGeometry(0.1, 0.1, len) : new THREE.BoxGeometry(len, 0.1, 0.1);
-    const rail = new THREE.Mesh(railGeo, railMat);
-    rail.castShadow = true;
-    return rail;
-  };
-  
-  const addSideRails = (side) => {
-    if (excludeSide === side) return;
+  // ── STÂLPI ────────────────────────────────────────────────────
+  const postGeom = new THREE.CylinderGeometry(0.04, 0.04, height + 0.2, 8);
+  const postMat  = new THREE.MeshStandardMaterial({
+    color: 0x9aa0a6, metalness: 0.6, roughness: 0.4
+  });
 
-    const isGateSide = gate.side === side;
-    const isVertical = side === 'west' || side === 'east';
-    const totalLength = isVertical ? depth : width;
-    const center = isVertical ? gate.centerZ : gate.centerX;
-    const halfDim = isVertical ? d : w;
+  function addPost(x, z) {
+    const m = new THREE.Mesh(postGeom, postMat);
+    m.position.set(x, (height + 0.2) / 2, z);
+    m.castShadow = m.receiveShadow = true;
+    group.add(m);
+  }
 
-    const createAndAddRail = (pos, len, y) => {
-        const rail = createRail(len, isVertical);
-        if (isVertical) {
-            rail.position.set(side === 'west' ? -w : w, y, pos);
-        } else {
-            rail.position.set(pos, y, side === 'south' ? -d : d);
-        }
-        g.add(rail);
-    };
+  // ── PANOURI DE PLASĂ ──────────────────────────────────────────
+  // panoul este un plane pe axa X (lungime = distanța dintre stâlpi), înălțime = height
+  function addPanel(x1, z1, x2, z2) {
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const len = Math.hypot(dx, dz);
 
-    if (!isGateSide || gate.width <= 0) {
-        createAndAddRail(0, totalLength, 1.5);
-        createAndAddRail(0, totalLength, 0.8);
-    } else {
-        const halfGate = gate.width / 2;
-        const firstSegmentLen = Math.max(0.01, center - halfGate - (-halfDim));
-        const secondSegmentLen = Math.max(0.01, halfDim - (center + halfGate));
+    const geom = new THREE.PlaneGeometry(len, height, 1, 1);
 
-        const firstSegmentPos = (-halfDim + (center - halfGate)) / 2;
-        const secondSegmentPos = ((center + halfGate) + halfDim) / 2;
+    // repetăm textura în funcție de lungime ca să nu se întindă inestetic
+    const repX = Math.max(1, Math.round(len / 2.0)); // ~2m per tile (ajustează la nevoie)
+    tex.repeat.set(repX, Math.max(1, Math.round(height / 1.0)));
 
-        if (firstSegmentLen > 0.01) {
-            createAndAddRail(firstSegmentPos, firstSegmentLen, 1.5);
-            createAndAddRail(firstSegmentPos, firstSegmentLen, 0.8);
-        }
-        if (secondSegmentLen > 0.01) {
-            createAndAddRail(secondSegmentPos, secondSegmentLen, 1.5);
-            createAndAddRail(secondSegmentPos, secondSegmentLen, 0.8);
-        }
+    const panel = new THREE.Mesh(geom, meshMat.clone());
+    panel.material.map = tex.clone();   // fiecare panou își poate seta repeat-ul propriu
+    panel.material.map.needsUpdate = true;
+
+    // poziție & rotație
+    panel.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
+    panel.rotation.y = Math.atan2(dx, dz); // orientăm plane-ul pe direcția segmentului
+
+    group.add(panel);
+  }
+
+  // ── CONTUR ────────────────────────────────────────────────────
+  const halfW = width / 2 + margin;
+  const halfD = depth / 2 + margin;
+
+  // parcurgem fiecare latură și așezăm stâlpi + panouri între ei
+  function edge(xa, za, xb, zb, total) {
+    const seg = postEvery;
+    const steps = Math.max(1, Math.round(total / seg));
+    const dx = (xb - xa) / steps;
+    const dz = (zb - za) / steps;
+
+    let prevX = xa, prevZ = za;
+    addPost(prevX, prevZ);
+
+    for (let i = 1; i <= steps; i++) {
+      const x = xa + dx * i;
+      const z = za + dz * i;
+      addPost(x, z);
+      addPanel(prevX, prevZ, x, z);
+      prevX = x; prevZ = z;
     }
-  };
+  }
 
-  addSideRails('south');
-  addSideRails('north');
-  addSideRails('west');
-  addSideRails('east');
+  // latura N (z = -halfD)
+  edge(-halfW, -halfD,  halfW, -halfD, 2 * halfW);
+  // latura E (x =  halfW)
+  edge( halfW, -halfD,  halfW,  halfD, 2 * halfD);
+  // latura S (z =  halfD)
+  edge( halfW,  halfD, -halfW,  halfD, 2 * halfW);
+  // latura V (x = -halfW)
+  edge(-halfW,  halfD, -halfW, -halfD, 2 * halfD);
 
-  return g;
+  return group;
 }
