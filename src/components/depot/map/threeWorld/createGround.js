@@ -1,44 +1,41 @@
+// src/components/threeWorld/createGround.js
 import * as THREE from 'three';
 
-const ASPHALT_TEX = '/textures/lume/asphalt_curte_textura.PNG';
+const TEX_ASPHALT = '/textures/lume/asphalt_curte_textura.PNG';
 
-/**
- * Creează placa de curte cu textura de asfalt.
- * Apelezi: createGround({ width, depth, color?, abcOffsetX?, defOffsetX?, abcToDefGap? })
- *  - width/depth sunt folosite și ca tiling pentru textură (cu repeat automat).
- */
-export default function createGround({
-  width,
-  depth,
-  color = 0x9aa0a6,     // nefolosit când avem map, dar îl păstrăm ca fallback
-  abcOffsetX = 0,
-  defOffsetX = 0,
-  abcToDefGap = 0
-} = {}) {
+export default function createGround({ width, depth, color }) {
   const group = new THREE.Group();
 
-  // textură asfalt
-  const loader = new THREE.TextureLoader();
-  const asphalt = loader.load(ASPHALT_TEX);
-  asphalt.colorSpace = THREE.SRGBColorSpace;
-  asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
+  // „pământ” sub curte, ușor mai jos (nu se vede prin asfalt)
+  const soil = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000),
+    new THREE.MeshStandardMaterial({ color: 0x78904c, roughness: 1 })
+  );
+  soil.rotation.x = -Math.PI / 2;
+  soil.position.y = -0.06;
+  soil.receiveShadow = true;
+  group.add(soil);
 
-  // tiling automat în funcție de dimensiunile plăcii (≈ o dală la 2m)
-  const repeatX = Math.max(1, Math.round((width  ?? 100) / 2));
-  const repeatY = Math.max(1, Math.round((depth  ?? 100) / 2));
-  asphalt.repeat.set(repeatX, repeatY);
+  // asfalt
+  const tex = new THREE.TextureLoader().load(TEX_ASPHALT, t => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    // tile ușor pentru detaliu
+    t.repeat.set(Math.max(1, width / 10), Math.max(1, depth / 10));
+    t.anisotropy = 4;
+  });
 
   const mat = new THREE.MeshStandardMaterial({
-    map: asphalt,
-    roughness: 1.0,
+    map: tex,
+    roughness: 0.95,
     metalness: 0.0
   });
 
-  const geo = new THREE.PlaneGeometry(width, depth, 1, 1);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI / 2;    // orizontal
-  mesh.receiveShadow = true;
+  const slab = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
+  slab.rotation.x = -Math.PI / 2;
+  slab.position.y = -0.01; // puțin peste „soil” → fără z-fighting
+  slab.receiveShadow = true;
+  group.add(slab);
 
-  group.add(mesh);
   return group;
 }

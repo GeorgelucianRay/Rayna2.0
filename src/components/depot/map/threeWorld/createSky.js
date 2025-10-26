@@ -1,24 +1,23 @@
+// src/components/threeWorld/createSky.js
 import * as THREE from 'three';
 
-const SKY_TEX = '/textures/lume/sky_textura.jpg';
+const TEX_SKY = '/textures/lume/sky_textura.jpg';
 
-/**
- * Creează o sferă uriașă inversată pentru cer.
- * Textura este aplicată pe interiorul sferei.
- */
 export default function createSky() {
   const loader = new THREE.TextureLoader();
-  const skyTex = loader.load(SKY_TEX);
-  skyTex.colorSpace = THREE.SRGBColorSpace;
-
-  const mat = new THREE.MeshBasicMaterial({
-    map: skyTex,
-    side: THREE.BackSide, // important: textura se vede din interior
+  const map = loader.load(TEX_SKY, t => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+    t.repeat.set(1, 1);
   });
 
-  const geom = new THREE.SphereGeometry(2000, 64, 64);
-  const sky = new THREE.Mesh(geom, mat);
-  sky.rotation.y = Math.PI; // opțional, dacă textura are o direcție preferată
+  // Sferă imensă inversată; MeshBasic => nu se întunecă
+  const geo = new THREE.SphereGeometry(1500, 32, 16);
+  geo.scale(-1, 1, 1);
 
+  const mat = new THREE.MeshBasicMaterial({ map, depthWrite: false });
+  const sky = new THREE.Mesh(geo, mat);
+  sky.name = 'SkyDome';
   return sky;
 }

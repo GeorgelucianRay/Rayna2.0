@@ -1,41 +1,73 @@
+// src/components/threeWorld/createLandscape.js
 import * as THREE from 'three';
 
-const MOUNTAIN_TEX = '/textures/lume/munte_textura.jpg';
+const TEX_MUNTE = '/textures/lume/munte_textura.jpg';
 
 /**
- * Creează peisajul montan din jurul curții.
- * Folosește o textură aplicată pe un mesh mare, ușor modelat.
+ * Creează un „inel” de teren în jurul curții (curtea rămâne decupată).
+ * @param {{ground:{width:number, depth:number}}} cfg  – pasează CFG.ground din Map3D
  */
-export default function createLandscape() {
-  const group = new THREE.Group();
+export default function createLandscape(cfg) {
+  const W = cfg?.ground?.width  ?? 90;
+  const D = cfg?.ground?.depth  ?? 60;
+  const R = Math.max(W, D) * 6;        // rază exterioară (mult în afara curții)
 
-  const loader = new THREE.TextureLoader();
-  const tex = loader.load(MOUNTAIN_TEX);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(8, 4); // Ajustează densitatea texturii pe munți
+  // formă exterioară (cerc) + gaură pentru curte (dreptunghi ușor mai mare)
+  const outer = new THREE.Shape();
+  outer.absellipse(0, 0, R, R, 0, Math.PI * 2);
+
+  const hole = new THREE.Path();
+  hole.moveTo(-W/2 - 2, -D/2 - 2);
+  hole.lineTo( W/2 + 2, -D/2 - 2);
+  hole.lineTo( W/2 + 2,  D/2 + 2);
+  hole.lineTo(-W/2 - 2,  D/2 + 2);
+  hole.closePath();
+  outer.holes.push(hole);
+
+  const geo = new THREE.ShapeGeometry(outer, 1);
+
+  // UV-uri planar pe XY, normalizate în [0..1]
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const size = new THREE.Vector2(bb.max.x - bb.min.x, bb.max.y - bb.min.y);
+  const uvs = [];
+  for (let i = 0; i < geo.attributes.position.count; i++) {
+    const x = geo.attributes.position.getX(i);
+    const y = geo.attributes.position.getY(i);
+    uvs.push((x - bb.min.x) / size.x, (y - bb.min.y) / size.y);
+  }
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+  const tex = new THREE.TextureLoader().load(TEX_MUNTE, t => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    // mai multe tile-uri pentru detaliu
+    t.repeat.set(6, 6);
+    t.anisotropy = 4;
+  });
 
   const mat = new THREE.MeshStandardMaterial({
     map: tex,
-    roughness: 1,
-    metalness: 0,
+    roughness: 0.95,
+    metalness: 0.0
   });
 
-  // Un teren mare, curbat ușor
-  const geom = new THREE.PlaneGeometry(2000, 2000, 64, 64);
-  geom.rotateX(-Math.PI / 2);
-
-  // Modelăm puțin terenul ca să pară valuri de dealuri
-  for (let i = 0; i < geom.attributes.position.count; i++) {
-    const y = Math.sin(i / 5) * 2 + Math.random() * 1.5;
-    geom.attributes.position.setY(i, y);
-  }
-
-  geom.computeVertexNormals();
-
-  const mesh = new THREE.Mesh(geom, mat);
-  mesh.position.y = -0.3; // puțin sub curte
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = -0.061; // puțin sub asfalt
   mesh.receiveShadow = true;
-  group.add(mesh);
 
-  return group;
+  // „relief” ușor: unduim marginile (fără a atinge curtea)
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    const d = Math.hypot(x, y);
+    const k = THREE.MathUtils.clamp((d - Math.max(W,D)/2) / (R - Math.max(W,D)/2), 0, 1);
+    const bump = Math.sin(k * Math.PI) * 0.6; // ~60cm relief
+    pos.setZ(i, bump);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  return mesh;
 }
