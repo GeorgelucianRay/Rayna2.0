@@ -15,8 +15,18 @@ import createSky from './threeWorld/createSky';                // primește { sc
 import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import { slotToWorld } from './threeWorld/slotToWorld';
-import createFirstPerson from './threeWorld/firstPerson';       // controller FP
-import Navbar3D from './Navbar3D';                               // 🔧 nou
+import createFirstPerson from './threeWorld/firstPerson';
+import Navbar3D from './Navbar3D';
+
+// (opțional) controllerul de build – dacă nu e încă implementat, codul face fallback grațios
+let createBuildControllerSafe = null;
+try {
+  // pune controllerul tău în: src/components/depot/map/world/buildController.js
+  // export default function createBuildController({...}) { ... }
+  createBuildControllerSafe = require('./world/buildController').default;
+} catch (e) {
+  // no-op; rămânem fără build până îl adaugi
+}
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -73,6 +83,7 @@ function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
     </div>
   );
 }
+
 function ForwardButton({ pressed, setPressed, ensureFP }) {
   return (
     <button
@@ -115,8 +126,17 @@ export default function MapPage() {
   const [allContainers, setAllContainers] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error,   setError]   = useState('');
   const navigate = useNavigate();
+
+  // Build mode (Minecraft-like)
+  const [buildActive, setBuildActive] = useState(false);
+  const [buildMode,   setBuildMode]   = useState('place'); // 'place' | 'remove'
+  const buildRef = useRef(null);        // controllerul de build
+  const worldGroupRef = useRef(null);   // grupul cu obiecte editabile
+
+  // Items list modal
+  const [itemsOpen, setItemsOpen] = useState(false);
 
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
@@ -187,18 +207,39 @@ export default function MapPage() {
       createSky({
         scene,
         renderer,
-        hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', // fișierul tău
+        hdrPath: '/textures/lume/golden_gate_hills_1k.hdr',
         exposure: 1.1,
       })
     );
 
-    // PEISAJ + CURTE
+    // PEISAJ larg (exterior)
     scene.add(createLandscape({ ground: CFG.ground }));
+
+    // === WORLD EDITABLE ===
+    const worldGroup = new THREE.Group();
+    worldGroup.name = 'worldGroup';
+    scene.add(worldGroup);
+    worldGroupRef.current = worldGroup;
+
+    // CURTE (ground + gard)
     const depotGroup = new THREE.Group();
-    const ground = createGround(CFG.ground);
+    const groundNode = createGround(CFG.ground);
+    const groundMesh = groundNode.userData?.groundMesh || groundNode; // pentru raycast
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
-    depotGroup.add(ground, fence);
+    depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
+
+    // Build controller (dacă există fișierul; altfel îl ignori până îl adaugi)
+    if (createBuildControllerSafe) {
+      buildRef.current = createBuildControllerSafe({
+        camera,
+        domElement: renderer.domElement,
+        worldGroup,
+        groundMesh,
+        grid: 1, // snap la 1m
+      });
+      buildRef.current?.setMode(buildMode);
+    }
 
     // containere
     (async () => {
@@ -211,11 +252,16 @@ export default function MapPage() {
       } finally { setLoading(false); }
     })();
 
-    // pick
+    // pick containere
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
+      // nu interceptăm clickurile pe UI
       if (event.target.closest(`.${styles.searchContainer}`)) return;
+
+      // dacă suntem în build mode, nu selectăm containere
+      if (buildActive) return;
+
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -231,6 +277,18 @@ export default function MapPage() {
       setSelectedContainer(null);
     };
     mount.addEventListener('click', onClick);
+
+    // === Build input: doar când buildActive === true
+    function onPointerMove(e) {
+      if (!buildActive || !buildRef.current) return;
+      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
+    }
+    function onPointerDown(e) {
+      if (!buildActive || !buildRef.current) return;
+      buildRef.current.clickAt(e.clientX, e.clientY);
+    }
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -264,10 +322,12 @@ export default function MapPage() {
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
-  }, [bounds]);
+  }, [bounds, buildActive, buildMode]);
 
   // joystick: “înainte”
   useEffect(() => { fpRef.current?.setForwardPressed(fwdPressed); }, [fwdPressed]);
@@ -303,8 +363,11 @@ export default function MapPage() {
     toggleFP();
   };
   const handleAdd = (formData) => {
-    // TODO: integrează cu Supabase / fluxul tău existent
+    // Integrare ulterioară (Supabase / world store)
     console.log('Add from Navbar3D:', formData);
+  };
+  const handleOpenWorldItems = () => {
+    setItemsOpen(true);
   };
 
   /* ---------- RENDER ---------- */
@@ -316,12 +379,15 @@ export default function MapPage() {
         onSelectContainer={handleSelectFromSearch}
         onToggleFP={handleToggleFP}
         onAdd={handleAdd}
+        onOpenWorldItems={handleOpenWorldItems}  // 📋
       />
 
+      {/* Top bar exit */}
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
 
+      {/* Controale mobile în First-Person */}
       {isFP && (
         <>
           <VirtualJoystick
@@ -336,12 +402,32 @@ export default function MapPage() {
         </>
       )}
 
+      {/* Canvas */}
       <div ref={mountRef} className={styles.canvasHost} />
 
+      {/* Card info container selectat */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
       />
+
+      {/* Modal “World Items” – provizoriu; umple-l cu store-ul tău */}
+      {itemsOpen && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
+                      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ width:'min(560px,94vw)', background:'#0b1220', color:'#fff',
+                        borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)' }}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <h3 style={{margin:0}}>World Items</h3>
+              <button onClick={()=>setItemsOpen(false)} style={{fontSize:20, background:'transparent', color:'#fff', border:'none'}}>✕</button>
+            </div>
+            <div style={{opacity:.7, marginTop:8}}>
+              De aici vei lista/edita/șterge obiectele plasate (drumuri, segmente gard, rocă, etc.).
+              Populează cu store-ul din buildController (ex: worldStore.items).
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
