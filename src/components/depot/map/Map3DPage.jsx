@@ -15,7 +15,7 @@ import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import SearchBox from './SearchBox';
 import { slotToWorld } from './threeWorld/slotToWorld';
-import createFirstPerson from './threeWorld/firstPerson';   // <<<< NOU
+import createFirstPerson from './threeWorld/firstPerson';
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -99,7 +99,15 @@ export default function MapPage() {
   const isAnimatingRef = useRef(false);
   const clockRef = useRef(new THREE.Clock());
 
+  // FP controller
   const [isFP, setIsFP] = useState(false);
+  const isFPRef = useRef(false);
+  useEffect(() => { isFPRef.current = isFP; }, [isFP]);
+
+  const fpRef = useRef(null);
+  const fpReadyRef = useRef(false);
+  const pendingEnableRef = useRef(false);
+
   const [fwdPressed, setFwdPressed] = useState(false);
 
   const [selectedContainer, setSelectedContainer] = useState(null);
@@ -116,9 +124,48 @@ export default function MapPage() {
     maxZ:  YARD_DEPTH / 2 - 2,
   }), []);
 
-  // instanța FP (după ce avem camera)
-  const fpRef = useRef(null);
+  /* ---------- HANDLERS ---------- */
+  const enableFPInternal = () => {
+    const orbit = controlsRef.current;
+    if (!orbit) return;
+    if (!fpRef.current || !fpReadyRef.current) {
+      pendingEnableRef.current = true;
+      return;
+    }
+    orbit.enabled = false;
+    fpRef.current.enable();
+    fpRef.current.addKeyboard();
+    isFPRef.current = true;
+    setIsFP(true);
+  };
 
+  const disableFPInternal = () => {
+    const orbit = controlsRef.current;
+    if (!orbit) return;
+    if (fpRef.current) {
+      fpRef.current.disable();
+      fpRef.current.removeKeyboard();
+    }
+    orbit.enabled = true;
+    isFPRef.current = false;
+    setIsFP(false);
+  };
+
+  const ensureFP = () => {
+    if (isFPRef.current) return;
+    if (!fpRef.current || !fpReadyRef.current) {
+      pendingEnableRef.current = true;
+      return;
+    }
+    enableFPInternal();
+  };
+
+  const toggleFP = () => {
+    if (isFPRef.current) disableFPInternal();
+    else ensureFP();
+  };
+
+  /* ---------- INIT SCENE ---------- */
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
@@ -138,8 +185,13 @@ export default function MapPage() {
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // ====== First-person controller (încapsulat) ======
+    // create FP controller
     fpRef.current = createFirstPerson(camera, bounds);
+    fpReadyRef.current = true;
+    if (pendingEnableRef.current) {
+      enableFPInternal();
+      pendingEnableRef.current = false;
+    }
 
     // lights + lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
@@ -173,7 +225,7 @@ export default function MapPage() {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
 
-      if (isFP) {
+      if (isFPRef.current) {
         fpRef.current?.update(delta);
       } else {
         controls.update();
@@ -199,33 +251,10 @@ export default function MapPage() {
     };
   }, [bounds]);
 
-  // === UI handlers ===
-  const ensureFP = () => {
-    const orbit = controlsRef.current;
-    if (!orbit) return;
-    if (!isFP) {
-      orbit.enabled = false;
-      fpRef.current?.enable();
-      fpRef.current?.addKeyboard();
-      setIsFP(true);
-    }
-  };
-  const toggleFP = () => {
-    const orbit = controlsRef.current;
-    if (!orbit) return;
-    if (!isFP) { ensureFP(); }
-    else {
-      fpRef.current?.disable();
-      fpRef.current?.removeKeyboard();
-      orbit.enabled = true;
-      setIsFP(false);
-    }
-  };
-
-  // joystick și buton ↑ trimit direct în controller
+  // joystick ↑
   useEffect(() => { fpRef.current?.setForwardPressed(fwdPressed); }, [fwdPressed]);
 
-  // Fly-to (neremodelat)
+  /* ---------- FLY-TO ---------- */
   useEffect(() => {
     if (!flyToTarget) return;
     const camera = cameraRef.current; const controls = controlsRef.current;
@@ -248,6 +277,7 @@ export default function MapPage() {
     setSelectedContainer(flyToTarget); setFlyToTarget(null);
   }, [flyToTarget]);
 
+  /* ---------- RENDER ---------- */
   return (
     <div className={styles.fullscreenRoot}>
       <div className={styles.searchContainer}>
