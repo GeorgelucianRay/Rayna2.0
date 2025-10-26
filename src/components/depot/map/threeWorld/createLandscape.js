@@ -1,49 +1,41 @@
 import * as THREE from 'three';
 
-function createHillSegment(options) {
-  const { width = 200, baseHeight = 5, peakHeight = 25, depth = 150, segments = 30 } = options;
+const MOUNTAIN_TEX = '/textures/lume/munte_textura.jpg';
 
-  const geometry = new THREE.BoxGeometry(width, baseHeight, depth, segments, 5, 1);
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x78904c,
-    flatShading: true,
+/**
+ * Creează peisajul montan din jurul curții.
+ * Folosește o textură aplicată pe un mesh mare, ușor modelat.
+ */
+export default function createLandscape() {
+  const group = new THREE.Group();
+
+  const loader = new THREE.TextureLoader();
+  const tex = loader.load(MOUNTAIN_TEX);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(8, 4); // Ajustează densitatea texturii pe munți
+
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex,
+    roughness: 1,
+    metalness: 0,
   });
 
-  const positionAttribute = geometry.getAttribute('position');
-  const topFaceY = baseHeight / 2;
+  // Un teren mare, curbat ușor
+  const geom = new THREE.PlaneGeometry(2000, 2000, 64, 64);
+  geom.rotateX(-Math.PI / 2);
 
-  for (let i = 0; i < positionAttribute.count; i++) {
-    const originalY = positionAttribute.getY(i);
-    if (originalY >= topFaceY - 0.1) {
-      const x = positionAttribute.getX(i);
-      const z = positionAttribute.getZ(i);
-      const noise = Math.sin(x * 0.02) * Math.cos(z * 0.03);
-      positionAttribute.setY(i, originalY + noise * peakHeight);
-    }
+  // Modelăm puțin terenul ca să pară valuri de dealuri
+  for (let i = 0; i < geom.attributes.position.count; i++) {
+    const y = Math.sin(i / 5) * 2 + Math.random() * 1.5;
+    geom.attributes.position.setY(i, y);
   }
-  geometry.computeVertexNormals();
-  
-  const hill = new THREE.Mesh(geometry, material);
-  hill.receiveShadow = true;
-  return hill;
-}
 
-export default function createLandscape() {
-  const landscape = new THREE.Group();
-  
-  const backWall = createHillSegment({ width: 500 });
-  backWall.position.set(0, 0, -150);
-  landscape.add(backWall);
+  geom.computeVertexNormals();
 
-  const leftWall = createHillSegment({ width: 400 });
-  leftWall.position.set(-250, 0, 0);
-  leftWall.rotation.y = Math.PI / 2;
-  landscape.add(leftWall);
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.position.y = -0.3; // puțin sub curte
+  mesh.receiveShadow = true;
+  group.add(mesh);
 
-  const rightWall = createHillSegment({ width: 400 });
-  rightWall.position.set(250, 0, 0);
-  rightWall.rotation.y = -Math.PI / 2;
-  landscape.add(rightWall);
-
-  return landscape;
+  return group;
 }

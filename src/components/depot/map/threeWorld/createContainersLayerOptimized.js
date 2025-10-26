@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { slotToWorld } from './slotToWorld';
 
-/* ------------ DIMENSIUNI CONTAINERE ------------ */
+/* ===== Dimensiuni containere ===== */
 const SIZE_BY_TIPO = {
   '20':        { L: 6.06,  H: 2.59, W: 2.44 },
   '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
@@ -12,12 +12,12 @@ const SIZE_BY_TIPO = {
   '45':        { L: 13.72, H: 2.89, W: 2.44 },
 };
 
-/* ------------ TEXTURI ------------ */
+/* ===== Texturi ===== */
 const TEXROOT = '/textures/contenedores';
 const loader = new THREE.TextureLoader();
 const tcache = new Map();
 
-function tex(path) {
+function loadTex(path) {
   if (tcache.has(path)) return tcache.get(path);
   const t = loader.load(path);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -27,55 +27,79 @@ function tex(path) {
   return t;
 }
 
-// naviera -> folder texturi
-function brandFolder(navRaw = '', isRoto = false) {
-  if (isRoto) return 'roto';
-  const s = String(navRaw).toLowerCase();
-  if (s.includes('msk') || s.includes('maersk'))   return 'maersk';
-  if (s.includes('hapag'))                         return 'hapag';
-  if (s.includes('evergreen'))                     return 'evergreen';
-  if (s.includes('arkas'))                         return 'arkas';
-  if (s.includes('messina'))                       return 'messina';
-  if (s.includes('msc'))                           return 'msc';
-  if (s.includes('one'))                           return 'one';
-  return 'neutru';
+// încearcă mai multe nume posibile (ai fișiere cu/ fără "_texture")
+function brandTex(brand, which) {
+  const dir = `${TEXROOT}/${brand}`;
+  const candidates = [
+    `${dir}/${brand}_40_${which}_texture.png`,
+    `${dir}/${brand}_40_${which}.png`,
+    `${dir}/${brand}_40_${which}_texture.jpg`,
+    `${dir}/${brand}_40_${which}.jpg`,
+  ];
+  for (const p of candidates) {
+    try { return loadTex(p); } catch {}
+  }
+  // fallback: gri simplu
+  const tx = new THREE.Texture();
+  return tx;
+}
+
+function normBrand(name = '') {
+  const s = name.toLowerCase();
+  if (s.includes('maersk') || s === 'msk') return 'maersk';
+  if (s.includes('evergreen')) return 'evergreen';
+  if (s.includes('hapag') || s.includes('hlag')) return 'hapag';
+  if (s.includes('messina')) return 'messina';
+  if (s.includes('one')) return 'one';
+  if (s.includes('arkas') || s.includes('arcas')) return 'arkas';
+  if (s.includes('msc')) return 'msc';
+  if (s.includes('roto') || s.includes('rotoș') || s.includes('rotos')) return 'roto';
+  return 'neutru'; // pentru “OTROS”
 }
 
 /**
- * Materiale pentru box în funcție de brand și orientare.
- * Ordinea fețelor BoxGeometry: [right, left, top, bottom, front(+Z), back(-Z)]
- * orient = 'X' => lungimea e pe axa X (capetele sunt ±X)
- * orient = 'Z' => lungimea e pe axa Z (capetele sunt ±Z)
+ * Construiește array-ul de 6 materiale pentru BoxGeometry CU direcție.
+ * Ordine three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
+ * orient: 'X' sau 'Z' – axa pe care “curge” lungimea.
+ * facing: '+X' / '-X' / '+Z' / '-Z' – către ce capăt sunt ușile (front).
  */
-function makeMaterials({ folder, sizeMetersL, orient }) {
-  const dir = `${TEXROOT}/${folder}`;
+function makeMaterials({ brand, sizeMetersL, orient, facing }) {
+  // texturi
+  const side  = brandTex(brand, 'side');
+  const top   = brandTex(brand, 'top');
+  const front = brandTex(brand, 'front');
+  const back  = brandTex(brand, 'back');
 
-  const side  = tex(`${dir}/${folder}_40_side_texture.png`);
-  const front = tex(`${dir}/${folder}_40_front_texture.png`);
-  const back  = tex(`${dir}/${folder}_40_back_texture.png`);
-  const top   = tex(`${dir}/${folder}_40_top_texture.png`);
-
-  // scale pe lungime ca să reutilizăm setul “40”
-  const repeatX = Math.max(0.25, sizeMetersL / 12.19);
-  side.repeat.set(repeatX, 1);
-  top.repeat.set(repeatX, 1);
+  // scale pentru 20/40/45 (setul e 40ft ~ 12.19m)
+  const repeatL = Math.max(0.25, sizeMetersL / 12.19);
+  side.repeat.set(repeatL, 1);
+  top.repeat.set(repeatL, 1);
 
   const mSide   = new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 });
   const mTop    = new THREE.MeshStandardMaterial({ map: top,   metalness: 0.1, roughness: 0.85 });
-  const mBottom = new THREE.MeshStandardMaterial({ color: 0x808588, metalness: 0.05, roughness: 0.95 });
+  const mBottom = new THREE.MeshStandardMaterial({ color: 0x8a8f95, metalness: 0.1, roughness: 0.9 });
   const mFront  = new THREE.MeshStandardMaterial({ map: front, metalness: 0.1, roughness: 0.8 });
   const mBack   = new THREE.MeshStandardMaterial({ map: back,  metalness: 0.1, roughness: 0.8 });
 
+  // maparea pe fețe, cu inversare pentru direcție
   if (orient === 'X') {
-    // right(+X)=front(doors), left(-X)=back, front(+Z)=side, back(-Z)=side
-    return [mFront, mBack, mTop, mBottom, mSide, mSide];
+    // lateralele sunt ±Z; capetele (ușile) sunt ±X
+    if (facing === '+X') {
+      return [mFront, mBack, mTop, mBottom, mSide, mSide];
+    } else { // '-X'
+      return [mBack, mFront, mTop, mBottom, mSide, mSide];
+    }
   } else {
-    // right(+X)=side, left(-X)=side, front(+Z)=front(doors), back(-Z)=back
-    return [mSide, mSide, mTop, mBottom, mFront, mBack];
+    // orient === 'Z' → lateralele sunt ±X; capetele sunt ±Z
+    if (facing === '+Z') {
+      return [mSide, mSide, mTop, mBottom, mFront, mBack];
+    } else { // '-Z'
+      return [mSide, mSide, mTop, mBottom, mBack, mFront];
+    }
   }
 }
 
-/* ------------ STRATUL DE CONTAINERE ------------ */
+/* ===== Layer ===== */
 export default function createContainersLayerOptimized(data, layout) {
   const layer = new THREE.Group();
   const all = data?.containers || [];
@@ -90,6 +114,7 @@ export default function createContainersLayerOptimized(data, layout) {
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
   }
 
+  // bucketize după tip, brand, orient și direcția de “front”
   all.forEach(rec => {
     const parsed = parsePos(rec.pos ?? rec.posicion);
     if (!parsed) return;
@@ -102,17 +127,25 @@ export default function createContainersLayerOptimized(data, layout) {
       { ...layout, abcNumbersReversed: true }
     );
 
+    // orientare (axa lungimii)
     const rot = wp.rotationY || 0;
-    const orient = (Math.round((rot / (Math.PI / 2)) % 2) % 2 === 0) ? 'X' : 'Z';
+    const nearHalfPi = Math.abs(Math.sin(rot)) > Math.abs(Math.cos(rot)); // ~±PI/2
+    const orient = nearHalfPi ? 'Z' : 'X';
 
-    const isRoto = rec.__source === 'rotos';
-    const folder = brandFolder(rec.naviera, isRoto);
+    // direcția “front” (ușile)
+    let facing = '+X';
+    const c = Math.cos(rot), s = Math.sin(rot);
+    if (orient === 'X') facing = c >= 0 ? '+X' : '-X';
+    else facing = s >= 0 ? '+Z' : '-Z';
 
-    const key = `${tipo}|${folder}|${orient}`;
+    const brand = normBrand(rec.naviera || '');
+    const isProgramado = rec.__source === 'programados';
+
+    const key = `${tipo}|${brand}|${orient}|${facing}|${isProgramado ? 1 : 0}`;
     if (!groups.has(key)) {
-      groups.set(key, { tipo, folder, orient, dims, items: [] });
+      groups.set(key, { tipo, brand, orient, facing, isProgramado, dims, items: [] });
     }
-    groups.get(key).items.push({ parsed, record: rec, rot });
+    groups.get(key).items.push({ parsed, rot });
   });
 
   groups.forEach(g => {
@@ -121,9 +154,10 @@ export default function createContainersLayerOptimized(data, layout) {
 
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
     const mats = makeMaterials({
-      folder: g.folder,
+      brand: g.brand,
       sizeMetersL: g.dims.L,
-      orient: g.orient
+      orient: g.orient,
+      facing: g.facing,
     });
 
     const mesh = new THREE.InstancedMesh(geom, mats, count);
@@ -134,8 +168,6 @@ export default function createContainersLayerOptimized(data, layout) {
     const quat = new THREE.Quaternion();
     const scl = new THREE.Vector3(1,1,1);
 
-    const records = new Array(count);
-
     g.items.forEach((it, i) => {
       const wp = slotToWorld(
         { lane: it.parsed.band, index: it.parsed.index, tier: it.parsed.level },
@@ -145,12 +177,35 @@ export default function createContainersLayerOptimized(data, layout) {
       quat.setFromAxisAngle(new THREE.Vector3(0,1,0), wp.rotationY);
       matrix.compose(pos, quat, scl);
       mesh.setMatrixAt(i, matrix);
-      records[i] = it.record;
     });
 
-    mesh.userData.records = records;
+    if (g.isProgramado) {
+      mesh.userData.isProgramado = true;
+      mesh.userData.pulsePhases = new Float32Array(count);
+      for (let i = 0; i < count; i++) mesh.userData.pulsePhases[i] = Math.random() * Math.PI * 2;
+    }
+
     layer.add(mesh);
   });
+
+  // anim puls pentru programados
+  layer.userData.tick = () => {
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+
+    layer.children.forEach(mesh => {
+      if (!mesh.userData.isProgramado) return;
+      for (let i = 0; i < mesh.count; i++) {
+        mesh.getMatrixAt(i, m); m.decompose(p,q,s);
+        mesh.userData.pulsePhases[i] += 0.04;
+        const k = 1 + Math.sin(mesh.userData.pulsePhases[i]) * 0.05;
+        s.set(1, k, 1); m.compose(p,q,s); mesh.setMatrixAt(i, m);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    });
+  };
 
   return layer;
 }
