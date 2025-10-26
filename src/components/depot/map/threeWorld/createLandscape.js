@@ -1,83 +1,91 @@
-// src/pages/Depot/threeWorld/createLandscape.js
 import * as THREE from 'three';
 
-// mic generator de "zgomot" (fără librării externe)
-function hash(n){ return Math.sin(n) * 43758.5453 % 1; }
-function noise2(x,y){
-  const ix = Math.floor(x), iy = Math.floor(y);
-  const fx = x - ix,       fy = y - iy;
-  const a = hash(ix*157.0 + iy*113.0);
-  const b = hash((ix+1)*157.0 + iy*113.0);
-  const c = hash(ix*157.0 + (iy+1)*113.0);
-  const d = hash((ix+1)*157.0 + (iy+1)*113.0);
-  const ux = fx*fx*(3.0-2.0*fx);
-  const uy = fy*fy*(3.0-2.0*fy);
-  return a*(1-ux)*(1-uy) + b*ux*(1-uy) + c*(1-ux)*uy + d*ux*uy;
-}
+const TEX_MUNTE = '/textures/lume/munte_textura.jpg';
 
 /**
- * Creează un "inel" de dealuri în jurul curții.
- * - innerRadius: puțin mai mare decât diagonala curții (ca să NU atingă asfaltul)
- * - outerRadius: cât de departe vrei dealurile
- * - height: înălțimea maximă a dealurilor
- *
- * Folosește /public/textures/lume/munte_textura.jpg
+ * Generează un inel de „munți” în jurul curții.
+ *  - Nu intră în curte.
+ *  - Seamless (12 segmente) și ușor ondulat.
  */
-export default function createLandscape(
-  {
-    yardWidth = 90,
-    yardDepth = 60,
-    innerPadding = 8,   // distanța liberă până la gard/asfalt
-    outerRadius = 220,  // cât de departe e marginea "lumii"
-    height = 14
-  } = {}
-){
-  const group = new THREE.Group();
+export default function createLandscape({ ground }) {
+  const ringRadius = Math.max(ground.width, ground.depth) * 0.9; // puțin dincolo de curte
+  const ringInner  = ringRadius * 1.15;
+  const segments   = 12;
+  const height     = 8;  // înălțimea maximă a culmilor
+  const y0         = 0;  // la nivelul solului
 
-  // Raza interioară = jumătate din diagonală + padding
-  const halfDiag = 0.5 * Math.hypot(yardWidth, yardDepth);
-  const innerRadius = halfDiag + innerPadding;
-
-  // Inel: folosim RingGeometry și împingem vârfurile în sus prin "noise"
-  const ringGeom = new THREE.RingGeometry(innerRadius, outerRadius, 256, 1);
-  ringGeom.rotateX(-Math.PI/2); // să stea pe sol
-
-  // Displace pe Y (creează dealuri care cresc spre exterior)
-  const pos = ringGeom.attributes.position;
-  for (let i = 0; i < pos.count; i++){
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const r = Math.hypot(x, z);
-
-    // 0 la inner, 1 la outer
-    const t = THREE.MathUtils.clamp((r - innerRadius) / (outerRadius - innerRadius), 0, 1);
-
-    // zgomot + "falloff" spre interior ca să nu atingă curtea
-    const n = noise2(x*0.05, z*0.05) * 0.6 + noise2(x*0.12, z*0.12) * 0.4;
-    const y = Math.pow(t, 1.2) * (0.4 + 0.6*n) * height;
-
-    pos.setY(i, y);
-  }
-  pos.needsUpdate = true;
-  ringGeom.computeVertexNormals();
-
-  // material cu textura ta
-  const tex = new THREE.TextureLoader().load('/textures/lume/munte_textura.jpg');
+  const loader = new THREE.TextureLoader();
+  const tex = loader.load(TEX_MUNTE);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  // repetăm în funcție de circumferință
-  const repeatU = (2 * Math.PI * outerRadius) / 64; // ajustează 64 dacă vrei scală diferită
-  tex.repeat.set(repeatU, 6);
+  tex.repeat.set(4, 1); // întinde pe circumferință
 
-  const mat = new THREE.MeshStandardMaterial({
-    map: tex,
-    roughness: 0.95,
-    metalness: 0.0,
-  });
+  const group = new THREE.Group();
+  group.name = 'MountainsRing';
 
-  const ring = new THREE.Mesh(ringGeom, mat);
-  ring.receiveShadow = true;
-  ring.castShadow = false;
+  for (let i = 0; i < segments; i++) {
+    const a0 = (i / segments) * Math.PI * 2;
+    const a1 = ((i + 1) / segments) * Math.PI * 2;
 
-  group.add(ring);
+    // patru puncte pe două cercuri (inner/outer), apoi le „ondulăm”
+    const x0i = Math.cos(a0) * ringInner, z0i = Math.sin(a0) * ringInner;
+    const x1i = Math.cos(a1) * ringInner, z1i = Math.sin(a1) * ringInner;
+    const x0o = Math.cos(a0) * (ringInner + 60), z0o = Math.sin(a0) * (ringInner + 60);
+    const x1o = Math.cos(a1) * (ringInner + 60), z1o = Math.sin(a1) * (ringInner + 60);
+
+    // mică variație de altitudine (smooth)
+    const h0 = y0 + height * (0.6 + 0.4 * Math.sin(a0 * 3.0));
+    const h1 = y0 + height * (0.6 + 0.4 * Math.sin(a1 * 3.0));
+
+    const shape = new THREE.Shape();
+    shape.moveTo(x0i, z0i);
+    shape.lineTo(x0o, z0o);
+    shape.lineTo(x1o, z1o);
+    shape.lineTo(x1i, z1i);
+    shape.lineTo(x0i, z0i);
+
+    // extrudăm puțin pe Y ca „fâșie” verticală
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      steps: 1,
+      depth: 1,
+      bevelEnabled: false
+    });
+
+    // rotim UV pentru ca textura să curgă pe circumferință
+    geo.computeBoundingBox();
+    const bbox = geo.boundingBox;
+    const sizeX = bbox.max.x - bbox.min.x;
+    const sizeZ = bbox.max.z - bbox.min.z;
+
+    const uvs = geo.attributes.uv;
+    for (let j = 0; j < uvs.count; j++) {
+      const u = (geo.attributes.position.getX(j) - bbox.min.x) / sizeX;
+      const v = (geo.attributes.position.getZ(j) - bbox.min.z) / sizeZ;
+      uvs.setXY(j, u * 2.5, v); // 2.5 = tile pe circumferință
+    }
+
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: 1,
+      metalness: 0,
+      side: THREE.DoubleSide
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    // „ridicăm” latura exterioară pentru profil montan
+    mesh.geometry.translate(0, 0, 0);
+    mesh.position.y = y0;
+    // curbăm ușor segmentul: îl înclinăm spre exterior
+    mesh.lookAt(new THREE.Vector3(0, h0 * 0.4, 0));
+    group.add(mesh);
+  }
+
+  // sub munți adăugăm un disc mare (teren) ca să nu se vadă cerul la bază
+  const disc = new THREE.CircleGeometry(ringInner + 80, 64);
+  const discMat = new THREE.MeshStandardMaterial({ color: 0x6c7b50, roughness: 1 });
+  const discMesh = new THREE.Mesh(disc, discMat);
+  discMesh.rotation.x = -Math.PI / 2;
+  discMesh.position.y = y0 - 0.01;
+  group.add(discMesh);
+
   return group;
 }

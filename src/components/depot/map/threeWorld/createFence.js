@@ -1,102 +1,84 @@
-// src/pages/Depot/threeWorld/createFence.js
 import * as THREE from 'three';
 
-export default function createFence({
-  width = 90,
-  depth = 60,
-  margin = 2,
-  postEvery = 10,
-  gate = { side: 'west', width: 10, centerZ: 0, tweakZ: 0 }
-} = {}) {
+const TEX_FENCE = '/textures/lume/gard_textura.png';
 
-  const g = new THREE.Group();
+export default function createFence({ width, depth, margin = 0.5, postEvery = 10 }) {
+  const W = width, D = depth;
+  const halfW = W / 2, halfD = D / 2;
 
-  const W = width + margin * 2;
-  const D = depth + margin * 2;
-  const H = 2.3;        // înălțimea plasei
-  const railY = 0.1;    // grosimea șinei de sus/jos
-  const postH = 2.6;
+  const loader = new THREE.TextureLoader();
+  const fenceTex = loader.load(TEX_FENCE);
+  fenceTex.wrapS = fenceTex.wrapT = THREE.RepeatWrapping;
+  fenceTex.repeat.set(W / 6, 1); // tile pe lungime
 
-  // --- TEXTURA PLASĂ ---
-  const meshTex = new THREE.TextureLoader().load('/textures/lume/gard_textura.png');
-  meshTex.colorSpace = THREE.SRGBColorSpace;
-  meshTex.wrapS = meshTex.wrapT = THREE.RepeatWrapping;
-  meshTex.center.set(0.5, 0.5);
-  // Romboidele vertical-orientate:
-  meshTex.rotation = Math.PI * 0.5; // rotește 90°
-  // repetarea o setăm pe fiecare segment în funcție de lungime
-
-  const matMesh = new THREE.MeshBasicMaterial({
-    map: meshTex,
+  const fenceMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: fenceTex,
+    alphaMap: fenceTex,
     transparent: true,
-    alphaTest: 0.3,    // taie zonele negre ale PNG-ului
-    depthWrite: false, // previne artefacte de transparență
-    side: THREE.DoubleSide
+    depthWrite: true,
+    side: THREE.DoubleSide,
+    roughness: 0.9,
+    metalness: 0.0
   });
 
-  const matMetal = new THREE.MeshStandardMaterial({
-    color: 0x8a8f95, metalness: 0.7, roughness: 0.45
-  });
+  const fenceHeight = 2;
+  const fenceThickness = 0.01;
 
-  // posturi
-  const postGeo = new THREE.CylinderGeometry(0.05, 0.05, postH, 12);
-  const post = new THREE.Mesh(postGeo, matMetal);
-  post.position.y = postH / 2;
-  post.castShadow = post.receiveShadow = true;
-
-  // șine sus / jos
-  const railGeo = new THREE.BoxGeometry(0.05, railY, 1);
-  const rail = new THREE.Mesh(railGeo, matMetal);
-  rail.castShadow = rail.receiveShadow = true;
-
-  // plasă (plan subțire)
-  const mkMeshPanel = (len) => {
-    const geo = new THREE.PlaneGeometry(len, H, Math.max(1, Math.round(len*2)), 1);
-    const m = new THREE.Mesh(geo, matMesh.clone());
-    // setează repetarea în funcție de lungime (1 unitate ≈ 1m)
-    m.material.map = m.material.map.clone();
-    m.material.map.repeat.set(len * 0.6, H * 0.6);
-    m.frustumCulled = false;
-    return m;
-  };
-
-  // helper pentru fiecare latură
-  function addSide(dir, len, x, z, rotY){
-    // plasă
-    const meshPanel = mkMeshPanel(len);
-    meshPanel.position.set(x, H/2, z);
-    meshPanel.rotation.y = rotY;
-    g.add(meshPanel);
-
-    // șine
-    const topRail = rail.clone();
-    topRail.scale.z = len;
-    topRail.position.set(x, H+railY/2, z);
-    topRail.rotation.y = rotY;
-    g.add(topRail);
-
-    const botRail = rail.clone();
-    botRail.scale.z = len;
-    botRail.position.set(x, railY/2, z);
-    botRail.rotation.y = rotY;
-    g.add(botRail);
-
-    // posturi
-    const nPosts = Math.floor(len / postEvery) + 1;
-    for (let i=0; i<=nPosts; i++){
-      const t = (i / nPosts - 0.5) * len;
-      const p = post.clone();
-      if (Math.abs(rotY) < 1e-3) p.position.set(x + t, postH/2, z);
-      else                       p.position.set(x, postH/2, z + t);
-      g.add(p);
-    }
+  function makeSide(len) {
+    const geo = new THREE.PlaneGeometry(len, fenceHeight);
+    const mesh = new THREE.Mesh(geo, fenceMat);
+    mesh.position.y = fenceHeight / 2;
+    return mesh;
   }
 
-  // laturi (centrat în (0,0))
-  addSide('north', W, 0,  D/2, 0);
-  addSide('south', W, 0, -D/2, 0);
-  addSide('east',  D,  W/2, 0, Math.PI/2);
-  addSide('west',  D, -W/2, 0, Math.PI/2);
+  const group = new THREE.Group();
+  group.name = 'Fence';
 
-  return g;
+  // NORD (spre +Z)
+  const north = makeSide(W);
+  north.rotation.y = Math.PI; // plasa “răsucită” corect
+  north.position.set(0, 0, halfD + margin);
+  group.add(north);
+
+  // SUD (spre -Z)
+  const south = makeSide(W);
+  south.position.set(0, 0, -halfD - margin);
+  group.add(south);
+
+  // EST (+X)
+  const east = makeSide(D);
+  east.rotation.y = -Math.PI / 2;
+  east.position.set(halfW + margin, 0, 0);
+  group.add(east);
+
+  // VEST (-X)
+  const west = makeSide(D);
+  west.rotation.y = Math.PI / 2;
+  west.position.set(-halfW - margin, 0, 0);
+  group.add(west);
+
+  // Stâlpi (opțional)
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 1 });
+  const postGeo = new THREE.CylinderGeometry(0.03, 0.03, fenceHeight, 8);
+  function addPostsAlongX(z) {
+    for (let x = -halfW; x <= halfW; x += postEvery) {
+      const p = new THREE.Mesh(postGeo, postMat);
+      p.position.set(x, fenceHeight / 2, z);
+      group.add(p);
+    }
+  }
+  function addPostsAlongZ(x) {
+    for (let z = -halfD; z <= halfD; z += postEvery) {
+      const p = new THREE.Mesh(postGeo, postMat);
+      p.position.set(x, fenceHeight / 2, z);
+      group.add(p);
+    }
+  }
+  addPostsAlongX(halfD + margin);
+  addPostsAlongX(-halfD - margin);
+  addPostsAlongZ(halfW + margin);
+  addPostsAlongZ(-halfW - margin);
+
+  return group;
 }
