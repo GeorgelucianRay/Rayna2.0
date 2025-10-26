@@ -17,13 +17,8 @@ import ContainerInfoCard from './ContainerInfoCard';
 import { slotToWorld } from './threeWorld/slotToWorld';
 import createFirstPerson from './threeWorld/firstPerson';
 import Navbar3D from './Navbar3D';
-import createBuildController from './world/buildController';
-
-// controllerul de build (opțional)
-let createBuildControllerSafe = null;
-try {
-  createBuildControllerSafe = require('./world/buildController').default;
-} catch (e) { /* no-op */ }
+import BuildPalette from './build/BuildPalette';
+import createBuildController from './world/buildController'; // ✅ import direct
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -103,6 +98,7 @@ function ForwardButton({ pressed, setPressed, ensureFP }) {
 
 export default function MapPage() {
   const mountRef = useRef(null);
+  const rendererRef = useRef(null);
   const cameraRef = useRef();
   const controlsRef = useRef();
   const isAnimatingRef = useRef(false);
@@ -128,10 +124,14 @@ export default function MapPage() {
 
   // Build mode
   const [buildActive, setBuildActive] = useState(false);
+  const buildActiveRef = useRef(false);
+  useEffect(()=>{ buildActiveRef.current = buildActive; }, [buildActive]);
+
   const [buildMode,   setBuildMode]   = useState('place'); // 'place' | 'remove'
   const [showBuild,   setShowBuild]   = useState(false);   // UI paletă
   const buildRef = useRef(null);
   const worldGroupRef = useRef(null);
+  const groundMeshRef = useRef(null);
 
   // Items list modal
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -168,7 +168,7 @@ export default function MapPage() {
   const ensureFP = () => { if (!isFPRef.current) enableFPInternal(); };
   const toggleFP = () => { isFPRef.current ? disableFPInternal() : enableFPInternal(); };
 
-  /* ---------- INIT SCENE ---------- */
+  /* ---------- INIT SCENE (o singură dată) ---------- */
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
@@ -178,6 +178,7 @@ export default function MapPage() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
     // scenă + cameră
     const scene = new THREE.Scene();
@@ -223,20 +224,21 @@ export default function MapPage() {
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode; // pentru raycast
+    groundMeshRef.current = groundMesh;
+
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // Build controller
-    // nou
-buildRef.current = createBuildController({
-  camera,
-  domElement: renderer.domElement,
-  worldGroup,
-  groundMesh,
-  grid: 1,
-});
-buildRef.current.setMode(buildMode);
+    // Build controller — creat o singură dată
+    buildRef.current = createBuildController({
+      camera,
+      domElement: renderer.domElement,
+      worldGroup,
+      groundMesh,
+      grid: 1,
+    });
+    buildRef.current?.setMode(buildMode);
 
     // containere
     (async () => {
@@ -249,12 +251,13 @@ buildRef.current.setMode(buildMode);
       } finally { setLoading(false); }
     })();
 
-    // pick containere
+    // pick containere (listener unic; citește buildActive via ref)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
       if (event.target.closest(`.${styles.searchContainer}`)) return;
-      if (buildActive) return; // nu selectăm containere când construim
+      if (buildActiveRef.current) return; // nu selectăm containere când construim
+
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -270,18 +273,6 @@ buildRef.current.setMode(buildMode);
       setSelectedContainer(null);
     };
     mount.addEventListener('click', onClick);
-
-    // input build (doar când buildActive)
-    function onPointerMove(e) {
-      if (!buildActive || !buildRef.current) return;
-      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
-    }
-    function onPointerDown(e) {
-      if (!buildActive || !buildRef.current) return;
-      buildRef.current.clickAt(e.clientX, e.clientY);
-    }
-    renderer.domElement.addEventListener('pointermove', onPointerMove);
-    renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -311,16 +302,46 @@ buildRef.current.setMode(buildMode);
     };
     window.addEventListener('resize', onResize);
 
-    // cleanup
+    // cleanup (unic)
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
-      renderer.domElement.removeEventListener('pointermove', onPointerMove);
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
-  }, [bounds, buildActive, buildMode]);
+  }, [bounds]);
+
+  /* ---------- LISTENERE PT. BUILD (atașate doar când buildActive === true) ---------- */
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer || !buildRef.current) return;
+
+    function onPointerMove(e) {
+      if (!buildActiveRef.current) return;
+      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
+    }
+    function onPointerDown(e) {
+      if (!buildActiveRef.current) return;
+      buildRef.current.clickAt(e.clientX, e.clientY);
+    }
+
+    if (buildActive) {
+      renderer.domElement.addEventListener('pointermove', onPointerMove);
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    }
+
+    return () => {
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [buildActive]); // ✅ nu dublează listener-ele când schimbi `buildMode`
+
+  // când schimbă buildActive, pornesc/opresc Orbit
+  useEffect(()=>{
+    const orbit = controlsRef.current;
+    if (!orbit) return;
+    orbit.enabled = !buildActive && !isFPRef.current;
+  }, [buildActive]);
 
   // joystick: “înainte”
   useEffect(() => { fpRef.current?.setForwardPressed(fwdPressed); }, [fwdPressed]);
@@ -353,7 +374,7 @@ buildRef.current.setMode(buildMode);
   const handleToggleFP = () => toggleFP();
   const handleAdd = (formData) => { console.log('Add from Navbar3D:', formData); };
   const handleOpenWorldItems = () => setItemsOpen(true);
-  const handleOpenBuild = () => { setShowBuild(true); setBuildActive(true); };   // 🧱
+  const handleOpenBuild = () => { setShowBuild(true); setBuildActive(true); };   // ✅ unic
 
   /* ---------- RENDER ---------- */
   return (
@@ -364,8 +385,8 @@ buildRef.current.setMode(buildMode);
         onSelectContainer={handleSelectFromSearch}
         onToggleFP={handleToggleFP}
         onAdd={handleAdd}
-        onOpenBuild={handleOpenBuild}             // 🧱
-        onOpenWorldItems={handleOpenWorldItems}   // 📋
+        onOpenBuild={handleOpenBuild}           // 🧱 (UN SINGUR prop)
+        onOpenWorldItems={handleOpenWorldItems}
       />
 
       {/* Top bar exit */}
@@ -413,7 +434,7 @@ buildRef.current.setMode(buildMode);
         />
       )}
 
-      {/* World Items – placeholder; populează cu store-ul tău */}
+      {/* World Items – placeholder */}
       {itemsOpen && (
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
