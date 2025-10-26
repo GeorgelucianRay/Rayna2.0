@@ -169,11 +169,14 @@ export default function MapPage() {
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-    renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    mount.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(mount.clientWidth, mount.clientHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+mount.appendChild(renderer.domElement);
+
+// expunem rendererul pentru createSky
+window.__THREE_RENDERER = renderer;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
@@ -196,8 +199,14 @@ export default function MapPage() {
     // lights + lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
-    scene.add(createSky());
-    scene.add(createLandscape({ ground: CFG.ground }));
+    // în loc de: scene.add(createSky());
+scene.add(
+  createSky({
+    scene,
+    hdrPath: '/textures/lume/golden_gate_hills_1k.hdr',
+    exposure: 1.1, // poți regla 0.9–1.3 după gust
+  })
+);
 
     // curtea
     const depotGroup = new THREE.Group();
