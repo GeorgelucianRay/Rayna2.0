@@ -26,28 +26,25 @@ const CFG = {
 /* ====================================================================== */
 
 /* ---------- UI: Joystick + Forward Button ---------- */
-function VirtualJoystick({ onChange, size = 120 }) {
+function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
   const ref = useRef(null);
   const [active, setActive] = useState(false);
   const [knob, setKnob] = useState({ x: 0, y: 0 }); // pentru render
 
-  function setVec(clientX, clientY) {
-    const el = ref.current;
-    if (!el) return;
+  function setVec(clientX, clientY, el) {
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
     const dx = clientX - cx;
     const dy = clientY - cy;
     const rad = r.width / 2;
-    const len = Math.hypot(dx, dy);
     const nx = THREE.MathUtils.clamp(dx / rad, -1, 1);
     const ny = THREE.MathUtils.clamp(dy / rad, -1, 1);
     setKnob({ x: nx, y: ny });
     onChange?.({ x: nx, y: ny, active: true });
   }
 
-  const stop = () => {
+  const stop = (e) => {
     setKnob({ x: 0, y: 0 });
     setActive(false);
     onChange?.({ x: 0, y: 0, active: false });
@@ -60,15 +57,15 @@ function VirtualJoystick({ onChange, size = 120 }) {
         position: 'absolute', left: 12, bottom: 12, zIndex: 5,
         width: size, height: size, borderRadius: size / 2,
         background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,.2)',
-        touchAction: 'none', userSelect: 'none'
+        touchAction: 'none', userSelect: 'none', pointerEvents: 'auto'
       }}
-      onMouseDown={e => { setActive(true); setVec(e.clientX, e.clientY); }}
-      onMouseMove={e => active && setVec(e.clientX, e.clientY)}
+      onMouseDown={(e) => { ensureFP?.(); setActive(true); setVec(e.clientX, e.clientY, ref.current); }}
+      onMouseMove={(e) => { if (!active) return; setVec(e.clientX, e.clientY, ref.current); }}
       onMouseUp={stop}
       onMouseLeave={stop}
-      onTouchStart={e => { setActive(true); const t = e.touches[0]; setVec(t.clientX, t.clientY); }}
-      onTouchMove={e => { const t = e.touches[0]; setVec(t.clientX, t.clientY); }}
-      onTouchEnd={stop}
+      onTouchStart={(e) => { ensureFP?.(); setActive(true); const t = e.touches[0]; setVec(t.clientX, t.clientY, ref.current); e.preventDefault(); }}
+      onTouchMove={(e) => { if (!active) return; const t = e.touches[0]; setVec(t.clientX, t.clientY, ref.current); e.preventDefault(); }}
+      onTouchEnd={(e) => { stop(); e.preventDefault(); }}
     >
       <div style={{
         position: 'absolute',
@@ -76,26 +73,29 @@ function VirtualJoystick({ onChange, size = 120 }) {
         top: `calc(50% + ${knob.y * (size * 0.35)}px)`,
         transform: 'translate(-50%, -50%)',
         width: size * 0.35, height: size * 0.35, borderRadius: '50%',
-        background: 'rgba(255,255,255,.25)', backdropFilter: 'blur(2px)'
+        background: 'rgba(255,255,255,.25)', backdropFilter: 'blur(2px)', pointerEvents:'none'
       }} />
     </div>
   );
 }
 
-function ForwardButton({ pressed, setPressed }) {
+function ForwardButton({ pressed, setPressed, ensureFP }) {
+  const down = () => { ensureFP?.(); setPressed(true); };
+  const up   = () => { setPressed(false); };
   return (
     <button
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
-      onMouseLeave={() => setPressed(false)}
-      onTouchStart={() => setPressed(true)}
-      onTouchEnd={() => setPressed(false)}
+      onMouseDown={down}
+      onMouseUp={up}
+      onMouseLeave={up}
+      onTouchStart={(e)=>{ down(); e.preventDefault(); }}
+      onTouchEnd={(e)=>{ up(); e.preventDefault(); }}
       title="Mergi înainte"
       style={{
         position: 'absolute', right: 12, bottom: 14, zIndex: 5,
         width: 64, height: 64, borderRadius: 32, border: 'none',
         background: pressed ? '#10b981' : '#1f2937', color: '#fff',
-        fontSize: 30, lineHeight: '64px', boxShadow: '0 2px 10px rgba(0,0,0,.25)'
+        fontSize: 30, lineHeight: '64px', boxShadow: '0 2px 10px rgba(0,0,0,.25)',
+        pointerEvents: 'auto'
       }}
     >↑</button>
   );
@@ -113,10 +113,12 @@ export default function MapPage() {
   // Walk mode
   const [isFP, setIsFP] = useState(false);
   const [fwdPressed, setFwdPressed] = useState(false);
-  const fwdRef = useRef(false);               // <<< ref mereu proaspăt
+  const fwdRef = useRef(false);
   useEffect(() => { fwdRef.current = fwdPressed; }, [fwdPressed]);
 
-  const joyRef = useRef({ x: 0, y: 0, active: false }); // <<< ref mereu proaspăt
+  // joystick & taste
+  const joyRef = useRef({ x: 0, y: 0, active: false });
+  const keysRef = useRef({ w:false, s:false, a:false, d:false });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -217,6 +219,24 @@ export default function MapPage() {
       }
     })();
 
+    // --- tastatură WASD pt. Walk Mode ---
+    const onKeyDown = (e) => {
+      if (!isFP) return;
+      if (e.repeat) return;
+      if (e.code === 'KeyW' || e.code === 'ArrowUp')   { keysRef.current.w = true; fwdRef.current = true; }
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') { keysRef.current.s = true; }
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') { keysRef.current.a = true; }
+      if (e.code === 'KeyD' || e.code === 'ArrowRight'){ keysRef.current.d = true; }
+    };
+    const onKeyUp = (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp')   { keysRef.current.w = false; fwdRef.current = false; }
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') { keysRef.current.s = false; }
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') { keysRef.current.a = false; }
+      if (e.code === 'KeyD' || e.code === 'ArrowRight'){ keysRef.current.d = false; }
+    };
+    window.addEventListener('keydown', onKeyDown, { passive:false });
+    window.addEventListener('keyup', onKeyUp, { passive:false });
+
     const minX = -YARD_WIDTH / 2 + 5, maxX = YARD_WIDTH / 2 + 5;
     const minZ = -YARD_DEPTH / 2 + 5, maxZ = YARD_DEPTH / 2 + 5;
 
@@ -233,21 +253,30 @@ export default function MapPage() {
           controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
         }
       } else {
-        // Rotire (yaw) cu joystick X
-        const yawSpeed = 1.8;              // rad/s
-        const yaw = (joyRef.current?.x || 0) * yawSpeed * delta;
+        // Rotire (yaw) cu joystick X sau A/D
+        const yawSpeed = 1.8; // rad/s
+        const yawInput = (joyRef.current?.x || 0) + (keysRef.current.d ? 0.8 : 0) - (keysRef.current.a ? 0.8 : 0);
+        const yaw = yawInput * yawSpeed * delta;
         camera.rotateY(-yaw);
 
-        // Mers înainte cât timp butonul e apăsat
-        if (fwdRef.current) {
-          const moveSpeed = 6;            // m/s
-          const fwd = new THREE.Vector3();
-          camera.getWorldDirection(fwd);
-          fwd.y = 0; fwd.normalize();
-          camera.position.addScaledVector(fwd, moveSpeed * delta);
+        // Direcție înainte (orizontal)
+        const fwd = new THREE.Vector3();
+        camera.getWorldDirection(fwd);
+        fwd.y = 0; fwd.normalize();
 
+        // Înaintare (buton ↑ sau W) / Înapoi (S)
+        let move = 0;
+        if (fwdRef.current || keysRef.current.w) move += 1;
+        if (keysRef.current.s) move -= 1;
+
+        if (move !== 0) {
+          const moveSpeed = 6; // m/s
+          camera.position.addScaledVector(fwd, move * moveSpeed * delta);
+
+          // clamp în curte + ține “ochii” la 1.6 m
           camera.position.x = THREE.MathUtils.clamp(camera.position.x, bounds.minX, bounds.maxX);
           camera.position.z = THREE.MathUtils.clamp(camera.position.z, bounds.minZ, bounds.maxZ);
+          camera.position.y = 1.6;
         }
       }
 
@@ -266,6 +295,8 @@ export default function MapPage() {
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
       renderer.dispose();
     };
   }, [isFP, bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ]);
@@ -306,7 +337,7 @@ export default function MapPage() {
     setFlyToTarget(null);
   }, [flyToTarget]);
 
-  // Toggle Walk Mode
+  // Toggle explicit Walk Mode (opțional)
   const toggleFP = () => {
     const orbit = controlsRef.current;
     const cam = cameraRef.current;
@@ -322,8 +353,20 @@ export default function MapPage() {
     }
   };
 
+  const ensureFP = () => {
+    if (!isFP) {
+      const orbit = controlsRef.current;
+      const cam = cameraRef.current;
+      if (orbit) orbit.enabled = false;
+      if (cam) cam.position.y = 1.6;
+      setIsFP(true);
+    }
+  };
+
   return (
-    <div className={styles.fullscreenRoot}>
+    <div className={styles.fullscreenRoot}
+         onTouchMove={(e)=>{ if (isFP) e.preventDefault(); }}>
+
       <div className={styles.searchContainer}>
         <SearchBox
           containers={allContainers}
@@ -335,14 +378,15 @@ export default function MapPage() {
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
 
-      {/* CONTROALE MOBILE */}
+      {/* CONTROALE MOBILE - apar doar în Walk Mode */}
       {isFP && (
         <>
-          <VirtualJoystick onChange={(v) => { joyRef.current = v; }} />
-          <ForwardButton pressed={fwdPressed} setPressed={setFwdPressed} />
+          <VirtualJoystick onChange={(v) => { joyRef.current = v; }} ensureFP={ensureFP} />
+          <ForwardButton pressed={fwdPressed} setPressed={setFwdPressed} ensureFP={ensureFP} />
         </>
       )}
-      {/* Toggle */}
+
+      {/* Toggle (opțional) */}
       <button
         onClick={toggleFP}
         title={isFP ? 'Ieși din Walk' : 'Walk mode'}
