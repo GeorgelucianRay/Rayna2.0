@@ -9,7 +9,6 @@ import styles from './Map3DStandalone.module.css';
 // Importuri scene
 import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
-// IMPORTANT: folosim varianta optimizată (cu texturi)
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
 import fetchContainers from './threeWorld/fetchContainers';
 import createSky from './threeWorld/createSky';
@@ -81,13 +80,11 @@ export default function MapPage() {
           const hit = intersects[0];
           const obj = hit.object;
 
-          // a) InstancedMesh: record prin instanceId
           if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
             const rec = obj.userData.records[hit.instanceId];
             if (rec) { setSelectedContainer(rec); return; }
           }
 
-          // b) fallback: obiect simplu cu __record
           if (obj.userData?.__record) {
             setSelectedContainer(obj.userData.__record);
             return;
@@ -105,15 +102,13 @@ export default function MapPage() {
     dir.position.set(5, 10, 5);
     scene.add(dir);
 
+    // — cerul —
     scene.add(createSky());
-    scene.add(createLandscape());
 
-    const earthGeo = new THREE.PlaneGeometry(1000, 1000);
-    const earthMat = new THREE.MeshStandardMaterial({ color: 0x78904c });
-    const earth = new THREE.Mesh(earthGeo, earthMat);
-    earth.rotation.x = -Math.PI / 2;
-    earth.position.y = -0.5;
-    scene.add(earth);
+    // — peisajul: IMPORTANT — îi dăm dimensiunile curții
+    scene.add(createLandscape({ ground: CFG.ground }));
+
+    // !!! am scos planul "earth" care călca peste peisaj
 
     depotGroup = new THREE.Group();
     const ground = createGround(CFG.ground);
