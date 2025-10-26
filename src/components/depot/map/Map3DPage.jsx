@@ -6,7 +6,6 @@ import gsap from 'gsap';
 
 import styles from './Map3DStandalone.module.css';
 
-// Scene
 import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
@@ -30,7 +29,7 @@ const CFG = {
 function VirtualJoystick({ onChange, size = 120 }) {
   const ref = useRef(null);
   const [active, setActive] = useState(false);
-  const knob = useMemo(() => ({ x: 0, y: 0 }), []);
+  const [knob, setKnob] = useState({ x: 0, y: 0 }); // pentru render
 
   function setVec(clientX, clientY) {
     const el = ref.current;
@@ -42,16 +41,14 @@ function VirtualJoystick({ onChange, size = 120 }) {
     const dy = clientY - cy;
     const rad = r.width / 2;
     const len = Math.hypot(dx, dy);
-    const clamped = Math.min(len, rad);
-    const nx = (dx / (rad)) * Math.min(1, len / rad);
-    const ny = (dy / (rad)) * Math.min(1, len / rad);
-    knob.x = Math.max(-1, Math.min(1, nx));
-    knob.y = Math.max(-1, Math.min(1, ny));
-    onChange?.({ x: knob.x, y: knob.y, active: true });
+    const nx = THREE.MathUtils.clamp(dx / rad, -1, 1);
+    const ny = THREE.MathUtils.clamp(dy / rad, -1, 1);
+    setKnob({ x: nx, y: ny });
+    onChange?.({ x: nx, y: ny, active: true });
   }
 
   const stop = () => {
-    knob.x = knob.y = 0;
+    setKnob({ x: 0, y: 0 });
     setActive(false);
     onChange?.({ x: 0, y: 0, active: false });
   };
@@ -61,7 +58,7 @@ function VirtualJoystick({ onChange, size = 120 }) {
       ref={ref}
       style={{
         position: 'absolute', left: 12, bottom: 12, zIndex: 5,
-        width: size, height: size, borderRadius: size/2,
+        width: size, height: size, borderRadius: size / 2,
         background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,.2)',
         touchAction: 'none', userSelect: 'none'
       }}
@@ -73,15 +70,14 @@ function VirtualJoystick({ onChange, size = 120 }) {
       onTouchMove={e => { const t = e.touches[0]; setVec(t.clientX, t.clientY); }}
       onTouchEnd={stop}
     >
-      {/* knob vizual */}
       <div style={{
-        position:'absolute',
-        left:`calc(50% + ${knob.x*(size*0.35)}px)`,
-        top:`calc(50% + ${knob.y*(size*0.35)}px)`,
-        transform:'translate(-50%, -50%)',
-        width:size*0.35, height:size*0.35, borderRadius:'50%',
-        background:'rgba(255,255,255,.25)', backdropFilter:'blur(2px)'
-      }}/>
+        position: 'absolute',
+        left: `calc(50% + ${knob.x * (size * 0.35)}px)`,
+        top: `calc(50% + ${knob.y * (size * 0.35)}px)`,
+        transform: 'translate(-50%, -50%)',
+        width: size * 0.35, height: size * 0.35, borderRadius: '50%',
+        background: 'rgba(255,255,255,.25)', backdropFilter: 'blur(2px)'
+      }} />
     </div>
   );
 }
@@ -96,10 +92,10 @@ function ForwardButton({ pressed, setPressed }) {
       onTouchEnd={() => setPressed(false)}
       title="Mergi înainte"
       style={{
-        position:'absolute', right:12, bottom:14, zIndex:5,
-        width:64, height:64, borderRadius:32, border:'none',
-        background: pressed ? '#10b981' : '#1f2937', color:'#fff',
-        fontSize:30, lineHeight:'64px', boxShadow:'0 2px 10px rgba(0,0,0,.25)'
+        position: 'absolute', right: 12, bottom: 14, zIndex: 5,
+        width: 64, height: 64, borderRadius: 32, border: 'none',
+        background: pressed ? '#10b981' : '#1f2937', color: '#fff',
+        fontSize: 30, lineHeight: '64px', boxShadow: '0 2px 10px rgba(0,0,0,.25)'
       }}
     >↑</button>
   );
@@ -117,7 +113,10 @@ export default function MapPage() {
   // Walk mode
   const [isFP, setIsFP] = useState(false);
   const [fwdPressed, setFwdPressed] = useState(false);
-  const joyRef = useRef({ x: 0, y: 0, active: false });
+  const fwdRef = useRef(false);               // <<< ref mereu proaspăt
+  useEffect(() => { fwdRef.current = fwdPressed; }, [fwdPressed]);
+
+  const joyRef = useRef({ x: 0, y: 0, active: false }); // <<< ref mereu proaspăt
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -127,7 +126,6 @@ export default function MapPage() {
   const [allContainers, setAllContainers] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
 
-  // Bounds pentru mers (în cadrul curții)
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
     maxX:  YARD_WIDTH / 2 - 2,
@@ -228,7 +226,6 @@ export default function MapPage() {
 
       containersLayer?.userData?.tick?.();
 
-      // Orbit sau Walk
       if (!isFP) {
         controls.update();
         if (!isAnimatingRef.current) {
@@ -236,20 +233,19 @@ export default function MapPage() {
           controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
         }
       } else {
-        // Rotire cu joystick (x [-1..1] -> yaw)
-        const yawSpeed = 1.8; // rad/s
-        const yaw = joyRef.current.x * yawSpeed * delta;
+        // Rotire (yaw) cu joystick X
+        const yawSpeed = 1.8;              // rad/s
+        const yaw = (joyRef.current?.x || 0) * yawSpeed * delta;
         camera.rotateY(-yaw);
 
-        // Înaintare când butonul este ținut apăsat
-        if (fwdPressed) {
-          const moveSpeed = 6; // m/s
+        // Mers înainte cât timp butonul e apăsat
+        if (fwdRef.current) {
+          const moveSpeed = 6;            // m/s
           const fwd = new THREE.Vector3();
           camera.getWorldDirection(fwd);
           fwd.y = 0; fwd.normalize();
           camera.position.addScaledVector(fwd, moveSpeed * delta);
 
-          // clamp în curte
           camera.position.x = THREE.MathUtils.clamp(camera.position.x, bounds.minX, bounds.maxX);
           camera.position.z = THREE.MathUtils.clamp(camera.position.z, bounds.minZ, bounds.maxZ);
         }
@@ -351,10 +347,10 @@ export default function MapPage() {
         onClick={toggleFP}
         title={isFP ? 'Ieși din Walk' : 'Walk mode'}
         style={{
-          position:'absolute', right:12, bottom:90, zIndex:5,
-          width:48, height:48, borderRadius:24, border:'none',
-          background:isFP ? '#10b981' : '#1f2937', color:'#fff',
-          fontSize:22, boxShadow:'0 2px 10px rgba(0,0,0,.25)'
+          position: 'absolute', right: 12, bottom: 90, zIndex: 5,
+          width: 48, height: 48, borderRadius: 24, border: 'none',
+          background: isFP ? '#10b981' : '#1f2937', color: '#fff',
+          fontSize: 22, boxShadow: '0 2px 10px rgba(0,0,0,.25)'
         }}
       >👤</button>
 
