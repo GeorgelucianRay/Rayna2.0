@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import gsap from 'gsap';
 
 import styles from './Map3DStandalone.module.css';
 
-// Importuri scene
+// Scene
 import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
@@ -16,7 +16,6 @@ import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import SearchBox from './SearchBox';
 import { slotToWorld } from './threeWorld/slotToWorld';
-import createFirstPerson from './threeWorld/firstPerson';
 
 /* ===================== CONFIG DEPOZIT ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -27,16 +26,98 @@ const CFG = {
 };
 /* ====================================================================== */
 
+/* ---------- UI: Joystick + Forward Button ---------- */
+function VirtualJoystick({ onChange, size = 120 }) {
+  const ref = useRef(null);
+  const [active, setActive] = useState(false);
+  const knob = useMemo(() => ({ x: 0, y: 0 }), []);
+
+  function setVec(clientX, clientY) {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    const rad = r.width / 2;
+    const len = Math.hypot(dx, dy);
+    const clamped = Math.min(len, rad);
+    const nx = (dx / (rad)) * Math.min(1, len / rad);
+    const ny = (dy / (rad)) * Math.min(1, len / rad);
+    knob.x = Math.max(-1, Math.min(1, nx));
+    knob.y = Math.max(-1, Math.min(1, ny));
+    onChange?.({ x: knob.x, y: knob.y, active: true });
+  }
+
+  const stop = () => {
+    knob.x = knob.y = 0;
+    setActive(false);
+    onChange?.({ x: 0, y: 0, active: false });
+  };
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'absolute', left: 12, bottom: 12, zIndex: 5,
+        width: size, height: size, borderRadius: size/2,
+        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,.2)',
+        touchAction: 'none', userSelect: 'none'
+      }}
+      onMouseDown={e => { setActive(true); setVec(e.clientX, e.clientY); }}
+      onMouseMove={e => active && setVec(e.clientX, e.clientY)}
+      onMouseUp={stop}
+      onMouseLeave={stop}
+      onTouchStart={e => { setActive(true); const t = e.touches[0]; setVec(t.clientX, t.clientY); }}
+      onTouchMove={e => { const t = e.touches[0]; setVec(t.clientX, t.clientY); }}
+      onTouchEnd={stop}
+    >
+      {/* knob vizual */}
+      <div style={{
+        position:'absolute',
+        left:`calc(50% + ${knob.x*(size*0.35)}px)`,
+        top:`calc(50% + ${knob.y*(size*0.35)}px)`,
+        transform:'translate(-50%, -50%)',
+        width:size*0.35, height:size*0.35, borderRadius:'50%',
+        background:'rgba(255,255,255,.25)', backdropFilter:'blur(2px)'
+      }}/>
+    </div>
+  );
+}
+
+function ForwardButton({ pressed, setPressed }) {
+  return (
+    <button
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      title="Mergi înainte"
+      style={{
+        position:'absolute', right:12, bottom:14, zIndex:5,
+        width:64, height:64, borderRadius:32, border:'none',
+        background: pressed ? '#10b981' : '#1f2937', color:'#fff',
+        fontSize:30, lineHeight:'64px', boxShadow:'0 2px 10px rgba(0,0,0,.25)'
+      }}
+    >↑</button>
+  );
+}
+/* ---------------------------------------------------- */
+
 export default function MapPage() {
   const mountRef = useRef(null);
   const cameraRef = useRef();
   const controlsRef = useRef();
   const isAnimatingRef = useRef(false);
 
-  // First-Person
-  const fpRef = useRef(null);
   const clockRef = useRef(new THREE.Clock());
+
+  // Walk mode
   const [isFP, setIsFP] = useState(false);
+  const [fwdPressed, setFwdPressed] = useState(false);
+  const joyRef = useRef({ x: 0, y: 0, active: false });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,6 +126,14 @@ export default function MapPage() {
   const [selectedContainer, setSelectedContainer] = useState(null);
   const [allContainers, setAllContainers] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
+
+  // Bounds pentru mers (în cadrul curții)
+  const bounds = useMemo(() => ({
+    minX: -YARD_WIDTH / 2 + 2,
+    maxX:  YARD_WIDTH / 2 - 2,
+    minZ: -YARD_DEPTH / 2 + 2,
+    maxZ:  YARD_DEPTH / 2 - 2,
+  }), []);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -86,12 +175,10 @@ export default function MapPage() {
           const hit = intersects[0];
           const obj = hit.object;
 
-          // InstancedMesh: record via instanceId
           if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
             const rec = obj.userData.records[hit.instanceId];
             if (rec) { setSelectedContainer(rec); return; }
           }
-          // Fallback: obiect simplu cu __record
           if (obj.userData?.__record) {
             setSelectedContainer(obj.userData.__record);
             return;
@@ -103,7 +190,7 @@ export default function MapPage() {
 
     mount.addEventListener('click', onClick);
 
-    // Lumină, cer, peisaj
+    // lights, sky, landscape, ground
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(5, 10, 5);
@@ -112,21 +199,11 @@ export default function MapPage() {
     scene.add(createSky());
     scene.add(createLandscape({ ground: CFG.ground }));
 
-    // Grupul curții
     depotGroup = new THREE.Group();
     const ground = createGround(CFG.ground);
     const fence = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(ground, fence);
     scene.add(depotGroup);
-
-    // First-Person bounds (aceleași ca la clamp)
-    const bounds = {
-      minX: -YARD_WIDTH / 2 + 3,
-      maxX:  YARD_WIDTH / 2 - 3,
-      minZ: -YARD_DEPTH / 2 + 3,
-      maxZ:  YARD_DEPTH / 2 - 3,
-    };
-    fpRef.current = createFirstPerson(camera, renderer.domElement, bounds);
 
     (async () => {
       try {
@@ -151,13 +228,33 @@ export default function MapPage() {
 
       containersLayer?.userData?.tick?.();
 
-      if (!isFP) controls.update();
-      fpRef.current?.update(delta);
+      // Orbit sau Walk
+      if (!isFP) {
+        controls.update();
+        if (!isAnimatingRef.current) {
+          controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
+          controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
+        }
+      } else {
+        // Rotire cu joystick (x [-1..1] -> yaw)
+        const yawSpeed = 1.8; // rad/s
+        const yaw = joyRef.current.x * yawSpeed * delta;
+        camera.rotateY(-yaw);
 
-      if (!isAnimatingRef.current && !isFP) {
-        controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
-        controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
+        // Înaintare când butonul este ținut apăsat
+        if (fwdPressed) {
+          const moveSpeed = 6; // m/s
+          const fwd = new THREE.Vector3();
+          camera.getWorldDirection(fwd);
+          fwd.y = 0; fwd.normalize();
+          camera.position.addScaledVector(fwd, moveSpeed * delta);
+
+          // clamp în curte
+          camera.position.x = THREE.MathUtils.clamp(camera.position.x, bounds.minX, bounds.maxX);
+          camera.position.z = THREE.MathUtils.clamp(camera.position.z, bounds.minZ, bounds.maxZ);
+        }
       }
+
       renderer.render(scene, camera);
     };
     animate();
@@ -173,10 +270,9 @@ export default function MapPage() {
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
-      fpRef.current?.removeListeners?.();
       renderer.dispose();
     };
-  }, [isFP]);
+  }, [isFP, bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ]);
 
   // Fly-to
   useEffect(() => {
@@ -214,22 +310,17 @@ export default function MapPage() {
     setFlyToTarget(null);
   }, [flyToTarget]);
 
-  // Toggle First-Person
+  // Toggle Walk Mode
   const toggleFP = () => {
-    const fp = fpRef.current;
     const orbit = controlsRef.current;
     const cam = cameraRef.current;
-    if (!fp || !orbit || !cam) return;
+    if (!orbit || !cam) return;
 
     if (!isFP) {
       orbit.enabled = false;
-      cam.position.y = 1.6;        // “ochii”
-      fp.addListeners();
-      fp.enable();
+      cam.position.y = 1.6; // înălțimea ochilor
       setIsFP(true);
     } else {
-      fp.disable();
-      fp.removeListeners();
       orbit.enabled = true;
       setIsFP(false);
     }
@@ -248,12 +339,19 @@ export default function MapPage() {
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
 
-      {/* Toggle First-Person (mută-l în burger dacă vrei) */}
+      {/* CONTROALE MOBILE */}
+      {isFP && (
+        <>
+          <VirtualJoystick onChange={(v) => { joyRef.current = v; }} />
+          <ForwardButton pressed={fwdPressed} setPressed={setFwdPressed} />
+        </>
+      )}
+      {/* Toggle */}
       <button
         onClick={toggleFP}
         title={isFP ? 'Ieși din Walk' : 'Walk mode'}
         style={{
-          position:'absolute', right:12, bottom:12, zIndex:5,
+          position:'absolute', right:12, bottom:90, zIndex:5,
           width:48, height:48, borderRadius:24, border:'none',
           background:isFP ? '#10b981' : '#1f2937', color:'#fff',
           fontSize:22, boxShadow:'0 2px 10px rgba(0,0,0,.25)'
