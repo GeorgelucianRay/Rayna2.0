@@ -17,7 +17,6 @@ import ContainerInfoCard from './ContainerInfoCard';
 import { slotToWorld } from './threeWorld/slotToWorld';
 import createFirstPerson from './threeWorld/firstPerson';
 import Navbar3D from './Navbar3D';
-import BuildPalette from './build/BuildPalette';            // 🧱 paleta de build
 import createBuildController from './world/buildController';
 
 // controllerul de build (opțional)
