@@ -1,107 +1,103 @@
 // threeWorld/firstPerson.js
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
-export default function createFirstPerson(camera, domElement, bounds) {
-  const controls = new PointerLockControls(camera, domElement);
-  const velocity = new THREE.Vector3();
-  const direction = new THREE.Vector3();
-  const key = { fwd:false, back:false, left:false, right:false, jump:false };
+/**
+ * Control “first-person” cu joystick + tastatură, încapsulat.
+ * - setJoystick({x,y,active})  // x orizontal (yaw), y vertical (înainte/înapoi)
+ * - setForwardPressed(bool)     // buton “↑”
+ * - enable()/disable()          // pornește / oprește modul walk
+ * - addKeyboard()/removeKeyboard() // WASD + săgeți
+ * - update(delta)               // apelat în bucla de animare
+ */
+export default function createFirstPerson(camera, bounds) {
+  // --- state ---
+  const EYE_Y = 1.6;        // înălțimea camerei
+  const MOVE_SPEED = 6;     // m/s
+  const YAW_SPEED  = 1.8;   // rad/s
+  const DEAD = 0.15;        // prag joystick
+
   let enabled = false;
-  let canJump = true;
 
-  const onKey = (e, down) => {
-    switch (e.code) {
-      case 'KeyW': case 'ArrowUp':    key.fwd = down; break;
-      case 'KeyS': case 'ArrowDown':  key.back = down; break;
-      case 'KeyA': case 'ArrowLeft':  key.left = down; break;
-      case 'KeyD': case 'ArrowRight': key.right = down; break;
-      case 'Space': if (down && canJump) { velocity.y = 6; canJump = false; } break;
+  const joy = { x: 0, y: 0, active: false };
+  const keys = { w:false, a:false, s:false, d:false, ArrowUp:false, ArrowLeft:false, ArrowDown:false, ArrowRight:false };
+  let forwardPressed = false;
+
+  // --- API de input din UI ---
+  function setJoystick(v) { joy.x = v?.x || 0; joy.y = v?.y || 0; joy.active = !!v?.active; }
+  function setForwardPressed(v) { forwardPressed = !!v; }
+
+  // --- tastatură ---
+  function onKeyDown(e){
+    switch (e.key) {
+      case 'w': case 'W': case 'ArrowUp':    keys.w = true;  keys.ArrowUp = true; break;
+      case 's': case 'S': case 'ArrowDown':  keys.s = true;  keys.ArrowDown = true; break;
+      case 'a': case 'A': case 'ArrowLeft':  keys.a = true;  keys.ArrowLeft = true; break;
+      case 'd': case 'D': case 'ArrowRight': keys.d = true;  keys.ArrowRight = true; break;
       default: break;
     }
-  };
+  }
+  function onKeyUp(e){
+    switch (e.key) {
+      case 'w': case 'W': case 'ArrowUp':    keys.w = false;  keys.ArrowUp = false; break;
+      case 's': case 'S': case 'ArrowDown':  keys.s = false;  keys.ArrowDown = false; break;
+      case 'a': case 'A': case 'ArrowLeft':  keys.a = false;  keys.ArrowLeft = false; break;
+      case 'd': case 'D': case 'ArrowRight': keys.d = false;  keys.ArrowRight = false; break;
+      default: break;
+    }
+  }
+  function addKeyboard(){ window.addEventListener('keydown', onKeyDown); window.addEventListener('keyup', onKeyUp); }
+  function removeKeyboard(){ window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); }
 
-  const enable = () => {
-    enabled = true;
-    controls.lock();
-  };
-  const disable = () => {
-    enabled = false;
-    controls.unlock();
-  };
-
-  controls.addEventListener('unlock', ()=>{ enabled = false; });
-
-  const onKeyDown = (e)=>onKey(e,true);
-  const onKeyUp   = (e)=>onKey(e,false);
-
-  const addListeners = () => {
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-  };
-  const removeListeners = () => {
-    window.removeEventListener('keydown', onKeyDown);
-    window.removeEventListener('keyup', onKeyUp);
-  };
-
-  const GRAVITY = 18;       // “cădere”
-  const SPEED   = 12;       // viteză pe orizontală (m/s)
-  const EYE_Y   = 1.6;      // înălțimea camerei
-
-  function clampInsideYard(pos) {
+  // --- helpers ---
+  function clampInsideYard(pos){
     if (!bounds) return;
     pos.x = THREE.MathUtils.clamp(pos.x, bounds.minX, bounds.maxX);
     pos.z = THREE.MathUtils.clamp(pos.z, bounds.minZ, bounds.maxZ);
   }
 
-  // apelat în bucla de anim (delta în secunde)
-  function update(delta) {
+  // --- ciclu de update (apelat din MapPage) ---
+  function update(delta){
     if (!enabled) return;
 
-    // amortizare
-    velocity.x -= velocity.x * 8.0 * delta;
-    velocity.z -= velocity.z * 8.0 * delta;
-    velocity.y -= GRAVITY * delta;
+    // 1) yaw din joystick.x + taste A/D / Left/Right
+    let yawInput = 0;
+    if (Math.hypot(joy.x, joy.y) > DEAD) yawInput += joy.x;
+    if (keys.d || keys.ArrowRight) yawInput += 0.8;
+    if (keys.a || keys.ArrowLeft)  yawInput -= 0.8;
+    if (yawInput !== 0) camera.rotateY(-yawInput * YAW_SPEED * delta);
 
-    direction.set(
-      Number(key.right) - Number(key.left),
-      0,
-      Number(key.back) - Number(key.fwd)
-    ).normalize();
+    // 2) direcție înainte
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y = 0; fwd.normalize();
 
-    if (key.fwd || key.back) {
-      const forward = new THREE.Vector3();
-      controls.getDirection(forward);
-      forward.y = 0; forward.normalize();
-      velocity.addScaledVector(forward, -direction.z * SPEED * delta);
-    }
-    if (key.left || key.right) {
-      const right = new THREE.Vector3();
-      controls.getDirection(right);
-      right.y = 0; right.normalize().cross(new THREE.Vector3(0,1,0));
-      velocity.addScaledVector(right, direction.x * SPEED * delta);
+    // 3) input de mișcare (înainte/înapoi)
+    let moveInput = 0;
+    if (Math.hypot(joy.x, joy.y) > DEAD) moveInput += -joy.y;            // joystick: sus = înainte
+    if (forwardPressed || keys.w || keys.ArrowUp) moveInput += 1;
+    if (keys.s || keys.ArrowDown) moveInput -= 1;
+
+    if (moveInput !== 0) {
+      camera.position.addScaledVector(fwd, moveInput * MOVE_SPEED * delta);
     }
 
-    const pos = controls.getObject().position;
-    pos.addScaledVector(velocity, 1);
-
-    // “solul” la 0 și sărim/aterizăm
-    if (pos.y < EYE_Y) {
-      velocity.y = 0;
-      pos.y = EYE_Y;
-      canJump = true;
-    }
-
-    clampInsideYard(pos);
+    // 4) menține “ochii” la înălțime și limitele curții
+    camera.position.y = EYE_Y;
+    clampInsideYard(camera.position);
   }
 
+  // --- on/off ---
+  function enable(){ enabled = true; camera.position.y = EYE_Y; }
+  function disable(){ enabled = false; }
+
   return {
-    controls,
-    enable,
-    disable,
-    update,
+    // state
     isEnabled: () => enabled,
-    addListeners,
-    removeListeners
+    enable, disable,
+    // input
+    setJoystick, setForwardPressed,
+    addKeyboard, removeKeyboard,
+    // loop
+    update,
   };
 }
