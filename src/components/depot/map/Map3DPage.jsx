@@ -1,6 +1,7 @@
 // src/components/depot/map/Map3DPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
+import createBuildController from './world/buildController';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
@@ -11,22 +12,19 @@ import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
 import fetchContainers from './threeWorld/fetchContainers';
-import createSky from './threeWorld/createSky';                // primește { scene, renderer, hdrPath, ... }
+import createSky from './threeWorld/createSky';
 import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import { slotToWorld } from './threeWorld/slotToWorld';
 import createFirstPerson from './threeWorld/firstPerson';
 import Navbar3D from './Navbar3D';
+import BuildPalette from './build/BuildPalette';            // 🧱 paleta de build
 
-// (opțional) controllerul de build – dacă nu e încă implementat, codul face fallback grațios
+// controllerul de build (opțional)
 let createBuildControllerSafe = null;
 try {
-  // pune controllerul tău în: src/components/depot/map/world/buildController.js
-  // export default function createBuildController({...}) { ... }
   createBuildControllerSafe = require('./world/buildController').default;
-} catch (e) {
-  // no-op; rămânem fără build până îl adaugi
-}
+} catch (e) { /* no-op */ }
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -129,11 +127,12 @@ export default function MapPage() {
   const [error,   setError]   = useState('');
   const navigate = useNavigate();
 
-  // Build mode (Minecraft-like)
+  // Build mode
   const [buildActive, setBuildActive] = useState(false);
   const [buildMode,   setBuildMode]   = useState('place'); // 'place' | 'remove'
-  const buildRef = useRef(null);        // controllerul de build
-  const worldGroupRef = useRef(null);   // grupul cu obiecte editabile
+  const [showBuild,   setShowBuild]   = useState(false);   // UI paletă
+  const buildRef = useRef(null);
+  const worldGroupRef = useRef(null);
 
   // Items list modal
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -202,7 +201,7 @@ export default function MapPage() {
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
 
-    // CER HDRI — PASĂM renderer-ul aici
+    // CER HDRI
     scene.add(
       createSky({
         scene,
@@ -229,17 +228,16 @@ export default function MapPage() {
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // Build controller (dacă există fișierul; altfel îl ignori până îl adaugi)
-    if (createBuildControllerSafe) {
-      buildRef.current = createBuildControllerSafe({
-        camera,
-        domElement: renderer.domElement,
-        worldGroup,
-        groundMesh,
-        grid: 1, // snap la 1m
-      });
-      buildRef.current?.setMode(buildMode);
-    }
+    // Build controller
+    // nou
+buildRef.current = createBuildController({
+  camera,
+  domElement: renderer.domElement,
+  worldGroup,
+  groundMesh,
+  grid: 1,
+});
+buildRef.current.setMode(buildMode);
 
     // containere
     (async () => {
@@ -256,12 +254,8 @@ export default function MapPage() {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
-      // nu interceptăm clickurile pe UI
       if (event.target.closest(`.${styles.searchContainer}`)) return;
-
-      // dacă suntem în build mode, nu selectăm containere
-      if (buildActive) return;
-
+      if (buildActive) return; // nu selectăm containere când construim
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -278,7 +272,7 @@ export default function MapPage() {
     };
     mount.addEventListener('click', onClick);
 
-    // === Build input: doar când buildActive === true
+    // input build (doar când buildActive)
     function onPointerMove(e) {
       if (!buildActive || !buildRef.current) return;
       buildRef.current.updatePreviewAt(e.clientX, e.clientY);
@@ -356,19 +350,11 @@ export default function MapPage() {
   }, [flyToTarget]);
 
   /* ---------- CALLBACK-URI PENTRU NAVBAR3D ---------- */
-  const handleSelectFromSearch = (container) => {
-    setFlyToTarget(container);
-  };
-  const handleToggleFP = () => {
-    toggleFP();
-  };
-  const handleAdd = (formData) => {
-    // Integrare ulterioară (Supabase / world store)
-    console.log('Add from Navbar3D:', formData);
-  };
-  const handleOpenWorldItems = () => {
-    setItemsOpen(true);
-  };
+  const handleSelectFromSearch = (container) => setFlyToTarget(container);
+  const handleToggleFP = () => toggleFP();
+  const handleAdd = (formData) => { console.log('Add from Navbar3D:', formData); };
+  const handleOpenWorldItems = () => setItemsOpen(true);
+  const handleOpenBuild = () => { setShowBuild(true); setBuildActive(true); };   // 🧱
 
   /* ---------- RENDER ---------- */
   return (
@@ -379,7 +365,8 @@ export default function MapPage() {
         onSelectContainer={handleSelectFromSearch}
         onToggleFP={handleToggleFP}
         onAdd={handleAdd}
-        onOpenWorldItems={handleOpenWorldItems}  // 📋
+        onOpenBuild={handleOpenBuild}             // 🧱
+        onOpenWorldItems={handleOpenWorldItems}   // 📋
       />
 
       {/* Top bar exit */}
@@ -405,13 +392,29 @@ export default function MapPage() {
       {/* Canvas */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* Card info container selectat */}
+      {/* Card info container */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
       />
 
-      {/* Modal “World Items” – provizoriu; umple-l cu store-ul tău */}
+      {/* Build Palette (UI) */}
+      {showBuild && (
+        <BuildPalette
+          onClose={() => { setShowBuild(false); setBuildActive(false); }}
+          onPickType={(t) => buildRef.current?.setType(t)}
+          mode={buildMode}
+          setMode={(m) => { setBuildMode(m); buildRef.current?.setMode(m); }}
+          onRotateStep={(dir) => buildRef.current?.rotateStep(dir)}
+          onFinalize={(json) => {
+            console.log('WORLD JSON', json);
+            setShowBuild(false);
+            setBuildActive(false);
+          }}
+        />
+      )}
+
+      {/* World Items – placeholder; populează cu store-ul tău */}
       {itemsOpen && (
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
