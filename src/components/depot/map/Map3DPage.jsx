@@ -1,3 +1,4 @@
+// Map3DPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -10,12 +11,12 @@ import createGround from './threeWorld/createGround';
 import createFence from './threeWorld/createFence';
 import createContainersLayerOptimized from './threeWorld/createContainersLayerOptimized';
 import fetchContainers from './threeWorld/fetchContainers';
-import createSky from './threeWorld/createSky';
+import createSky from './threeWorld/createSky';                // <- primește { scene, renderer, hdrPath, ... }
 import createLandscape from './threeWorld/createLandscape';
 import ContainerInfoCard from './ContainerInfoCard';
 import SearchBox from './SearchBox';
 import { slotToWorld } from './threeWorld/slotToWorld';
-import createFirstPerson from './threeWorld/firstPerson';
+import createFirstPerson from './threeWorld/firstPerson';       // <- controller FP
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -99,7 +100,7 @@ export default function MapPage() {
   const isAnimatingRef = useRef(false);
   const clockRef = useRef(new THREE.Clock());
 
-  // FP controller
+  // FP controller + state sigur
   const [isFP, setIsFP] = useState(false);
   const isFPRef = useRef(false);
   useEffect(() => { isFPRef.current = isFP; }, [isFP]);
@@ -124,21 +125,17 @@ export default function MapPage() {
     maxZ:  YARD_DEPTH / 2 - 2,
   }), []);
 
-  /* ---------- HANDLERS ---------- */
+  /* ---------- HANDLERS (FP) ---------- */
   const enableFPInternal = () => {
     const orbit = controlsRef.current;
     if (!orbit) return;
-    if (!fpRef.current || !fpReadyRef.current) {
-      pendingEnableRef.current = true;
-      return;
-    }
+    if (!fpRef.current || !fpReadyRef.current) { pendingEnableRef.current = true; return; }
     orbit.enabled = false;
     fpRef.current.enable();
     fpRef.current.addKeyboard();
     isFPRef.current = true;
     setIsFP(true);
   };
-
   const disableFPInternal = () => {
     const orbit = controlsRef.current;
     if (!orbit) return;
@@ -150,83 +147,92 @@ export default function MapPage() {
     isFPRef.current = false;
     setIsFP(false);
   };
-
-  const ensureFP = () => {
-    if (isFPRef.current) return;
-    if (!fpRef.current || !fpReadyRef.current) {
-      pendingEnableRef.current = true;
-      return;
-    }
-    enableFPInternal();
-  };
-
-  const toggleFP = () => {
-    if (isFPRef.current) disableFPInternal();
-    else ensureFP();
-  };
+  const ensureFP = () => { if (!isFPRef.current) enableFPInternal(); };
+  const toggleFP = () => { isFPRef.current ? disableFPInternal() : enableFPInternal(); };
 
   /* ---------- INIT SCENE ---------- */
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
+    // renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setSize(mount.clientWidth, mount.clientHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-mount.appendChild(renderer.domElement);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
 
-// expunem rendererul pentru createSky
-window.__THREE_RENDERER = renderer;
-
+    // scenă + cameră
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
+    // orbit
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // create FP controller
+    // first-person (controller încapsulat)
     fpRef.current = createFirstPerson(camera, bounds);
     fpReadyRef.current = true;
-    if (pendingEnableRef.current) {
-      enableFPInternal();
-      pendingEnableRef.current = false;
-    }
+    if (pendingEnableRef.current) { enableFPInternal(); pendingEnableRef.current = false; }
 
-    // lights + lume
+    // lumini + lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
-    // în loc de: scene.add(createSky());
-scene.add(
-  createSky({
-    scene,
-    hdrPath: '/textures/lume/golden_gate_hills_1k.hdr',
-    exposure: 1.1, // poți regla 0.9–1.3 după gust
-  })
-);
 
-    // curtea
+    // CER HDRI — PASĂM renderer-ul aici
+    scene.add(
+      createSky({
+        scene,
+        renderer,
+        hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', // <— fișierul tău
+        exposure: 1.1,
+      })
+    );
+
+    // PEISAJ + CURTE
+    scene.add(createLandscape({ ground: CFG.ground }));
     const depotGroup = new THREE.Group();
     const ground = createGround(CFG.ground);
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(ground, fence);
     scene.add(depotGroup);
 
+    // containere
     (async () => {
       try {
         const data = await fetchContainers();
         setAllContainers(data.containers);
-        const layer = createContainersLayerOptimized(data, CFG.ground);
-        depotGroup.add(layer);
+        depotGroup.add(createContainersLayerOptimized(data, CFG.ground));
       } catch (e) {
         console.warn(e); setError('Nu am putut încărca containerele.');
       } finally { setLoading(false); }
     })();
 
-    // animație
+    // click pick
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const onClick = (event) => {
+      if (event.target.closest(`.${styles.searchContainer}`)) return;
+      const rect = mount.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(depotGroup.children, true);
+      if (intersects.length > 0) {
+        const hit = intersects[0], obj = hit.object;
+        if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+          const rec = obj.userData.records[hit.instanceId]; if (rec) { setSelectedContainer(rec); return; }
+        }
+        if (obj.userData?.__record) { setSelectedContainer(obj.userData.__record); return; }
+      }
+      setSelectedContainer(null);
+    };
+    mount.addEventListener('click', onClick);
+
+    // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
     const minZ = -YARD_DEPTH/2 + 5, maxZ = YARD_DEPTH/2 + 5;
 
@@ -247,20 +253,23 @@ scene.add(
     };
     animate();
 
+    // resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
+    // cleanup
     return () => {
+      mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
   }, [bounds]);
 
-  // joystick ↑
+  // joystick: “înainte”
   useEffect(() => { fpRef.current?.setForwardPressed(fwdPressed); }, [fwdPressed]);
 
   /* ---------- FLY-TO ---------- */
