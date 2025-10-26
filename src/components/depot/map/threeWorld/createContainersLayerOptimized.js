@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { slotToWorld } from './slotToWorld';
 
+/* ------------ CULORI NAVIERA ------------ */
 const NAVIERA_COLORS = {
   MAERSK: 0xbfc7cf, MSK: 0xbfc7cf,
   HAPAG: 0xf97316, MESSINA: 0xf97316,
   ONE: 0xec4899, EVERGREEN: 0x22c55e,
-  ARCAS: 0x2563eb, OTROS: 0x8b5e3c
+  ARKAS: 0x2563eb, MSC: 0xfacc15,
+  OTROS: 0x8b5e3c
 };
 
+/* ------------ DIMENSIUNI CONTAINERE ------------ */
 const SIZE_BY_TIPO = {
   '20':        { L: 6.06,  H: 2.59, W: 2.44 },
   '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
@@ -17,8 +20,7 @@ const SIZE_BY_TIPO = {
   '45':        { L: 13.72, H: 2.89, W: 2.44 },
 };
 
-/* ------------ TEXTURES ------------ */
-
+/* ------------ TEXTURI ------------ */
 const TEXROOT = '/textures/contenedores';
 const loader = new THREE.TextureLoader();
 const tcache = new Map();
@@ -36,38 +38,38 @@ function tex(path) {
 function normBrand(name='') {
   const s = name.toLowerCase();
   if (s.includes('maersk') || s.includes('msk')) return 'maersk';
+  if (s.includes('hapag')) return 'hapag';
+  if (s.includes('messina')) return 'messina';
+  if (s.includes('one')) return 'one';
+  if (s.includes('evergreen')) return 'evergreen';
+  if (s.includes('arkas')) return 'arkas';
+  if (s.includes('msc')) return 'msc';
   return 'generic';
 }
 
 /**
- * Creează un array de 6 materiale pentru BoxGeometry
- * Ordinea fețelor: [right, left, top, bottom, front(+Z), back(-Z)]
- * orient = 'X' - lungimea merge pe axa X (±X sunt capete/doors)
- * orient = 'Z' - lungimea merge pe axa Z (±Z sunt capete/doors)
+ * Creează array-ul de 6 materiale pentru un container.
+ * Ordinea: [right, left, top, bottom, front, back]
  */
 function makeMaterials({ brand, sizeMetersL, orient, colorHex }) {
   const matPlain = new THREE.MeshStandardMaterial({
     color: colorHex, metalness: 0.1, roughness: 0.7
   });
 
-  if (brand !== 'maersk') {
-    // 6 materiale identice (fără texturi) pentru branduri fără set
+  if (brand === 'generic') {
     return [matPlain, matPlain, matPlain, matPlain, matPlain, matPlain];
   }
 
-  // folosim setul de 40ft pentru toate și reglăm repeat pe lungime
-  const dir = `${TEXROOT}/maersk`;
-  const side  = tex(`${dir}/maersk_40_side.png`);
-  const front = tex(`${dir}/maersk_40_front_texture.png`);
-  const back  = tex(`${dir}/maersk_40_back_texture.png`);
-  const top   = tex(`${dir}/maersk_40_top_texture.png`);
+  const dir = `${TEXROOT}/${brand}`;
+  const side  = tex(`${dir}/${brand}_40_side_texture.png`);
+  const front = tex(`${dir}/${brand}_40_front_texture.png`);
+  const back  = tex(`${dir}/${brand}_40_back_texture.png`);
+  const top   = tex(`${dir}/${brand}_40_top_texture.png`);
 
-  // factor de scalare față de 40ft (12.19m)
-  const repeatX = Math.max(0.25, sizeMetersL / 12.19); // 20ft ≈ 0.5, 40ft ≈ 1, 45ft ≈ 1.125
+  const repeatX = Math.max(0.25, sizeMetersL / 12.19);
   side.repeat.set(repeatX, 1);
   top.repeat.set(repeatX, 1);
 
-  // materiale cu map
   const mSide  = new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 });
   const mTop   = new THREE.MeshStandardMaterial({ map: top,   metalness: 0.1, roughness: 0.85 });
   const mBottom= new THREE.MeshStandardMaterial({ color: 0x8a8f95, metalness: 0.1, roughness: 0.9 });
@@ -75,24 +77,18 @@ function makeMaterials({ brand, sizeMetersL, orient, colorHex }) {
   const mBack  = new THREE.MeshStandardMaterial({ map: back,  metalness: 0.1, roughness: 0.8 });
 
   if (orient === 'X') {
-    // lungimea pe X → capetele sunt ±X, lateralele sunt ±Z
-    // right(+X)=front(doors), left(-X)=back, front(+Z)=side, back(-Z)=side
     return [mFront, mBack, mTop, mBottom, mSide, mSide];
   } else {
-    // lungimea pe Z → capetele sunt ±Z, lateralele sunt ±X
-    // right(+X)=side, left(-X)=side, front(+Z)=front(doors), back(-Z)=back
     return [mSide, mSide, mTop, mBottom, mFront, mBack];
   }
 }
 
-/* ------------ LAYER ------------ */
-
+/* ------------ LAYER PRINCIPAL ------------ */
 export default function createContainersLayerOptimized(data, layout) {
   const layer = new THREE.Group();
   const all = data?.containers || [];
   if (!all.length) return layer;
 
-  // Grupăm după: tip, brand, orientare, programado
   const groups = new Map();
 
   function parsePos(p) {
@@ -100,7 +96,6 @@ export default function createContainersLayerOptimized(data, layout) {
     const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/);
     if (!m) return null;
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
-    // lane=A..F, index=1.., tier=A..Z
   }
 
   all.forEach(rec => {
@@ -109,21 +104,14 @@ export default function createContainersLayerOptimized(data, layout) {
 
     const tipo = (rec.tipo || '40bajo').toLowerCase();
     const dims = SIZE_BY_TIPO[tipo] || SIZE_BY_TIPO['40bajo'];
+    const wp = slotToWorld({ lane: parsed.band, index: parsed.index, tier: parsed.level }, { ...layout, abcNumbersReversed: true });
 
-    // determinăm orientarea bazat pe rotY de la slotToWorld
-    const wp = slotToWorld(
-      { lane: parsed.band, index: parsed.index, tier: parsed.level },
-      { ...layout, abcNumbersReversed: true }
-    );
     const rot = wp.rotationY || 0;
-    // rot ~ 0/PI → lung pe X, rot ~ +/- PI/2 → lung pe Z
     const orient = (Math.round((rot / (Math.PI / 2)) % 2) % 2 === 0) ? 'X' : 'Z';
-
     const isProgramado = rec.__source === 'programados';
     const navRaw = (rec.naviera || '').trim().toUpperCase();
     const brand = normBrand(navRaw);
 
-    // culoare fallback
     const baseColor = NAVIERA_COLORS[navRaw] ?? NAVIERA_COLORS.OTROS;
     const colorHex = isProgramado
       ? new THREE.Color(baseColor).offsetHSL(0, 0, 0.10).getHex()
@@ -154,8 +142,7 @@ export default function createContainersLayerOptimized(data, layout) {
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3();
     const quat = new THREE.Quaternion();
-    const scl = new THREE.Vector3(1,1,1);
-
+    const scl = new THREE.Vector3(1, 1, 1);
     const records = new Array(count);
 
     g.items.forEach((it, i) => {
@@ -171,7 +158,6 @@ export default function createContainersLayerOptimized(data, layout) {
     });
 
     mesh.userData.records = records;
-
     if (g.isProgramado) {
       mesh.userData.isProgramado = true;
       mesh.userData.pulsePhases = new Float32Array(count);
@@ -181,7 +167,6 @@ export default function createContainersLayerOptimized(data, layout) {
     layer.add(mesh);
   });
 
-  // puls pentru programados
   layer.userData.tick = () => {
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
