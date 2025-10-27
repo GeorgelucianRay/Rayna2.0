@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// src/components/depot/map/build/BuildPalette.jsx
+import React, { useEffect, useState, useRef } from 'react';
 import { PROP_TYPES } from '../world/propRegistry';
 import { getProps, exportJSON, exportCSV } from '../world/worldStore';
 
@@ -11,22 +12,88 @@ export default function BuildPalette({
   buildMode,
   setBuildMode,
 }) {
+  // tip curent
   const [currentType, setCurrentType] = useState('road.segment');
+
+  // stare UI: minimizat? + poziție FAB (draggable ușor)
+  const [minimized, setMinimized] = useState(false);
+  const [fabPos, setFabPos] = useState({ x: 16, y: 16 }); // offset față de colțul dreapta-jos
+  const draggingRef = useRef(null);
+
+  // asigurăm legătura cu controllerul
   useEffect(() => { if (buildController && currentType) buildController.setType(currentType); }, [buildController, currentType]);
   useEffect(() => { if (buildController) buildController.setMode(buildMode); }, [buildController, buildMode]);
 
+  // dacă panelul e închis complet, nu randăm nimic (nici FAB)
   if (!open) return null;
-  const items = getProps();
 
+  const items = getProps?.() || [];
+
+  /* =====================  FAB flotant (minimized)  ===================== */
+  if (minimized) {
+    const ringColor = buildActive ? '#10b981' : '#ef4444';
+
+    const startDrag = (e) => {
+      const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+      draggingRef.current = { startX: p.clientX, startY: p.clientY, baseX: fabPos.x, baseY: fabPos.y };
+      e.preventDefault?.();
+    };
+    const onDrag = (e) => {
+      if (!draggingRef.current) return;
+      const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+      const dx = p.clientX - draggingRef.current.startX;
+      const dy = p.clientY - draggingRef.current.startY;
+      setFabPos({ x: Math.max(8, draggingRef.current.baseX - dx), y: Math.max(8, draggingRef.current.baseY - dy) });
+    };
+    const endDrag = () => { draggingRef.current = null; };
+
+    return (
+      <div
+        data-build-ui="true"
+        // container full-screen doar ca să prindem drag; nu blochează canvas (pointer-events none)
+        style={{ position:'absolute', inset:0, zIndex:30, pointerEvents:'none' }}
+        onMouseMove={onDrag}
+        onMouseUp={endDrag}
+        onTouchMove={onDrag}
+        onTouchEnd={endDrag}
+      >
+        <button
+          title={buildActive ? 'Build ON (tap pt. a deschide)' : 'Build OFF (tap pt. a deschide)'}
+          onClick={() => setMinimized(false)}
+          data-build-ui="true"
+          onMouseDown={startDrag}
+          onTouchStart={startDrag}
+          style={{
+            position:'absolute',
+            right: fabPos.x, bottom: fabPos.y,
+            width:64, height:64, borderRadius:32,
+            border:'2px solid ' + ringColor,
+            background:'#0b1220', color:'#fff',
+            fontSize:26, fontWeight:800,
+            boxShadow:'0 8px 24px rgba(0,0,0,.45)',
+            pointerEvents:'auto'
+          }}
+        >
+          🧱
+        </button>
+      </div>
+    );
+  }
+
+  /* =====================  Panou mare (neminimizat)  ===================== */
   return (
-    <div data-build-ui="true" style={{
-      position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:16
-    }}>
+    <div
+      data-build-ui="true"
+      style={{
+        position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
+        display:'flex', alignItems:'center', justifyContent:'center', padding:16
+      }}
+    >
       <div style={{
-        width:'min(680px, 96vw)', background:'#0b1220', color:'#fff',
+        width:'min(700px, 96vw)', background:'#0b1220', color:'#fff',
         borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)'
       }}>
+        {/* Header */}
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
           <div style={{display:'flex', gap:10, alignItems:'center'}}>
             <h3 style={{margin:0, fontSize:18}}>Build Mode</h3>
@@ -37,13 +104,28 @@ export default function BuildPalette({
               fontSize:12, fontWeight:700
             }}>{buildActive ? 'ACTIVE' : 'OFF'}</span>
           </div>
-          <button onClick={onClose} style={{fontSize:18, background:'transparent', color:'#fff', border:'none'}}>✕</button>
+          <div style={{display:'flex', gap:8}}>
+            {/* minimize */}
+            <button
+              title="Minimize"
+              onClick={() => setMinimized(true)}
+              style={{fontSize:16, background:'#0f172a', color:'#cbd5e1', border:'1px solid #1f2a44', borderRadius:8, padding:'6px 10px'}}
+            >—</button>
+            {/* close (NU oprește build mode; doar închide UI) */}
+            <button
+              onClick={onClose}
+              style={{fontSize:18, background:'transparent', color:'#fff', border:'none'}}
+              title="Închide paleta"
+            >✕</button>
+          </div>
         </div>
 
+        {/* Controls */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
+          {/* Stânga: selecție tip + mod */}
           <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
             <div style={{fontSize:13, opacity:.85, marginBottom:8}}>Tip obiect</div>
-            <div style={{display:'grid', gap:8}}>
+            <div style={{display:'grid', gap:8, maxHeight:260, overflow:'auto', paddingRight:6}}>
               {PROP_TYPES.map(p => (
                 <label key={p.key} style={{
                   display:'flex', alignItems:'center', gap:8,
@@ -61,7 +143,7 @@ export default function BuildPalette({
               ))}
             </div>
 
-            <div style={{marginTop:12, display:'flex', gap:8}}>
+            <div style={{marginTop:12, display:'flex', gap:8, flexWrap:'wrap'}}>
               <button
                 onClick={()=>setBuildMode('place')}
                 style={{
@@ -102,10 +184,11 @@ export default function BuildPalette({
             </div>
           </div>
 
+          {/* Dreapta: listă + export */}
           <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
               <div style={{fontSize:13, opacity:.85}}>Obiecte plasate</div>
-              <div style={{display:'flex', gap:8}}>
+              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
                 <button
                   onClick={()=>{
                     const blob = new Blob([exportJSON()], {type:'application/json'});
@@ -134,7 +217,7 @@ export default function BuildPalette({
               background:'#0a1322', border:'1px dashed #1f2a44', borderRadius:8
             }}>
               {(!items || !items.length) && (
-                <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă. Pornește „Build Mode”, alege un tip și click pe teren.</div>
+                <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă. Pornește „Build Mode”, alege un tip și atinge/click pe teren.</div>
               )}
               {items && items.length > 0 && items.map(it => (
                 <div key={it.id} style={{
@@ -145,7 +228,9 @@ export default function BuildPalette({
                 }}>
                   <div style={{fontSize:13}}>
                     <div><b>{it.type}</b> <span style={{opacity:.7}}>(id: {it.id.slice(0,8)}…)</span></div>
-                    <div style={{opacity:.8}}>pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}</div>
+                    <div style={{opacity:.8}}>
+                      pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}
+                    </div>
                   </div>
                 </div>
               ))}
