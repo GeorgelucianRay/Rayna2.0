@@ -1,4 +1,3 @@
-// src/components/depot/map/Map3DPage.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Map3DStandalone.module.css';
@@ -25,13 +24,13 @@ export default function Map3DPage() {
     setForwardPressed,
     setJoystick,
     setBuildActive,
-    buildApi,           // <- avem deja tot ce trebuie aici
+    buildApi,          // { mode, setMode, rotateStep, setType, finalizeJSON, controller, active }
     containers,
     openWorldItems,
     setOnContainerSelected,
   } = useDepotScene({ mountRef });
 
-  // Conectăm selectarea containerului din scenă către cardul de info
+  // Card info container selectat
   useEffect(() => {
     setOnContainerSelected(selected => setSelectedContainer(selected));
   }, [setOnContainerSelected]);
@@ -48,20 +47,15 @@ export default function Map3DPage() {
         onOpenWorldItems={() => openWorldItems()}
       />
 
-      {/* Buton de ieșire */}
+      {/* Top bar exit */}
       <div className={styles.topBar}>
-        <button
-          className={styles.iconBtn}
-          onClick={() => navigate('/depot')}
-        >
-          ✕
-        </button>
+        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
 
       {/* Canvas host */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* Controale mobile pentru modul First Person */}
+      {/* Controls mobile FP */}
       {isFP && (
         <FPControls
           ensureFP={() => setFPEnabled(true)}
@@ -70,20 +64,16 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* === Build Palette === */}
+      {/* Build Palette (UI) */}
       {showBuild && (
         <BuildPalette
+          open={showBuild}
           onClose={() => { setShowBuild(false); setBuildActive(false); }}
-          onPickType={(t) => buildApi.setType(t)}          // alegi obiectul (drum, gard, munte etc.)
-          mode={buildApi.mode}                             // 'place' | 'remove'
-          setMode={(m) => buildApi.setMode(m)}             // schimbi modul
-          onRotateStep={(dir) => buildApi.rotateStep(dir)} // rotești ±90°
-          onFinalize={() => {
-            const json = buildApi.finalizeJSON();          // exportă ce-ai creat
-            console.log('WORLD JSON:', json);
-            setShowBuild(false);
-            setBuildActive(false);
-          }}
+          buildController={buildApi.controller}   // 🔗 legăm UI de controller
+          buildActive={buildApi.active}
+          setBuildActive={setBuildActive}
+          buildMode={buildApi.mode}
+          setBuildMode={buildApi.setMode}
         />
       )}
 
