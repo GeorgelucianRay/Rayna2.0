@@ -7,34 +7,29 @@ import Navbar3D from './Navbar3D';
 import ContainerInfoCard from './ContainerInfoCard';
 import { useDepotScene } from './scene/useDepotScene';
 import FPControls from './ui/FPControls';
-// ⬇️ folosim paleta corectă
 import BuildPalette from './build/BuildPalette';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
   const mountRef = useRef(null);
 
-  // UI state
+  // UI State
   const [showBuild, setShowBuild] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
-  const [flyToTarget, setFlyToTarget] = useState(null); // (Notă: flyToTarget nu este folosit nicăieri)
+  const [flyToTarget, setFlyToTarget] = useState(null);
 
-  // ===== MODIFICARE 1: Extragem noile date din hook =====
-  // Hook principal (scena)
+  // Hook principal al scenei 3D
   const {
     isFP,
     setFPEnabled,
     setForwardPressed,
     setJoystick,
-    buildActive, // <-- ADĂUGAT
     setBuildActive,
-    buildApi,
-    buildController, // <-- ADĂUGAT
+    buildApi,           // <- avem deja tot ce trebuie aici
     containers,
     openWorldItems,
     setOnContainerSelected,
   } = useDepotScene({ mountRef });
-  // ===== SFÂRȘIT MODIFICARE 1 =====
 
   // Conectăm selectarea containerului din scenă către cardul de info
   useEffect(() => {
@@ -43,25 +38,30 @@ export default function Map3DPage() {
 
   return (
     <div className={styles.fullscreenRoot}>
-      {/* Navbar principal */}
+      {/* Navbar */}
       <Navbar3D
         containers={containers}
-        onSelectContainer={(c) => setFlyToTarget(c)} // (opțional: expune flyTo din hook și apelează-l aici)
+        onSelectContainer={(c) => setFlyToTarget(c)}
         onToggleFP={() => setFPEnabled(prev => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
         onOpenWorldItems={() => openWorldItems()}
       />
 
-      {/* Buton ieșire */}
+      {/* Buton de ieșire */}
       <div className={styles.topBar}>
-        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
+        <button
+          className={styles.iconBtn}
+          onClick={() => navigate('/depot')}
+        >
+          ✕
+        </button>
       </div>
 
       {/* Canvas host */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* Controale mobile (First Person) */}
+      {/* Controale mobile pentru modul First Person */}
       {isFP && (
         <FPControls
           ensureFP={() => setFPEnabled(true)}
@@ -70,22 +70,24 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* ===== MODIFICARE 2: Trimitem props-urile corecte către BuildPalette ===== */}
-      {/* Paleta de Build (UI corectă) */}
+      {/* === Build Palette === */}
       {showBuild && (
         <BuildPalette
-          open={showBuild}
           onClose={() => { setShowBuild(false); setBuildActive(false); }}
-          buildController={buildController}
-          buildActive={buildActive}
-          setBuildActive={setBuildActive}
-          buildMode={buildApi.mode}
-          setBuildMode={buildApi.setMode}
+          onPickType={(t) => buildApi.setType(t)}          // alegi obiectul (drum, gard, munte etc.)
+          mode={buildApi.mode}                             // 'place' | 'remove'
+          setMode={(m) => buildApi.setMode(m)}             // schimbi modul
+          onRotateStep={(dir) => buildApi.rotateStep(dir)} // rotești ±90°
+          onFinalize={() => {
+            const json = buildApi.finalizeJSON();          // exportă ce-ai creat
+            console.log('WORLD JSON:', json);
+            setShowBuild(false);
+            setBuildActive(false);
+          }}
         />
       )}
-      {/* ===== SFÂRȘIT MODIFICARE 2 ===== */}
 
-      {/* Info container selectat */}
+      {/* Card info container selectat */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
