@@ -17,20 +17,24 @@ export default function Map3DPage() {
   // UI state
   const [showBuild, setShowBuild] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
-  const [flyToTarget, setFlyToTarget] = useState(null);
+  const [flyToTarget, setFlyToTarget] = useState(null); // (Notă: flyToTarget nu este folosit nicăieri)
 
+  // ===== MODIFICARE 1: Extragem noile date din hook =====
   // Hook principal (scena)
   const {
     isFP,
     setFPEnabled,
     setForwardPressed,
     setJoystick,
+    buildActive, // <-- ADĂUGAT
     setBuildActive,
-    buildApi,           // { mode, setMode, rotateStep, setType, finalizeJSON }
-    containers,         // lista pentru search
-    openWorldItems,     // deschide lista de obiecte
+    buildApi,
+    buildController, // <-- ADĂUGAT
+    containers,
+    openWorldItems,
     setOnContainerSelected,
   } = useDepotScene({ mountRef });
+  // ===== SFÂRȘIT MODIFICARE 1 =====
 
   // Conectăm selectarea containerului din scenă către cardul de info
   useEffect(() => {
@@ -66,22 +70,20 @@ export default function Map3DPage() {
         />
       )}
 
+      {/* ===== MODIFICARE 2: Trimitem props-urile corecte către BuildPalette ===== */}
       {/* Paleta de Build (UI corectă) */}
       {showBuild && (
         <BuildPalette
+          open={showBuild}
           onClose={() => { setShowBuild(false); setBuildActive(false); }}
-          onPickType={(t) => buildApi.setType(t)}              // selectează tipul (drum/gard/etc.)
-          mode={buildApi.mode}                                 // 'place' | 'remove'
-          setMode={(m) => buildApi.setMode(m)}                 // schimbă modul
-          onRotateStep={(dir) => buildApi.rotateStep(dir)}     // ±90°
-          onFinalize={() => {
-            const json = buildApi.finalizeJSON();              // exportă modificările
-            console.log('WORLD JSON:', json);
-            setShowBuild(false);
-            setBuildActive(false);
-          }}
+          buildController={buildController}
+          buildActive={buildActive}
+          setBuildActive={setBuildActive}
+          buildMode={buildApi.mode}
+          setBuildMode={buildApi.setMode}
         />
       )}
+      {/* ===== SFÂRȘIT MODIFICARE 2 ===== */}
 
       {/* Info container selectat */}
       <ContainerInfoCard
