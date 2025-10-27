@@ -51,6 +51,7 @@ export default function createGround({
   slab.name = 'groundSlab';
   slab.receiveShadow = true;
   g.add(slab);
+  g.userData.groundMesh = slab;
 
   // <<< CHEIA: expunem mesh-ul principal pentru raycast din buildController
   g.userData.groundMesh = slab;
