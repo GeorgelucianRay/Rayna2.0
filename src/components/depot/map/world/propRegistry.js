@@ -1,11 +1,12 @@
 // src/components/depot/map/world/propRegistry.js
 
-// ===== MODIFICARE: Am scos "prefabs/" din căile de import =====
-import { makeRoadSegment } from './RoadSegment';
-import { makeFencePanel } from './FencePanel';
-import { makeHillTile }   from './HillTile';
-import { makeTree }       from './Tree';
-import { makeBuildingBox }from './BuildingBox';
+// ===== MODIFICARE: Am ADĂUGAT LA LOC "prefabs/" în căile de import =====
+[span_0](start_span)// Aceasta repară eroarea de build (❌) de pe GitHub[span_0](end_span)
+import { makeRoadSegment } from './prefabs/RoadSegment';
+import { makeFencePanel } from './prefabs/FencePanel';
+import { makeHillTile }   from './prefabs/HillTile';
+import { makeTree }       from './prefabs/Tree';
+import { makeBuildingBox }from './prefabs/BuildingBox';
 // ===== SFÂRȘIT MODIFICARE =====
 
 /** Tipurile care apar în UI (Navbar3D) */
