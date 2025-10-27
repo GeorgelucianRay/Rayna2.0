@@ -1,3 +1,4 @@
+// src/components/depot/map/scene/useDepotScene.js
 import * as THREE from 'three';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -22,7 +23,6 @@ const CFG = {
 };
 
 export function useDepotScene({ mountRef }) {
-  // expus în sus
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
@@ -36,10 +36,11 @@ export function useDepotScene({ mountRef }) {
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
 
-  // 🔧 FIX: ținem un ref sincronizat cu buildActive ca să nu prindem valoare veche în handler-e
+  // menținem sincronizat buildActive în closures
   const buildActiveRef = useRef(false);
   useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
+  // FP on/off
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
@@ -59,8 +60,8 @@ export function useDepotScene({ mountRef }) {
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
-  // Build API
-  const [buildMode, setBuildMode] = useState('place');
+  // Build API expus "în sus"
+  const [buildMode, setBuildMode] = useState('place'); // 'place' | 'remove'
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
     setMode: (m) => { setBuildMode(m); buildRef.current?.setMode(m); },
@@ -72,9 +73,12 @@ export function useDepotScene({ mountRef }) {
         return JSON.stringify(JSON.parse(raw), null, 2);
       } catch { return '{"props":[]}'; }
     },
+    // ⬇️ folosite de BuildPalette
+    get controller() { return buildRef.current; },
+    get active() { return buildActiveRef.current; },
   }), [buildMode]);
 
-  // select container callback
+  // callback selectare container
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
@@ -98,7 +102,7 @@ export function useDepotScene({ mountRef }) {
 
     // scene & camera
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
@@ -113,7 +117,8 @@ export function useDepotScene({ mountRef }) {
 
     // lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(5, 10, 5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
     scene.add(createLandscape({ ground: CFG.ground }));
 
@@ -124,8 +129,8 @@ export function useDepotScene({ mountRef }) {
     // curte + gard
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
-    const groundMesh = groundNode.userData?.groundMesh || groundNode; // important pt raycast
-    const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
+    const groundMesh = groundNode.userData?.groundMesh || groundNode; // pentru raycast
+    const fence = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
@@ -168,7 +173,7 @@ export function useDepotScene({ mountRef }) {
     };
     mount.addEventListener('click', onClick);
 
-    // ---------- INPUT BUILD: desktop + touch, folosind buildActiveRef ----------
+    // ---------- INPUT BUILD: desktop + touch ----------
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
@@ -192,17 +197,11 @@ export function useDepotScene({ mountRef }) {
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
     // touch
-    const onTouchMove = (e) => {
-      const t = e.touches?.[0]; if (!t) return;
-      handleMove(t.clientX, t.clientY);
-    };
-    const onTouchStart = (e) => {
-      const t = e.touches?.[0]; if (!t) return;
-      handleClick(t.clientX, t.clientY);
-    };
+    const onTouchMove = (e) => { const t = e.touches?.[0]; if (t) handleMove(t.clientX, t.clientY); };
+    const onTouchStart = (e) => { const t = e.touches?.[0]; if (t) handleClick(t.clientX, t.clientY); };
     renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
     renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
-    // -------------------------------------------------------------------------
+    // --------------------------------------------------
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -229,7 +228,8 @@ export function useDepotScene({ mountRef }) {
     // resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
-      camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+      camera.aspect = w/h; camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
@@ -250,14 +250,20 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => {
     const orbit = controlsRef.current; if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
-  }, [buildActive]);
+    // când intri în build, ascute preview-ul dacă avem pointer
+    if (buildActive) {
+      buildRef.current?.setMode(buildMode);
+    } else {
+      buildRef.current?.disable(); // curăță preview-ul
+    }
+  }, [buildActive, buildMode]);
 
   return {
     isFP,
     setFPEnabled,
     setForwardPressed,
     setJoystick,
-    buildActive,        // <— expus ca să-l afișezi în BuildPalette
+    buildActive,
     setBuildActive,
     buildApi,
     containers,
