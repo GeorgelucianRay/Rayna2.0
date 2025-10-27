@@ -7,6 +7,7 @@ import ContainerInfoCard from './ContainerInfoCard';
 import { useDepotScene } from './scene/useDepotScene';
 import FPControls from './ui/FPControls';
 import BuildPalette from './build/BuildPalette';
+import ArrowNudge from './ui/ArrowNudge';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -65,17 +66,24 @@ export default function Map3DPage() {
       )}
 
       {/* Build Palette (UI) */}
-      {showBuild && (
-        <BuildPalette
-          open={showBuild}
-          onClose={() => { setShowBuild(false); setBuildActive(false); }}
-          buildController={buildApi.controller}   // 🔗 legăm UI de controller
-          buildActive={buildApi.active}
-          setBuildActive={setBuildActive}
-          buildMode={buildApi.mode}
-          setBuildMode={buildApi.setMode}
-        />
-      )}
+{showBuild && (
+  <>
+    <BuildPalette
+      open={showBuild}
+      onClose={() => { setShowBuild(false); setBuildActive(false); }}
+      buildController={buildApi.controller}   // 🔗 legăm UI de controller
+      buildActive={buildApi.active}
+      setBuildActive={setBuildActive}
+      buildMode={buildApi.mode}
+      setBuildMode={buildApi.setMode}
+    />
+
+    {/* 🔽 Adaugi aici */}
+    {buildApi?.controller && buildApi.active && (
+      <ArrowNudge controller={buildApi.controller} />
+    )}
+  </>
+)}
 
       {/* Card info container selectat */}
       <ContainerInfoCard
