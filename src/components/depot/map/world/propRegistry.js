@@ -1,7 +1,7 @@
 // src/components/depot/map/world/propRegistry.js
 import * as THREE from 'three';
 
-// Prefab-uri existente (exact cum le ai tu – exporturi NUMITE)
+// Prefab-uri existente (exporturi NUMITE din fiecare fișier)
 import { makeRoadSegment } from './prefabs/RoadSegment';
 import { makeFencePanel }  from './prefabs/FencePanel';
 import { makeHillTile }    from './prefabs/HillTile';
@@ -29,7 +29,7 @@ export function defaultParams(type) {
   }
 }
 
-// 3) Factory – returnează un THREE.Object3D pentru tipul cerut
+// 3) Factory – face un THREE.Object3D pentru tipul cerut
 export function createMeshForType(type, params = {}) {
   const p = { ...defaultParams(type), ...params };
 
@@ -60,7 +60,6 @@ export function createMeshForType(type, params = {}) {
       return m;
     }
     default: {
-      // fallback – un marker mic (să nu crape nimic)
       const geo = new THREE.SphereGeometry(0.2, 12, 10);
       const mat = new THREE.MeshStandardMaterial({ color: 0xff0077 });
       const m = new THREE.Mesh(geo, mat);
