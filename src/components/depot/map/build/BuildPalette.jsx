@@ -1,176 +1,226 @@
-// src/components/depot/map/build/BuildPalette.jsx
-import React, { useEffect, useState } from 'react';
-import { PROP_TYPES } from '../world/propRegistry';
-import { getProps, exportJSON, exportCSV } from '../world/worldStore';
+// src/components/depot/map/scene/useDepotScene.js
+import * as THREE from 'three';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-export default function BuildPalette({
-  open,
-  onClose,
-  buildController,   // createBuildController(...) returnat (buildRef.current)
-  buildActive,       // bool
-  setBuildActive,    // fn(bool)
-  buildMode,         // 'place' | 'remove'
-  setBuildMode,      // fn
-}) {
-  const [currentType, setCurrentType] = useState('road.segment');
+import createGround from '../threeWorld/createGround';
+import createFence from '../threeWorld/createFence';
+import createContainersLayerOptimized from '../threeWorld/createContainersLayerOptimized';
+import fetchContainers from '../threeWorld/fetchContainers';
+import createSky from '../threeWorld/createSky';
+import createLandscape from '../threeWorld/createLandscape';
+import createFirstPerson from '../threeWorld/firstPerson';
 
-  // când schimbăm tipul în UI, îl setăm în controller
-  useEffect(() => {
-    if (buildController && currentType) {
-      buildController.setType(currentType);
+import createBuildController from '../world/buildController';
+import styles from '../Map3DStandalone.module.css';
+
+const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
+const STEP = 6.06 + 0.06, ABC_CENTER_OFFSET_X = 5 * STEP;
+const CFG = {
+  ground: { width: YARD_WIDTH, depth: YARD_DEPTH, color: YARD_COLOR, abcOffsetX: ABC_CENTER_OFFSET_X, defOffsetX: 32.3, abcToDefGap: -6.2 },
+  fence:  { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
+};
+
+export function useDepotScene({ mountRef }) {
+  const [isFP, setIsFP] = useState(false);
+  const [containers, setContainers] = useState([]);
+  const [buildActive, setBuildActive] = useState(false);
+
+  const cameraRef = useRef();
+  const controlsRef = useRef();
+  const fpRef = useRef(null);
+  const buildRef = useRef(null);
+
+  const isFPRef = useRef(false);
+  const buildActiveRef = useRef(false);
+  useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
+
+  const clockRef = useRef(new THREE.Clock());
+
+  const setFPEnabled = useCallback((enabled) => {
+    const orbit = controlsRef.current;
+    if (!orbit || !fpRef.current) return;
+    if (enabled) {
+      orbit.enabled = false;
+      fpRef.current.enable();
+      fpRef.current.addKeyboard();
+      isFPRef.current = true; setIsFP(true);
+    } else {
+      fpRef.current.disable();
+      fpRef.current.removeKeyboard();
+      orbit.enabled = !buildActiveRef.current;
+      isFPRef.current = false; setIsFP(false);
     }
-  }, [buildController, currentType]);
+  }, []);
+
+  const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
+  const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
+
+  const [buildMode, setBuildMode] = useState('place');
+  const buildApi = useMemo(() => ({
+    get mode() { return buildMode; },
+    setMode: (m) => { setBuildMode(m); buildRef.current?.setMode(m); },
+    rotateStep: (dir) => buildRef.current?.rotateStep(dir),
+    setType: (t) => buildRef.current?.setType(t),
+    finalizeJSON: () => {
+      try {
+        return JSON.stringify(JSON.parse(localStorage.getItem('rayna.world.edits') || '{"props":[]}'), null, 2);
+      } catch { return '{"props":[]}'; }
+    }
+  }), [buildMode]);
+
+  const onContainerSelectedRef = useRef(null);
+  const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
+
+  const bounds = useMemo(() => ({
+    minX: -YARD_WIDTH / 2 + 2,
+    maxX:  YARD_WIDTH / 2 - 2,
+    minZ: -YARD_DEPTH / 2 + 2,
+    maxZ:  YARD_DEPTH / 2 - 2,
+  }), []);
 
   useEffect(() => {
-    if (buildController) {
-      buildController.setMode(buildMode);
+    const mount = mountRef.current; if (!mount) return;
+
+    // FIX typo: antialias (nu antiasia)
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
+    camera.position.set(20, 8, 20);
+    cameraRef.current = camera;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 1, 0);
+    controlsRef.current = controls;
+
+    fpRef.current = createFirstPerson(camera, bounds);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
+    scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
+    scene.add(createLandscape({ ground: CFG.ground }));
+
+    const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
+    scene.add(worldGroup);
+
+    const depotGroup = new THREE.Group();
+    const groundNode = createGround(CFG.ground);
+    const groundMesh = groundNode.userData?.groundMesh || groundNode; // <- IMPORTANT pt raycast
+    const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
+    depotGroup.add(groundNode, fence);
+    scene.add(depotGroup);
+
+    buildRef.current = createBuildController({
+      camera, domElement: renderer.domElement, worldGroup, groundMesh, grid: 1
+    });
+    buildRef.current?.setMode(buildMode);
+
+    (async () => {
+      try {
+        const data = await fetchContainers();
+        setContainers(data.containers || []);
+        depotGroup.add(createContainersLayerOptimized(data, CFG.ground));
+      } catch (e) { console.warn('fetchContainers', e); }
+    })();
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const onClick = (event) => {
+      if (event.target.closest?.(`.${styles.searchContainer}`)) return;
+      if (buildActiveRef.current) return;
+
+      const rect = mount.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(depotGroup.children, true);
+      if (intersects.length > 0) {
+        const hit = intersects[0], obj = hit.object;
+        if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+          const rec = obj.userData.records[hit.instanceId];
+          onContainerSelectedRef.current?.(rec || null);
+          return;
+        }
+        if (obj.userData?.__record) { onContainerSelectedRef.current?.(obj.userData.__record); return; }
+      }
+      onContainerSelectedRef.current?.(null);
+    };
+    mount.addEventListener('click', onClick);
+
+    // === Build input corect (folosește metodele reale din controller) ===
+    function onPointerMove(e) {
+      if (!buildActiveRef.current || !buildRef.current) return;
+      if (e.target.closest?.('.build-palette-ui')) return; // ignoră UI
+      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
     }
-  }, [buildController, buildMode]);
+    function onPointerDown(e) {
+      if (!buildActiveRef.current || !buildRef.current) return;
+      if (e.target.closest?.('.build-palette-ui')) return; // ignoră UI
+      buildRef.current.clickAt(e.clientX, e.clientY);
+    }
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
-  if (!open) return null;
+    const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
+    const minZ = -YARD_DEPTH/2 + 5, maxZ = YARD_DEPTH/2 + 5;
+    const animate = () => {
+      requestAnimationFrame(animate);
+      const delta = clockRef.current.getDelta();
 
-  const items = getProps(); // lista curentă din store
+      if (isFPRef.current) {
+        fpRef.current?.update(delta);
+      } else {
+        controls.update();
+        controls.target.x = THREE.MathUtils.clamp(controls.target.x, minX, maxX);
+        controls.target.z = THREE.MathUtils.clamp(controls.target.z, minZ, maxZ);
+      }
+      renderer.render(scene, camera);
+    };
+    animate();
 
-  return (
-    <div style={{
-      position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:16
-    }}>
-      <div style={{
-        width:'min(680px, 96vw)', background:'#0b1220', color:'#fff',
-        borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)'
-      }}>
-        {/* Header */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
-          <div style={{display:'flex', gap:10, alignItems:'center'}}>
-            <h3 style={{margin:0, fontSize:18}}>Build Mode</h3>
-            <span style={{
-              padding:'4px 8px', borderRadius:999,
-              background: buildActive ? '#10b981' : '#374151',
-              color: buildActive ? '#06281e' : '#cbd5e1',
-              fontSize:12, fontWeight:700
-            }}>{buildActive ? 'ACTIVE' : 'OFF'}</span>
-          </div>
-          <button onClick={onClose} style={{fontSize:18, background:'transparent', color:'#fff', border:'none'}}>✕</button>
-        </div>
+    const onResize = () => {
+      const w = mount.clientWidth, h = mount.clientHeight;
+      camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', onResize);
 
-        {/* Controls */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
-          {/* Stânga: selecție tip + mod */}
-          <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
-            <div style={{fontSize:13, opacity:.85, marginBottom:8}}>Tip obiect</div>
-            <div style={{display:'grid', gap:8}}>
-              {PROP_TYPES.map(p => (
-                <label key={p.key} style={{
-                  display:'flex', alignItems:'center', gap:8,
-                  background: currentType === p.key ? '#1f2937' : 'transparent',
-                  padding:'6px 8px', borderRadius:8, cursor:'pointer'
-                }}>
-                  <input
-                    type="radio"
-                    name="propType"
-                    checked={currentType === p.key}
-                    onChange={()=>setCurrentType(p.key)}
-                  />
-                  <span>{p.label}</span>
-                </label>
-              ))}
-            </div>
+    return () => {
+      mount.removeEventListener('click', onClick);
+      window.removeEventListener('resize', onResize);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      fpRef.current?.removeKeyboard();
+      renderer.dispose();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-            <div style={{marginTop:12, display:'flex', gap:8}}>
-              <button
-                onClick={()=>setBuildMode('place')}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background: buildMode==='place' ? '#10b981' : '#111827',
-                  color: buildMode==='place' ? '#06281e' : '#cbd5e1',
-                  padding:'0 10px', fontWeight:700
-                }}
-              >Place</button>
-              <button
-                onClick={()=>setBuildMode('remove')}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background: buildMode==='remove' ? '#ef4444' : '#111827',
-                  color: buildMode==='remove' ? '#fff' : '#cbd5e1',
-                  padding:'0 10px', fontWeight:700
-                }}
-              >Remove</button>
-              <button
-                onClick={()=>buildController?.rotateStep(1)}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background:'#111827', color:'#cbd5e1', padding:'0 10px'
-                }}
-              >↻ Rotate</button>
-            </div>
+  useEffect(() => {
+    const orbit = controlsRef.current; if (!orbit) return;
+    orbit.enabled = !buildActive && !isFPRef.current;
+  }, [buildActive]);
 
-            <div style={{marginTop:12}}>
-              <button
-                onClick={()=>setBuildActive(v=>!v)}
-                style={{
-                  width:'100%', height:40, borderRadius:8, border:'none',
-                  background: buildActive ? '#ef4444' : '#10b981',
-                  color: buildActive ? '#fff' : '#06281e',
-                  fontWeight:800
-                }}
-              >{buildActive ? 'OPREȘTE BUILD MODE' : 'PORNEȘTE BUILD MODE'}</button>
-            </div>
-          </div>
+  return {
+    isFP,
+    setFPEnabled,
+    setForwardPressed,
+    setJoystick,
 
-          {/* Dreapta: listă + export */}
-          <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-              <div style={{fontSize:13, opacity:.85}}>Obiecte plasate</div>
-              <div style={{display:'flex', gap:8}}>
-                <button
-                  onClick={()=>{
-                    const blob = new Blob([exportJSON()], {type:'application/json'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'world-edits.json'; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  style={{height:30, borderRadius:6, border:'1px solid #1f2a44', background:'#111827', color:'#cbd5e1', padding:'0 8px'}}
-                >Export JSON</button>
-                <button
-                  onClick={()=>{
-                    const blob = new Blob([exportCSV()], {type:'text/csv'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'world-edits.csv'; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  style={{height:30, borderRadius:6, border:'1px solid #1f2a44', background:'#111827', color:'#cbd5e1', padding:'0 8px'}}
-                >Export CSV</button>
-              </div>
-            </div>
+    buildActive,
+    setBuildActive,
 
-            <div style={{
-              maxHeight:260, overflow:'auto', padding:8,
-              background:'#0a1322', border:'1px dashed #1f2a44', borderRadius:8
-            }}>
-              {(!items || !items.length) && (
-                <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă. Pornește „Build Mode”, alege un tip și click pe teren.</div>
-              )}
-              {items && items.length > 0 && items.map(it => (
-                <div key={it.id} style={{
-                  display:'grid',
-                  gridTemplateColumns:'1fr auto',
-                  padding:'6px 8px', marginBottom:6,
-                  borderRadius:6, background:'#0f1b2f'
-                }}>
-                  <div style={{fontSize:13}}>
-                    <div><b>{it.type}</b> <span style={{opacity:.7}}>(id: {it.id.slice(0,8)}…)</span></div>
-                    <div style={{opacity:.8}}>pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+    buildApi,
+    containers,
+    openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
+    setOnContainerSelected,
 
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    // IMPORTANT: îl expunem pentru BuildPalette
+    buildController: buildRef.current,
+  };
 }
