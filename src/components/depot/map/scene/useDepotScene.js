@@ -1,3 +1,4 @@
+// src/components/depot/map/scene/useDepotScene.js
 import * as THREE from 'three';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -21,25 +22,21 @@ const CFG = {
 };
 
 export function useDepotScene({ mountRef }) {
-  // expunem către “casă”
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
-  // refs pentru controllere
   const cameraRef = useRef();
   const controlsRef = useRef();
   const fpRef = useRef(null);
   const buildRef = useRef(null);
 
-  // refs pentru stări care trebuie văzute de handler-ele globale
   const isFPRef = useRef(false);
   const buildActiveRef = useRef(false);
   useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
   const clockRef = useRef(new THREE.Clock());
 
-  // toggle FP
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
@@ -59,8 +56,7 @@ export function useDepotScene({ mountRef }) {
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
-  // API de build sincronizat cu controllerul
-  const [buildMode, setBuildMode] = useState('place'); // 'place'|'remove'
+  const [buildMode, setBuildMode] = useState('place');
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
     setMode: (m) => { setBuildMode(m); buildRef.current?.setMode(m); },
@@ -69,17 +65,13 @@ export function useDepotScene({ mountRef }) {
     finalizeJSON: () => {
       try {
         return JSON.stringify(JSON.parse(localStorage.getItem('rayna.world.edits') || '{"props":[]}'), null, 2);
-      } catch {
-        return '{"props":[]}';
-      }
+      } catch { return '{"props":[]}'; }
     }
   }), [buildMode]);
 
-  // handler selectare container — îl primești din Map3DPage
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
-  // bounds FP
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
     maxX:  YARD_WIDTH / 2 - 2,
@@ -90,53 +82,45 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
-    // renderer (fix typo: antialias)
+    // FIX typo: antialias (nu antiasia)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
-    // scenă + cameră
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
-    // orbit
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // FP
     fpRef.current = createFirstPerson(camera, bounds);
 
-    // lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
     scene.add(createLandscape({ ground: CFG.ground }));
 
-    // world editabil (grupul în care adăugăm obiectele create)
     const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
 
-    // curte + gard
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
-    const groundMesh = groundNode.userData?.groundMesh || groundNode; // IMPORTANT pentru raycast
+    const groundMesh = groundNode.userData?.groundMesh || groundNode; // <- IMPORTANT pt raycast
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // controller de build – corect conectat
     buildRef.current = createBuildController({
       camera, domElement: renderer.domElement, worldGroup, groundMesh, grid: 1
     });
     buildRef.current?.setMode(buildMode);
 
-    // containere
     (async () => {
       try {
         const data = await fetchContainers();
@@ -145,7 +129,6 @@ export function useDepotScene({ mountRef }) {
       } catch (e) { console.warn('fetchContainers', e); }
     })();
 
-    // selectare container (dezactivat în build)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
@@ -170,28 +153,20 @@ export function useDepotScene({ mountRef }) {
     };
     mount.addEventListener('click', onClick);
 
-    // ===== Handlerele de BUILD (folosesc metodele reale din controller) =====
+    // === Build input corect (folosește metodele reale din controller) ===
     function onPointerMove(e) {
       if (!buildActiveRef.current || !buildRef.current) return;
-
-      // Ignoră mișcarea peste UI (dă un className pe rădăcina BuildPalette: "build-palette-ui")
-      if (e.target.closest?.('.build-palette-ui')) return;
-
+      if (e.target.closest?.('.build-palette-ui')) return; // ignoră UI
       buildRef.current.updatePreviewAt(e.clientX, e.clientY);
     }
-
     function onPointerDown(e) {
       if (!buildActiveRef.current || !buildRef.current) return;
-      if (e.target.closest?.('.build-palette-ui')) return;
-
+      if (e.target.closest?.('.build-palette-ui')) return; // ignoră UI
       buildRef.current.clickAt(e.clientX, e.clientY);
     }
-
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    // ======================================================================
 
-    // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
     const minZ = -YARD_DEPTH/2 + 5, maxZ = YARD_DEPTH/2 + 5;
     const animate = () => {
@@ -209,14 +184,12 @@ export function useDepotScene({ mountRef }) {
     };
     animate();
 
-    // resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
-    // cleanup
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
@@ -228,7 +201,6 @@ export function useDepotScene({ mountRef }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // orbit enable/disable când intrăm/ieșim din build / FP
   useEffect(() => {
     const orbit = controlsRef.current; if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
@@ -244,9 +216,11 @@ export function useDepotScene({ mountRef }) {
     setBuildActive,
 
     buildApi,
-
     containers,
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
+
+    // IMPORTANT: îl expunem pentru BuildPalette
+    buildController: buildRef.current,
   };
 }
