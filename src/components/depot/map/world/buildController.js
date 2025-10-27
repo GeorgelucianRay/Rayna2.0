@@ -1,202 +1,342 @@
 // src/components/depot/map/world/buildController.js
 import * as THREE from 'three';
-import { createMeshFor, ROT_STEP } from './propRegistry.js';
-import { addProp, removeProp } from './worldStore.js';
+import { createMeshFor } from './propRegistry';
+import { getProps, addProp, removeProp, saveWorldEdits } from './worldStore';
 
-/**
- * Controller simplu pentru modul Build:
- *  - raycast pe groundMesh
- *  - snap la grid
- *  - preview "fantomă"
- *  - place/remove + rotație în pași de 90°
- */
 export default function createBuildController({
   camera,
   domElement,
   worldGroup,
   groundMesh,
-  grid = 1,
+  grid = 1,           // mărimea grilei de snap
+  stepRot = Math.PI/2 // rotire în pași de 90°
 }) {
-  if (!camera || !domElement || !worldGroup || !groundMesh) {
-    console.warn('[buildController] Missing params (camera/domElement/worldGroup/groundMesh)');
-  }
-
-  // ----- state -----
-  let mode = 'place';          // 'place' | 'remove'
-  let type = 'road.segment';   // cheie din PROP_TYPES
-  let rotY = 0;
-
+  // --- stare internă ---
   const raycaster = new THREE.Raycaster();
-  const ndc = new THREE.Vector2();
-  const lastPointer = { x: null, y: null };
+  const mouseNDC = new THREE.Vector2();
+  let mode = 'place';          // 'place' | 'remove'
+  let currentType = 'road.segment';
+  let preview = null;          // mesh fantomă
+  let previewRotY = 0;
+  let selectedId = null;
 
-  // preview
-  let preview = null;
+  // indexăm obiectele plasate în scenă
+  const idToMesh = new Map();
 
-  function ensurePreview() {
-    if (preview && preview.userData.__type === type) return preview;
-    // șterge vechiul preview
-    if (preview) {
-      worldGroup.remove(preview);
-      preview.traverse(o => o.geometry?.dispose?.());
-      preview = null;
-    }
-    // creează noul
-    preview = createMeshFor(type);
-    preview.userData.__preview = true;
-    preview.userData.__type = type;
-    preview.renderOrder = 1;
-    // material "ghosty" (unde se poate)
-    preview.traverse(o => {
-      if (o.isMesh) {
-        const m = o.material;
-        if (m && !Array.isArray(m)) {
-          o.userData.__orig = {
-            transparent: m.transparent,
-            opacity: m.opacity,
-            depthWrite: m.depthWrite,
-          };
-          m.transparent = true;
-          m.opacity = 0.5;
-          m.depthWrite = false;
-        }
-      }
-    });
-    worldGroup.add(preview);
-    return preview;
-  }
+  // un plan “invizibil” peste ground pentru intersecții mai robuste (opțional)
+  const groundTarget = groundMesh;
 
-  function disposePreview() {
-    if (!preview) return;
-    preview.traverse(o => {
-      const m = o.material;
-      if (m && o.userData.__orig && !Array.isArray(m)) {
-        m.transparent = o.userData.__orig.transparent;
-        m.opacity = o.userData.__orig.opacity;
-        m.depthWrite = o.userData.__orig.depthWrite;
-      }
-    });
-    worldGroup.remove(preview);
-    preview = null;
-  }
-
-  // utilitare
-  function setFromClient(x, y) {
-    const r = domElement.getBoundingClientRect();
-    ndc.x = ((x - r.left) / r.width) * 2 - 1;
-    ndc.y = -((y - r.top) / r.height) * 2 + 1;
-    raycaster.setFromCamera(ndc, camera);
-  }
-
-  function snap(v) {
-    if (!isFinite(grid) || grid <= 0) return v;
-    v.x = Math.round(v.x / grid) * grid;
-    v.z = Math.round(v.z / grid) * grid;
-    return v;
-  }
-
-  function intersectGround(x, y) {
-    setFromClient(x, y);
-    const hits = raycaster.intersectObject(groundMesh, true);
-    return hits[0] || null;
-  }
-
-  function intersectPlaced(x, y) {
-    setFromClient(x, y);
-    const hits = raycaster.intersectObject(worldGroup, true);
-    // filtrăm preview-ul
-    return hits.find(h => !h.object.userData.__preview) || null;
-  }
-
-  // ----- API public -----
+  // ---------- utilitare ----------
   function setMode(newMode) {
     mode = newMode === 'remove' ? 'remove' : 'place';
+    // la remove, ascundem preview (nu e nevoie de fantomă)
     if (mode === 'remove') {
-      disposePreview();
-    } else if (lastPointer.x != null) {
-      updatePreviewAt(lastPointer.x, lastPointer.y);
+      if (preview && worldGroup) worldGroup.remove(preview);
+      preview = null;
+    } else {
+      ensurePreview();
     }
   }
 
-  function setTypeKey(k) {
-    type = k;
+  function setType(typeKey) {
+    currentType = typeKey;
+    // recreăm preview pentru noul tip
     if (mode === 'place') {
-      ensurePreview();
-      if (lastPointer.x != null) updatePreviewAt(lastPointer.x, lastPointer.y);
+      remakePreview();
     }
   }
 
   function rotateStep(dir = 1) {
-    rotY += (dir >= 0 ? +1 : -1) * ROT_STEP;
-    if (preview) preview.rotation.y = rotY;
-  }
-
-  function updatePreviewAt(x, y) {
-    if (mode !== 'place') return;
-    lastPointer.x = x; lastPointer.y = y;
-
-    const hit = intersectGround(x, y);
-    if (!hit) return;
-
-    const p = snap(hit.point.clone());
-    const ghost = ensurePreview();
-    ghost.position.set(p.x, p.y, p.z);
-    ghost.rotation.set(0, rotY, 0);
-  }
-
-  function updatePreview() {
-    if (lastPointer.x == null || mode !== 'place') return;
-    updatePreviewAt(lastPointer.x, lastPointer.y);
-  }
-
-  function clickAt(x, y) {
-    if (mode === 'place') {
-      const hit = intersectGround(x, y);
-      if (!hit) return;
-
-      const pos = snap(hit.point.clone());
-      const obj = createMeshFor(type);
-      obj.position.set(pos.x, pos.y, pos.z);
-      obj.rotation.set(0, rotY, 0);
-      worldGroup.add(obj);
-
-      // înregistrăm în store
-      const id = addProp({
-        type,
-        pos: [obj.position.x, obj.position.y, obj.position.z],
-        rotY: obj.rotation.y,
-      });
-      obj.userData.propId = id;
-
-      // repoziționează preview-ul imediat (efect "continuu")
-      updatePreviewAt(x, y);
-    } else {
-      // remove
-      const hit = intersectPlaced(x, y);
-      if (!hit) return;
-      const target = hit.object;
-      const root = target; // plasăm direct pe mesh; dacă ai grupuri, urcă din parent până găsești propId
-      const id = root.userData.propId;
-      if (id) {
-        removeProp(id);
+    // în “place”, rotește preview
+    if (mode === 'place' && preview) {
+      previewRotY = normalizeAngle(previewRotY + dir * stepRot);
+      preview.rotation.y = previewRotY;
+    }
+    // dacă e selectat un prop existent, îl rotim și îl salvăm în store
+    if (selectedId) {
+      const m = idToMesh.get(selectedId);
+      if (m) {
+        m.rotation.y = normalizeAngle(m.rotation.y + dir * stepRot);
+        persistMeshTransform(m);
       }
-      // elimină din scenă
-      (root.parent || worldGroup).remove(root);
-      root.traverse(o => o.geometry?.dispose?.());
     }
   }
 
-  function enable() {/* lăsat pentru compatibilitate */}
-  function disable() { disposePreview(); }
+  function normalizeAngle(a) {
+    // aduce la interval [-PI, PI] ca să nu “explodeze” numeric
+    let x = a;
+    while (x > Math.PI) x -= Math.PI * 2;
+    while (x < -Math.PI) x += Math.PI * 2;
+    return x;
+  }
+
+  function screenToWorldOnGround(clientX, clientY) {
+    // coordonate normalizate ecran
+    const rect = domElement.getBoundingClientRect();
+    mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hits = raycaster.intersectObject(groundTarget, false);
+    if (!hits || !hits.length) return null;
+
+    const p = hits[0].point.clone();
+    // snap la grilă
+    p.x = Math.round(p.x / grid) * grid;
+    p.z = Math.round(p.z / grid) * grid;
+    p.y = 0; // ținem pe planul solului
+    return p;
+  }
+
+  function ensurePreview() {
+    if (preview) return;
+    preview = safeCreateMesh(currentType);
+    if (!preview) return;
+    previewRotY = 0;
+    makeGhost(preview);
+    worldGroup.add(preview);
+  }
+
+  function remakePreview() {
+    if (preview) {
+      worldGroup.remove(preview);
+      preview = null;
+    }
+    ensurePreview();
+  }
+
+  function makeGhost(mesh) {
+    // “fantomă” (wireframe / transparent)
+    mesh.traverse((obj) => {
+      if (obj.isMesh) {
+        const mat = obj.material;
+        // clone ușor, fără a pierde textura (dacă există)
+        obj.material = Array.isArray(mat)
+          ? mat.map(cloneToGhost)
+          : cloneToGhost(mat);
+        obj.renderOrder = 999; // deasupra
+      }
+    });
+    function cloneToGhost(m) {
+      const mm = m.clone();
+      mm.transparent = true;
+      mm.opacity = 0.5;
+      // mic accent
+      if (!mm.emissive) mm.emissive = new THREE.Color(0x00ff00);
+      else mm.emissive = new THREE.Color(0x00ff00);
+      mm.emissiveIntensity = 0.15;
+      return mm;
+    }
+  }
+
+  function safeCreateMesh(typeKey, params = {}) {
+    try {
+      const mesh = createMeshFor(typeKey, params);
+      mesh.userData.__type = typeKey;
+      return mesh;
+    } catch (e) {
+      console.warn('[buildController] cannot create mesh for', typeKey, e);
+      return null;
+    }
+  }
+
+  function placeAt(point) {
+    const mesh = safeCreateMesh(currentType);
+    if (!mesh) return;
+
+    mesh.position.copy(point);
+    mesh.rotation.y = previewRotY;
+
+    // persistă în store
+    const item = addProp({
+      type: currentType,
+      pos: [mesh.position.x, mesh.position.y, mesh.position.z],
+      rotY: mesh.rotation.y,
+      scale: [1, 1, 1],
+      params: {}
+    });
+    mesh.userData.__propId = item.id;
+
+    idToMesh.set(item.id, mesh);
+    worldGroup.add(mesh);
+
+    // după plasare, preview rămâne (poți continua să pui)
+  }
+
+  function tryRemoveAt(point) {
+    // căutăm cel mai apropiat mesh (într-un rayon mic) sau raycast direct pe worldGroup
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hits = raycaster.intersectObjects(worldGroup.children, true);
+    // ignoră preview-ul
+    const hit = hits.find(h => h.object && !isPreviewChild(h.object));
+    if (!hit) return;
+
+    // urcă până la root-ul props-ului care are __propId
+    const target = findMeshWithPropId(hit.object);
+    if (!target) return;
+
+    const id = target.userData.__propId;
+    if (!id) return;
+
+    // ștergem din scenă + store
+    worldGroup.remove(target);
+    idToMesh.delete(id);
+    removeProp(id);
+    // dacă era selectat, deselectăm
+    if (selectedId === id) selectedId = null;
+  }
+
+  function isPreviewChild(obj) {
+    if (!preview) return false;
+    let o = obj;
+    while (o) {
+      if (o === preview) return true;
+      o = o.parent;
+    }
+    return false;
+  }
+
+  function findMeshWithPropId(obj) {
+    let o = obj;
+    while (o) {
+      if (o.userData && o.userData.__propId) return o;
+      o = o.parent;
+    }
+    return null;
+  }
+
+  function updatePreviewAt(clientX, clientY) {
+    if (mode !== 'place') return; // doar în place
+    ensurePreview();
+    const p = screenToWorldOnGround(clientX, clientY);
+    if (!p || !preview) return;
+    preview.position.copy(p);
+    preview.rotation.y = previewRotY;
+  }
+
+  function clickAt(clientX, clientY) {
+    const p = screenToWorldOnGround(clientX, clientY);
+    if (!p) return;
+    if (mode === 'place') {
+      placeAt(p);
+    } else {
+      tryRemoveAt(p);
+    }
+  }
+
+  function updatePreview() {
+    // opțional, dacă vrei să rulezi ceva în bucla de animare
+    // (momentan gol; “previewAt” este condus de evenimente de pointer)
+  }
+
+  // ---------- selecție + manipulare ----------
+  function setSelectedId(id) {
+    selectedId = id || null;
+    highlightSelected();
+  }
+
+  function getSelectedId() { return selectedId; }
+
+  function highlightSelected() {
+    // scoatem highlight de pe toate
+    idToMesh.forEach((m) => {
+      setOutline(m, false);
+    });
+    if (!selectedId) return;
+    const m = idToMesh.get(selectedId);
+    if (m) setOutline(m, true);
+  }
+
+  function setOutline(mesh, on) {
+    mesh.traverse((o) => {
+      if (!o.isMesh) return;
+      if (on) {
+        if (!o.userData.__origMat) o.userData.__origMat = o.material;
+        const outline = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+        o.material = outline;
+      } else {
+        if (o.userData.__origMat) {
+          o.material = o.userData.__origMat;
+          o.userData.__origMat = null;
+        }
+      }
+    });
+  }
+
+  function nudgeSelected(dx = 0, dz = 0) {
+    if (!selectedId) return;
+    const m = idToMesh.get(selectedId); if (!m) return;
+    m.position.x = Math.round((m.position.x + dx) / grid) * grid;
+    m.position.z = Math.round((m.position.z + dz) / grid) * grid;
+    persistMeshTransform(m);
+  }
+
+  function rotateSelected(dir = 1) {
+    if (!selectedId) return;
+    const m = idToMesh.get(selectedId); if (!m) return;
+    m.rotation.y = normalizeAngle(m.rotation.y + dir * stepRot);
+    persistMeshTransform(m);
+  }
+
+  function persistMeshTransform(mesh) {
+    // actualizează în store item-ul cu id = __propId
+    const id = mesh.userData.__propId;
+    if (!id) return;
+    const props = getProps();
+    const it = props.find(p => p.id === id);
+    if (!it) return;
+    it.pos = [mesh.position.x, mesh.position.y, mesh.position.z];
+    it.rotY = mesh.rotation.y;
+    // (scale/params rămân la fel)
+    saveWorldEdits();
+  }
+
+  function syncFromStore() {
+    // golim tot ce avem în scenă (dar păstrăm preview dacă e)
+    const toRemove = [];
+    worldGroup.children.forEach(ch => {
+      if (ch !== preview) toRemove.push(ch);
+    });
+    toRemove.forEach(ch => worldGroup.remove(ch));
+    idToMesh.clear();
+
+    // rebuild din store
+    const props = getProps();
+    props.forEach(p => {
+      const mesh = safeCreateMesh(p.type, p.params);
+      if (!mesh) return;
+      mesh.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      mesh.rotation.y = p.rotY || 0;
+      mesh.userData.__propId = p.id;
+      idToMesh.set(p.id, mesh);
+      worldGroup.add(mesh);
+    });
+
+    // re-highlight dacă mai e selectat ceva
+    highlightSelected();
+  }
+
+  // construim inițial din store (dacă ai deja obiecte salvate)
+  syncFromStore();
 
   return {
+    // mod & tip
     setMode,
-    setType: setTypeKey,
+    setType,
     rotateStep,
+
+    // interacțiune cursor
     updatePreviewAt,
-    updatePreview,
     clickAt,
-    enable,
-    disable,
+    updatePreview,
+
+    // selecție & manipulare
+    setSelectedId,
+    getSelectedId,
+    nudgeSelected,
+    rotateSelected,
+
+    // sync
+    syncFromStore,
   };
 }
