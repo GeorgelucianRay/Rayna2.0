@@ -1,4 +1,3 @@
-// src/components/depot/map/scene/useDepotScene.js
 import * as THREE from 'three';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -27,14 +26,20 @@ export function useDepotScene({ mountRef }) {
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
-  // controllere interne
+  // refs pentru controllere
   const cameraRef = useRef();
   const controlsRef = useRef();
   const fpRef = useRef(null);
-  const buildRef = useRef(null); // <-- Controllerul de build
+  const buildRef = useRef(null);
+
+  // refs pentru stări care trebuie văzute de handler-ele globale
+  const isFPRef = useRef(false);
+  const buildActiveRef = useRef(false);
+  useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
   const clockRef = useRef(new THREE.Clock());
-  const isFPRef = useRef(false);
+
+  // toggle FP
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
@@ -46,14 +51,15 @@ export function useDepotScene({ mountRef }) {
     } else {
       fpRef.current.disable();
       fpRef.current.removeKeyboard();
-      orbit.enabled = !buildActive;
+      orbit.enabled = !buildActiveRef.current;
       isFPRef.current = false; setIsFP(false);
     }
-  }, [buildActive]);
+  }, []);
 
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
+  // API de build sincronizat cu controllerul
   const [buildMode, setBuildMode] = useState('place'); // 'place'|'remove'
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
@@ -61,12 +67,15 @@ export function useDepotScene({ mountRef }) {
     rotateStep: (dir) => buildRef.current?.rotateStep(dir),
     setType: (t) => buildRef.current?.setType(t),
     finalizeJSON: () => {
-      try { return JSON.stringify(JSON.parse(localStorage.getItem('rayna.world.edits')||'{}'), null, 2); }
-      catch { return '{}'; }
+      try {
+        return JSON.stringify(JSON.parse(localStorage.getItem('rayna.world.edits') || '{"props":[]}'), null, 2);
+      } catch {
+        return '{"props":[]}';
+      }
     }
   }), [buildMode]);
 
-  // handler selectare container (setezi din Map3DPage)
+  // handler selectare container — îl primești din Map3DPage
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
@@ -81,14 +90,14 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
-    // renderer
-    const renderer = new THREE.WebGLRenderer({ antiasia: true, alpha: true });
+    // renderer (fix typo: antialias)
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
-    // scene & camera
+    // scenă + cameră
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
@@ -105,24 +114,23 @@ export function useDepotScene({ mountRef }) {
 
     // lume
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-    dir.position.set(5,10,5); scene.add(dir);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
     scene.add(createLandscape({ ground: CFG.ground }));
 
-    // world editabil
+    // world editabil (grupul în care adăugăm obiectele create)
     const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
 
     // curte + gard
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
-    const groundMesh = groundNode.userData?.groundMesh || groundNode;
+    const groundMesh = groundNode.userData?.groundMesh || groundNode; // IMPORTANT pentru raycast
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // build
+    // controller de build – corect conectat
     buildRef.current = createBuildController({
       camera, domElement: renderer.domElement, worldGroup, groundMesh, grid: 1
     });
@@ -137,12 +145,13 @@ export function useDepotScene({ mountRef }) {
       } catch (e) { console.warn('fetchContainers', e); }
     })();
 
-    // pick containere (dezactivat în build)
+    // selectare container (dezactivat în build)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
       if (event.target.closest?.(`.${styles.searchContainer}`)) return;
-      if (buildActive) return;
+      if (buildActiveRef.current) return;
+
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -161,22 +170,26 @@ export function useDepotScene({ mountRef }) {
     };
     mount.addEventListener('click', onClick);
 
-    // ===== MODIFICARE: BUILD INPUT (Varianta ta FP) =====
-    
-    function onPointerDown(e) {
-      if (!buildActive || !buildRef.current) return;
+    // ===== Handlerele de BUILD (folosesc metodele reale din controller) =====
+    function onPointerMove(e) {
+      if (!buildActiveRef.current || !buildRef.current) return;
 
-      // Verifică dacă click-ul a fost pe UI-ul de Build
-      // (Aici trebuie să te asiguri că BuildPalette are o clasă sau un atribut)
-      if (e.target.closest('[class*="BuildPalette_"]') || e.target.closest('.build-palette-ui')) { 
-        return; // Nu plasa obiecte dacă dăm click pe butoane
-      }
-      
-      buildRef.current.placeOrRemoveObject(); // Funcția FĂRĂ coordonate
+      // Ignoră mișcarea peste UI (dă un className pe rădăcina BuildPalette: "build-palette-ui")
+      if (e.target.closest?.('.build-palette-ui')) return;
+
+      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
     }
-    
+
+    function onPointerDown(e) {
+      if (!buildActiveRef.current || !buildRef.current) return;
+      if (e.target.closest?.('.build-palette-ui')) return;
+
+      buildRef.current.clickAt(e.clientX, e.clientY);
+    }
+
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
+    // ======================================================================
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -184,12 +197,6 @@ export function useDepotScene({ mountRef }) {
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
-
-      // ===== MODIFICARE: ACTUALIZARE FANTOMĂ (Varianta ta FP) =====
-      if (buildActive) {
-        buildRef.current?.updatePreview();
-      }
-      // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
 
       if (isFPRef.current) {
         fpRef.current?.update(delta);
@@ -209,14 +216,12 @@ export function useDepotScene({ mountRef }) {
     };
     window.addEventListener('resize', onResize);
 
+    // cleanup
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
-      
-      // ===== MODIFICARE: CLEANUP (Varianta ta FP) =====
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
-
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
@@ -229,21 +234,19 @@ export function useDepotScene({ mountRef }) {
     orbit.enabled = !buildActive && !isFPRef.current;
   }, [buildActive]);
 
-  // ===== MODIFICARE: API expus “în sus” (Varianta mea) =====
-  // Aici adăugăm `buildActive` și `buildController`
-  // pentru a le putea trimite în `Map3DPage`
   return {
     isFP,
     setFPEnabled,
     setForwardPressed,
     setJoystick,
-    buildActive, // <-- ADĂUGAT (starea booleană)
-    setBuildActive, // (funcția de setare)
+
+    buildActive,
+    setBuildActive,
+
     buildApi,
+
     containers,
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
-    buildController: buildRef.current, // <-- ADĂUGAT (referința la controller)
   };
-  // ===== SFÂRȘIT MODIFICARE (Varianta mea) =====
 }
