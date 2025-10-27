@@ -1,9 +1,12 @@
 // src/components/depot/map/world/propRegistry.js
-import { makeRoadSegment } from './prefabs/RoadSegment';
-import { makeFencePanel } from './prefabs/FencePanel';
-import { makeHillTile }   from './prefabs/HillTile';   // opțional (poți lăsa stub)
-import { makeTree }       from './prefabs/Tree';       // opțional (poți lăsa stub)
-import { makeBuildingBox }from './prefabs/BuildingBox';// opțional (poți lăsa stub)
+
+// ===== MODIFICARE: Am scos "prefabs/" din căile de import =====
+import { makeRoadSegment } from './RoadSegment';
+import { makeFencePanel } from './FencePanel';
+import { makeHillTile }   from './HillTile';
+import { makeTree }       from './Tree';
+import { makeBuildingBox }from './BuildingBox';
+// ===== SFÂRȘIT MODIFICARE =====
 
 /** Tipurile care apar în UI (Navbar3D) */
 export const PROP_TYPES = [
