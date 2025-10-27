@@ -220,20 +220,40 @@ export default function BuildPalette({
                 <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă. Pornește „Build Mode”, alege un tip și atinge/click pe teren.</div>
               )}
               {items && items.length > 0 && items.map(it => (
-                <div key={it.id} style={{
-                  display:'grid',
-                  gridTemplateColumns:'1fr auto',
-                  padding:'6px 8px', marginBottom:6,
-                  borderRadius:6, background:'#0f1b2f'
-                }}>
-                  <div style={{fontSize:13}}>
-                    <div><b>{it.type}</b> <span style={{opacity:.7}}>(id: {it.id.slice(0,8)}…)</span></div>
-                    <div style={{opacity:.8}}>
-                      pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              ))}
+  <div
+    key={it.id}
+    onClick={() => buildController?.setSelectedId(it.id)}
+    tabIndex={0}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        buildController?.setSelectedId(it.id);
+      }
+    }}
+    style={{
+      cursor: 'pointer',
+      display:'grid',
+      gridTemplateColumns:'1fr auto',
+      padding:'6px 8px',
+      marginBottom:6,
+      borderRadius:6,
+      background: buildController?.getSelectedId?.() === it.id ? '#22c55e33' : '#0f1b2f',
+      outline: 'none'
+    }}
+    aria-pressed={buildController?.getSelectedId?.() === it.id}
+    role="button"
+  >
+    <div style={{fontSize:13}}>
+      <div>
+        <b>{it.type}</b>
+        <span style={{opacity:.7}}> (id: {it.id.slice(0,8)}…)</span>
+      </div>
+      <div style={{opacity:.8}}>
+        pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}
+      </div>
+    </div>
+  </div>
+))}
             </div>
 
           </div>
