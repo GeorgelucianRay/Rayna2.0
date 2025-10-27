@@ -1,11 +1,16 @@
 // src/components/depot/map/world/worldStore.js
-import { v4 as uuidv4 } from 'uuid';
+
+// ===== MODIFICARE: Am șters importul 'uuid' care cauza eroarea =====
+// import { v4 as uuidv4 } from 'uuid'; 
 
 const LS_KEY = 'rayna.world.edits';
 
 let state = {
   props: [], // [{id,type,pos:[x,y,z],rotY,scale:[sx,sy,sz], params:{...}}]
 };
+
+// ===== MODIFICARE: Funcție simplă pentru a înlocui uuidv4 =====
+const simpleID = () => `id-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 export function loadWorldEdits() {
   try {
@@ -26,7 +31,8 @@ export function saveWorldEdits() {
 }
 
 export function addProp({ type, pos, rotY = 0, scale = [1,1,1], params = {} }) {
-  const item = { id: uuidv4(), type, pos, rotY, scale, params };
+  // ===== MODIFICARE: Folosim noua funcție simpleID() =====
+  const item = { id: simpleID(), type, pos, rotY, scale, params };
   state.props.push(item);
   saveWorldEdits();
   return item;
