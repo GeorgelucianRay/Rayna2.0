@@ -1,6 +1,6 @@
 // src/components/depot/map/world/worldStore.js
 
-// Am șters importul 'uuid'
+// Am șters importul 'uuid' care cauza eroarea la click
 // import { v4 as uuidv4 } from 'uuid'; 
 
 const LS_KEY = 'rayna.world.edits';
@@ -50,15 +50,13 @@ export function exportJSON() {
 }
 
 export function exportCSV() {
-  // CSV simplu: id,type,x,y,z,rotY,sx,sy,sz,params(json)
   const rows = ['id,type,x,y,z,rotY,sx,sy,sz,params'];
   state.props.forEach(p => {
     const [x,y,z] = p.pos;
     const [sx,sy,sz] = p.scale ?? [1,1,1];
-    // evităm virgule în câmpul params
     const paramsStr = JSON.stringify(p.params ?? {}).replaceAll(',', ';');
     
-    // ===== MODIFICARE: Am corectat 'p.RotY' înapoi la 'p.rotY' =====
+    // ===== AICI ERA EROAREA MEA. Acum este p.rotY (corect) =====
     rows.push(`${p.id},${p.type},${x},${y},${z},${p.rotY},${sx},${sy},${sz},${paramsStr}`);
   });
   return rows.join('\n');
