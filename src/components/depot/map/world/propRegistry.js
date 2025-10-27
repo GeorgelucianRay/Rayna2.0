@@ -1,13 +1,10 @@
 // src/components/depot/map/world/propRegistry.js
 
-// ===== MODIFICARE: Am ADĂUGAT LA LOC "prefabs/" în căile de import =====
-[span_0](start_span)// Aceasta repară eroarea de build (❌) de pe GitHub[span_0](end_span)
 import { makeRoadSegment } from './prefabs/RoadSegment';
 import { makeFencePanel } from './prefabs/FencePanel';
 import { makeHillTile }   from './prefabs/HillTile';
 import { makeTree }       from './prefabs/Tree';
 import { makeBuildingBox }from './prefabs/BuildingBox';
-// ===== SFÂRȘIT MODIFICARE =====
 
 /** Tipurile care apar în UI (Navbar3D) */
 export const PROP_TYPES = [
