@@ -18,7 +18,7 @@ import { slotToWorld } from './threeWorld/slotToWorld';
 import createFirstPerson from './threeWorld/firstPerson';
 import Navbar3D from './Navbar3D';
 import BuildPalette from './build/BuildPalette';
-import createBuildController from './world/buildController'; // ✅ import direct
+import createBuildController from './world/buildController'; // ← import direct, fișierul există
 
 /* ===================== CONFIG ===================== */
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -27,14 +27,12 @@ const CFG = {
   ground: { width: YARD_WIDTH, depth: YARD_DEPTH, color: YARD_COLOR, abcOffsetX: ABC_CENTER_OFFSET_X, defOffsetX: 32.3, abcToDefGap: -6.2 },
   fence:  { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
 };
-/* =================================================== */
 
 /* ---------- UI: Joystick + Forward Button ---------- */
 function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
   const ref = useRef(null);
   const [active, setActive] = useState(false);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
-
   function setVec(clientX, clientY) {
     const el = ref.current; if (!el) return;
     const r = el.getBoundingClientRect();
@@ -47,7 +45,6 @@ function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
     onChange?.({ x: nx, y: ny, active: true });
   }
   const stop = () => { setKnob({x:0,y:0}); setActive(false); onChange?.({x:0,y:0,active:false}); };
-
   return (
     <div
       ref={ref}
@@ -75,7 +72,6 @@ function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
     </div>
   );
 }
-
 function ForwardButton({ pressed, setPressed, ensureFP }) {
   return (
     <button
@@ -98,13 +94,12 @@ function ForwardButton({ pressed, setPressed, ensureFP }) {
 
 export default function MapPage() {
   const mountRef = useRef(null);
-  const rendererRef = useRef(null);
   const cameraRef = useRef();
   const controlsRef = useRef();
   const isAnimatingRef = useRef(false);
   const clockRef = useRef(new THREE.Clock());
 
-  // FP controller + state sigur
+  // FP controller
   const [isFP, setIsFP] = useState(false);
   const isFPRef = useRef(false);
   useEffect(() => { isFPRef.current = isFP; }, [isFP]);
@@ -124,14 +119,10 @@ export default function MapPage() {
 
   // Build mode
   const [buildActive, setBuildActive] = useState(false);
-  const buildActiveRef = useRef(false);
-  useEffect(()=>{ buildActiveRef.current = buildActive; }, [buildActive]);
-
   const [buildMode,   setBuildMode]   = useState('place'); // 'place' | 'remove'
   const [showBuild,   setShowBuild]   = useState(false);   // UI paletă
   const buildRef = useRef(null);
   const worldGroupRef = useRef(null);
-  const groundMeshRef = useRef(null);
 
   // Items list modal
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -168,7 +159,7 @@ export default function MapPage() {
   const ensureFP = () => { if (!isFPRef.current) enableFPInternal(); };
   const toggleFP = () => { isFPRef.current ? disableFPInternal() : enableFPInternal(); };
 
-  /* ---------- INIT SCENE (o singură dată) ---------- */
+  /* ---------- INIT SCENE ---------- */
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
@@ -178,7 +169,6 @@ export default function MapPage() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
 
     // scenă + cameră
     const scene = new THREE.Scene();
@@ -224,13 +214,11 @@ export default function MapPage() {
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode; // pentru raycast
-    groundMeshRef.current = groundMesh;
-
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // Build controller — creat o singură dată
+    // Build controller
     buildRef.current = createBuildController({
       camera,
       domElement: renderer.domElement,
@@ -251,13 +239,12 @@ export default function MapPage() {
       } finally { setLoading(false); }
     })();
 
-    // pick containere (listener unic; citește buildActive via ref)
+    // pick containere (dezactivat în build)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
       if (event.target.closest(`.${styles.searchContainer}`)) return;
-      if (buildActiveRef.current) return; // nu selectăm containere când construim
-
+      if (buildActive) return;
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -274,14 +261,24 @@ export default function MapPage() {
     };
     mount.addEventListener('click', onClick);
 
+    // input build (activ DOAR în build)
+    function onPointerMove(e) {
+      if (!buildActive || !buildRef.current) return;
+      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
+    }
+    function onPointerDown(e) {
+      if (!buildActive || !buildRef.current) return;
+      buildRef.current.clickAt(e.clientX, e.clientY);
+    }
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
     const minZ = -YARD_DEPTH/2 + 5, maxZ = YARD_DEPTH/2 + 5;
-
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
-
       if (isFPRef.current) {
         fpRef.current?.update(delta);
       } else {
@@ -302,48 +299,25 @@ export default function MapPage() {
     };
     window.addEventListener('resize', onResize);
 
-    // cleanup (unic)
+    // cleanup
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
-  }, [bounds]);
+  }, [bounds, buildActive, buildMode]);
 
-  /* ---------- LISTENERE PT. BUILD (atașate doar când buildActive === true) ---------- */
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer || !buildRef.current) return;
-
-    function onPointerMove(e) {
-      if (!buildActiveRef.current) return;
-      buildRef.current.updatePreviewAt(e.clientX, e.clientY);
-    }
-    function onPointerDown(e) {
-      if (!buildActiveRef.current) return;
-      buildRef.current.clickAt(e.clientX, e.clientY);
-    }
-
-    if (buildActive) {
-      renderer.domElement.addEventListener('pointermove', onPointerMove);
-      renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    }
-
-    return () => {
-      renderer.domElement.removeEventListener('pointermove', onPointerMove);
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-    };
-  }, [buildActive]); // ✅ nu dublează listener-ele când schimbi `buildMode`
-
-  // când schimbă buildActive, pornesc/opresc Orbit
+  // orbit off în build / FP
   useEffect(()=>{
     const orbit = controlsRef.current;
     if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
   }, [buildActive]);
 
-  // joystick: “înainte”
+  // joystick
   useEffect(() => { fpRef.current?.setForwardPressed(fwdPressed); }, [fwdPressed]);
 
   /* ---------- FLY-TO ---------- */
@@ -374,27 +348,28 @@ export default function MapPage() {
   const handleToggleFP = () => toggleFP();
   const handleAdd = (formData) => { console.log('Add from Navbar3D:', formData); };
   const handleOpenWorldItems = () => setItemsOpen(true);
-  const handleOpenBuild = () => { setShowBuild(true); setBuildActive(true); };   // ✅ unic
+  const handleOpenBuild = () => {             // ← UNIC, chemat de butonul 🧱
+    setShowBuild(true);
+    setBuildActive(true);
+    console.log('[Map3DPage] Build open');
+  };
 
   /* ---------- RENDER ---------- */
   return (
     <div className={styles.fullscreenRoot}>
-      {/* Navbar mic cu tool-uri */}
       <Navbar3D
         containers={allContainers}
         onSelectContainer={handleSelectFromSearch}
         onToggleFP={handleToggleFP}
         onAdd={handleAdd}
-        onOpenBuild={handleOpenBuild}           // 🧱 (UN SINGUR prop)
+        onOpenBuild={handleOpenBuild}
         onOpenWorldItems={handleOpenWorldItems}
       />
 
-      {/* Top bar exit */}
       <div className={styles.topBar}>
         <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
       </div>
 
-      {/* Controale mobile în First-Person */}
       {isFP && (
         <>
           <VirtualJoystick
@@ -409,16 +384,13 @@ export default function MapPage() {
         </>
       )}
 
-      {/* Canvas */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* Card info container */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
       />
 
-      {/* Build Palette (UI) */}
       {showBuild && (
         <BuildPalette
           onClose={() => { setShowBuild(false); setBuildActive(false); }}
@@ -434,7 +406,6 @@ export default function MapPage() {
         />
       )}
 
-      {/* World Items – placeholder */}
       {itemsOpen && (
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -446,7 +417,7 @@ export default function MapPage() {
             </div>
             <div style={{opacity:.7, marginTop:8}}>
               De aici vei lista/edita/șterge obiectele plasate (drumuri, segmente gard, rocă, etc.).
-              Populează cu store-ul din buildController (ex: worldStore.items).
+              Populează cu store-ul din buildController (ex: worldStore.props).
             </div>
           </div>
         </div>
