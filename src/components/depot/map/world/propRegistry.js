@@ -1,70 +1,56 @@
-// src/components/depot/map/world/propRegistry.js
+// Registry-ul obiectelor plasabile + fabricile de mesh-uri.
+// IMPORTANT: exportăm *named* `createMeshFor` (fix pentru eroarea din Vercel).
+
 import * as THREE from 'three';
 
-// Prefab-uri existente (exporturi NUMITE din fiecare fișier)
-import { makeRoadSegment } from './prefabs/RoadSegment';
-import { makeFencePanel }  from './prefabs/FencePanel';
-import { makeHillTile }    from './prefabs/HillTile';
-import { makeTree }        from './prefabs/Tree';
-import { makeBuildingBox } from './prefabs/BuildingBox';
+// Prefab-uri – atenție la numele și literele din căi (Linux e case-sensitive)
+import { makeRoadSegment }  from './prefabs/RoadSegment.js';
+import { makeFencePanel }   from './prefabs/FencePanel.js';
+import { makeHillTile }     from './prefabs/HillTile.js';
+import { makeTree }         from './prefabs/Tree.js';
+import { makeBuildingBox }  from './prefabs/BuildingBox.js';
 
-// 1) Lista pentru UI (Build Palette)
+// Lista de tipuri afișată în UI (BuildPalette)
 export const PROP_TYPES = [
-  { key: 'road.segment',  label: 'Șosea 2×4 m' },
-  { key: 'fence.panel',   label: 'Panou gard 2 m' },
-  { key: 'hill.tile',     label: 'Bucată munte' },
-  { key: 'tree',          label: 'Copac' },
-  { key: 'building.box',  label: 'Clădire (box)' },
+  { key: 'road.segment', label: 'Șosea 2×4 m' },
+  { key: 'fence.panel',  label: 'Panou gard 2 m' },
+  { key: 'hill.tile',    label: 'Bucată munte' },
+  { key: 'tree',         label: 'Copac' },
+  { key: 'building.box', label: 'Clădire (box)' },
 ];
 
-// 2) Parametri impliciți pentru fiecare tip
-export function defaultParams(type) {
-  switch (type) {
-    case 'road.segment': return { w: 2, d: 4, h: 0.05 };
-    case 'fence.panel':  return { L: 2, H: 1.6 };
-    case 'hill.tile':    return { size: 2, h: 0.6, asRock: false };
-    case 'tree':         return {};
-    case 'building.box': return { w: 4, d: 6, h: 3 };
-    default:             return {};
-  }
-}
+// Pasul de rotație folosit de controller (90°)
+export const ROT_STEP = Math.PI / 2;
 
-// 3) Factory – face un THREE.Object3D pentru tipul cerut
-export function createMeshForType(type, params = {}) {
-  const p = { ...defaultParams(type), ...params };
-
+/**
+ * Creează mesh-ul pentru un tip dat.
+ * @param {string} type  – cheie din PROP_TYPES
+ * @param {object} opts  – opțiuni specifice prefab-ului
+ * @returns {THREE.Object3D}
+ */
+export function createMeshFor(type, opts = {}) {
   switch (type) {
-    case 'road.segment': {
-      const m = makeRoadSegment(p);
-      m.userData.__type = type;
-      return m;
-    }
-    case 'fence.panel': {
-      const g = makeFencePanel(p);
-      g.userData.__type = type;
-      return g;
-    }
-    case 'hill.tile': {
-      const m = makeHillTile(p);
-      m.userData.__type = type;
-      return m;
-    }
-    case 'tree': {
-      const g = makeTree();
-      g.userData.__type = type;
-      return g;
-    }
-    case 'building.box': {
-      const m = makeBuildingBox(p);
-      m.userData.__type = type;
-      return m;
-    }
+    case 'road.segment':
+      // 2×4 m, foarte jos (ca să nu "iasă" din asfalt)
+      return makeRoadSegment({ w: 2, d: 4, h: 0.05, ...opts });
+
+    case 'fence.panel':
+      return makeFencePanel({ L: 2, H: 1.6, ...opts });
+
+    case 'hill.tile':
+      return makeHillTile({ size: 2, h: 0.6, asRock: false, ...opts });
+
+    case 'tree':
+      return makeTree();
+
+    case 'building.box':
+      return makeBuildingBox({ w: 4, d: 6, h: 3, ...opts });
+
     default: {
-      const geo = new THREE.SphereGeometry(0.2, 12, 10);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xff0077 });
-      const m = new THREE.Mesh(geo, mat);
-      m.userData.__type = 'unknown';
-      return m;
+      // Fallback vizibil: un AxesHelper, ca să știi dacă ai o cheie greșită
+      const axes = new THREE.AxesHelper(1);
+      axes.userData.__unknownType = type;
+      return axes;
     }
   }
 }
