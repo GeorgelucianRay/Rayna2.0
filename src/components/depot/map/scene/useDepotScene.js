@@ -31,7 +31,7 @@ export function useDepotScene({ mountRef }) {
   const cameraRef = useRef();
   const controlsRef = useRef();
   const fpRef = useRef(null);
-  const buildRef = useRef(null);
+  const buildRef = useRef(null); // <-- Controllerul de build
 
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
@@ -82,7 +82,7 @@ export function useDepotScene({ mountRef }) {
     const mount = mountRef.current; if (!mount) return;
 
     // renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antiasia: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -161,26 +161,22 @@ export function useDepotScene({ mountRef }) {
     };
     mount.addEventListener('click', onClick);
 
-    // ===== MODIFICARE: BUILD INPUT =====
+    // ===== MODIFICARE: BUILD INPUT (Varianta ta FP) =====
     
-    // Funcția 'onPointerDown' este modificată pentru logica FP
     function onPointerDown(e) {
       if (!buildActive || !buildRef.current) return;
 
-      // IMPORTANT: Verifică dacă click-ul a fost pe UI-ul de Build
-      // Asigură-te că ai o clasă pe componenta BuildPalette, ex: className="build-palette"
-      // SAU un alt identificator
-      if (e.target.closest('[class*="BuildPalette_"]')) { // O variantă mai robustă dacă folosești CSS Modules
+      // Verifică dacă click-ul a fost pe UI-ul de Build
+      // (Aici trebuie să te asiguri că BuildPalette are o clasă sau un atribut)
+      if (e.target.closest('[class*="BuildPalette_"]') || e.target.closest('.build-palette-ui')) { 
         return; // Nu plasa obiecte dacă dăm click pe butoane
       }
       
-      // Apelăm noua funcție FĂRĂ coordonate
-      buildRef.current.placeOrRemoveObject();
+      buildRef.current.placeOrRemoveObject(); // Funcția FĂRĂ coordonate
     }
     
-    // Eliminăm 'pointermove' și păstrăm 'pointerdown'
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    // ===== SFÂRȘIT MODIFICARE =====
+    // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -189,11 +185,11 @@ export function useDepotScene({ mountRef }) {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
 
-      // ===== MODIFICARE: ACTUALIZARE FANTOMĂ =====
+      // ===== MODIFICARE: ACTUALIZARE FANTOMĂ (Varianta ta FP) =====
       if (buildActive) {
         buildRef.current?.updatePreview();
       }
-      // ===== SFÂRȘIT MODIFICARE =====
+      // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
 
       if (isFPRef.current) {
         fpRef.current?.update(delta);
@@ -217,9 +213,9 @@ export function useDepotScene({ mountRef }) {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
       
-      // ===== MODIFICARE: CLEANUP =====
+      // ===== MODIFICARE: CLEANUP (Varianta ta FP) =====
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      // ===== SFÂRȘIT MODIFICARE =====
+      // ===== SFÂRȘIT MODIFICARE (Varianta ta FP) =====
 
       fpRef.current?.removeKeyboard();
       renderer.dispose();
@@ -233,16 +229,21 @@ export function useDepotScene({ mountRef }) {
     orbit.enabled = !buildActive && !isFPRef.current;
   }, [buildActive]);
 
-  // API expus “în sus”
+  // ===== MODIFICARE: API expus “în sus” (Varianta mea) =====
+  // Aici adăugăm `buildActive` și `buildController`
+  // pentru a le putea trimite în `Map3DPage`
   return {
     isFP,
     setFPEnabled,
     setForwardPressed,
     setJoystick,
-    setBuildActive,
+    buildActive, // <-- ADĂUGAT (starea booleană)
+    setBuildActive, // (funcția de setare)
     buildApi,
     containers,
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
+    buildController: buildRef.current, // <-- ADĂUGAT (referința la controller)
   };
+  // ===== SFÂRȘIT MODIFICARE (Varianta mea) =====
 }
