@@ -7,7 +7,8 @@ import Navbar3D from './Navbar3D';
 import ContainerInfoCard from './ContainerInfoCard';
 import { useDepotScene } from './scene/useDepotScene';
 import FPControls from './ui/FPControls';
-import BuildHUD from './ui/BuildHUD';
+// ⬇️ folosim paleta corectă
+import BuildPalette from './build/BuildPalette';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function Map3DPage() {
     setOnContainerSelected,
   } = useDepotScene({ mountRef });
 
-  // Conectăm selectarea containerului
+  // Conectăm selectarea containerului din scenă către cardul de info
   useEffect(() => {
     setOnContainerSelected(selected => setSelectedContainer(selected));
   }, [setOnContainerSelected]);
@@ -41,10 +42,10 @@ export default function Map3DPage() {
       {/* Navbar principal */}
       <Navbar3D
         containers={containers}
-        onSelectContainer={(c) => setFlyToTarget(c)}
+        onSelectContainer={(c) => setFlyToTarget(c)} // (opțional: expune flyTo din hook și apelează-l aici)
         onToggleFP={() => setFPEnabled(prev => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
-        onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}  // ← FIX
+        onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
         onOpenWorldItems={() => openWorldItems()}
       />
 
@@ -65,17 +66,16 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* HUD pentru modul Build */}
+      {/* Paleta de Build (UI corectă) */}
       {showBuild && (
-        <BuildHUD
-          mode={buildApi.mode}
-          setMode={buildApi.setMode}
+        <BuildPalette
           onClose={() => { setShowBuild(false); setBuildActive(false); }}
-          onRotateLeft={() => buildApi.rotateStep(-1)}
-          onRotateRight={() => buildApi.rotateStep(+1)}
-          onPickType={(t) => buildApi.setType(t)}
+          onPickType={(t) => buildApi.setType(t)}              // selectează tipul (drum/gard/etc.)
+          mode={buildApi.mode}                                 // 'place' | 'remove'
+          setMode={(m) => buildApi.setMode(m)}                 // schimbă modul
+          onRotateStep={(dir) => buildApi.rotateStep(dir)}     // ±90°
           onFinalize={() => {
-            const json = buildApi.finalizeJSON();
+            const json = buildApi.finalizeJSON();              // exportă modificările
             console.log('WORLD JSON:', json);
             setShowBuild(false);
             setBuildActive(false);
