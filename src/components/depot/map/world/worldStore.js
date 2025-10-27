@@ -1,6 +1,6 @@
 // src/components/depot/map/world/worldStore.js
 
-// ===== MODIFICARE: Am șters importul 'uuid' care cauza eroarea =====
+// Am șters importul 'uuid'
 // import { v4 as uuidv4 } from 'uuid'; 
 
 const LS_KEY = 'rayna.world.edits';
@@ -9,7 +9,7 @@ let state = {
   props: [], // [{id,type,pos:[x,y,z],rotY,scale:[sx,sy,sz], params:{...}}]
 };
 
-// ===== MODIFICARE: Funcție simplă pentru a înlocui uuidv4 =====
+// Funcție simplă pentru a înlocui uuidv4
 const simpleID = () => `id-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 export function loadWorldEdits() {
@@ -31,7 +31,7 @@ export function saveWorldEdits() {
 }
 
 export function addProp({ type, pos, rotY = 0, scale = [1,1,1], params = {} }) {
-  // ===== MODIFICARE: Folosim noua funcție simpleID() =====
+  // Folosim noua funcție simpleID()
   const item = { id: simpleID(), type, pos, rotY, scale, params };
   state.props.push(item);
   saveWorldEdits();
@@ -57,6 +57,8 @@ export function exportCSV() {
     const [sx,sy,sz] = p.scale ?? [1,1,1];
     // evităm virgule în câmpul params
     const paramsStr = JSON.stringify(p.params ?? {}).replaceAll(',', ';');
+    
+    // ===== MODIFICARE: Am corectat 'p.RotY' înapoi la 'p.rotY' =====
     rows.push(`${p.id},${p.type},${x},${y},${z},${p.rotY},${sx},${sy},${sz},${paramsStr}`);
   });
   return rows.join('\n');
