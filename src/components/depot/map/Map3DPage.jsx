@@ -1,3 +1,4 @@
+// src/components/depot/map/Map3DPage.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Map3DStandalone.module.css';
@@ -7,7 +8,6 @@ import ContainerInfoCard from './ContainerInfoCard';
 import { useDepotScene } from './scene/useDepotScene';
 import FPControls from './ui/FPControls';
 import BuildPalette from './build/BuildPalette';
-import ArrowNudge from './ui/ArrowNudge';
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -16,7 +16,6 @@ export default function Map3DPage() {
   // UI State
   const [showBuild, setShowBuild] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
-  const [flyToTarget, setFlyToTarget] = useState(null);
 
   // Hook principal al scenei 3D
   const {
@@ -41,7 +40,7 @@ export default function Map3DPage() {
       {/* Navbar */}
       <Navbar3D
         containers={containers}
-        onSelectContainer={(c) => setFlyToTarget(c)}
+        onSelectContainer={() => {}}
         onToggleFP={() => setFPEnabled(prev => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
@@ -65,18 +64,18 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Build Palette (UI) */}
-{showBuild && (
-  <BuildPalette
-    open={showBuild}
-    onClose={() => { setShowBuild(false); setBuildActive(false); }}
-    buildController={buildApi.controller}
-    buildActive={buildApi.active}
-    setBuildActive={setBuildActive}
-    buildMode={buildApi.mode}
-    setBuildMode={buildApi.setMode}
-  />
-)}
+      {/* Build Palette (UI) — conține și pad-ul de săgeți; nu mai adăuga alt pad în pagină */}
+      {showBuild && (
+        <BuildPalette
+          open={showBuild}
+          onClose={() => { setShowBuild(false); setBuildActive(false); }}
+          buildController={buildApi.controller}
+          buildActive={buildApi.active}
+          setBuildActive={setBuildActive}
+          buildMode={buildApi.mode}
+          setBuildMode={buildApi.setMode}
+        />
+      )}
 
       {/* Card info container selectat */}
       <ContainerInfoCard
