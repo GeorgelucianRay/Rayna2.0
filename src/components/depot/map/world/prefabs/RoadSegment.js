@@ -1,12 +1,31 @@
-// world/prefabs/RoadSegment.js
+// src/components/depot/map/world/prefabs/RoadSegment.js
 import * as THREE from 'three';
-export function makeRoadSegment({ w=2, h=0.05, d=4 }={}) {
+
+export function makeRoadSegment({ w = 6, h = 0.05, d = 20 } = {}) {
+  // 🧱 geometrie mai lungă (6×20 m)
   const geo = new THREE.BoxGeometry(w, h, d);
-  const tex = new THREE.TextureLoader().load('/textures/lume/asphalt_curte_textura.PNG');
+  geo.translate(0, h / 2, 0);
+
+  // 🧩 textura drumului
+  const tex = new THREE.TextureLoader().load('/textures/lume/Drumuri.jpg');
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1, 2);
-  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0.0 });
+
+  // 🧮 proporție: vrem textura să se întindă corect pe suprafața 6×20
+  // dacă imaginea e dreptunghiulară, poți regla ușor aceste valori:
+  tex.repeat.set(d / 10, w / 6); // mai multe “pietre” pe lungime
+
+  // ✨ material realist
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.castShadow = false; mesh.receiveShadow = true;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData.isRoad = true;
+
   return mesh;
 }
