@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PROP_TYPES } from '../world/propRegistry';
 import { getProps, exportJSON, exportCSV, subscribe } from '../world/worldStore';
 
@@ -12,81 +12,24 @@ export default function BuildPalette({
   setBuildMode,
 }) {
   const [currentType, setCurrentType] = useState('road.segment');
-  const [minimized, setMinimized] = useState(false);
-  const [hint, setHint] = useState(''); // mesaje scurte (ex: “Atinge harta pentru a plasa”)
   const [items, setItems] = useState(getProps());
+  const [continuous, setContinuous] = useState(true);
 
-  // sync store → UI
+  // sincronizez store -> listă
   useEffect(() => {
     const off = subscribe(s => setItems(s.props.slice().sort((a,b)=>b.ts-a.ts)));
     return off;
   }, []);
 
-  // hook up controller
-  useEffect(() => {
-    if (buildController && currentType) buildController.setType(currentType);
-  }, [buildController, currentType]);
-  useEffect(() => {
-    if (buildController) buildController.setMode(buildMode);
-  }, [buildController, buildMode]);
-
-  // încărcăm în scenă toate edits-urile salvate (ca să nu apară “fantome” vechi plasate aiurea)
-  useEffect(() => {
-    buildController?.mountExistingFromStore?.();
-  }, [buildController]);
+  // conectare controller
+  useEffect(() => { buildController?.setType(currentType); }, [buildController, currentType]);
+  useEffect(() => { buildController?.setMode(buildMode); }, [buildController, buildMode]);
+  useEffect(() => { buildController?.mountExistingFromStore?.(); }, [buildController]);
+  useEffect(() => { buildController?.setPlaceContinuous?.(continuous); }, [buildController, continuous]);
 
   if (!open) return null;
 
   const selectedId = buildController?.getSelectedId?.() || null;
-
-  const NudgePad = ({ floating=false }) => (
-    <div
-      data-build-ui="true"
-      style={{
-        position: floating ? 'fixed' : 'relative',
-        right: floating ? 16 : undefined,
-        bottom: floating ? 92 : undefined,
-        display:'grid',
-        gridTemplateColumns:'48px 48px 48px',
-        gridTemplateRows:'48px 48px 48px',
-        gap:8,
-        justifyContent:'center',
-        alignItems:'center',
-        pointerEvents:'auto',
-        zIndex: 35,
-      }}
-    >
-      <div />
-      <button onClick={()=>buildController?.nudgeSelected(0,-1)} style={btnSq}>↑</button>
-      <div />
-      <button onClick={()=>buildController?.nudgeSelected(-1,0)} style={btnSq}>←</button>
-      <button onClick={()=>buildController?.rotateStep(1)} style={{...btnSq, background:'#10b981', color:'#06281e'}}>↻</button>
-      <button onClick={()=>buildController?.nudgeSelected(1,0)} style={btnSq}>→</button>
-      <div />
-      <button onClick={()=>buildController?.nudgeSelected(0,1)} style={btnSq}>↓</button>
-      <div />
-    </div>
-  );
-
-  // FAB când panelul e minimizat
-  if (minimized) {
-    return (
-      <>
-        {selectedId && <NudgePad floating />}
-        <button
-          data-build-ui="true"
-          onClick={()=>setMinimized(false)}
-          title="Deschide Build"
-          style={{
-            position:'fixed', right:16, bottom:16, width:66, height:66, borderRadius:33,
-            border:'2px solid ' + (buildActive ? '#10b981' : '#ef4444'),
-            background:'#0b1220', color:'#fff', fontSize:26, fontWeight:800,
-            boxShadow:'0 8px 24px rgba(0,0,0,.45)', zIndex:36
-          }}
-        >🧱</button>
-      </>
-    );
-  }
 
   return (
     <div data-build-ui="true" style={backdrop}>
@@ -98,7 +41,6 @@ export default function BuildPalette({
             <span style={pill(buildActive)}>{buildActive ? 'ACTIVE' : 'OFF'}</span>
           </div>
           <div style={{display:'flex', gap:8}}>
-            <button onClick={()=>setMinimized(true)} title="Minimize" style={btnMini}>—</button>
             <button onClick={onClose} title="Închide" style={btnClose}>✕</button>
           </div>
         </div>
@@ -121,29 +63,35 @@ export default function BuildPalette({
               ))}
             </div>
 
-            <div style={{marginTop:12, display:'flex', gap:8}}>
+            <div style={{marginTop:12, display:'flex', gap:8, flexWrap:'wrap'}}>
               <button
                 onClick={()=>{
                   setBuildMode('place');
                   setBuildActive(true);
                   buildController?.armPlace?.();
-                  setHint('Atinge harta pentru a plasa');
                 }}
                 style={btn(buildMode==='place', '#10b981', '#06281e')}
               >Place</button>
 
               <button
-                onClick={()=>{ setBuildMode('remove'); setHint('Atinge obiectul de pe hartă pentru a-l șterge'); }}
+                onClick={()=>{ setBuildMode('remove'); }}
                 style={btn(buildMode==='remove', '#ef4444', '#fff')}
               >Remove</button>
-            </div>
 
-            <div style={{marginTop:12}}>
               <button
                 onClick={()=>buildController?.rotateStep(1)}
                 style={btn(false, '#111827', '#cbd5e1', true)}
-              >⟳ Rotate (preview)</button>
+              >⟳ Rotate</button>
             </div>
+
+            <label style={{display:'flex', gap:8, alignItems:'center', marginTop:10, fontSize:13}}>
+              <input
+                type="checkbox"
+                checked={continuous}
+                onChange={e=>setContinuous(e.target.checked)}
+              />
+              Place continuu (tap=plasează la nesfârșit)
+            </label>
 
             <div style={{marginTop:12}}>
               <button
@@ -152,26 +100,37 @@ export default function BuildPalette({
               >{buildActive ? 'OPREȘTE BUILD MODE' : 'PORNEȘTE BUILD MODE'}</button>
             </div>
 
-            {hint && <div style={{marginTop:8, fontSize:12, opacity:.8}}>{hint}</div>}
+            <div style={{marginTop:10, display:'flex', gap:8}}>
+              <button
+                onClick={()=>{
+                  buildController?.resetScene?.();
+                }}
+                style={btn(false, '#64748b', '#0c111b')}
+              >Reset local</button>
+            </div>
           </div>
 
-          {/* Dreapta: lista + export + săgeți */}
+          {/* Dreapta: listă + export + săgeți */}
           <div style={card}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-              <div style={label}>Obiecte plasate</div>
+              <div style={label}>Obiecte plasate (edits)</div>
               <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                <button onClick={()=>{
-                  const blob = new Blob([exportJSON()], {type:'application/json'});
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a'); a.href=url; a.download='world-edits.json'; a.click();
-                  URL.revokeObjectURL(url);
-                }} style={btnSq}>Export JSON</button>
-                <button onClick={()=>{
-                  const blob = new Blob([exportCSV()], {type:'text/csv'});
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a'); a.href=url; a.download='world-edits.csv'; a.click();
-                  URL.revokeObjectURL(url);
-                }} style={btnSq}>Export CSV</button>
+                <button
+                  onClick={()=>{
+                    const blob = new Blob([exportJSON()], {type:'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href=url; a.download='world-edits.json'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={btnSq}>Export JSON</button>
+                <button
+                  onClick={()=>{
+                    const blob = new Blob([exportCSV()], {type:'text/csv'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href=url; a.download='world-edits.csv'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={btnSq}>Export CSV</button>
               </div>
             </div>
 
@@ -212,9 +171,6 @@ export default function BuildPalette({
           </div>
         </div>
       </div>
-
-      {/* NudgePad plutitor când panelul e deschis (opțional – comentează dacă nu-l vrei dublat) */}
-      {/* {selectedId && <NudgePad floating />} */}
     </div>
   );
 }
@@ -252,8 +208,6 @@ const bigBtn = (on) => ({
   background: on ? '#ef4444' : '#10b981',
   color: on ? '#fff' : '#06281e', fontWeight:800
 });
-const btnClose = {fontSize:18, background:'transparent', color:'#fff', border:'none'};
-const btnMini = {fontSize:16, background:'#0f172a', color:'#cbd5e1', border:'1px solid #1f2a44', borderRadius:8, padding:'6px 10px'};
 const listBox = {maxHeight:300, overflow:'auto', padding:8, background:'#0a1322', border:'1px dashed #1f2a44', borderRadius:8};
 const itemRow = (sel) => ({
   padding:'8px 10px', marginBottom:8, borderRadius:8, background: sel ? '#17324b' : '#0f1b2f',
