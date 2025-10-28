@@ -34,21 +34,12 @@ export default function createGround({
 } = {}) {
   const g = new THREE.Group();
 
-  // === 1) PODEA INFINITĂ (de fapt foarte mare) ===
-  const BASE_SIZE = 5000;          // “Infinit” practic
-  const baseGeo = new THREE.PlaneGeometry(BASE_SIZE, BASE_SIZE);
-  baseGeo.rotateX(-Math.PI / 2);
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 1, metalness: 0 });
-  const base = new THREE.Mesh(baseGeo, baseMat);
-  base.name = 'infiniteBase';
-  base.receiveShadow = true;
-  base.position.y = 0;             // nivel 0
-  g.add(base);
-
-  // === 2) Placa curții (asfalt + marcaje) ===
+  // === placă asfalt (mesh vizual) — o coborâm foarte puțin sub curtea existentă ===
   const thickness = 0.5;
+  const drop = 0.02; // ~2cm: doar ca să nu se mai suprapună cu curtea/markerele de la y=0
   const geo = new THREE.BoxGeometry(width, thickness, depth);
-  geo.translate(0, -thickness / 2, 0);
+  // înainte era -thickness/2; acum coborâm încă "drop"
+  geo.translate(0, -thickness / 2 - drop, 0);
 
   const asphaltTex = new THREE.TextureLoader().load('/textures/lume/asphalt_curte_textura.PNG');
   asphaltTex.colorSpace = THREE.SRGBColorSpace;
@@ -63,11 +54,20 @@ export default function createGround({
   slab.receiveShadow = true;
   g.add(slab);
 
-  // === 🔑 expunem țintele de raycast pentru controller ===
-  g.userData.groundMesh = base;                           // pentru compatibilitatea veche
-  g.userData.raycastTargets = [base, slab];               // nou: podea infinită + placa curții
+  // === plan INVIZIBIL pentru raycast, la y=0 (nivelul curții/obiectelor) ===
+  // astfel, editorul continuă să plaseze la y≈0, deasupra marcajelor existente
+  const planeGeo = new THREE.PlaneGeometry(width * 10, depth * 10);
+  planeGeo.rotateX(-Math.PI / 2);
+  const rayMat = new THREE.MeshBasicMaterial({ visible: false });
+  const rayPlane = new THREE.Mesh(planeGeo, rayMat);
+  rayPlane.position.y = 0; // nivelul logic de construcție
+  rayPlane.name = 'buildRaycastPlane';
+  g.add(rayPlane);
 
-  // === marcaje ABC ===
+  // <<< expunem mesh-ul folosit de editor pentru intersecții
+  g.userData.groundMesh = rayPlane;
+
+  // === marcaje ABC (rămân deasupra la ~0.02) ===
   const ABC_BASE_Z = -4.0;
   const ABC_ROW_Z = {
     A: ABC_BASE_Z,
@@ -103,7 +103,7 @@ export default function createGround({
   for (const k of ['D','E','F']) {
     const x = DEF_COL_X[k];
     for (let r = 1; r <= 7; r++) {
-      g.add(paintSlot({ x, z: START_Z_DEF + (r - 0.5) * STEP, along: 'Z' }));
+      g.add(paintSlot({ x, z: START_Z_DEF + (r - 1) * STEP, along: 'Z' }));
     }
     const L = makePaintedText(k, { size: 2.0 }); L.position.set(x, 0.03, START_Z_DEF - DEF_LABEL_GAP_Z); g.add(L);
   }
