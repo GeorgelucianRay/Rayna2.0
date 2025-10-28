@@ -34,7 +34,18 @@ export default function createGround({
 } = {}) {
   const g = new THREE.Group();
 
-  // === placă asfalt (mesh-ul pe care facem raycast) ===
+  // === 1) PODEA INFINITĂ (de fapt foarte mare) ===
+  const BASE_SIZE = 5000;          // “Infinit” practic
+  const baseGeo = new THREE.PlaneGeometry(BASE_SIZE, BASE_SIZE);
+  baseGeo.rotateX(-Math.PI / 2);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 1, metalness: 0 });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.name = 'infiniteBase';
+  base.receiveShadow = true;
+  base.position.y = 0;             // nivel 0
+  g.add(base);
+
+  // === 2) Placa curții (asfalt + marcaje) ===
   const thickness = 0.5;
   const geo = new THREE.BoxGeometry(width, thickness, depth);
   geo.translate(0, -thickness / 2, 0);
@@ -51,10 +62,10 @@ export default function createGround({
   slab.name = 'groundSlab';
   slab.receiveShadow = true;
   g.add(slab);
-  g.userData.groundMesh = slab;
 
-  // <<< CHEIA: expunem mesh-ul principal pentru raycast din buildController
-  g.userData.groundMesh = slab;
+  // === 🔑 expunem țintele de raycast pentru controller ===
+  g.userData.groundMesh = base;                           // pentru compatibilitatea veche
+  g.userData.raycastTargets = [base, slab];               // nou: podea infinită + placa curții
 
   // === marcaje ABC ===
   const ABC_BASE_Z = -4.0;
