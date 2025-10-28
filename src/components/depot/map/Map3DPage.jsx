@@ -67,22 +67,15 @@ export default function Map3DPage() {
 
       {/* Build Palette (UI) */}
 {showBuild && (
-  <>
-    <BuildPalette
-      open={showBuild}
-      onClose={() => { setShowBuild(false); setBuildActive(false); }}
-      buildController={buildApi.controller}   // 🔗 legăm UI de controller
-      buildActive={buildApi.active}
-      setBuildActive={setBuildActive}
-      buildMode={buildApi.mode}
-      setBuildMode={buildApi.setMode}
-    />
-
-    {/* 🔽 Adaugi aici */}
-    {buildApi?.controller && buildApi.active && (
-      <ArrowNudge controller={buildApi.controller} />
-    )}
-  </>
+  <BuildPalette
+    open={showBuild}
+    onClose={() => { setShowBuild(false); setBuildActive(false); }}
+    buildController={buildApi.controller}
+    buildActive={buildApi.active}
+    setBuildActive={setBuildActive}
+    buildMode={buildApi.mode}
+    setBuildMode={buildApi.setMode}
+  />
 )}
 
       {/* Card info container selectat */}
