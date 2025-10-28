@@ -1,3 +1,4 @@
+// src/components/depot/map/scene/useDepotScene.js
 import * as THREE from 'three';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -72,7 +73,6 @@ export function useDepotScene({ mountRef }) {
         return JSON.stringify(JSON.parse(raw), null, 2);
       } catch { return '{"props":[]}'; }
     },
-    // 🔽 acestea lipseau
     get controller() { return buildRef.current; },
     get active() { return buildActiveRef.current; },
   }), [buildMode]);
@@ -118,7 +118,10 @@ export function useDepotScene({ mountRef }) {
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
-    scene.add(createLandscape({ ground: CFG.ground }));
+
+    // ► peisajul (munții) – îl păstrăm ca referință pentru raycastTargets
+    const landscape = createLandscape({ ground: CFG.ground });
+    scene.add(landscape);
 
     // world editabil
     const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
@@ -127,19 +130,31 @@ export function useDepotScene({ mountRef }) {
     // curte + gard
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
-    const groundMesh = groundNode.userData?.groundMesh || groundNode; // important pt raycast
+
+    // mesh pentru raycast din createGround
+    const groundMesh = groundNode.userData?.groundMesh || groundNode;
+
+    // ► colecția de ținte pentru plasare (platoul mare + placa curții + munții)
+    const raycastTargets = [
+      ...(groundNode.userData?.raycastTargets || [groundMesh]),
+      landscape, // dacă vrei să plasezi și pe relief
+    ];
+
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // build controller
+    // build controller (trimitem și raycastTargets!)
     buildRef.current = createBuildController({
-      camera, domElement: renderer.domElement, worldGroup, groundMesh, grid: 1
+      camera,
+      domElement: renderer.domElement,
+      worldGroup,
+      groundMesh,          // fallback/compat
+      raycastTargets,      // ← NOU: lista de suprafețe unde poți plasa
+      grid: 1
     });
     buildRef.current?.setMode(buildMode);
-
-    // 🟩 opțional: setează un tip implicit pentru a vedea imediat “fantoma”
-    buildRef.current?.setType?.('road.segment');
+    buildRef.current?.setType?.('road.segment'); // preview rapid
 
     // containere
     (async () => {
@@ -265,7 +280,7 @@ export function useDepotScene({ mountRef }) {
     setJoystick,
     buildActive,
     setBuildActive,
-    buildApi,                   // ← acum conține .controller și .active
+    buildApi,                   // conține .controller și .active
     containers,
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
