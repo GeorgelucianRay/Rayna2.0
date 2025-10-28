@@ -11,131 +11,105 @@ export default function BuildPalette({
   buildMode,
   setBuildMode,
 }) {
-  // tip curent
   const [currentType, setCurrentType] = useState('road.segment');
-
-  // stare UI: minimizat? + poziție FAB (draggable ușor)
   const [minimized, setMinimized] = useState(false);
-  const [fabPos, setFabPos] = useState({ x: 16, y: 16 }); // offset față de colțul dreapta-jos
-  const draggingRef = useRef(null);
+  const [hint, setHint] = useState(''); // mesaje scurte (ex: “Atinge harta pentru a plasa”)
+  const [items, setItems] = useState(getProps());
 
-  // re-render când store se schimbă
-  const [, force] = useState(0);
+  // sync store → UI
   useEffect(() => {
-    const unsub = subscribe(() => force(v => v + 1));
-    return unsub;
+    const off = subscribe(s => setItems(s.props.slice().sort((a,b)=>b.ts-a.ts)));
+    return off;
   }, []);
 
-  // asigurăm legătura cu controllerul
-  useEffect(() => { if (buildController && currentType) buildController.setType(currentType); }, [buildController, currentType]);
-  useEffect(() => { if (buildController) buildController.setMode(buildMode); }, [buildController, buildMode]);
+  // hook up controller
+  useEffect(() => {
+    if (buildController && currentType) buildController.setType(currentType);
+  }, [buildController, currentType]);
+  useEffect(() => {
+    if (buildController) buildController.setMode(buildMode);
+  }, [buildController, buildMode]);
 
-  // dacă panelul e închis complet, nu randăm nimic (nici FAB)
+  // încărcăm în scenă toate edits-urile salvate (ca să nu apară “fantome” vechi plasate aiurea)
+  useEffect(() => {
+    buildController?.mountExistingFromStore?.();
+  }, [buildController]);
+
   if (!open) return null;
 
-  const items = getProps?.() || [];
   const selectedId = buildController?.getSelectedId?.() || null;
 
-  /* =====================  FAB flotant (minimized)  ===================== */
-  if (minimized) {
-    const ringColor = buildActive ? '#10b981' : '#ef4444';
-
-    const startDrag = (e) => {
-      const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
-      draggingRef.current = { startX: p.clientX, startY: p.clientY, baseX: fabPos.x, baseY: fabPos.y };
-      e.preventDefault?.();
-    };
-    const onDrag = (e) => {
-      if (!draggingRef.current) return;
-      const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
-      const dx = p.clientX - draggingRef.current.startX;
-      const dy = p.clientY - draggingRef.current.startY;
-      setFabPos({ x: Math.max(8, draggingRef.current.baseX - dx), y: Math.max(8, draggingRef.current.baseY - dy) });
-    };
-    const endDrag = () => { draggingRef.current = null; };
-
-    return (
-      <div
-        data-build-ui="true"
-        style={{ position:'absolute', inset:0, zIndex:30, pointerEvents:'none' }}
-        onMouseMove={onDrag}
-        onMouseUp={endDrag}
-        onTouchMove={onDrag}
-        onTouchEnd={endDrag}
-      >
-        <button
-          title={buildActive ? 'Build ON (tap pt. a deschide)' : 'Build OFF (tap pt. a deschide)'}
-          onClick={() => setMinimized(false)}
-          data-build-ui="true"
-          onMouseDown={startDrag}
-          onTouchStart={startDrag}
-          style={{
-            position:'absolute',
-            right: fabPos.x, bottom: fabPos.y,
-            width:64, height:64, borderRadius:32,
-            border:'2px solid ' + ringColor,
-            background:'#0b1220', color:'#fff',
-            fontSize:26, fontWeight:800,
-            boxShadow:'0 8px 24px rgba(0,0,0,.45)',
-            pointerEvents:'auto'
-          }}
-        >
-          🧱
-        </button>
-      </div>
-    );
-  }
-
-  /* =====================  Panou mare (neminimizat)  ===================== */
-  return (
+  const NudgePad = ({ floating=false }) => (
     <div
       data-build-ui="true"
       style={{
-        position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
-        display:'flex', alignItems:'center', justifyContent:'center', padding:16
+        position: floating ? 'fixed' : 'relative',
+        right: floating ? 16 : undefined,
+        bottom: floating ? 92 : undefined,
+        display:'grid',
+        gridTemplateColumns:'48px 48px 48px',
+        gridTemplateRows:'48px 48px 48px',
+        gap:8,
+        justifyContent:'center',
+        alignItems:'center',
+        pointerEvents:'auto',
+        zIndex: 35,
       }}
     >
-      <div style={{
-        width:'min(760px, 96vw)', background:'#0b1220', color:'#fff',
-        borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)'
-      }}>
+      <div />
+      <button onClick={()=>buildController?.nudgeSelected(0,-1)} style={btnSq}>↑</button>
+      <div />
+      <button onClick={()=>buildController?.nudgeSelected(-1,0)} style={btnSq}>←</button>
+      <button onClick={()=>buildController?.rotateStep(1)} style={{...btnSq, background:'#10b981', color:'#06281e'}}>↻</button>
+      <button onClick={()=>buildController?.nudgeSelected(1,0)} style={btnSq}>→</button>
+      <div />
+      <button onClick={()=>buildController?.nudgeSelected(0,1)} style={btnSq}>↓</button>
+      <div />
+    </div>
+  );
+
+  // FAB când panelul e minimizat
+  if (minimized) {
+    return (
+      <>
+        {selectedId && <NudgePad floating />}
+        <button
+          data-build-ui="true"
+          onClick={()=>setMinimized(false)}
+          title="Deschide Build"
+          style={{
+            position:'fixed', right:16, bottom:16, width:66, height:66, borderRadius:33,
+            border:'2px solid ' + (buildActive ? '#10b981' : '#ef4444'),
+            background:'#0b1220', color:'#fff', fontSize:26, fontWeight:800,
+            boxShadow:'0 8px 24px rgba(0,0,0,.45)', zIndex:36
+          }}
+        >🧱</button>
+      </>
+    );
+  }
+
+  return (
+    <div data-build-ui="true" style={backdrop}>
+      <div style={panel}>
         {/* Header */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
+        <div style={hdr}>
           <div style={{display:'flex', gap:10, alignItems:'center'}}>
-            <h3 style={{margin:0, fontSize:18}}>Build Mode</h3>
-            <span style={{
-              padding:'4px 8px', borderRadius:999,
-              background: buildActive ? '#10b981' : '#374151',
-              color: buildActive ? '#06281e' : '#cbd5e1',
-              fontSize:12, fontWeight:700
-            }}>{buildActive ? 'ACTIVE' : 'OFF'}</span>
+            <h3 style={{margin:0, fontSize:20}}>Build Mode</h3>
+            <span style={pill(buildActive)}>{buildActive ? 'ACTIVE' : 'OFF'}</span>
           </div>
           <div style={{display:'flex', gap:8}}>
-            <button
-              title="Minimize"
-              onClick={() => setMinimized(true)}
-              style={{fontSize:16, background:'#0f172a', color:'#cbd5e1', border:'1px solid #1f2a44', borderRadius:8, padding:'6px 10px'}}
-            >—</button>
-            <button
-              onClick={onClose}
-              style={{fontSize:18, background:'transparent', color:'#fff', border:'none'}}
-              title="Închide paleta"
-            >✕</button>
+            <button onClick={()=>setMinimized(true)} title="Minimize" style={btnMini}>—</button>
+            <button onClick={onClose} title="Închide" style={btnClose}>✕</button>
           </div>
         </div>
 
-        {/* Controls */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
-          {/* Stânga: selecție tip + mod */}
-          <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
-            <div style={{fontSize:13, opacity:.85, marginBottom:8}}>Tip obiect</div>
+          {/* Stânga: tip + mod + place/remove */}
+          <div style={card}>
+            <div style={label}>Tip obiect</div>
             <div style={{display:'grid', gap:8, maxHeight:260, overflow:'auto', paddingRight:6}}>
               {PROP_TYPES.map(p => (
-                <label key={p.key} style={{
-                  display:'flex', alignItems:'center', gap:8,
-                  background: currentType === p.key ? '#1f2937' : 'transparent',
-                  padding:'6px 8px', borderRadius:8, cursor:'pointer'
-                }}>
+                <label key={p.key} style={row(currentType === p.key)}>
                   <input
                     type="radio"
                     name="propType"
@@ -147,174 +121,145 @@ export default function BuildPalette({
               ))}
             </div>
 
-            <div style={{marginTop:12, display:'flex', gap:8, flexWrap:'wrap'}}>
+            <div style={{marginTop:12, display:'flex', gap:8}}>
               <button
-                onClick={()=>setBuildMode('place')}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background: buildMode==='place' ? '#10b981' : '#111827',
-                  color: buildMode==='place' ? '#06281e' : '#cbd5e1',
-                  padding:'0 10px', fontWeight:700
+                onClick={()=>{
+                  setBuildMode('place');
+                  setBuildActive(true);
+                  buildController?.armPlace?.();
+                  setHint('Atinge harta pentru a plasa');
                 }}
+                style={btn(buildMode==='place', '#10b981', '#06281e')}
               >Place</button>
+
               <button
-                onClick={()=>setBuildMode('remove')}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background: buildMode==='remove' ? '#ef4444' : '#111827',
-                  color: buildMode==='remove' ? '#fff' : '#cbd5e1',
-                  padding:'0 10px', fontWeight:700
-                }}
+                onClick={()=>{ setBuildMode('remove'); setHint('Atinge obiectul de pe hartă pentru a-l șterge'); }}
+                style={btn(buildMode==='remove', '#ef4444', '#fff')}
               >Remove</button>
+            </div>
+
+            <div style={{marginTop:12}}>
               <button
                 onClick={()=>buildController?.rotateStep(1)}
-                style={{
-                  height:36, borderRadius:8, border:'1px solid #1f2a44',
-                  background:'#111827', color:'#cbd5e1', padding:'0 10px'
-                }}
-              >↻ Rotate (preview)</button>
+                style={btn(false, '#111827', '#cbd5e1', true)}
+              >⟳ Rotate (preview)</button>
             </div>
 
             <div style={{marginTop:12}}>
               <button
                 onClick={()=>setBuildActive(v=>!v)}
-                style={{
-                  width:'100%', height:40, borderRadius:8, border:'none',
-                  background: buildActive ? '#ef4444' : '#10b981',
-                  color: buildActive ? '#fff' : '#06281e',
-                  fontWeight:800
-                }}
+                style={bigBtn(buildActive)}
               >{buildActive ? 'OPREȘTE BUILD MODE' : 'PORNEȘTE BUILD MODE'}</button>
             </div>
+
+            {hint && <div style={{marginTop:8, fontSize:12, opacity:.8}}>{hint}</div>}
           </div>
 
-          {/* Dreapta: listă + export + nudge controls */}
-          <div style={{border:'1px solid #1f2a44', borderRadius:10, padding:12}}>
+          {/* Dreapta: lista + export + săgeți */}
+          <div style={card}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-              <div style={{fontSize:13, opacity:.85}}>Obiecte plasate</div>
+              <div style={label}>Obiecte plasate</div>
               <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                <button
-                  onClick={()=>{
-                    const blob = new Blob([exportJSON()], {type:'application/json'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'world-edits.json'; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  style={{height:30, borderRadius:6, border:'1px solid #1f2a44', background:'#111827', color:'#cbd5e1', padding:'0 8px'}}
-                >Export JSON</button>
-                <button
-                  onClick={()=>{
-                    const blob = new Blob([exportCSV()], {type:'text/csv'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'world-edits.csv'; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  style={{height:30, borderRadius:6, border:'1px solid #1f2a44', background:'#111827', color:'#cbd5e1', padding:'0 8px'}}
-                >Export CSV</button>
+                <button onClick={()=>{
+                  const blob = new Blob([exportJSON()], {type:'application/json'});
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href=url; a.download='world-edits.json'; a.click();
+                  URL.revokeObjectURL(url);
+                }} style={btnSq}>Export JSON</button>
+                <button onClick={()=>{
+                  const blob = new Blob([exportCSV()], {type:'text/csv'});
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href=url; a.download='world-edits.csv'; a.click();
+                  URL.revokeObjectURL(url);
+                }} style={btnSq}>Export CSV</button>
               </div>
             </div>
 
-            <div style={{
-              maxHeight:220, overflow:'auto', padding:8,
-              background:'#0a1322', border:'1px dashed #1f2a44', borderRadius:8
-            }}>
+            <div style={listBox}>
               {(!items || !items.length) && (
-                <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă. Pornește „Build Mode”, alege un tip și atinge/click pe teren.</div>
+                <div style={{opacity:.65, fontSize:13}}>Nimic plasat încă.</div>
               )}
-              {items && items.length > 0 && items.map(it => {
-                const active = selectedId === it.id;
-                return (
-                  <div
-                    key={it.id}
-                    onClick={() => buildController?.setSelectedId(it.id)}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        buildController?.setSelectedId(it.id);
-                      }
-                    }}
-                    style={{
-                      cursor: 'pointer',
-                      display:'grid',
-                      gridTemplateColumns:'1fr auto',
-                      padding:'6px 8px',
-                      marginBottom:6,
-                      borderRadius:6,
-                      background: active ? '#22c55e33' : '#0f1b2f',
-                      outline: 'none',
-                      border: active ? '1px solid #22c55e' : '1px solid transparent'
-                    }}
-                    aria-pressed={active}
-                    role="button"
-                    title="Selectează pentru mutare/rotație"
-                  >
-                    <div style={{fontSize:13}}>
-                      <div>
-                        <b>{it.type}</b>
-                        <span style={{opacity:.7}}> (id: {it.id.slice(0,8)}…)</span>
-                      </div>
-                      <div style={{opacity:.8}}>
-                        pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}], rotY: {Number(it.rotY).toFixed(2)}
-                      </div>
-                    </div>
+              {items && items.length > 0 && items.map(it => (
+                <div
+                  key={it.id}
+                  onClick={()=>buildController?.setSelectedId?.(it.id)}
+                  style={itemRow(selectedId === it.id)}
+                >
+                  <div style={{fontSize:14, fontWeight:700}}>{it.type}</div>
+                  <div style={{opacity:.8, fontSize:12}}>
+                    id: {it.id.slice(0,8)}… · pos: [{it.pos.map(n=>Number(n).toFixed(2)).join(', ')}] · rotY: {Number(it.rotY||0).toFixed(2)}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
 
-            {/* Nudge pad */}
-            <div style={{marginTop:12, display:'grid', placeItems:'center'}}>
-              <div style={{display:'grid', gridTemplateColumns:'40px 40px 40px', gap:6}}>
-                <div />
-                <button
-                  disabled={!selectedId}
-                  onClick={()=>buildController?.nudgeSelected(0, -1)}
-                  style={btn()}
-                  title="Sus"
-                >↑</button>
-                <div />
-                <button
-                  disabled={!selectedId}
-                  onClick={()=>buildController?.nudgeSelected(-1, 0)}
-                  style={btn()}
-                  title="Stânga"
-                >←</button>
-                <button
-                  disabled={!selectedId}
-                  onClick={()=>buildController?.rotateSelected(1)}
-                  style={btn()}
-                  title="Rotește +90°"
-                >⟳</button>
-                <button
-                  disabled={!selectedId}
-                  onClick={()=>buildController?.nudgeSelected(1, 0)}
-                  style={btn()}
-                  title="Dreapta"
-                >→</button>
-                <div />
-                <button
-                  disabled={!selectedId}
-                  onClick={()=>buildController?.nudgeSelected(0, 1)}
-                  style={btn()}
-                  title="Jos"
-                >↓</button>
-                <div />
+            {/* săgeți în panel */}
+            {selectedId && (
+              <div style={{marginTop:12, display:'flex', justifyContent:'center'}}>
+                <div style={{display:'grid', gridTemplateColumns:'48px 48px 48px', gridTemplateRows:'48px 48px 48px', gap:8}}>
+                  <div />
+                  <button onClick={()=>buildController?.nudgeSelected(0,-1)} style={btnSq}>↑</button>
+                  <div />
+                  <button onClick={()=>buildController?.nudgeSelected(-1,0)} style={btnSq}>←</button>
+                  <button onClick={()=>buildController?.rotateStep(1)} style={{...btnSq, background:'#10b981', color:'#06281e'}}>↻</button>
+                  <button onClick={()=>buildController?.nudgeSelected(1,0)} style={btnSq}>→</button>
+                  <div />
+                  <button onClick={()=>buildController?.nudgeSelected(0,1)} style={btnSq}>↓</button>
+                  <div />
+                </div>
               </div>
-            </div>
-
+            )}
           </div>
         </div>
       </div>
+
+      {/* NudgePad plutitor când panelul e deschis (opțional – comentează dacă nu-l vrei dublat) */}
+      {/* {selectedId && <NudgePad floating />} */}
     </div>
   );
 }
 
-function btn() {
-  return {
-    height:36, borderRadius:8, border:'1px solid #1f2a44',
-    background:'#111827', color:'#cbd5e1', fontWeight:700
-  };
-}
+/* ---- UI helpers ---- */
+const backdrop = {
+  position:'absolute', inset:0, background:'rgba(0,0,0,.45)', zIndex:30,
+  display:'flex', alignItems:'center', justifyContent:'center', padding:16
+};
+const panel = {
+  width:'min(760px, 96vw)', background:'#0b1220', color:'#fff',
+  borderRadius:12, padding:16, boxShadow:'0 10px 30px rgba(0,0,0,.4)'
+};
+const hdr = {display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12};
+const card = {border:'1px solid #1f2a44', borderRadius:10, padding:12};
+const label = {fontSize:13, opacity:.85, marginBottom:8};
+const row = (active) => ({
+  display:'flex', alignItems:'center', gap:8,
+  background: active ? '#1f2937' : 'transparent',
+  padding:'6px 8px', borderRadius:8, cursor:'pointer'
+});
+const pill = (on) => ({
+  padding:'4px 8px', borderRadius:999,
+  background: on ? '#10b981' : '#374151',
+  color: on ? '#06281e' : '#cbd5e1',
+  fontSize:12, fontWeight:700
+});
+const btn = (on, bgOn, colOn, ghost=false) => ({
+  height:36, borderRadius:8, border:'1px solid #1f2a44',
+  background: on ? bgOn : (ghost ? '#111827' : '#0f172a'),
+  color: on ? colOn : '#cbd5e1', padding:'0 12px', fontWeight:700
+});
+const bigBtn = (on) => ({
+  width:'100%', height:44, borderRadius:8, border:'none',
+  background: on ? '#ef4444' : '#10b981',
+  color: on ? '#fff' : '#06281e', fontWeight:800
+});
+const btnClose = {fontSize:18, background:'transparent', color:'#fff', border:'none'};
+const btnMini = {fontSize:16, background:'#0f172a', color:'#cbd5e1', border:'1px solid #1f2a44', borderRadius:8, padding:'6px 10px'};
+const listBox = {maxHeight:300, overflow:'auto', padding:8, background:'#0a1322', border:'1px dashed #1f2a44', borderRadius:8};
+const itemRow = (sel) => ({
+  padding:'8px 10px', marginBottom:8, borderRadius:8, background: sel ? '#17324b' : '#0f1b2f',
+  cursor:'pointer', border: sel ? '1px solid #22c55e' : '1px solid transparent'
+});
+const btnSq = {
+  height:40, minWidth:40, borderRadius:8, border:'1px solid #1f2a44',
+  background:'#111827', color:'#cbd5e1', padding:'0 10px', fontWeight:700
+};
