@@ -12,7 +12,7 @@ import { makeBuildingBox }  from './prefabs/BuildingBox.js';
 
 // Lista de tipuri afișată în UI (BuildPalette)
 export const PROP_TYPES = [
-  { key: 'road.segment', label: 'Șosea 2×4 m' },
+  { key: 'road.segment', label: 'Șosea 6×20 m' },
   { key: 'fence.panel',  label: 'Panou gard 2 m' },
   { key: 'hill.tile',    label: 'Bucată munte' },
   { key: 'tree',         label: 'Copac' },
