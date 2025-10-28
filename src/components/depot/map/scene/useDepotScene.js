@@ -22,22 +22,36 @@ const CFG = {
   fence:  { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
 };
 
+// helper: colectează toate mesh-urile dintr-un root, cu excluderi simple
+function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
+  const out = [];
+  if (!root) return out;
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const nm = (obj.name || '').toLowerCase();
+    for (const frag of excludeNameIncludes) {
+      if (nm.includes(frag.toLowerCase())) return;
+    }
+    out.push(obj);
+  });
+  return out;
+}
+
 export function useDepotScene({ mountRef }) {
-  // expus în sus
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
-  // refs interne
   const cameraRef = useRef();
   const controlsRef = useRef();
   const fpRef = useRef(null);
   const buildRef = useRef(null);
 
+  const containersLayerRef = useRef(null);
+
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
 
-  // ținem un ref sincronizat cu buildActive ca să nu prindem valoare veche în handler-e
   const buildActiveRef = useRef(false);
   useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
@@ -60,7 +74,6 @@ export function useDepotScene({ mountRef }) {
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
-  // Build API (✔️ expunem controllerul și "active")
   const [buildMode, setBuildMode] = useState('place');
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
@@ -77,11 +90,9 @@ export function useDepotScene({ mountRef }) {
     get active() { return buildActiveRef.current; },
   }), [buildMode]);
 
-  // select container callback
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
-  // bounds FP
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
     maxX:  YARD_WIDTH / 2 - 2,
@@ -112,58 +123,93 @@ export function useDepotScene({ mountRef }) {
     controlsRef.current = controls;
 
     // FP
-    fpRef.current = createFirstPerson(camera, bounds);
+    fpRef.current = createFirstPerson(camera, bounds, {
+      eyeHeight: 1.7,
+      stepMax: 0.6,
+      slopeMax: Math.tan(40 * Math.PI/180),
+    });
 
-    // lume
+    // lumină / mediu
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
 
-    // ► peisajul (munții) – îl păstrăm ca referință pentru raycastTargets
+    // peisaj (poate conține "grass")
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
-    // world editabil
+    // editabile (drumuri, rampe, sens)
     const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
 
     // curte + gard
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
-
-    // mesh pentru raycast din createGround
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
-
-    // ► colecția de ținte pentru plasare (platoul mare + placa curții + munții)
-    const raycastTargets = [
-      ...(groundNode.userData?.raycastTargets || [groundMesh]),
-      landscape, // dacă vrei să plasezi și pe relief
-    ];
 
     const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // build controller (trimitem și raycastTargets!)
+    // build controller
     buildRef.current = createBuildController({
       camera,
       domElement: renderer.domElement,
       worldGroup,
-      groundMesh,          // fallback/compat
-      raycastTargets,      // ← NOU: lista de suprafețe unde poți plasa
+      groundMesh,
+      raycastTargets: [
+        ...(groundNode.userData?.raycastTargets || [groundMesh]),
+        landscape, // dacă vrei să poți plasa și pe relief
+      ],
       grid: 1
     });
     buildRef.current?.setMode(buildMode);
-    buildRef.current?.setType?.('road.segment'); // preview rapid
+    buildRef.current?.setType?.('road.segment');
 
     // containere
     (async () => {
       try {
         const data = await fetchContainers();
         setContainers(data.containers || []);
-        depotGroup.add(createContainersLayerOptimized(data, CFG.ground));
+        const layer = createContainersLayerOptimized(data, CFG.ground);
+        containersLayerRef.current = layer;
+        depotGroup.add(layer);
       } catch (e) { console.warn('fetchContainers', e); }
     })();
+
+    // === FP WALKABLES vs COLLIDERS ===
+    // 1) WALKABLES (pe ce calc: pentru „raycast în jos” – înălțimea camerei)
+    const walkables = [
+      groundMesh,               // planul logic la y≈0
+      worldGroup,               // drumuri/rampe/sens
+      // terenul fără a filtra (ok pentru înălțime)
+      landscape
+    ];
+
+    // 2) COLLIDERS (în ce mă lovesc în față): TOT ce nu e iarbă
+    // – exclud “grass” după nume; ajustează dacă folosești alt nume
+    const landscapeSolids = collectMeshes(landscape, { excludeNameIncludes: ['grass'] });
+    const colliders = [
+      worldGroup,               // drumuri, rampe, sens
+      fence,                    // gardul
+      ...landscapeSolids,       // roci/teren solid, NU iarbă
+    ];
+
+    // adaugă layer-ul de containere în colliders când e gata
+    const attachCollidersWhenReady = () => {
+      if (containersLayerRef.current) {
+        colliders.push(containersLayerRef.current);
+      } else {
+        // mai încearcă puțin mai târziu
+        setTimeout(attachCollidersWhenReady, 50);
+      }
+    };
+    attachCollidersWhenReady();
+
+    // conectează la FP
+    fpRef.current.setWalkables?.(walkables);
+    // suportă oricare nume ai în FP pentru colliders:
+    (fpRef.current.setCollisionTargets || fpRef.current.setColliders || fpRef.current.setObstacles)?.(colliders);
 
     // pick containere (dezactivat în build)
     const raycaster = new THREE.Raycaster();
@@ -189,41 +235,28 @@ export function useDepotScene({ mountRef }) {
     };
     mount.addEventListener('click', onClick);
 
-    // ---------- INPUT BUILD: desktop + touch ----------
+    // ---------- INPUT BUILD ----------
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
     };
-
     const handleMove = (x, y) => {
       if (!buildActiveRef.current || !buildRef.current) return;
       buildRef.current.updatePreviewAt(x, y);
     };
-
     const handleClick = (x, y) => {
       if (!buildActiveRef.current || !buildRef.current) return;
       if (isOverBuildUI(x, y)) return;
       buildRef.current.clickAt(x, y);
     };
-
-    // desktop
     const onPointerMove = (e) => handleMove(e.clientX, e.clientY);
     const onPointerDown = (e) => handleClick(e.clientX, e.clientY);
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
-
-    // touch
-    const onTouchMove = (e) => {
-      const t = e.touches?.[0]; if (!t) return;
-      handleMove(t.clientX, t.clientY);
-    };
-    const onTouchStart = (e) => {
-      const t = e.touches?.[0]; if (!t) return;
-      handleClick(t.clientX, t.clientY);
-    };
+    const onTouchMove = (e) => { const t = e.touches?.[0]; if (!t) return; handleMove(t.clientX, t.clientY); };
+    const onTouchStart = (e) => { const t = e.touches?.[0]; if (!t) return; handleClick(t.clientX, t.clientY); };
     renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
     renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
-    // ---------------------------------------------------
 
     // loop
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
@@ -267,7 +300,6 @@ export function useDepotScene({ mountRef }) {
     };
   }, []); // mount once
 
-  // Orbit ON/OFF când intri/ieși din build / FP
   useEffect(() => {
     const orbit = controlsRef.current; if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
@@ -280,7 +312,7 @@ export function useDepotScene({ mountRef }) {
     setJoystick,
     buildActive,
     setBuildActive,
-    buildApi,                   // conține .controller și .active
+    buildApi,
     containers,
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
