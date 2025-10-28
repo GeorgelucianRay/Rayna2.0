@@ -1,7 +1,6 @@
-// Editor de hartă: plasare la comandă, selecție, mutare, rotire, fără “fantome” persistente.
 import * as THREE from 'three';
 import { createMeshFor } from './propRegistry';
-import { addProp, removeProp, getProps } from './worldStore';
+import { addProp, removeProp, getProps, clearAllProps } from './worldStore';
 
 export default function createBuildController({
   camera,
@@ -16,8 +15,9 @@ export default function createBuildController({
   let preview = null;                 // fantoma (doar vizuală)
   let rotY = 0;
   let lastHit = null;
-  let placeArmed = false;             // NU mai plasăm fără un “Place” explicit
-  const idToMesh = new Map();         // pentru select/înlăturare
+  let placeArmed = false;             // plasăm doar dacă e „armat”
+  let placeContinuous = true;         // rămâne armat după plasare
+  const idToMesh = new Map();         // id (store) -> mesh
   let selectedId = null;
 
   const raycaster = new THREE.Raycaster();
@@ -35,7 +35,6 @@ export default function createBuildController({
   }
 
   function highlightSelection() {
-    // curățăm highlight
     idToMesh.forEach((m) => {
       m.traverse((c) => {
         if (c.isMesh && c.material?.userData?.__origEmissive) {
@@ -47,33 +46,30 @@ export default function createBuildController({
     const m = idToMesh.get(selectedId);
     if (!m) return;
     m.traverse((c) => {
-      if (c.isMesh) {
-        if (!c.material.userData) c.material.userData = {};
-        if (!c.material.userData.__origEmissive) {
-          c.material.userData.__origEmissive = (c.material.emissive || new THREE.Color(0x000000)).clone?.() || new THREE.Color(0x000000);
-        }
-        if (!c.material.emissive) c.material.emissive = new THREE.Color(0x000000);
-        c.material.emissive.setHex(0x2266ff);
+      if (!c.isMesh) return;
+      if (!c.material.userData) c.material.userData = {};
+      if (!c.material.userData.__origEmissive) {
+        const base = c.material.emissive || new THREE.Color(0x000000);
+        c.material.userData.__origEmissive = base.clone ? base.clone() : new THREE.Color(0x000000);
       }
+      if (!c.material.emissive) c.material.emissive = new THREE.Color(0x000000);
+      c.material.emissive.setHex(0x22aaff);
     });
   }
 
   function ensurePreview() {
     if (mode !== 'place') { if (preview) preview.visible = false; return; }
     if (preview && preview.userData.__type === currentType) { preview.visible = true; return; }
-    if (preview) {
-      worldGroup.remove(preview);
-      preview = null;
-    }
+    if (preview) { worldGroup.remove(preview); preview = null; }
     const m = createMeshFor(currentType);
     if (!m) return;
     // fantomă
     m.traverse((child) => {
       if (child.isMesh) {
         child.material = child.material.clone();
-        if ('transparent' in child.material) child.material.transparent = true;
-        if ('opacity' in child.material) child.material.opacity = 0.45;
-        if ('depthWrite' in child.material) child.material.depthWrite = false;
+        child.material.transparent = true;
+        child.material.opacity = 0.45;
+        child.material.depthWrite = false;
       }
     });
     m.userData.__type = currentType;
@@ -98,12 +94,8 @@ export default function createBuildController({
     preview.rotation.y = rotY;
   }
 
-  function updatePreview() {
-    // no-op; păstrat pentru bucla de animare
-  }
+  function updatePreview() {}
 
-  // IMPORTANT: nu mai plasăm la click “oriunde”.
-  // Plasarea se face DOAR dacă UI a chemat armPlace() înainte.
   function clickAt(clientX, clientY) {
     if (mode === 'remove') {
       // remove selectiv sub cursor
@@ -119,24 +111,21 @@ export default function createBuildController({
       const propId = target?.userData?.__propId;
       if (!propId) return;
 
-      // ștergem
       const mesh = idToMesh.get(propId);
-      if (mesh) {
-        worldGroup.remove(mesh);
-        idToMesh.delete(propId);
-      }
+      if (mesh) { worldGroup.remove(mesh); idToMesh.delete(propId); }
       removeProp(propId);
       if (selectedId === propId) selectedId = null;
       highlightSelection();
       return;
     }
 
-    if (mode === 'place' && placeArmed) {
-      placeNow(); // plasăm exact la ultimul hit/preview
-    }
+    if (mode === 'place' && placeArmed) placeNow();
   }
 
   function armPlace() { placeArmed = true; }
+  function disarmPlace() { placeArmed = false; }
+  function setPlaceContinuous(v) { placeContinuous = !!v; }
+
   function placeNow() {
     if (mode !== 'place') return;
     ensurePreview();
@@ -158,47 +147,39 @@ export default function createBuildController({
       scale: [1, 1, 1],
       params: {},
     });
+
     mesh.userData.__propId = item.id;
     idToMesh.set(item.id, mesh);
 
-    // auto-select noul obiect
+    // auto-select
     selectedId = item.id;
     highlightSelection();
 
-    placeArmed = false; // consumat
+    if (!placeContinuous) disarmPlace();
   }
 
   function rotateStep(dir = 1) {
-    rotY += dir * (Math.PI / 2);
-    if (preview) preview.rotation.y = rotY;
+    // dacă ai selecție -> rotește DOAR obiectul selectat
     if (selectedId) {
       const mesh = idToMesh.get(selectedId);
       if (mesh) {
         mesh.rotation.y += dir * (Math.PI / 2);
-        // sincronizăm store-ul
         const p = getProps().find(p => p.id === selectedId);
         if (p) p.rotY = mesh.rotation.y;
       }
+      return;
     }
+    // altfel rotește preview-ul
+    rotY += dir * (Math.PI / 2);
+    if (preview) preview.rotation.y = rotY;
   }
 
-  function setMode(next) {
-    mode = next;
-    ensurePreview();
-  }
+  function setMode(next) { mode = next; ensurePreview(); }
+  function setType(t) { currentType = t; ensurePreview(); }
 
-  function setType(t) {
-    currentType = t;
-    ensurePreview();
-  }
-
-  function setSelectedId(id) {
-    selectedId = id || null;
-    highlightSelection();
-  }
+  function setSelectedId(id) { selectedId = id || null; highlightSelection(); }
   function getSelectedId() { return selectedId; }
 
-  // mutare fină a obiectului selectat
   function nudgeSelected(dx = 0, dz = 0) {
     if (!selectedId) return;
     const mesh = idToMesh.get(selectedId);
@@ -209,7 +190,7 @@ export default function createBuildController({
     if (p) p.pos = [mesh.position.x, mesh.position.y, mesh.position.z];
   }
 
-  // încărcare în scenă a obiectelor din store (la deschiderea editorului)
+  // încărcare obiecte din store
   function mountExistingFromStore() {
     for (const p of getProps()) {
       if (idToMesh.has(p.id)) continue;
@@ -223,16 +204,26 @@ export default function createBuildController({
     highlightSelection();
   }
 
+  // curăță scena + store (pentru „Reset local”)
+  function resetScene() {
+    idToMesh.forEach(m => worldGroup.remove(m));
+    idToMesh.clear();
+    clearAllProps();
+    selectedId = null;
+    highlightSelection();
+    ensurePreview();
+  }
+
   return {
     // moduri și tip
     setMode, setType, rotateStep,
-    // plasare controlată
-    armPlace, placeNow,
+    // plasare
+    armPlace, disarmPlace, setPlaceContinuous, placeNow,
     // preview + input
     updatePreviewAt, clickAt, updatePreview,
     // selecție / mutare
     setSelectedId, getSelectedId, nudgeSelected,
-    // încărcare “edits” în scenă
-    mountExistingFromStore,
+    // încărcare / reset
+    mountExistingFromStore, resetScene,
   };
 }
