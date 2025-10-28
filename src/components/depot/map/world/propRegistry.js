@@ -13,7 +13,7 @@ import { makeSlopeRamp } from './prefabs/SlopeRamp.js';
 export const PROP_TYPES = [
   { key: 'road.segment',    label: 'Șosea 12×40 m' },
   { key: 'road.roundabout', label: 'Sens giratoriu Ø40 / bandă 12' },
-  { key: 'road.ramp', label: 'Pantă 90×12 @45°' },
+  { key: 'road.ramp', label: 'Pantă 90×12 (10%)' },
   { key: 'fence.panel',     label: 'Panou gard 2 m' },
   { key: 'hill.tile',       label: 'Bucată munte' },
   { key: 'tree',            label: 'Copac' },
@@ -31,7 +31,7 @@ export function createMeshFor(type, opts = {}) {
       return makeRoundabout({ outerR: 20, ringW: 12, h: 0.02, ...opts });
       
       case 'road.ramp':
-  return makeSlopeRamp({ L: 90, W: 12, angleDeg: 45, ...opts });
+  return makeSlopeRamp({ L: 90, W: 12, angleDeg: 5.7105931375, ...opts });
 
     case 'fence.panel':
       return makeFencePanel({ L: 2, H: 1.6, ...opts });
