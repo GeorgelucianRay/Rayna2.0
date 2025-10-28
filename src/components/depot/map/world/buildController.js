@@ -1,7 +1,7 @@
-// buildController.js – fără JSX, ASCII quotes only
+// src/components/depot/map/world/buildController.js
 import * as THREE from 'three';
 import { createMeshFor } from './propRegistry';
-import { addProp, removeProp, getProps, updateProp } from './worldStore';
+import { addProp, removeProp, getProps, updateProp, subscribe } from './worldStore';
 
 export default function createBuildController({
   camera,
@@ -10,6 +10,7 @@ export default function createBuildController({
   groundMesh,
   grid = 1,
 }) {
+  // --- STATE ---
   let mode = 'place';
   let currentType = 'road.segment';
   let preview = null;
@@ -18,10 +19,25 @@ export default function createBuildController({
   const idToMesh = new Map();
   let selectedId = null;
 
+  // anti-dubluri (ex: pointerdown + touchstart)
+  let lastPlaceTs = 0;
+  const PLACE_COOLDOWN = 150; // ms
+
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   const snap = (v) => Math.round(v / grid) * grid;
 
+  // --- STORE SYNC: dacă store devine gol, curățăm și scena ---
+  const unsubStore = subscribe((s) => {
+    if (!s.props || s.props.length === 0) {
+      idToMesh.forEach((m) => worldGroup.remove(m));
+      idToMesh.clear();
+      selectedId = null;
+      if (preview) preview.visible = false;
+    }
+  });
+
+  // --- HELPERS ---
   function getGroundHit(clientX, clientY) {
     const rect = domElement.getBoundingClientRect();
     mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -32,6 +48,7 @@ export default function createBuildController({
   }
 
   function highlightSelection() {
+    // reset
     idToMesh.forEach((m) => {
       m.traverse((c) => {
         if (c.isMesh && c.material?.userData?.__origEmissive) {
@@ -40,6 +57,7 @@ export default function createBuildController({
       });
     });
     if (!selectedId) return;
+
     const m = idToMesh.get(selectedId);
     if (!m) return;
     m.traverse((c) => {
@@ -50,7 +68,7 @@ export default function createBuildController({
           c.material.userData.__origEmissive = base.clone ? base.clone() : new THREE.Color(0x000000);
         }
         if (!c.material.emissive) c.material.emissive = new THREE.Color(0x000000);
-        c.material.emissive.setHex(0x22c55e);
+        c.material.emissive.setHex(0x22c55e); // verde selecție
       }
     });
   }
@@ -60,16 +78,20 @@ export default function createBuildController({
       if (preview) preview.visible = false;
       return;
     }
+    // același tip -> doar arată
     if (preview && preview.userData.__type === currentType) {
       preview.visible = true;
       return;
     }
+    // alt tip -> înlocuiește
     if (preview) {
       worldGroup.remove(preview);
       preview = null;
     }
     const m = createMeshFor(currentType);
     if (!m) return;
+
+    // îl facem "fantomă"
     m.traverse((child) => {
       if (child.isMesh) {
         child.material = child.material.clone();
@@ -85,16 +107,19 @@ export default function createBuildController({
     preview = m;
   }
 
+  // --- POINTER HANDLERS ---
   function updatePreviewAt(clientX, clientY) {
     if (mode !== 'place') return;
     ensurePreview();
     if (!preview) return;
+
     const hit = getGroundHit(clientX, clientY);
     if (!hit) return;
+
     lastHit = hit.point;
     const x = snap(hit.point.x);
     const z = snap(hit.point.z);
-    const y = hit.point.y + 0.05;
+    const y = hit.point.y + 0.05; // un pic deasupra solului
     preview.position.set(x, y, z);
     preview.rotation.y = rotY;
   }
@@ -113,13 +138,18 @@ export default function createBuildController({
     mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    const valid = worldGroup.children.filter(o => !o.userData?.__isPreview);
+
+    // excludem preview-ul
+    const valid = worldGroup.children.filter((o) => !o.userData?.__isPreview);
     const hits = raycaster.intersectObjects(valid, true);
     if (!hits.length) return;
+
     let target = hits[0].object;
     while (target && !target.userData?.__propId && target.parent) target = target.parent;
+
     const propId = target?.userData?.__propId;
     if (!propId) return;
+
     const mesh = idToMesh.get(propId);
     if (mesh) {
       worldGroup.remove(mesh);
@@ -140,19 +170,28 @@ export default function createBuildController({
     }
   }
 
+  // --- PLACE ---
   function placeNow() {
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (now - lastPlaceTs < PLACE_COOLDOWN) return; // anti dublu-tap
+    lastPlaceTs = now;
+
     if (mode !== 'place') return;
     ensurePreview();
     if (!preview) return;
     if (!lastHit) return;
+
     const x = snap(lastHit.x);
     const z = snap(lastHit.z);
     const y = lastHit.y + 0.05;
+
     const mesh = createMeshFor(currentType);
     if (!mesh) return;
+
     mesh.position.set(x, y, z);
     mesh.rotation.y = rotY;
     worldGroup.add(mesh);
+
     const item = addProp({
       type: currentType,
       pos: [x, y, z],
@@ -160,15 +199,18 @@ export default function createBuildController({
       scale: [1, 1, 1],
       params: {},
     });
+
     mesh.userData.__propId = item.id;
     idToMesh.set(item.id, mesh);
     selectedId = item.id;
     highlightSelection();
   }
 
+  // --- TRANSFORM/SELECT ---
   function rotateStep(dir = 1) {
     rotY += dir * (Math.PI / 2);
     if (preview) preview.rotation.y = rotY;
+
     if (selectedId) {
       const mesh = idToMesh.get(selectedId);
       if (mesh) {
@@ -178,22 +220,40 @@ export default function createBuildController({
     }
   }
 
-  function setMode(next) { mode = next; ensurePreview(); }
-  function setType(t) { currentType = t; ensurePreview(); }
-  function setSelectedId(id) { selectedId = id || null; highlightSelection(); }
-  function getSelectedId() { return selectedId; }
+  function setMode(next) {
+    mode = next;
+    ensurePreview();
+  }
+
+  function setType(t) {
+    currentType = t;
+    ensurePreview();
+  }
+
+  function setSelectedId(id) {
+    selectedId = id || null;
+    highlightSelection();
+  }
+
+  function getSelectedId() {
+    return selectedId;
+  }
 
   function nudgeSelected(dx = 0, dz = 0) {
     if (!selectedId) return;
     const mesh = idToMesh.get(selectedId);
     if (!mesh) return;
+
     mesh.position.x = snap(mesh.position.x + dx);
     mesh.position.z = snap(mesh.position.z + dz);
-    updateProp(selectedId, { pos: [mesh.position.x, mesh.position.y, mesh.position.z] });
+    updateProp(selectedId, {
+      pos: [mesh.position.x, mesh.position.y, mesh.position.z],
+    });
   }
 
+  // --- MOUNT/UNMOUNT EXISTING ---
   function mountExistingFromStore() {
-    const props = getProps();
+    const props = getProps() || [];
     for (const p of props) {
       if (idToMesh.has(p.id)) continue;
       const mesh = createMeshFor(p.type);
@@ -217,10 +277,18 @@ export default function createBuildController({
     }
   }
 
-  function armPlace() {
-    // păstrat doar pentru compatibilitate — nu e necesar cu clickAt direct
+  function removeAllFromScene() {
+    idToMesh.forEach((m) => worldGroup.remove(m));
+    idToMesh.clear();
+    selectedId = null;
+    if (preview) preview.visible = false;
   }
 
+  function armPlace() {
+    // păstrat pentru compatibilitate; plasarea se face direct la clickAt/placeNow
+  }
+
+  // --- API PUBLIC ---
   return {
     setMode,
     setType,
@@ -235,5 +303,7 @@ export default function createBuildController({
     nudgeSelected,
     mountExistingFromStore,
     removeFromScene,
+    removeAllFromScene,
+    dispose: () => unsubStore?.(),
   };
 }
