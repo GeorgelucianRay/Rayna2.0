@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 // Prefab-uri – atenție la numele și literele din căi (Linux e case-sensitive)
-import { makeRoadSegment }  from './prefabs/RoadSegment.js';
+{ key: 'road.segment', label: 'Șosea 12×40 m' },
 import { makeFencePanel }   from './prefabs/FencePanel.js';
 import { makeHillTile }     from './prefabs/HillTile.js';
 import { makeTree }         from './prefabs/Tree.js';
