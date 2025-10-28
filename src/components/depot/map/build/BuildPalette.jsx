@@ -255,18 +255,17 @@ export default function BuildPalette({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>{it.type}</div>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        buildController?.setSelectedId?.(it.id);
-                        setBuildMode('remove');
-                        // ștergerea reală se face la tap/click în scenă;
-                        // dacă vrei ștergere directă din listă, expune buildController.removeFromScene + removeProp aici.
-                      }}
-                      style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: 18, cursor: 'pointer' }}
-                      title="Selectează pentru ștergere"
-                    >
-                      🗑️
-                    </button>
+  onClick={() => {
+    if (window.confirm('Ștergi TOATE obiectele?')) {
+      clearAllProps();                          // golește store + localStorage
+      buildController?.removeAllFromScene?.();  // golește mesh-urile ACUM
+    }
+  }}
+  style={{ ...btnSq, background: '#ef4444', color: '#fff', fontSize: 14 }}
+  title="Șterge tot"
+>
+  🧹
+</button>
                   </div>
                   <div style={{ opacity: 0.8, fontSize: 11, marginTop: 4 }}>
                     🆔 {it.id.slice(0, 8)}…
