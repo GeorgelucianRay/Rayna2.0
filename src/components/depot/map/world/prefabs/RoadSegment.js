@@ -1,30 +1,28 @@
-// src/components/depot/map/world/prefabs/RoadSegment.js
+// world/prefabs/RoadSegment.js
 import * as THREE from 'three';
 
-export function makeRoadSegment({ w = 6, d = 20, y = 0.03 } = {}) {
-  // 6 (X) × 20 (Z) road surface as a single plane, laid flat on the ground.
+export function makeRoadSegment({ w = 12, d = 40, h = 0.02, y = 0.015 } = {}) {
+  // folosim un plane foarte subțire, nu box, și îl rotim pe orizontală
   const geo = new THREE.PlaneGeometry(w, d);
-  geo.rotateX(-Math.PI / 2); // make it horizontal
+  geo.rotateX(-Math.PI / 2);
 
   const tex = new THREE.TextureLoader().load('/textures/lume/Drumuri.jpg');
-  // Safe defaults across three versions
-  if ('SRGBColorSpace' in THREE) tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  // If your image is already authored for 6×20 meters, keep (1,1)
-  // Increase these if you want more tiling detail (e.g. tex.repeat.set(2,1))
-  tex.repeat.set(1, 1);
+  tex.anisotropy = 8;
+
+  // textura e desenată pentru 6×20 m; repetăm proporțional ca să nu se deformeze
+  const repeatX = d / 20; // de-a lungul drumului
+  const repeatY = w / 6;  // pe lățime
+  tex.repeat.set(repeatX, repeatY);
 
   const mat = new THREE.MeshStandardMaterial({
     map: tex,
     roughness: 0.9,
-    metalness: 0.05,
+    metalness: 0.0
   });
 
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = y; // slight lift to avoid z-fighting with asphalt slab
+  mesh.position.y = y;           // puțin deasupra solului
   mesh.receiveShadow = true;
-  mesh.castShadow = false;
-  mesh.userData.isRoad = true;
-
   return mesh;
 }
