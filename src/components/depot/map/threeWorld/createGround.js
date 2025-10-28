@@ -39,7 +39,8 @@ export default function createGround({
   const drop = 0.02; // ~2cm: doar ca să nu se mai suprapună cu curtea/markerele de la y=0
   const geo = new THREE.BoxGeometry(width, thickness, depth);
   // înainte era -thickness/2; acum coborâm încă "drop"
-  geo.translate(0, -thickness / 2 - drop, 0);
+  // ridică placa cu 5 cm peste terenul peisajului
+geo.translate(0, -thickness / 2 + 0.05, 0);
 
   const asphaltTex = new THREE.TextureLoader().load('/textures/lume/asphalt_curte_textura.PNG');
   asphaltTex.colorSpace = THREE.SRGBColorSpace;
