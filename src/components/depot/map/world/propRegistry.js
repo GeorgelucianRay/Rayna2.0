@@ -1,10 +1,10 @@
+// src/components/depot/map/world/propRegistry.js
 // Registry-ul obiectelor plasabile + fabricile de mesh-uri.
-// IMPORTANT: exportăm *named* `createMeshFor` (fix pentru eroarea din Vercel).
 
 import * as THREE from 'three';
 
 // Prefab-uri – atenție la numele și literele din căi (Linux e case-sensitive)
-{ key: 'road.segment', label: 'Șosea 12×40 m' },
+import { makeRoadSegment }  from './prefabs/RoadSegment.js';
 import { makeFencePanel }   from './prefabs/FencePanel.js';
 import { makeHillTile }     from './prefabs/HillTile.js';
 import { makeTree }         from './prefabs/Tree.js';
@@ -12,7 +12,7 @@ import { makeBuildingBox }  from './prefabs/BuildingBox.js';
 
 // Lista de tipuri afișată în UI (BuildPalette)
 export const PROP_TYPES = [
-  { key: 'road.segment', label: 'Șosea 6×20 m' },
+  { key: 'road.segment', label: 'Șosea 12×40 m' }, // ← eticheta din UI
   { key: 'fence.panel',  label: 'Panou gard 2 m' },
   { key: 'hill.tile',    label: 'Bucată munte' },
   { key: 'tree',         label: 'Copac' },
@@ -31,8 +31,8 @@ export const ROT_STEP = Math.PI / 2;
 export function createMeshFor(type, opts = {}) {
   switch (type) {
     case 'road.segment':
-      // 2×4 m, foarte jos (ca să nu "iasă" din asfalt)
-      return makeRoadSegment({ w: 2, d: 4, h: 0.05, ...opts });
+      // segment mare, cu valorile default din prefab (12×40 m)
+      return makeRoadSegment({ w: 12, d: 40, h: 0.02, ...opts });
 
     case 'fence.panel':
       return makeFencePanel({ L: 2, H: 1.6, ...opts });
