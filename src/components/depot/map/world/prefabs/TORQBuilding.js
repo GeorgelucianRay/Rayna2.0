@@ -1,190 +1,152 @@
+// src/components/depot/map/world/prefabs/TORQBuilding.js
 // ASCII only
 import * as THREE from 'three';
 
-/**
- * makeTORQBuilding – cladire stil "TORQ", low-poly, cu colt rotunjit.
- *
- * Params:
- *  H         – inaltime totala (m)
- *  Wl, Wr    – latimea aripilor stanga/dreapta (m)
- *  D         – adancimea aripilor (m)
- *  R         – raza coltzului rotunjit (m)
- *  thetaDeg  – deschiderea coltzului (grade) ~ 90..140
- *  wallColor / plinthColor / glassColor – fallback colors daca nu se trimit texturi
- *  logoMapPath – PNG cu alfa (plasat pe fatada curba, optional)
- *  useTextures – { wall, plinth, frame } cai spre imagini din /public (optional)
- */
 export function makeTORQBuilding({
-  H = 8.5,
-  Wl = 16,
-  Wr = 20,
-  D  = 10,
-  R  = 6,
-  thetaDeg = 110,
+  // dimensiuni generale
+  H = 8.5,             // înălțime
+  R = 7,               // raza cilindrului (fațada curbată)
+  arcDeg = 120,        // deschiderea fațadei cilindrice
+  wedgeBack = 16,      // lățimea „spatelui” triunghiului (marginea dreaptă)
+  wedgeDepth = 18,     // adâncimea triunghiului (vârful spre cilindru)
+  D = 10,              // adâncimea volumelor (gross depth pentru muchii/zone plane)
+  // materiale / texturi
   wallColor = 0xf3f4f6,
   plinthColor = 0xbbb8ae,
   glassColor = 0x2a3740,
-  logoMapPath,
-  useTextures
+  textures = {
+    wall:  '/textures/models/white_plaster.jpg',
+    plinth:'/textures/models/concrete.jpg'
+  },
+  logo = {
+    map: '/textures/models/torq.png', // PNG cu alfa, fără spații/dublu .png
+    width: 5.5,
+    height: 1.6,
+    arcDeg: 26,     // cât „din arc” ocupă banda logo
+    y: null         // dacă e null se pune automat aproape de cornișă
+  }
 } = {}) {
   const g = new THREE.Group();
-  g.userData.collider = 'solid'; // pentru FP
+  g.userData.collider = 'solid';
 
-  // --- materiale ---
-  const textureLoader = new THREE.TextureLoader();
+  const T = new THREE.TextureLoader();
 
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: wallColor,
-    roughness: 0.95,
-    metalness: 0.0
-  });
-  const plinthMat = new THREE.MeshStandardMaterial({
-    color: plinthColor,
-    roughness: 1.0,
-    metalness: 0.0
-  });
-
-  // texturi optionale (trimise din propRegistry)
-  if (useTextures && useTextures.wall) {
-    const tex = textureLoader.load(useTextures.wall);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    // tiling aproximativ in functie de dimensiuni
-    tex.repeat.set((Wl + Wr + R) / 6, H / 3);
-    tex.anisotropy = 4;
-    wallMat.map = tex;
-    wallMat.needsUpdate = true;
+  // materiale
+  const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.95 });
+  if (textures?.wall) {
+    const t = T.load(textures.wall);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set( (Math.PI * R * (arcDeg/360)) / 3, H/3 );
+    wallMat.map = t; wallMat.needsUpdate = true;
   }
-  if (useTextures && useTextures.plinth) {
-    const texp = textureLoader.load(useTextures.plinth);
-    texp.colorSpace = THREE.SRGBColorSpace;
-    texp.wrapS = texp.wrapT = THREE.RepeatWrapping;
-    texp.repeat.set(2, 0.5);
-    texp.anisotropy = 4;
-    plinthMat.map = texp;
-    plinthMat.needsUpdate = true;
+  const plinthMat = new THREE.MeshStandardMaterial({ color: plinthColor, roughness: 1 });
+  if (textures?.plinth) {
+    const t = T.load(textures.plinth);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 0.6);
+    plinthMat.map = t; plinthMat.needsUpdate = true;
   }
-
   const glassMat = new THREE.MeshStandardMaterial({
-    color: glassColor,
-    roughness: 0.15,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.75,
-    envMapIntensity: 0.6
+    color: glassColor, roughness: 0.15, metalness: 0.1,
+    transparent: true, opacity: 0.75, envMapIntensity: 0.6
   });
 
-  const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x9aa0a6,
-    roughness: 0.8,
-    metalness: 0.0
-  });
-
-  // --- soclu (zid mic jos) 0.6 m ---
-  const socluH = 0.6;
-  const soclu = new THREE.Group();
-
-  // aripa stanga
-  const boxL = new THREE.Mesh(new THREE.BoxGeometry(Wl, H, D), wallMat);
-  boxL.castShadow = true; boxL.receiveShadow = true;
-  boxL.position.set(Wl / 2, H / 2, -D / 2);
-
-  const socluL = new THREE.Mesh(new THREE.BoxGeometry(Wl, socluH, D), plinthMat);
-  socluL.position.set(Wl / 2, socluH / 2, -D / 2);
-
-  // aripa dreapta
-  const startXRight = Wl + R;
-  const boxR = new THREE.Mesh(new THREE.BoxGeometry(Wr, H, D), wallMat);
-  boxR.castShadow = true; boxR.receiveShadow = true;
-  boxR.position.set(startXRight + Wr / 2, H / 2, -D / 2);
-
-  const socluR = new THREE.Mesh(new THREE.BoxGeometry(Wr, socluH, D), plinthMat);
-  socluR.position.set(startXRight + Wr / 2, socluH / 2, -D / 2);
-
-  soclu.add(socluL, socluR);
-  g.add(boxL, boxR, soclu);
-
-  // --- colt rotunjit: sector cilindru ---
-  const theta = THREE.MathUtils.degToRad(thetaDeg);
+  // === 1) Fațada cilindrică ===
+  const theta = THREE.MathUtils.degToRad(arcDeg);
   const cyl = new THREE.Mesh(
-    new THREE.CylinderGeometry(R, R, H, 28, 1, true, Math.PI / 2 - theta / 2, theta),
+    new THREE.CylinderGeometry(R, R, H, 48, 1, true, Math.PI/2 - theta/2, theta),
     wallMat
   );
-  cyl.castShadow = true; cyl.receiveShadow = true;
-  cyl.position.set(Wl + R, H / 2, 0);
+  // punem centrul fațadei la (0, 0, 0); fața curbată „privind” spre +Z/−Z
+  cyl.position.set(0, H/2, 0);
   g.add(cyl);
 
-  const socluC = new THREE.Mesh(
-    new THREE.CylinderGeometry(R, R, socluH, 28, 1, true, Math.PI / 2 - theta / 2, theta),
+  // soclu mic pentru cilindru
+  const socluH = 0.6;
+  const cylPlinth = new THREE.Mesh(
+    new THREE.CylinderGeometry(R, R, socluH, 48, 1, true, Math.PI/2 - theta/2, theta),
     plinthMat
   );
-  socluC.position.set(Wl + R, socluH / 2, 0);
-  g.add(socluC);
+  cylPlinth.position.set(0, socluH/2, 0);
+  g.add(cylPlinth);
 
-  // --- ferestre: benzi simple pe aripi + pe arc ---
-  const winH = 1.2;
-  const winY = 3.4;
-  const winInset = 0.05;
+  // === 2) Prisma triunghiulară (plan „din top”: triunghi cu vârful spre cilindru) ===
+  // desenăm triunghiul în plan XY și îl extrudăm pe Z, apoi îl rotim ca Y să fie înălțimea
+  const s = new THREE.Shape();
+  // (0,0) – vârful (înspre cilindru), (wedgeBack,0) – muchia dreaptă,
+  // (0,wedgeDepth) – muchia stângă (formând un triunghi dreptunghic)
+  s.moveTo(0, 0);
+  s.lineTo(wedgeBack, 0);
+  s.lineTo(0, wedgeDepth);
+  s.lineTo(0, 0);
 
-  function addWindowBandBox(target, W) {
-    // rama orizontala subtire
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, 0.02), frameMat);
-    // panou sticla
-    const band = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.4, winH), glassMat);
-    band.position.set(0, 0, winInset);
+  const wedgeGeo = new THREE.ExtrudeGeometry(s, { depth: H, bevelEnabled: false });
+  // Extrudarea e pe +Z; rotim ca +Z să devină +Y
+  wedgeGeo.rotateX(-Math.PI / 2);
+  // centru pe verticală
+  wedgeGeo.translate(0, H/2, 0);
 
-    const group = new THREE.Group();
-    group.add(band, frame);
+  const wedge = new THREE.Mesh(wedgeGeo, wallMat);
+  // poziționăm astfel încât vârful triunghiului să intre în cilindru aproape de „est”
+  // adică tangenta pe arc înspre +X.
+  const tipOffset = R - 0.05;  // puțin "înăuntru" să nu apară goluri
+  wedge.position.set(tipOffset, 0, 0);
+  // împingem partea lată înspre dreapta (pozitiv X) și puțin în spate (−Z) pentru aspect
+  // dacă vrei să rotești întregul volum, ajustează aici:
+  // wedge.rotation.y = -Math.PI/12;
+  g.add(wedge);
 
-    // aliniere cu muchia frontala a volumului (fata la z = -D)
-    group.position.set(target.position.x, winY, -D + winInset);
-    g.add(group);
-  }
+  // soclu pentru prisma
+  const wedgeBase = wedgeGeo.clone();
+  // o versiune scurtă (doar soclul)
+  const boxBase = new THREE.Mesh(
+    new THREE.BoxGeometry(wedgeBack, socluH, wedgeDepth),
+    plinthMat
+  );
+  // aliniază cu marginea „din spate” a triunghiului
+  boxBase.position.set(tipOffset + (wedgeBack/2), socluH/2, wedgeDepth/2);
+  g.add(boxBase);
 
-  addWindowBandBox(boxL, Wl);
-  addWindowBandBox(boxR, Wr);
-
-  // ferestre pe arc: plane-uri tangente aproximativ egale
+  // === 3) O bandă de ferestre pe cilindru + pe prismă (simplificat) ===
+  const winH = 1.2, winY = 3.5;
+  // ferestre cilindru – împărțim arcul în panouri
   const segs = 10;
   for (let i = 0; i < segs; i++) {
-    const a0 = (Math.PI / 2 - theta / 2) + (i + 0.15) * (theta / segs);
-    const a1 = (Math.PI / 2 - theta / 2) + (i + 0.85) * (theta / segs);
+    const a0 = (Math.PI/2 - theta/2) + (i+0.08) * (theta/segs);
+    const a1 = (Math.PI/2 - theta/2) + (i+0.92) * (theta/segs);
     const a  = (a0 + a1) / 2;
-    const x  = Wl + R * Math.cos(a);
-    const z  = R * Math.sin(a);
-    const w  = R * (a1 - a0) * 2.0; // aproximare chord width
-
+    const w  = R * (a1 - a0) * 2.0;
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(w, winH), glassMat);
-    pane.position.set(x, winY, z);
-    pane.rotation.y = -a; // perpendicular pe raza catre centru
+    pane.position.set(R * Math.cos(a), winY, R * Math.sin(a));
+    pane.rotation.y = -a;
     g.add(pane);
   }
+  // ferestre pe muchia „lată” a prismei – ca o bandă
+  const band = new THREE.Mesh(new THREE.PlaneGeometry(wedgeBack - 0.5, winH), glassMat);
+  // banda la marginea exterioară (fața lată)
+  band.position.set(tipOffset + (wedgeBack/2), winY, -0.05);
+  g.add(band);
 
-  // --- logo (optional) ---
-  if (logoMapPath) {
-    const logoTex = textureLoader.load(logoMapPath);
-    logoTex.colorSpace = THREE.SRGBColorSpace;
-
-    const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
-    const logoW = 4.5, logoH = 1.2;
-    const logo = new THREE.Mesh(new THREE.PlaneGeometry(logoW, logoH), logoMat);
-
-    const aLogo = THREE.MathUtils.degToRad(0);
-    const xL = Wl + R * Math.cos(aLogo);
-    const zL = R * Math.sin(aLogo);
-    logo.position.set(xL, H - 1.6, zL + 0.03);
-    logo.rotation.y = -aLogo;
-
-    g.add(logo);
+  // === 4) LOGO curbat pe cilindru ===
+  if (logo?.map) {
+    const tex = T.load(logo.map); tex.colorSpace = THREE.SRGBColorSpace;
+    const logoMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const arcLogo = THREE.MathUtils.degToRad(logo.arcDeg || 24);
+    const logoR = R + 0.03; // puțin în fața peretelui ca să nu „clipească”
+    const logoBand = new THREE.Mesh(
+      new THREE.CylinderGeometry(logoR, logoR, logo.height, 48, 1, true,
+        Math.PI/2 - arcLogo/2, arcLogo),
+      logoMat
+    );
+    logoBand.position.y = (logo.y ?? (H - 1.7));
+    // centrăm pe fața cilindrului
+    logoBand.position.x = 0;
+    logoBand.position.z = 0;
+    g.add(logoBand);
   }
 
-  // --- umbre ---
-  g.traverse(o => {
-    if (o.isMesh) {
-      o.castShadow = true;
-      o.receiveShadow = true;
-    }
-  });
+  // umbre
+  g.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
 
   return g;
 }
