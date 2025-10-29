@@ -36,20 +36,27 @@ export function makeTree({ targetHeight = 4, y = 0 } = {}) {
   loadOnce().then((tpl) => {
     const model = cloneSkeleton(tpl);
 
-    // materiale: frunze cu alpha cutout, trunchi normal
     model.traverse((c) => {
-      if (!c.isMesh) return;
-      c.castShadow = true;
-      c.receiveShadow = true;
-      // multe modele folosesc texturi RGBA pentru frunze
-      if (c.material && ('map' in c.material)) {
-        const m = c.material;
-        m.transparent = true;     // permite alpha
-        m.alphaTest  = 0.5;       // taie zonele complet transparente
-        m.depthWrite = true;      // păstrează ordinea OK pentru frunze
-        m.side = THREE.DoubleSide;
-      }
-    });
+  if (!c.isMesh) return;
+  c.castShadow = true;
+  c.receiveShadow = true;
+
+  if (c.material && ('map' in c.material)) {
+    const m = c.material;
+    m.transparent = true;
+    m.alphaTest = 0.5;
+    m.depthWrite = true;
+    m.side = THREE.DoubleSide;
+
+    // 🔽 întunecăm puțin culoarea
+    m.color = new THREE.Color(0.8, 0.8, 0.8); // 80% din intensitatea originală
+    // (sau încearcă: new THREE.Color(0.7, 0.75, 0.7) pentru ton mai “verde natural”)
+    
+    // opțional – mai mat (reduce reflexia)
+    if ('roughness' in m) m.roughness = 1.0;
+    if ('metalness' in m) m.metalness = 0.0;
+  }
+});
 
     // centrează pe sol și scalează la targetHeight
     const box = new THREE.Box3().setFromObject(model);
