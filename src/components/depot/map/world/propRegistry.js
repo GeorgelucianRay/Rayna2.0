@@ -57,17 +57,17 @@ case 'vegetation.grass':
 
     case 'building.box':
       return makeBuildingBox({ w: 4, d: 6, h: 3, ...opts });
+      
       case 'building.torq':
-      // poți pasa aici texturile/logo-ul din /public/textures/models
-      return makeTORQBuilding({
-        logoMapPath: '/textures/models/torq.png',
-        useTextures: {
-          wall:   '/textures/models/white_plaster.jpg',
-          plinth: '/textures/models/concrete.jpg',
-          frame:  null,
-        },
-        ...opts
-      })
+  return makeTORQBuilding({
+    logoMapPath: '/models/ torq.png.png', // are spațiu chiar după "/models/"
+    useTextures: {
+      wall:   '/models/white_plaster.jpg',
+      plinth: '/models/concrete.JPG',
+      frame:  null,
+    },
+    ...opts
+  });
 
     default: {
       const axes = new THREE.AxesHelper(1);
