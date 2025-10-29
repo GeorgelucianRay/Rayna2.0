@@ -11,6 +11,7 @@ import { makeRoundabout }   from './prefabs/Roundabout.js';
 import { makeSlopeRamp } from './prefabs/SlopeRamp.js';
 import { makeRampSlopeGrass } from './prefabs/RampSlopeGrass.js';
 import { makeGrassPatch } from './prefabs/GrassPatch.js';
+import { makeTORQBuilding } from './prefabs/TORQBuilding.js';
 
 
 export const PROP_TYPES = [
@@ -23,6 +24,7 @@ export const PROP_TYPES = [
   { key: 'tree',            label: 'Copac' },
   { key: 'building.box',    label: 'Clădire (box)' },
   { key: 'vegetation.grass', label: 'Pâlc de iarbă (x50)' },
+  { key: 'building.torq',   label: 'Clădire TORQ' },
 ];
 
 export const ROT_STEP = Math.PI / 2;
@@ -55,6 +57,17 @@ case 'vegetation.grass':
 
     case 'building.box':
       return makeBuildingBox({ w: 4, d: 6, h: 3, ...opts });
+      case 'building.torq':
+      // poți pasa aici texturile/logo-ul din /public/textures/models
+      return makeTORQBuilding({
+        logoMapPath: '/textures/models/torq.png',
+        useTextures: {
+          wall:   '/textures/models/white_plaster.jpg',
+          plinth: '/textures/models/concrete.jpg',
+          frame:  null,
+        },
+        ...opts
+      })
 
     default: {
       const axes = new THREE.AxesHelper(1);
