@@ -12,22 +12,19 @@ import * as THREE from 'three';
  *  - thetaDeg: deschiderea colțului (grade) – 90..140
  */
 export function makeTORQBuilding({
-  H = 8.5,
-  Wl = 16,
-  Wr = 20,
-  D  = 10,
-  R  = 6,
-  thetaDeg = 110,
-  wallColor = 0xf3f4f6,  // alb-murdar
-  plinthColor = 0xbbb8ae, // soclu beton
-  glassColor = 0x2a3740,
-  logoMapPath = '/textures/models/torq.png', // PNG cu alfa
-  useTextures = {
-    wall: '/textures/models/white_plaster.jpg',
-    plinth: '/textures/models/concrete.jpg',
-    frame: null
-  }
-} = {}) {
+  export function makeTORQBuilding({
+   H = 8.5,
+   Wl = 16,
+   Wr = 20,
+   D  = 10,
+   R  = 6,
+   thetaDeg = 110,
+   wallColor = 0xf3f4f6,
+   plinthColor = 0xbbb8ae,
+   glassColor = 0x2a3740,
+   logoMapPath,
+   useTextures
+  } = {}) {
   const g = new THREE.Group();
   g.userData.collider = 'solid'; // pentru FP
 
