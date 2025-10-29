@@ -9,6 +9,7 @@ import createContainersLayerOptimized from '../threeWorld/createContainersLayerO
 import fetchContainers from '../threeWorld/fetchContainers';
 import createSky from '../threeWorld/createSky';
 import createLandscape from '../threeWorld/createLandscape';
+import createBaseWorld from '../threeWorld/createBaseWorld';
 import createFirstPerson from '../threeWorld/firstPerson';
 
 import createBuildController from '../world/buildController';
@@ -141,6 +142,15 @@ export function useDepotScene({ mountRef }) {
     // editabile (drumuri, rampe, sens)
     const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
+    
+    // world editabil
+const worldGroup = new THREE.Group();
+worldGroup.name = 'worldGroup';
+scene.add(worldGroup);
+
+// baza statică — lumea ta fixă
+const baseWorld = createBaseWorld();
+scene.add(baseWorld);
 
     // curte + gard
     const depotGroup = new THREE.Group();
