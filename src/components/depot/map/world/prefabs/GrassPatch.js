@@ -1,32 +1,47 @@
+// src/components/depot/map/world/prefabs/GrassPatch.js
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const loader = new GLTFLoader();
-let cachedGeo = null;
-let cachedMat = null;
-let loadError = false;
+let template = null;
 
-// Încarcă o singură dată geometriile/materialele din GLB
-function ensureGrassAsset(onReady) {
-  if (cachedGeo && cachedMat) { onReady(); return; }
-  if (loadError) { onReady(); return; }
+function loadGrass() {
+  if (template) return Promise.resolve(template);
+  return new Promise((resolve, reject) => {
+    loader.load('/models/detailed_grass_-_by_lemstrx.glb', (gltf) => {
+      template = gltf.scene || gltf.scenes?.[0];
+      resolve(template);
+    }, undefined, reject);
+  });
+}
 
-  loader.load(
-    '/models/detailed_grass_-_by_lemstrx.glb',   // ✅ calea corectă
-    (gltf) => {
-      let mesh = null;
-      gltf.scene.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
-      if (!mesh) { loadError = true; onReady(); return; }
+export function makeGrassPatch({ count = 50, spread = 5 } = {}) {
+  const group = new THREE.Group();
+  loadGrass().then((tpl) => {
+    const mesh = tpl.getObjectByProperty('isMesh', true);
+    if (!mesh) return;
 
-      cachedGeo = mesh.geometry;
-      cachedMat = mesh.material.clone();
-      cachedMat.side = THREE.DoubleSide;
-      cachedMat.transparent = !!cachedMat.alphaMap || !!cachedMat.transparent;
-      cachedMat.depthWrite = true;
+    const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, count);
+    const dummy = new THREE.Object3D();
 
-      onReady();
-    },
-    undefined,
-    () => { loadError = true; onReady(); }
-  );
+    for (let i = 0; i < count; i++) {
+      const x = (Math.random() - 0.5) * spread;
+      const z = (Math.random() - 0.5) * spread;
+      const s = 0.8 + Math.random() * 0.4;
+      dummy.position.set(x, 0, z);
+      dummy.scale.set(s, s, s);
+      dummy.rotation.y = Math.random() * Math.PI * 2;
+      dummy.updateMatrix();
+      inst.setMatrixAt(i, dummy.matrix);
+    }
+
+    inst.instanceMatrix.needsUpdate = true;
+    inst.castShadow = true;
+    inst.receiveShadow = true;
+
+    group.add(inst);
+  });
+
+  return group;
 }
