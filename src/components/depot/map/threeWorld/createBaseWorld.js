@@ -17,7 +17,7 @@ export default function createBaseWorld() {
     { type: 'road.ramp', pos: [0, 0.05, 36], rotY: 0 },
     { type: 'road.ramp', pos: [-1, 0.05, 60], rotY: 0 },
     // poți adăuga și rampă iarbă aici (centrul)
-    { type: 'ramp.grass', pos: [-1, 0.05, 48], rotY: 0 },
+    { type: 'ramp.grass', pos: [-1, 0.05, 48], rotY: Math.PI },
   ];
 
   for (const p of staticProps) {
