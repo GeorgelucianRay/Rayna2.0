@@ -10,6 +10,8 @@ import { makeBuildingBox }  from './prefabs/BuildingBox.js';
 import { makeRoundabout }   from './prefabs/Roundabout.js';
 import { makeSlopeRamp } from './prefabs/SlopeRamp.js';
 import { makeRampSlopeGrass } from './prefabs/RampSlopeGrass.js';
+import { makeGrassPatch } from './prefabs/GrassPatch.js';
+
 
 export const PROP_TYPES = [
   { key: 'road.segment',    label: 'Șosea 12×40 m' },
@@ -20,6 +22,7 @@ export const PROP_TYPES = [
   { key: 'hill.tile',       label: 'Bucată munte' },
   { key: 'tree',            label: 'Copac' },
   { key: 'building.box',    label: 'Clădire (box)' },
+  { key: 'vegetation.grass', label: 'Pâlc de iarbă (x50)' },
 ];
 
 export const ROT_STEP = Math.PI / 2;
@@ -38,6 +41,9 @@ export function createMeshFor(type, opts = {}) {
   case 'ramp.grass':
   return makeRampSlopeGrass({ w: 12, len: 90, slopeFactor: 0.10, h: 0.5, y: 0.05, ...opts });
 
+case 'vegetation.grass':
+  return makeGrassPatch({ count: 50, spread: 6 });
+  
     case 'fence.panel':
       return makeFencePanel({ L: 2, H: 1.6, ...opts });
 
