@@ -15,6 +15,7 @@ import createFirstPerson from '../threeWorld/firstPerson';
 import createBuildController from '../world/buildController';
 import styles from '../Map3DStandalone.module.css';
 
+// ===== Config curte =====
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
 const SLOT_LEN = 6.06, SLOT_GAP = 0.06, STEP = SLOT_LEN + SLOT_GAP;
 const ABC_CENTER_OFFSET_X = 5 * STEP;
@@ -23,7 +24,7 @@ const CFG = {
   fence:  { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
 };
 
-// helper: colectează toate mesh-urile dintr-un root, cu excluderi simple
+// ===== Helper: colectează mesh-uri (poți exclude după nume) =====
 function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
   const out = [];
   if (!root) return out;
@@ -39,23 +40,24 @@ function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
 }
 
 export function useDepotScene({ mountRef }) {
+  // expus în sus
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
+  // refs interne
   const cameraRef = useRef();
   const controlsRef = useRef();
   const fpRef = useRef(null);
   const buildRef = useRef(null);
-
   const containersLayerRef = useRef(null);
 
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
-
   const buildActiveRef = useRef(false);
   useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
+  // FP on/off
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
@@ -71,10 +73,10 @@ export function useDepotScene({ mountRef }) {
       isFPRef.current = false; setIsFP(false);
     }
   }, []);
-
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
+  // Build API (expunem controllerul + starea)
   const [buildMode, setBuildMode] = useState('place');
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
@@ -91,9 +93,11 @@ export function useDepotScene({ mountRef }) {
     get active() { return buildActiveRef.current; },
   }), [buildMode]);
 
+  // select container callback
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
+  // FP bounds (poți relaxa marginile)
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
     maxX:  YARD_WIDTH / 2 - 2,
@@ -104,55 +108,51 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
 
-    // renderer
+    // ===== Renderer =====
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
-    // scene & camera
+    // ===== Scene & Camera =====
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
-    // orbit
+    // Orbit
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // FP
+    // FP (parametri de mers urcând rampe)
     fpRef.current = createFirstPerson(camera, bounds, {
       eyeHeight: 1.7,
       stepMax: 0.6,
       slopeMax: Math.tan(40 * Math.PI/180),
     });
 
-    // lumină / mediu
+    // ===== Lumină / mediu =====
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
 
-    // peisaj (poate conține "grass")
+    // ===== Peisaj (munți, iarba mare etc.) =====
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
-    // editabile (drumuri, rampe, sens)
-    const worldGroup = new THREE.Group(); worldGroup.name = 'worldGroup';
+    // ===== Lume statică de bază (drumuri/rampe/sens) =====
+    const baseWorld = createBaseWorld();
+    scene.add(baseWorld);
+
+    // ===== Grupul editabil (pentru Build) =====
+    const worldGroup = new THREE.Group();
+    worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
-    
-    // world editabil
-const worldGroup = new THREE.Group();
-worldGroup.name = 'worldGroup';
-scene.add(worldGroup);
 
-// baza statică — lumea ta fixă
-const baseWorld = createBaseWorld();
-scene.add(baseWorld);
-
-    // curte + gard
+    // ===== Curte + gard =====
     const depotGroup = new THREE.Group();
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
@@ -161,7 +161,7 @@ scene.add(baseWorld);
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // build controller
+    // ===== Build controller =====
     buildRef.current = createBuildController({
       camera,
       domElement: renderer.domElement,
@@ -169,14 +169,15 @@ scene.add(baseWorld);
       groundMesh,
       raycastTargets: [
         ...(groundNode.userData?.raycastTargets || [groundMesh]),
-        landscape, // dacă vrei să poți plasa și pe relief
+        baseWorld,    // ← poți plasa peste baza statică
+        landscape     // ← opțional, plasare peste relief
       ],
       grid: 1
     });
     buildRef.current?.setMode(buildMode);
-    buildRef.current?.setType?.('road.segment');
+    buildRef.current?.setType?.('road.segment'); // preview rapid
 
-    // containere
+    // ===== Containere =====
     (async () => {
       try {
         const data = await fetchContainers();
@@ -187,41 +188,40 @@ scene.add(baseWorld);
       } catch (e) { console.warn('fetchContainers', e); }
     })();
 
-    // === FP WALKABLES vs COLLIDERS ===
-    // 1) WALKABLES (pe ce calc: pentru „raycast în jos” – înălțimea camerei)
+    // ===== FP WALKABLES & COLLIDERS =====
+    // 1) Walkables (pe ce calcă)
     const walkables = [
-      groundMesh,               // planul logic la y≈0
-      worldGroup,               // drumuri/rampe/sens
-      // terenul fără a filtra (ok pentru înălțime)
+      groundMesh,
+      baseWorld,
+      worldGroup,
       landscape
     ];
+    fpRef.current.setWalkables?.(walkables);
 
-    // 2) COLLIDERS (în ce mă lovesc în față): TOT ce nu e iarbă
-    // – exclud “grass” după nume; ajustează dacă folosești alt nume
+    // 2) Colliders (în ce mă lovesc) – totul în afară de “grass”
     const landscapeSolids = collectMeshes(landscape, { excludeNameIncludes: ['grass'] });
+    const baseWorldSolids = collectMeshes(baseWorld, { excludeNameIncludes: ['grass'] });
+
     const colliders = [
-      worldGroup,               // drumuri, rampe, sens
-      fence,                    // gardul
-      ...landscapeSolids,       // roci/teren solid, NU iarbă
+      baseWorld,
+      ...baseWorldSolids,
+      worldGroup,
+      fence,
+      ...landscapeSolids
     ];
 
-    // adaugă layer-ul de containere în colliders când e gata
     const attachCollidersWhenReady = () => {
       if (containersLayerRef.current) {
         colliders.push(containersLayerRef.current);
       } else {
-        // mai încearcă puțin mai târziu
         setTimeout(attachCollidersWhenReady, 50);
       }
     };
     attachCollidersWhenReady();
 
-    // conectează la FP
-    fpRef.current.setWalkables?.(walkables);
-    // suportă oricare nume ai în FP pentru colliders:
     (fpRef.current.setCollisionTargets || fpRef.current.setColliders || fpRef.current.setObstacles)?.(colliders);
 
-    // pick containere (dezactivat în build)
+    // ===== Pick containere (dezactivat în build) =====
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const onClick = (event) => {
@@ -245,39 +245,42 @@ scene.add(baseWorld);
     };
     mount.addEventListener('click', onClick);
 
-    // ---------- INPUT BUILD ----------
+    // ===== INPUT Build: desktop + touch =====
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
     };
+
     const handleMove = (x, y) => {
       if (!buildActiveRef.current || !buildRef.current) return;
       buildRef.current.updatePreviewAt(x, y);
     };
+
     const handleClick = (x, y) => {
       if (!buildActiveRef.current || !buildRef.current) return;
       if (isOverBuildUI(x, y)) return;
       buildRef.current.clickAt(x, y);
     };
+
     const onPointerMove = (e) => handleMove(e.clientX, e.clientY);
     const onPointerDown = (e) => handleClick(e.clientX, e.clientY);
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
     const onTouchMove = (e) => { const t = e.touches?.[0]; if (!t) return; handleMove(t.clientX, t.clientY); };
     const onTouchStart = (e) => { const t = e.touches?.[0]; if (!t) return; handleClick(t.clientX, t.clientY); };
     renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
     renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
 
-    // loop
+    // ===== Loop =====
     const minX = -YARD_WIDTH/2 + 5, maxX = YARD_WIDTH/2 + 5;
     const minZ = -YARD_DEPTH/2 + 5, maxZ = YARD_DEPTH/2 + 5;
+
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
 
-      if (buildActiveRef.current) {
-        buildRef.current?.updatePreview?.();
-      }
+      if (buildActiveRef.current) buildRef.current?.updatePreview?.();
 
       if (isFPRef.current) {
         fpRef.current?.update(delta);
@@ -290,14 +293,14 @@ scene.add(baseWorld);
     };
     animate();
 
-    // resize
+    // ===== Resize =====
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
-    // cleanup
+    // ===== Cleanup =====
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
@@ -310,6 +313,7 @@ scene.add(baseWorld);
     };
   }, []); // mount once
 
+  // Orbit ON/OFF când intri/ieși din build / FP
   useEffect(() => {
     const orbit = controlsRef.current; if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
