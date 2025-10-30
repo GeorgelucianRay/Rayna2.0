@@ -101,7 +101,7 @@ export default function createContainersABC(data, layout){
     g.items.forEach((slot,i)=>{
       const wp = slotToWorld({lane:slot.band,index:slot.index,tier:slot.level},{...layout,abcNumbersReversed:true});
       P.copy(wp.position);
-      Q.setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2); // lungime pe Z
+      Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0); // lungime pe X
       M.compose(P,Q,S); mesh.setMatrixAt(i,M);
     });
 
