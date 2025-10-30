@@ -153,17 +153,18 @@ export function useDepotScene({ mountRef }) {
     scene.add(worldGroup);
 
     // ===== Curte + gard =====
-    const depotGroup = new THREE.Group();
-    const groundNode = createGround(CFG.ground);
-    const groundMesh = groundNode.userData?.groundMesh || groundNode;
+const depotGroup = new THREE.Group();
+const groundNode = createGround(CFG.ground);
+const groundMesh = groundNode.userData?.groundMesh || groundNode;
 
-    // în useDepotScene, când creezi gardul:
+// 👇 PASĂM deschiderile (golurile) pentru latura VEST
 const fence = createFence({
   width: YARD_WIDTH - 4,
   depth: YARD_DEPTH - 4,
   margin: 2,
   postEvery: 10,
   openings: {
+    // latura VEST (x = -W/2 - margin): pozițiile Z din JSON unde NU vrem gard (porți)
     west: [
       { z: -4, width: 4 },
       { z: -7, width: 4 },
@@ -171,10 +172,12 @@ const fence = createFence({
     ],
     east:  [],
     north: [],
-    south: []
+    south: [],
   }
 });
+
 depotGroup.add(groundNode, fence);
+scene.add(depotGroup);
 
     // ===== Build controller =====
     buildRef.current = createBuildController({
