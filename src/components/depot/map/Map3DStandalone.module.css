@@ -237,3 +237,52 @@
   }
   .iconBtn { width: 42px; height: 42px; }
 }
+
+.topBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.topBarRight {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto; /* permite click pe butoane */
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease, opacity .12s ease;
+  user-select: none;
+}
+.iconBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,0.7); }
+.iconBtn:active { transform: translateY(0); }
+
+.iconBtnSmall {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+
+.active {
+  outline: 2px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset;
+}
