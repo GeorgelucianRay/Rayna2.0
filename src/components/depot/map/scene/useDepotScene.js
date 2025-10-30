@@ -229,13 +229,15 @@ scene.add(depotGroup);
     ];
 
     const attachCollidersWhenReady = () => {
-      if (containersLayerRef.current) {
-        colliders.push(containersLayerRef.current);
-      } else {
-        setTimeout(attachCollidersWhenReady, 50);
-      }
-    };
-    attachCollidersWhenReady();
+  const layer = containersLayerRef.current;
+  const colGroup = layer?.userData?.colliders; // setat în createContainersLayerOptimized
+  if (colGroup) {
+    colliders.push(colGroup);
+  } else {
+    setTimeout(attachCollidersWhenReady, 50);
+  }
+};
+attachCollidersWhenReady();
 
     (fpRef.current.setCollisionTargets || fpRef.current.setColliders || fpRef.current.setObstacles)?.(colliders);
 
