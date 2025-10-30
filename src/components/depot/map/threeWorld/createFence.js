@@ -1,38 +1,22 @@
-// src/components/depot/map/threeWorld/createFence.js
 import * as THREE from 'three';
 
 const TEX_FENCE = '/textures/lume/gard_textura.png';
 
-/**
- * createFence
- * Params:
- *  - width, depth: dimensiunile curții (m)
- *  - margin: cât "în afară" față de contur
- *  - postEvery: distanța între stâlpi (0 => fără stâlpi)
- *  - openings: goluri de gard (porți), în coordonate lume:
- *      {
- *        west:  [{ z: -4, width: 4 }, { z: -7, width: 4 }, ...],
- *        east:  [{ z:  10, width: 6 }],
- *        north: [{ x:  12, width: 5 }],
- *        south: [{ x: -20, width: 5 }]
- *      }
- */
 export default function createFence({
   width,
   depth,
   margin = 0.5,
   postEvery = 10,
-  openings = { west: [], east: [], north: [], south: [] }
+  openings = { west: [], east: [], north: [], south: [] }, // 👈 NOU
 }) {
   const W = width, D = depth;
   const halfW = W / 2, halfD = D / 2;
 
-  // — textură plasă —
   const loader = new THREE.TextureLoader();
   const fenceTex = loader.load(TEX_FENCE);
   fenceTex.wrapS = fenceTex.wrapT = THREE.RepeatWrapping;
 
-  const baseFenceMat = new THREE.MeshStandardMaterial({
+  const fenceMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: fenceTex,
     alphaMap: fenceTex,
@@ -43,134 +27,118 @@ export default function createFence({
     metalness: 0.0
   });
 
-  const fenceH = 2;
+  const fenceHeight = 2;
 
-  // util: din [ -L/2 , +L/2 ] scădem intervalele golurilor și returnăm segmente
-  function splitByGaps(L, gaps) {
-    // gaps: [{ c: center, w: width }] pe axa locală (X pentru nord/sud, Z pentru est/vest)
-    // normalizăm la perechi [a, b] în intervalul [-L/2, +L/2]
-    const ivs = (gaps || []).map(({ c, w }) => [c - w/2, c + w/2])
-      .map(([a, b]) => [Math.max(a, -L/2), Math.min(b, L/2)])
-      .filter(([a, b]) => b > a)
-      .sort((A, B) => A[0] - B[0]);
-
-    const segs = [];
-    let cur = -L/2;
-    for (const [a, b] of ivs) {
-      if (a > cur) segs.push([cur, a]); // segment gard înainte de gol
-      cur = Math.max(cur, b);
-    }
-    if (cur < L/2) segs.push([cur, L/2]); // segment după ultimul gol
-    return segs;
+  function makeSide(len) {
+    const geo = new THREE.PlaneGeometry(len, fenceHeight);
+    const mesh = new THREE.Mesh(geo, fenceMat);
+    mesh.position.y = fenceHeight / 2;
+    return mesh;
   }
 
-  // face o bucată (plane) de gard de lungime `len`, cu tiling corect
-  function makeFencePlane(len) {
-    const geo = new THREE.PlaneGeometry(len, fenceH);
-    const mat = baseFenceMat.clone();
-    mat.map = baseFenceMat.map.clone();
-    mat.alphaMap = mat.map;
-    mat.map.repeat.set(len / 6, 1); // tiling simplu: 1 unitate textură ~ 6m
-    const m = new THREE.Mesh(geo, mat);
-    m.position.y = fenceH / 2;
-    m.userData.collider = 'solid';
-    return m;
+  // taie o latură după o listă de goluri [{center,width}]
+  function buildSideWithOpenings(totalLen, gaps, axis = 'z') {
+    // convertim la segmente fără gard între (center - width/2) și (center + width/2)
+    const sorted = (gaps || []).slice().sort((a,b) => a.z - b.z);
+    const segs = [];
+    let cursor = -totalLen / 2;
+
+    for (const g of sorted) {
+      const gapStart = Math.max(-totalLen/2, g.z - g.width/2);
+      const gapEnd   = Math.min( totalLen/2, g.z + g.width/2);
+      // segment înaintea golului
+      const beforeLen = gapStart - cursor;
+      if (beforeLen > 0.001) {
+        const m = makeSide(beforeLen);
+        // textură: tiling pe lungime
+        fenceTex.repeat.set(beforeLen / 6, 1);
+        if (axis === 'z') m.position[axis] = cursor + beforeLen / 2;
+        else              m.position[axis] = cursor + beforeLen / 2;
+        segs.push(m);
+      }
+      // sărim peste gol
+      cursor = gapEnd;
+    }
+
+    // segment după ultimul gol
+    const afterLen = totalLen/2 - cursor;
+    if (afterLen > 0.001) {
+      const m = makeSide(afterLen);
+      fenceTex.repeat.set(afterLen / 6, 1);
+      m.position[axis] = cursor + afterLen / 2;
+      segs.push(m);
+    }
+    return segs;
   }
 
   const group = new THREE.Group();
   group.name = 'Fence';
-  group.userData.collider = 'solid';
 
-  // === WEST (x = -halfW - margin), variază pe Z ∈ [-halfD, +halfD]
-  // mapăm golurile în coordonate locale: c_local = z_world (același)
+  // NORD (+Z) — fără goluri (poți extinde analog cu openings.north)
   {
-    const gaps = (openings.west || []).map(({ z, width }) => ({ c: z, w: width }));
-    const segs = splitByGaps(D, gaps);
-    for (const [a, b] of segs) {
-      const len = b - a;
-      const m = makeFencePlane(len);
-      m.rotation.y = Math.PI / 2;
-      m.position.set(-halfW - margin, fenceH/2, (a + b) / 2);
-      group.add(m);
+    const north = makeSide(W);
+    fenceTex.repeat.set(W / 6, 1);
+    north.rotation.y = Math.PI;
+    north.position.set(0, 0, halfD + margin);
+    group.add(north);
+  }
+
+  // SUD (-Z)
+  {
+    const south = makeSide(W);
+    fenceTex.repeat.set(W / 6, 1);
+    south.position.set(0, 0, -halfD - margin);
+    group.add(south);
+  }
+
+  // EST (+X)
+  {
+    const east = makeSide(D);
+    fenceTex.repeat.set(D / 6, 1);
+    east.rotation.y = -Math.PI / 2;
+    east.position.set(halfW + margin, 0, 0);
+    group.add(east);
+  }
+
+  // VEST (-X) — cu goluri (openings.west, definite în coordonate Z)
+  {
+    const westSegs = buildSideWithOpenings(D, openings.west, 'z');
+    for (const seg of westSegs) {
+      seg.rotation.y = Math.PI / 2;
+      seg.position.x = -halfW - margin;
+      group.add(seg);
     }
   }
 
-  // === EAST (x = +halfW + margin), variază pe Z
-  {
-    const gaps = (openings.east || []).map(({ z, width }) => ({ c: z, w: width }));
-    const segs = splitByGaps(D, gaps);
-    for (const [a, b] of segs) {
-      const len = b - a;
-      const m = makeFencePlane(len);
-      m.rotation.y = -Math.PI / 2;
-      m.position.set(halfW + margin, fenceH/2, (a + b) / 2);
-      group.add(m);
-    }
-  }
+  // Stâlpi (opțional) – lasă-i dacă vrei, dar NU vor apărea în goluri
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 1 });
+  const postGeo = new THREE.CylinderGeometry(0.03, 0.03, fenceHeight, 8);
 
-  // === NORTH (z = +halfD + margin), variază pe X
-  {
-    const gaps = (openings.north || []).map(({ x, width }) => ({ c: x, w: width }));
-    const segs = splitByGaps(W, gaps);
-    for (const [a, b] of segs) {
-      const len = b - a;
-      const m = makeFencePlane(len);
-      m.rotation.y = Math.PI; // plasa corect orientată
-      m.position.set((a + b) / 2, fenceH/2, halfD + margin);
-      group.add(m);
-    }
-  }
-
-  // === SOUTH (z = -halfD - margin), variază pe X
-  {
-    const gaps = (openings.south || []).map(({ x, width }) => ({ c: x, w: width }));
-    const segs = splitByGaps(W, gaps);
-    for (const [a, b] of segs) {
-      const len = b - a;
-      const m = makeFencePlane(len);
-      // rotație implicită (0) e ok pentru sud
-      m.position.set((a + b) / 2, fenceH/2, -halfD - margin);
-      group.add(m);
-    }
-  }
-
-  // === stâlpi opc. (la capete și la fiecare postEvery) ===
-  if (postEvery > 0) {
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 1 });
-    const postGeo = new THREE.CylinderGeometry(0.03, 0.03, fenceH, 8);
-
-    const addPost = (x, z) => {
+  // stâlpi pe latura VEST, cu sărit peste goluri
+  (function addWestPosts() {
+    const gaps = (openings.west || []).slice().sort((a,b)=>a.z-b.z);
+    const isInGap = (z) => gaps.some(g => z >= g.z - g.width/2 && z <= g.z + g.width/2);
+    for (let z = -halfD; z <= halfD; z += postEvery) {
+      if (isInGap(z)) continue;
       const p = new THREE.Mesh(postGeo, postMat);
-      p.position.set(x, fenceH / 2, z);
-      p.userData.collider = 'solid';
+      p.position.set(-halfW - margin, fenceHeight/2, z);
       group.add(p);
-    };
-
-    // helper: pune stâlpi de-a lungul unei laturi, respectând golurile
-    function postsAlongX(zConst, gapsX) {
-      const segs = splitByGaps(W, (gapsX || []).map(({ x, width }) => ({ c: x, w: width })));
-      for (const [a, b] of segs) {
-        for (let x = Math.ceil((a + halfW) / postEvery) * postEvery - halfW; x <= b; x += postEvery) {
-          addPost(x, zConst);
-        }
-        // capetele segmentelor
-        addPost(a, zConst); addPost(b, zConst);
-      }
     }
-    function postsAlongZ(xConst, gapsZ) {
-      const segs = splitByGaps(D, (gapsZ || []).map(({ z, width }) => ({ c: z, w: width })));
-      for (const [a, b] of segs) {
-        for (let z = Math.ceil((a + halfD) / postEvery) * postEvery - halfD; z <= b; z += postEvery) {
-          addPost(xConst, z);
-        }
-        addPost(xConst, a); addPost(xConst, b);
-      }
-    }
+  })();
 
-    postsAlongX( halfD + margin, openings.north);
-    postsAlongX(-halfD - margin, openings.south);
-    postsAlongZ( halfW + margin, openings.east);
-    postsAlongZ(-halfW - margin, openings.west);
+  // stâlpi pentru celelalte laturi (fără goluri – simplu)
+  for (let x = -halfW; x <= halfW; x += postEvery) {
+    const pN = new THREE.Mesh(postGeo, postMat);
+    pN.position.set(x, fenceHeight/2, halfD + margin);
+    group.add(pN);
+    const pS = new THREE.Mesh(postGeo, postMat);
+    pS.position.set(x, fenceHeight/2, -halfD - margin);
+    group.add(pS);
+  }
+  for (let z = -halfD; z <= halfD; z += postEvery) {
+    const pE = new THREE.Mesh(postGeo, postMat);
+    pE.position.set(halfW + margin, fenceHeight/2, z);
+    group.add(pE);
   }
 
   return group;
