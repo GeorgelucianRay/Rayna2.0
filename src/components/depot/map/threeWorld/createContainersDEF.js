@@ -23,7 +23,7 @@ function loadTex(path) {
   if (tcache.has(path)) return tcache.get(path);
   const t = loader.load(path);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = 2; // perf
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
   tcache.set(path, t);
@@ -60,6 +60,7 @@ function normBrand(name = '') {
 /**
  * FRONT/BACK pe ±X; lungimea pe Z;
  * lateralele (±Z) sunt ROTITE 90° spre uși (logo orizontal pe lungime).
+ * (Doar optimizări de performanță: materiale Lambert + fără umbre)
  */
 function makeMaterialsCapsOnX_ZLength(brand) {
   const sideT  = brandTex(brand, 'side');
@@ -67,15 +68,15 @@ function makeMaterialsCapsOnX_ZLength(brand) {
   const frontT = brandTex(brand, 'front');
   const backT  = brandTex(brand, 'back');
 
-  // --- LATERALE pe ±Z, rotite 90° ---
-  const sideZp = sideT?.clone() ?? null; // fața +Z
-  const sideZn = sideT?.clone() ?? null; // fața -Z
+  // --- LATERALE pe ±Z (păstrăm comportamentul tău actual) ---
+  const sideZp = sideT?.clone() ?? null; // +Z
+  const sideZn = sideT?.clone() ?? null; // -Z
   [sideZp, sideZn].forEach((tx) => {
     if (!tx) return;
     tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
     tx.center.set(0.5, 0.5);
-    tx.rotation = 0;  // <<< 90° pe lungime
-    tx.repeat.set(1, 1);
+    tx.rotation = 0;     // <— neschimbat, exact ca în codul tău
+    tx.repeat.set(1, 1); // fără tiling de logo
   });
 
   // --- TOP (nemodificat) ---
@@ -91,23 +92,13 @@ function makeMaterialsCapsOnX_ZLength(brand) {
   if (front) front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping;
   if (back)  back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping;
 
-  // --- MATERIALE ---
-  const mSideZp = new THREE.MeshStandardMaterial({
-    color: sideZp ? 0xffffff : 0x9aa0a6, map: sideZp, roughness: 0.8, metalness: 0.1
-  });
-  const mSideZn = new THREE.MeshStandardMaterial({
-    color: sideZn ? 0xffffff : 0x9aa0a6, map: sideZn, roughness: 0.8, metalness: 0.1
-  });
-  const mTop    = new THREE.MeshStandardMaterial({
-    color: top ? 0xffffff : 0x8a8f95, map: top, roughness: 0.85, metalness: 0.1
-  });
-  const mBottom = new THREE.MeshStandardMaterial({ color: 0x8a8f95, roughness: 0.9, metalness: 0.1 });
-  const mFront  = new THREE.MeshStandardMaterial({
-    color: front ? 0xffffff : 0xcccccc, map: front, roughness: 0.8, metalness: 0.1
-  });
-  const mBack   = new THREE.MeshStandardMaterial({
-    color: back ? 0xffffff : 0xcccccc, map: back, roughness: 0.8, metalness: 0.1
-  });
+  // --- MATERIALE (Lambert pentru FPS) ---
+  const mSideZp = new THREE.MeshLambertMaterial({ color: sideZp ? 0xffffff : 0x9aa0a6, map: sideZp });
+  const mSideZn = new THREE.MeshLambertMaterial({ color: sideZn ? 0xffffff : 0x9aa0a6, map: sideZn });
+  const mTop    = new THREE.MeshLambertMaterial({ color: top ? 0xffffff : 0x8a8f95, map: top });
+  const mBottom = new THREE.MeshLambertMaterial({ color: 0x8a8f95 });
+  const mFront  = new THREE.MeshLambertMaterial({ color: front ? 0xffffff : 0xcccccc, map: front });
+  const mBack   = new THREE.MeshLambertMaterial({ color: back ? 0xffffff : 0xcccccc, map: back });
 
   // BoxGeometry: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
   return [mFront, mBack, mTop, mBottom, mSideZp, mSideZn];
@@ -143,7 +134,11 @@ export default function createContainersDEF(data, layout) {
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
     const mats = makeMaterialsCapsOnX_ZLength(g.brand);
     const mesh = new THREE.InstancedMesh(geom, mats, g.items.length);
-    mesh.castShadow = mesh.receiveShadow = true;
+
+    // perf: fără umbre + culling
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = true;
 
     const M = new THREE.Matrix4();
     const P = new THREE.Vector3();
