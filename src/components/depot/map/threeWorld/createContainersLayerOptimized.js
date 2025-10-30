@@ -21,9 +21,8 @@ function loadTex(path) {
   if (tcache.has(path)) return tcache.get(path);
   const t = loader.load(path);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.magFilter = THREE.LinearFilter;
   tcache.set(path, t);
   return t;
 }
@@ -39,7 +38,8 @@ function brandTex(brand, which) {
   for (const p of candidates) {
     try { return loadTex(p); } catch {}
   }
-  const tx = new THREE.Texture(); // fallback gol (gri material)
+  // fallback: gri
+  const tx = new THREE.Texture();
   return tx;
 }
 
@@ -52,40 +52,36 @@ function normBrand(name = '') {
   if (s.includes('one')) return 'one';
   if (s.includes('arkas') || s.includes('arcas')) return 'arkas';
   if (s.includes('msc')) return 'msc';
-  if (s.includes('roto')) return 'roto';
+  if (s.includes('roto') || s.includes('rotoș') || s.includes('rotos')) return 'roto';
   return 'neutru';
 }
 
 /**
- * Construiește materialele pentru BoxGeometry.
- * orient: 'X' sau 'Z' – axa lungimii.
- * facing: '+X' / '-X' / '+Z' / '-Z' – spre ce capăt sunt ușile.
- * Nota: clonăm texturile și folosim ClampToEdge, repeat(1,1) ca să NU se dubleze logo-ul.
+ * Materiale pentru BoxGeometry:
+ * order Three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
+ * orient: 'X' / 'Z' (axa lungimii)
+ * facing: '+X' / '-X' / '+Z' / '-Z' (capătul cu uși)
+ * bandCat: 'ABC' / 'DEF' (DEF -> oglinzire pe U a fețelor lungi & top)
  */
-function makeMaterials({ brand, orient, facing }) {
-  const sideBase  = brandTex(brand, 'side');
-  const topBase   = brandTex(brand, 'top');
-  const frontBase = brandTex(brand, 'front');
-  const backBase  = brandTex(brand, 'back');
+function makeMaterials({ brand, sizeMetersL, orient, facing, bandCat }) {
+  const side  = brandTex(brand, 'side');
+  const top   = brandTex(brand, 'top');
+  const front = brandTex(brand, 'front');
+  const back  = brandTex(brand, 'back');
 
-  const side  = sideBase.clone();  side.needsUpdate  = true;
-  const top   = topBase.clone();   top.needsUpdate   = true;
-  const front = frontBase.clone(); front.needsUpdate = true;
-  const back  = backBase.clone();  back.needsUpdate  = true;
+  // scale pentru 20/40/45 (setul e 40ft ~ 12.19m)
+  const repeatL = Math.max(0.25, sizeMetersL / 12.19);
+  side.repeat.set(repeatL, 1);
+  top.repeat.set(repeatL, 1);
 
-  // laterale: o singură hartă întinsă pe față (fără repetare)
-  side.wrapS = side.wrapT = THREE.ClampToEdgeWrapping;
-  side.repeat.set(1, 1);
-
-  // capete: o singură hartă
-  front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping;
-  back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping;
-  front.repeat.set(1, 1);
-  back.repeat.set(1, 1);
-
-  // top: poți lăsa tot o singură hartă (fără tiling)
-  top.wrapS = top.wrapT = THREE.ClampToEdgeWrapping;
-  top.repeat.set(1, 1);
+  // --- Oglindire pentru liniile DEF (logo nu mai iese invers când sunt pe X) ---
+  // Oglindesc pe U (repeat.x negativ) + offset.x=1 ca să păstrăm alinierea UV.
+  if (bandCat === 'DEF') {
+    side.repeat.x = -Math.abs(side.repeat.x);
+    side.offset.x = 1;
+    top.repeat.x  = -Math.abs(top.repeat.x);
+    top.offset.x  = 1;
+  }
 
   const mSide   = new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 });
   const mTop    = new THREE.MeshStandardMaterial({ map: top,   metalness: 0.1, roughness: 0.85 });
@@ -93,9 +89,9 @@ function makeMaterials({ brand, orient, facing }) {
   const mFront  = new THREE.MeshStandardMaterial({ map: front, metalness: 0.1, roughness: 0.8 });
   const mBack   = new THREE.MeshStandardMaterial({ map: back,  metalness: 0.1, roughness: 0.8 });
 
-  // Ordine three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
+  // maparea pe fețe, cu inversare pentru direcție
   if (orient === 'X') {
-    // lateralele sunt ±Z; capetele sunt ±X
+    // lateralele sunt ±Z; capetele (ușile) sunt ±X
     return (facing === '+X')
       ? [mFront, mBack, mTop, mBottom, mSide, mSide]
       : [mBack,  mFront, mTop, mBottom, mSide, mSide];
@@ -107,8 +103,12 @@ function makeMaterials({ brand, orient, facing }) {
   }
 }
 
+/* ===== Layer ===== */
 export default function createContainersLayerOptimized(data, layout) {
   const layer = new THREE.Group();
+  layer.name = 'ContainersLayer';
+  layer.userData.collider = 'solid'; // pentru FP
+
   const all = data?.containers || [];
   if (!all.length) return layer;
 
@@ -116,11 +116,12 @@ export default function createContainersLayerOptimized(data, layout) {
 
   function parsePos(p) {
     const s = String(p || '').trim().toUpperCase();
-    const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/);
+    const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/); // ex: A12B
     if (!m) return null;
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
   }
 
+  // bucketize după tip, brand, orient, facing, ABC/DEF, programado
   all.forEach(rec => {
     const parsed = parsePos(rec.pos ?? rec.posicion);
     if (!parsed) return;
@@ -133,33 +134,24 @@ export default function createContainersLayerOptimized(data, layout) {
       { ...layout, abcNumbersReversed: true }
     );
 
-    // orientare (axa lungimii) derivată din rotație
+    // orientare (axa lungimii) & facing
     const rot = wp.rotationY || 0;
-    const nearHalfPi = Math.abs(Math.sin(rot)) > Math.abs(Math.cos(rot));
+    const nearHalfPi = Math.abs(Math.sin(rot)) > Math.abs(Math.cos(rot)); // ~±PI/2
     const orient = nearHalfPi ? 'Z' : 'X';
-
-    // direcția ușilor din rotație
-    let facing;
-    if (orient === 'X') {
-      facing = (Math.cos(rot) >= 0) ? '+X' : '-X';
-    } else {
-      facing = (Math.sin(rot) >= 0) ? '+Z' : '-Z';
-    }
-
-    // **FIX DEF** – liniile D/E/F au frontul invers în depozitul tău
-    if (parsed.band === 'D' || parsed.band === 'E' || parsed.band === 'F') {
-      if (facing === '+X') facing = '-X';
-      else if (facing === '-X') facing = '+X';
-      else if (facing === '+Z') facing = '-Z';
-      else if (facing === '-Z') facing = '+Z';
-    }
+    let facing = '+X';
+    const c = Math.cos(rot), s = Math.sin(rot);
+    if (orient === 'X') facing = c >= 0 ? '+X' : '-X';
+    else facing = s >= 0 ? '+Z' : '-Z';
 
     const brand = normBrand(rec.naviera || '');
     const isProgramado = rec.__source === 'programados';
 
-    const key = `${tipo}|${brand}|${orient}|${facing}|${isProgramado ? 1 : 0}`;
+    // === NOU: separăm ABC vs DEF pentru materiale oglindite pe DEF ===
+    const bandCat = (parsed.band === 'D' || parsed.band === 'E' || parsed.band === 'F') ? 'DEF' : 'ABC';
+
+    const key = `${tipo}|${brand}|${orient}|${facing}|${bandCat}|${isProgramado ? 1 : 0}`;
     if (!groups.has(key)) {
-      groups.set(key, { tipo, brand, orient, facing, isProgramado, dims, items: [] });
+      groups.set(key, { tipo, brand, orient, facing, bandCat, isProgramado, dims, items: [] });
     }
     groups.get(key).items.push({ parsed, rot });
   });
@@ -169,15 +161,17 @@ export default function createContainersLayerOptimized(data, layout) {
     if (!count) return;
 
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
+
     const mats = makeMaterials({
       brand: g.brand,
+      sizeMetersL: g.dims.L,
       orient: g.orient,
       facing: g.facing,
+      bandCat: g.bandCat, // <— cheie pentru oglindire (DEF)
     });
 
     const mesh = new THREE.InstancedMesh(geom, mats, count);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.castShadow = mesh.receiveShadow = true;
 
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3();
@@ -204,7 +198,7 @@ export default function createContainersLayerOptimized(data, layout) {
     layer.add(mesh);
   });
 
-  // animație puls pentru programados (opțional)
+  // anim puls pentru programados
   layer.userData.tick = () => {
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
@@ -222,9 +216,6 @@ export default function createContainersLayerOptimized(data, layout) {
       mesh.instanceMatrix.needsUpdate = true;
     });
   };
-
-  // marchează layerul ca solid pentru coliziuni FP (tu îl adaugi deja la colliders)
-  layer.userData.solid = true;
 
   return layer;
 }
