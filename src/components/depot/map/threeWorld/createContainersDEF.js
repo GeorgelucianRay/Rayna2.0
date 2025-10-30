@@ -1,10 +1,10 @@
 // src/components/threeWorld/createContainersDEF.js
-// DEF: lungime pe Z, capace (uși) pe ±X, iar LATERALELE (±Z) sunt rotite 90°.
+// DEF: lungime pe Z, ușile (FRONT/BACK) pe ±X, lateralele (±Z) au texturile rotite 90° pe lungime.
 
 import * as THREE from 'three';
 import { slotToWorld } from './slotToWorld';
 
-/* Dimensiuni containere */
+/* ===== Dimensiuni containere ===== */
 const SIZE_BY_TIPO = {
   '20':        { L: 6.06,  H: 2.59, W: 2.44 },
   '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
@@ -14,7 +14,7 @@ const SIZE_BY_TIPO = {
   '45':        { L: 13.72, H: 2.89, W: 2.44 },
 };
 
-/* Loader texturi */
+/* ===== Loader texturi ===== */
 const TEXROOT = '/textures/contenedores';
 const loader = new THREE.TextureLoader();
 const tcache = new Map();
@@ -41,10 +41,10 @@ function brandTex(brand, which) {
   for (const p of candidates) {
     try { return loadTex(p); } catch {}
   }
-  return null; // fallback: fără hartă → material color
+  return null;
 }
 
-function normBrand(name='') {
+function normBrand(name = '') {
   const s = name.toLowerCase();
   if (s.includes('maersk') || s === 'msk') return 'maersk';
   if (s.includes('evergreen')) return 'evergreen';
@@ -58,41 +58,40 @@ function normBrand(name='') {
 }
 
 /**
- * Materiale pentru DEF:
- * - FRONT/BACK pe ±X (capace/usi)
- * - LATERALE pe ±Z (și sunt ROTITE 90°), fără flip sau offset.
- * - TOP/BOTTOM standard
+ * FRONT/BACK pe ±X; lungimea pe Z;
+ * lateralele (±Z) sunt ROTITE 90° spre uși (logo orizontal pe lungime).
  */
 function makeMaterialsCapsOnX_ZLength(brand) {
-  const sideT  = brandTex(brand,'side');
-  const topT   = brandTex(brand,'top');
-  const frontT = brandTex(brand,'front');
-  const backT  = brandTex(brand,'back');
+  const sideT  = brandTex(brand, 'side');
+  const topT   = brandTex(brand, 'top');
+  const frontT = brandTex(brand, 'front');
+  const backT  = brandTex(brand, 'back');
 
-  // Laterale pe ±Z — rotim 90° (numai atât).
+  // --- LATERALE pe ±Z, rotite 90° ---
   const sideZp = sideT?.clone() ?? null; // fața +Z
   const sideZn = sideT?.clone() ?? null; // fața -Z
   [sideZp, sideZn].forEach((tx) => {
     if (!tx) return;
     tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
     tx.center.set(0.5, 0.5);
-    tx.rotation = Math.PI / 2;   // 90° spre uși
-    tx.repeat.set(1, 1);         // fără întindere/flip/offest
+    tx.rotation = Math.PI / 2;  // <<< 90° pe lungime
+    tx.repeat.set(1, 1);
   });
 
-  // Top (fără rotire aici; lasă-l standard)
+  // --- TOP (nemodificat) ---
   const top = topT?.clone() ?? null;
   if (top) {
     top.wrapS = top.wrapT = THREE.ClampToEdgeWrapping;
     top.repeat.set(1, 1);
   }
 
-  // Capace (±X)
+  // --- CAPACE (ușile) pe ±X ---
   const front = frontT?.clone() ?? null;
   const back  = backT?.clone()  ?? null;
-  if (front) { front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping; }
-  if (back)  { back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping; }
+  if (front) front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping;
+  if (back)  back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping;
 
+  // --- MATERIALE ---
   const mSideZp = new THREE.MeshStandardMaterial({
     color: sideZp ? 0xffffff : 0x9aa0a6, map: sideZp, roughness: 0.8, metalness: 0.1
   });
@@ -110,19 +109,18 @@ function makeMaterialsCapsOnX_ZLength(brand) {
     color: back ? 0xffffff : 0xcccccc, map: back, roughness: 0.8, metalness: 0.1
   });
 
-  // BoxGeometry face order: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
-  // right/left = capace (±X), front/back = laterale (±Z).
+  // BoxGeometry: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
   return [mFront, mBack, mTop, mBottom, mSideZp, mSideZn];
 }
 
-/* Parsare poziții DEF */
+/* ===== Parsare poziție DEF ===== */
 function parsePosDEF(p) {
   const s = String(p || '').trim().toUpperCase();
   const m = s.match(/^([D-F])(\d{1,2})([A-Z])?$/);
   return m ? { band: m[1], index: +m[2], level: m[3] || 'A' } : null;
 }
 
-/* Layer DEF */
+/* ===== Creare instanțe ===== */
 export default function createContainersDEF(data, layout) {
   const layer = new THREE.Group();
   const list = (data?.containers || [])
@@ -130,7 +128,6 @@ export default function createContainersDEF(data, layout) {
     .filter(x => x.pos);
   if (!list.length) return layer;
 
-  // grupăm după (tipo, brand)
   const groups = new Map();
   for (const { rec, pos } of list) {
     const tipo  = (rec.tipo || '40bajo').toLowerCase();
@@ -142,7 +139,7 @@ export default function createContainersDEF(data, layout) {
   }
 
   groups.forEach(g => {
-    // Geometria default are L pe X; o rotim 90° ca să punem lungimea pe Z în scenă.
+    // Geometria default are L pe X; o rotim 90° ca să punem lungimea pe Z.
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
     const mats = makeMaterialsCapsOnX_ZLength(g.brand);
     const mesh = new THREE.InstancedMesh(geom, mats, g.items.length);
@@ -158,11 +155,8 @@ export default function createContainersDEF(data, layout) {
         { lane: slot.band, index: slot.index, tier: slot.level },
         { ...layout, abcNumbersReversed: true }
       );
-
-      // Poziție din slotToWorld; rotim 90° în jurul Y pentru lungime pe Z,
-      // ușile rămân pe ±X conform cerinței.
       P.copy(wp.position);
-      Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+      Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2); // lungime pe Z, uși pe ±X
       M.compose(P, Q, S);
       mesh.setMatrixAt(i, M);
     });
