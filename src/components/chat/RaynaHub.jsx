@@ -54,6 +54,10 @@ import ALL_INTENTS from "../../intents";
 // ✅ avatar Rayna din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
+// —— Live overlay & press-to-talk
+import RaynaLiveOverlay from "../rayna/RaynaLiveOverlay";
+import { makeSpeechHold } from "../rayna/useSpeechHold";
+
 export default function RaynaHub() {
   useIOSNoInputZoom();
 
@@ -65,6 +69,43 @@ export default function RaynaHub() {
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
+  
+  // —— memorăm intențiile (agregate + eventual validate în /intents/index.js)
+  const intentsData = useMemo(() => ALL_INTENTS || [], []);
+
+  
+  // —— Live Speak overlay
+   const inputRef = useRef(null);
+   const [liveOpen, setLiveOpen] = useState(false);
+   const [speaking, setSpeaking] = useState(false);
+ 
+   const { start, stop } = makeSpeechHold({
+     onResult: async (spoken) => {
+       setLiveOpen(false);
+       setSpeaking(false);
+       const msg = (spoken || "").trim();
+       if (!msg) return;
+      // Trimite în același flux ca send()
+       setMessages(m => [...m, { from:"user", text: msg }]);
+       const { intent, slots, lang } = detectIntent(msg, intentsData);
+       if (!intent?.type) {
+         setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido." }]);
+         return;
+       }
+       if (intent.type === "static") return handleStatic({ intent, setMessages });
+       if (intent.type === "dialog") {
+         const handled = await handleDialog.entry({
+           intent, role, setMessages, setAwaiting, saving, setSaving,
+         });
+         if (handled) return;
+       }
+       if (intent.type === "action") return dispatchAction(intent, slots, msg);
+       const fb = intentsData.find(i => i.id === "fallback")?.response?.text || "No te he entendido.";
+       setMessages(m => [...m, { from:"bot", reply_text: fb }]);
+     },
+     onStartChange: setSpeaking,
+     lang: "es-ES", // schimbă la 'ro-RO' / 'ca-ES' dacă vrei
+   });
 
   // —— context „parking” (lista de sugestii & cursorul curent)
   const [parkingCtx, setParkingCtx] = useState(null);
@@ -127,9 +168,7 @@ function quickReport() {
   setAwaiting("report_error_text");
 }
 
-  // —— memorăm intențiile (agregate + eventual validate în /intents/index.js)
-  const intentsData = useMemo(() => ALL_INTENTS || [], []);
-
+  
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
@@ -548,15 +587,36 @@ const send = async () => {
       </main>
 
       <footer className={styles.inputBar}>
-        <input
-          className={styles.input}
-          placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
-        />
+         <input
+           ref={inputRef}
+           className={styles.input}
+           placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
+           value={text}
+           onChange={(e) => setText(e.target.value)}
+           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
+         />
         <button className={styles.sendBtn} onClick={send}>Enviar</button>
+         <button
+          type="button"
+           className={styles.liveBtn}
+           onClick={() => setLiveOpen(true)}
+           title="Ține apăsat pentru a vorbi"
+         >
+           ● Live
+         </button>
       </footer>
     </div>
+    
+    <RaynaLiveOverlay
+         open={liveOpen}
+         onClose={() => { setLiveOpen(false); stop({ fallbackText: "" }); setSpeaking(false); }}
+         speaking={speaking}
+        onHoldStart={() => start()}
+        onHoldEnd={({ fallbackText }) =>
+           stop({ fallbackText: (fallbackText || inputRef?.current?.value || "").trim() })
+         }
+         composerValueRef={inputRef}
+       />
+     </div>
   );
 }
