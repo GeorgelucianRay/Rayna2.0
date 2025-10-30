@@ -65,22 +65,23 @@ function makeMaterialsCapsOnX_ZLength(brand, L){
   const backT  = brandTex(brand,'back');
 
   // --- LATERALE pe ±Z ---
-  const sideZp = sideT?.clone() ?? null; // +Z
-  if (sideZp){
-    sideZp.wrapS = sideZp.wrapT = THREE.ClampToEdgeWrapping;
-    sideZp.center.set(0.5, 0.5);
-    sideZp.rotation = Math.PI / 2; // 90° rotire
-    sideZp.repeat.set(repeatL, 1);
-  }
+  const sideZp = sideT?.clone() ?? null;   // fața +Z
+const sideZn = sideT?.clone() ?? null;   // fața -Z
 
-  const sideZn = sideT?.clone() ?? null; // -Z
-  if (sideZn){
-    sideZn.wrapS = sideZn.wrapT = THREE.ClampToEdgeWrapping;
-    sideZn.center.set(0.5, 0.5);
-    sideZn.rotation = Math.PI / 2;
-    sideZn.repeat.set(-repeatL, 1); // flip orizontal
-    sideZn.offset.set(1, 0);        // corecție UV
-  }
+if (sideZp){
+  sideZp.wrapS = sideZp.wrapT = THREE.ClampToEdgeWrapping;
+  sideZp.center.set(0.5, 0.5);
+  sideZp.rotation = -Math.PI / 2;   // <<< 90° spre uși
+  sideZp.repeat.set(repeatL, 1);
+}
+
+if (sideZn){
+  sideZn.wrapS = sideZn.wrapT = THREE.ClampToEdgeWrapping;
+  sideZn.center.set(0.5, 0.5);
+  sideZn.rotation = -Math.PI / 2;   // <<< 90°
+  sideZn.repeat.set(-repeatL, 1);   // flip orizontal
+  sideZn.offset.set(1, 0);          // corecție UV
+}
 
   // --- TOP (opțional rotit 90° ca să urmeze axa Z) ---
   const top = topT?.clone() ?? null;
