@@ -1,39 +1,6 @@
 .backdrop{
   position:fixed; inset:0; z-index:9999;
   display:grid; grid-template-rows:auto 1fr auto;
-  background:
-    radial-gradient(120% 120% at 50% 0%, #10284d 0%, #0b1730 55%, #091126 100%);
-}
-.topBar{
-  position:relative; padding:14px;
-  display:flex; justify-content:flex-end;
-}
-.closeBtn{
-  width:44px; height:44px; border-radius:999px;
-  border:1px solid rgba(255,255,255,.18);
-  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-  color:#e5e7eb; font-size:22px; line-height:1;
-  display:grid; place-items:center;
-}
-.stage{ position:relative; height:100%; }
-.footer{
-  padding:16px; display:flex; justify-content:center;
-}
-.speakBtn{
-  min-width:220px; padding:14px 18px; border-radius:999px;
-  border:1px solid rgba(94,234,212,.45);
-  background:linear-gradient(90deg, #60a5fa, #7c3aed);
-  color:#04121f; font-weight:900; letter-spacing:.3px;
-  box-shadow:0 18px 40px rgba(79,70,229,.28);
-}
-.speaking{
-  background:linear-gradient(90deg, #22d3ee, #7c3aed);
-  box-shadow:0 20px 46px rgba(34,211,238,.35);
-}
-
-.backdrop{
-  position:fixed; inset:0; z-index:9999;
-  display:grid; grid-template-rows:auto 1fr auto;
   background: radial-gradient(120% 120% at 50% 0%, #10284d 0%, #0b1730 55%, #091126 100%);
   min-height:100vh;
 }
