@@ -14,8 +14,8 @@ const SIZE_BY_TIPO = {
 
 /* ===== Texturi ===== */
 const TEXROOT = '/textures/contenedores';
-const loader = new THREE.TextureLoader();
-const tcache = new Map();
+const loader  = new THREE.TextureLoader();
+const tcache  = new Map();
 
 function loadTex(path) {
   if (tcache.has(path)) return tcache.get(path);
@@ -27,6 +27,7 @@ function loadTex(path) {
   return t;
 }
 
+// încearcă mai multe nume posibile
 function brandTex(brand, which) {
   const dir = `${TEXROOT}/${brand}`;
   const candidates = [
@@ -38,8 +39,7 @@ function brandTex(brand, which) {
   for (const p of candidates) {
     try { return loadTex(p); } catch {}
   }
-  // fallback: gri
-  const tx = new THREE.Texture();
+  const tx = new THREE.Texture(); // fallback gol
   return tx;
 }
 
@@ -52,35 +52,42 @@ function normBrand(name = '') {
   if (s.includes('one')) return 'one';
   if (s.includes('arkas') || s.includes('arcas')) return 'arkas';
   if (s.includes('msc')) return 'msc';
-  if (s.includes('roto') || s.includes('rotoș') || s.includes('rotos')) return 'roto';
+  if (s.includes('roto')) return 'roto';
   return 'neutru';
 }
 
 /**
- * Materiale pentru BoxGeometry:
- * order Three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
- * orient: 'X' / 'Z' (axa lungimii)
- * facing: '+X' / '-X' / '+Z' / '-Z' (capătul cu uși)
- * bandCat: 'ABC' / 'DEF' (DEF -> oglinzire pe U a fețelor lungi & top)
+ * Returnează materiale pentru BoxGeometry în funcție de orientare și direcția ușilor.
+ * Ordine Three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
+ *
+ * orient: 'X' (lungimea pe X) sau 'Z' (lungimea pe Z)
+ * facing: '+X' | '-X' | '+Z' | '-Z' (unde sunt ușile)
  */
-function makeMaterials({ brand, sizeMetersL, orient, facing, bandCat }) {
-  const side  = brandTex(brand, 'side');
-  const top   = brandTex(brand, 'top');
-  const front = brandTex(brand, 'front');
-  const back  = brandTex(brand, 'back');
+function makeMaterials({ brand, sizeMetersL, orient, facing }) {
+  // texturi originale
+  const side0  = brandTex(brand, 'side');
+  const top0   = brandTex(brand, 'top');
+  const front0 = brandTex(brand, 'front');
+  const back0  = brandTex(brand, 'back');
 
-  // scale pentru 20/40/45 (setul e 40ft ~ 12.19m)
+  // Clonăm ca să putem seta rotația independent pe fiecare orientare
+  const side  = side0.clone();  side.needsUpdate  = true;  side.center.set(0.5, 0.5);
+  const top   = top0.clone();   top.needsUpdate   = true;  top.center.set(0.5, 0.5);
+  const front = front0;  // capetele nu trebuie rotite
+  const back  = back0;
+
+  // Set de texturi făcut pentru 40ft ~ 12.19m → scalăm pe lungime
   const repeatL = Math.max(0.25, sizeMetersL / 12.19);
   side.repeat.set(repeatL, 1);
   top.repeat.set(repeatL, 1);
 
-  // --- Oglindire pentru liniile DEF (logo nu mai iese invers când sunt pe X) ---
-  // Oglindesc pe U (repeat.x negativ) + offset.x=1 ca să păstrăm alinierea UV.
-  if (bandCat === 'DEF') {
-    side.repeat.x = -Math.abs(side.repeat.x);
-    side.offset.x = 1;
-    top.repeat.x  = -Math.abs(top.repeat.x);
-    top.offset.x  = 1;
+  // dacă lungimea e pe Z (ABC), rotim 90° textura laterală ca dunga să curgă pe Z
+  if (orient === 'Z') {
+    side.rotation = Math.PI / 2;
+    top.rotation  = Math.PI / 2; // opțional, dacă vrei “coama” să curgă pe Z
+  } else {
+    side.rotation = 0;
+    top.rotation  = 0;
   }
 
   const mSide   = new THREE.MeshStandardMaterial({ map: side,  metalness: 0.1, roughness: 0.8 });
@@ -89,39 +96,44 @@ function makeMaterials({ brand, sizeMetersL, orient, facing, bandCat }) {
   const mFront  = new THREE.MeshStandardMaterial({ map: front, metalness: 0.1, roughness: 0.8 });
   const mBack   = new THREE.MeshStandardMaterial({ map: back,  metalness: 0.1, roughness: 0.8 });
 
-  // maparea pe fețe, cu inversare pentru direcție
+  // maparea materialelor pe fețe, în funcție de orient și direcția ușilor
   if (orient === 'X') {
     // lateralele sunt ±Z; capetele (ușile) sunt ±X
-    return (facing === '+X')
-      ? [mFront, mBack, mTop, mBottom, mSide, mSide]
-      : [mBack,  mFront, mTop, mBottom, mSide, mSide];
-  } else {
-    // orient === 'Z' → lateralele sunt ±X; capetele sunt ±Z
-    return (facing === '+Z')
-      ? [mSide, mSide, mTop, mBottom, mFront, mBack]
-      : [mSide, mSide, mTop, mBottom, mBack,  mFront];
+    if (facing === '+X') {
+      return [mFront, mBack, mTop, mBottom, mSide, mSide];
+    } else { // '-X'
+      return [mBack, mFront, mTop, mBottom, mSide, mSide];
+    }
+  } else { // orient === 'Z'
+    // lateralele sunt ±X; capetele sunt ±Z
+    if (facing === '+Z') {
+      return [mSide, mSide, mTop, mBottom, mFront, mBack];
+    } else { // '-Z'
+      return [mSide, mSide, mTop, mBottom, mBack, mFront];
+    }
   }
 }
 
 /* ===== Layer ===== */
 export default function createContainersLayerOptimized(data, layout) {
   const layer = new THREE.Group();
-  layer.name = 'ContainersLayer';
-  layer.userData.collider = 'solid'; // pentru FP
-
   const all = data?.containers || [];
   if (!all.length) return layer;
 
+  // Reguli per bandă (fixe, ca să nu mai depindem de rotația geom.)
+  const orientForLane = (lane) => ('ABC'.includes(lane) ? 'Z' : 'X');
+  const facingForLane = (lane) => ('ABC'.includes(lane) ? '+Z' : '-X'); // DEF invers
+
+  // Bucket după (tipo, brand, orient, facing, programado)
   const groups = new Map();
 
   function parsePos(p) {
     const s = String(p || '').trim().toUpperCase();
-    const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/); // ex: A12B
+    const m = s.match(/^([A-F])(\d{1,2})([A-Z])?$/);
     if (!m) return null;
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
   }
 
-  // bucketize după tip, brand, orient, facing, ABC/DEF, programado
   all.forEach(rec => {
     const parsed = parsePos(rec.pos ?? rec.posicion);
     if (!parsed) return;
@@ -129,31 +141,17 @@ export default function createContainersLayerOptimized(data, layout) {
     const tipo = (rec.tipo || '40bajo').toLowerCase();
     const dims = SIZE_BY_TIPO[tipo] || SIZE_BY_TIPO['40bajo'];
 
-    const wp = slotToWorld(
-      { lane: parsed.band, index: parsed.index, tier: parsed.level },
-      { ...layout, abcNumbersReversed: true }
-    );
-
-    // orientare (axa lungimii) & facing
-    const rot = wp.rotationY || 0;
-    const nearHalfPi = Math.abs(Math.sin(rot)) > Math.abs(Math.cos(rot)); // ~±PI/2
-    const orient = nearHalfPi ? 'Z' : 'X';
-    let facing = '+X';
-    const c = Math.cos(rot), s = Math.sin(rot);
-    if (orient === 'X') facing = c >= 0 ? '+X' : '-X';
-    else facing = s >= 0 ? '+Z' : '-Z';
-
     const brand = normBrand(rec.naviera || '');
     const isProgramado = rec.__source === 'programados';
 
-    // === NOU: separăm ABC vs DEF pentru materiale oglindite pe DEF ===
-    const bandCat = (parsed.band === 'D' || parsed.band === 'E' || parsed.band === 'F') ? 'DEF' : 'ABC';
+    const orient = orientForLane(parsed.band);
+    const facing = facingForLane(parsed.band);
 
-    const key = `${tipo}|${brand}|${orient}|${facing}|${bandCat}|${isProgramado ? 1 : 0}`;
+    const key = `${tipo}|${brand}|${orient}|${facing}|${isProgramado ? 1 : 0}`;
     if (!groups.has(key)) {
-      groups.set(key, { tipo, brand, orient, facing, bandCat, isProgramado, dims, items: [] });
+      groups.set(key, { tipo, brand, orient, facing, isProgramado, dims, items: [] });
     }
-    groups.get(key).items.push({ parsed, rot });
+    groups.get(key).items.push({ parsed });
   });
 
   groups.forEach(g => {
@@ -161,13 +159,11 @@ export default function createContainersLayerOptimized(data, layout) {
     if (!count) return;
 
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
-
     const mats = makeMaterials({
       brand: g.brand,
       sizeMetersL: g.dims.L,
       orient: g.orient,
       facing: g.facing,
-      bandCat: g.bandCat, // <— cheie pentru oglindire (DEF)
     });
 
     const mesh = new THREE.InstancedMesh(geom, mats, count);
@@ -183,8 +179,11 @@ export default function createContainersLayerOptimized(data, layout) {
         { lane: it.parsed.band, index: it.parsed.index, tier: it.parsed.level },
         { ...layout, abcNumbersReversed: true }
       );
+      // folosim poziția din slotToWorld, dar rotația e deja implicită prin orient/facing
       pos.copy(wp.position);
-      quat.setFromAxisAngle(new THREE.Vector3(0,1,0), wp.rotationY);
+      // stabilim rotația doar pe Y în acord cu orientul fix
+      const rotY = (g.orient === 'X') ? 0 : Math.PI / 2; // X → 0°, Z → 90°
+      quat.setFromAxisAngle(new THREE.Vector3(0,1,0), rotY);
       matrix.compose(pos, quat, scl);
       mesh.setMatrixAt(i, matrix);
     });
@@ -198,7 +197,7 @@ export default function createContainersLayerOptimized(data, layout) {
     layer.add(mesh);
   });
 
-  // anim puls pentru programados
+  // anim puls (programados)
   layer.userData.tick = () => {
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
