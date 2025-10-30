@@ -157,9 +157,24 @@ export function useDepotScene({ mountRef }) {
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
 
-    const fence  = createFence({ ...CFG.fence, width: YARD_WIDTH - 4, depth: YARD_DEPTH - 4 });
-    depotGroup.add(groundNode, fence);
-    scene.add(depotGroup);
+    // în useDepotScene, când creezi gardul:
+const fence = createFence({
+  width: YARD_WIDTH - 4,
+  depth: YARD_DEPTH - 4,
+  margin: 2,
+  postEvery: 10,
+  openings: {
+    west: [
+      { z: -4, width: 4 },
+      { z: -7, width: 4 },
+      { z: -9, width: 4 },
+    ],
+    east:  [],
+    north: [],
+    south: []
+  }
+});
+depotGroup.add(groundNode, fence);
 
     // ===== Build controller =====
     buildRef.current = createBuildController({
