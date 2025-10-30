@@ -24,10 +24,15 @@ export default function Map3DPage() {
     setForwardPressed,
     setJoystick,
     setBuildActive,
-    buildApi,          // { mode, setMode, rotateStep, setType, finalizeJSON, controller, active }
+    buildApi,
     containers,
     openWorldItems,
     setOnContainerSelected,
+
+    // orbit libre
+    isOrbitLibre,
+    startOrbitLibre,
+    stopOrbitLibre,
   } = useDepotScene({ mountRef });
 
   // Card info container selectat
@@ -47,9 +52,30 @@ export default function Map3DPage() {
         onOpenWorldItems={() => openWorldItems()}
       />
 
-      {/* Top bar exit */}
+      {/* Top bar: Orbit libre + Exit (dreapta sus, paralel) */}
       <div className={styles.topBar}>
-        <button className={styles.iconBtn} onClick={() => navigate('/depot')}>✕</button>
+        <div className={styles.topBarRight}>
+          <button
+            className={`${styles.iconBtn} ${styles.iconBtnSmall} ${isOrbitLibre ? styles.active : ''}`}
+            onClick={() =>
+              isOrbitLibre
+                ? stopOrbitLibre()
+                : startOrbitLibre({ speed: Math.PI / 32, height: 9 })
+            }
+            title={isOrbitLibre ? 'Oprește orbit libre' : 'Pornește orbit libre'}
+            aria-label="Orbit libre"
+          >
+            ⟳
+          </button>
+
+          <button
+            className={styles.iconBtn}
+            onClick={() => navigate('/depot')}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Canvas host */}
@@ -64,7 +90,7 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Build Palette (UI) — conține și pad-ul de săgeți; nu mai adăuga alt pad în pagină */}
+      {/* Build Palette (UI) */}
       {showBuild && (
         <BuildPalette
           open={showBuild}
