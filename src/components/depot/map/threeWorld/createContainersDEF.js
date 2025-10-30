@@ -74,7 +74,7 @@ function makeMaterialsCapsOnX_ZLength(brand) {
     if (!tx) return;
     tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
     tx.center.set(0.5, 0.5);
-    tx.rotation = Math.PI / 2;  // <<< 90° pe lungime
+    tx.rotation = 0;  // <<< 90° pe lungime
     tx.repeat.set(1, 1);
   });
 
