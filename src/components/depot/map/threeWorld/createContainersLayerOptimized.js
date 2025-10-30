@@ -55,10 +55,10 @@ function normBrand(name = '') {
 }
 
 /**
- * Array materiale pentru BoxGeometry:
- * Ordine Three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
- * orient: 'X' (lungime pe X) / 'Z' (lungime pe Z)
- * facing: '+X' | '-X' | '+Z' | '-Z' – unde sunt ușile (front).
+ * Materiale pentru BoxGeometry.
+ * Ordine Three.js: [right +X, left -X, top +Y, bottom -Y, front +Z, back -Z]
+ * orient: 'X' → uși pe ±X; 'Z' → uși pe ±Z
+ * facing: '+X' | '-X' | '+Z' | '-Z'
  */
 function makeMaterials({ brand, sizeMetersL, orient, facing }) {
   const side  = brandTex(brand, 'side');
@@ -104,50 +104,45 @@ export default function createContainersLayerOptimized(data, layout) {
     return { band: m[1], index: Number(m[2]), level: m[3] || 'A' };
   }
 
-  // ——— AICI e schimbarea importantă: orient/facing în funcție de bandă, nu de rot —
+  // orient/facing pentru MATERIALE (poziția/rotația rămân din slotToWorld)
   const orientFromLane = (lane) => ('ABC'.includes(lane) ? 'Z' : 'X');
   const facingFromLane = (lane, rotY) => {
-    // păstrăm sensul ușilor dar pe axa potrivită
     if ('ABC'.includes(lane)) {
-      // ABC: front/back pe ±Z
+      // ABC → uși pe ±Z
       return Math.sin(rotY) >= 0 ? '+Z' : '-Z';
-    } else {
-      // DEF: front/back pe ±X — EXACT cerința ta
-      return Math.cos(rotY) >= 0 ? '+X' : '-X';
     }
+    // DEF → uși pe ±X (cerința ta)
+    return Math.cos(rotY) >= 0 ? '+X' : '-X';
   };
 
-  // bucketize după tip, brand, orient, facing
+  // bucketize
   all.forEach(rec => {
     const parsed = parsePos(rec.pos ?? rec.posicion);
     if (!parsed) return;
 
     const tipo = (rec.tipo || '40bajo').toLowerCase();
     const dims = SIZE_BY_TIPO[tipo] || SIZE_BY_TIPO['40bajo'];
+    const brand = normBrand(rec.naviera || '');
+    const isProgramado = rec.__source === 'programados';
 
-    const wp = slotToWorld(
+    const wp  = slotToWorld(
       { lane: parsed.band, index: parsed.index, tier: parsed.level },
       { ...layout, abcNumbersReversed: true }
     );
-
     const rot = wp.rotationY || 0;
 
-    const orient = orientFromLane(parsed.band);           // <-- forțăm după bandă
-    const facing = facingFromLane(parsed.band, rot);      // <-- front/back pe axa corectă
-
-    const brand = normBrand(rec.naviera || '');
-    const isProgramado = rec.__source === 'programados';
+    const orient = orientFromLane(parsed.band);
+    const facing = facingFromLane(parsed.band, rot);
 
     const key = `${tipo}|${brand}|${orient}|${facing}|${isProgramado ? 1 : 0}`;
     if (!groups.has(key)) {
       groups.set(key, { tipo, brand, orient, facing, isProgramado, dims, items: [] });
     }
-    groups.get(key).items.push({ parsed, rot });
+    groups.get(key).items.push({ parsed, rot }); // păstrăm rotY pentru instanță
   });
 
   groups.forEach(g => {
-    const count = g.items.length;
-    if (!count) return;
+    const count = g.items.length; if (!count) return;
 
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
     const mats = makeMaterials({
@@ -160,22 +155,21 @@ export default function createContainersLayerOptimized(data, layout) {
     const mesh = new THREE.InstancedMesh(geom, mats, count);
     mesh.castShadow = mesh.receiveShadow = true;
 
-    const matrix = new THREE.Matrix4();
-    const pos = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-    const scl = new THREE.Vector3(1,1,1);
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3(1,1,1);
 
     g.items.forEach((it, i) => {
       const wp = slotToWorld(
         { lane: it.parsed.band, index: it.parsed.index, tier: it.parsed.level },
         { ...layout, abcNumbersReversed: true }
       );
-      pos.copy(wp.position);
-      // rotim corpul ca să aliniem lungimea cu axa potrivită
-      const rotY = ('ABC'.includes(it.parsed.band)) ? Math.PI / 2 : 0;
-      quat.setFromAxisAngle(new THREE.Vector3(0,1,0), rotY);
-      matrix.compose(pos, quat, scl);
-      mesh.setMatrixAt(i, matrix);
+      // ——— păstrăm EXACT poziția și rotația venite din slotToWorld
+      p.copy(wp.position);
+      q.setFromAxisAngle(new THREE.Vector3(0,1,0), wp.rotationY || 0);
+      m.compose(p, q, s);
+      mesh.setMatrixAt(i, m);
     });
 
     if (g.isProgramado) {
@@ -187,20 +181,17 @@ export default function createContainersLayerOptimized(data, layout) {
     layer.add(mesh);
   });
 
-  // anim puls pentru programados
+  // puls programados
   layer.userData.tick = () => {
-    const m = new THREE.Matrix4();
-    const p = new THREE.Vector3();
-    const q = new THREE.Quaternion();
-    const s = new THREE.Vector3();
-
+    const M = new THREE.Matrix4(), P = new THREE.Vector3(),
+          Q = new THREE.Quaternion(), S = new THREE.Vector3();
     layer.children.forEach(mesh => {
       if (!mesh.userData.isProgramado) return;
       for (let i = 0; i < mesh.count; i++) {
-        mesh.getMatrixAt(i, m); m.decompose(p,q,s);
+        mesh.getMatrixAt(i, M); M.decompose(P,Q,S);
         mesh.userData.pulsePhases[i] += 0.04;
         const k = 1 + Math.sin(mesh.userData.pulsePhases[i]) * 0.05;
-        s.set(1, k, 1); m.compose(p,q,s); mesh.setMatrixAt(i, m);
+        S.set(1, k, 1); M.compose(P,Q,S); mesh.setMatrixAt(i, M);
       }
       mesh.instanceMatrix.needsUpdate = true;
     });
