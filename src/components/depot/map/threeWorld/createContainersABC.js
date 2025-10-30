@@ -3,12 +3,12 @@ import * as THREE from 'three';
 import { slotToWorld } from './slotToWorld';
 
 const SIZE_BY_TIPO = {
-  '20': { L: 6.06, H: 2.59, W: 2.44 },
-  '20opentop': { L: 6.06, H: 2.59, W: 2.44 },
-  '40alto': { L: 12.19, H: 2.89, W: 2.44 },
-  '40bajo': { L: 12.19, H: 2.59, W: 2.44 },
+  '20':        { L: 6.06,  H: 2.59, W: 2.44 },
+  '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
+  '40alto':    { L: 12.19, H: 2.89, W: 2.44 },
+  '40bajo':    { L: 12.19, H: 2.59, W: 2.44 },
   '40opentop': { L: 12.19, H: 2.59, W: 2.44 },
-  '45': { L: 13.72, H: 2.89, W: 2.44 },
+  '45':        { L: 13.72, H: 2.89, W: 2.44 },
 };
 
 const TEXROOT = '/textures/contenedores';
@@ -22,10 +22,9 @@ function loadTex(path){
   t.anisotropy = 4;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
-  tcache.set(path, t); 
+  tcache.set(path, t);
   return t;
 }
-
 function brandTex(brand, which){
   const dir = `${TEXROOT}/${brand}`;
   for (const p of [
@@ -33,12 +32,9 @@ function brandTex(brand, which){
     `${dir}/${brand}_40_${which}.png`,
     `${dir}/${brand}_40_${which}_texture.jpg`,
     `${dir}/${brand}_40_${which}.jpg`,
-  ]) {
-    try { return loadTex(p); } catch {}
-  }
+  ]) { try { return loadTex(p); } catch {} }
   return null;
 }
-
 function normBrand(name=''){
   const s = name.toLowerCase();
   if (s.includes('maersk') || s === 'msk') return 'maersk';
@@ -52,36 +48,33 @@ function normBrand(name=''){
   return 'neutru';
 }
 
-/* ===== Materiale cu rotație texturi 90° ===== */
-function makeMaterialsABC(brand, L){
-  const repeatL = Math.max(0.25, L / 12.19);
+/**
+ * Mapează corect materialele când FRONT/BACK trebuie pe ±X.
+ * Ordinea BoxGeometry: [right +X, left -X, top +Y, bottom -Y, front +Z, back -Z]
+ * Așadar:
+ *  - mFront -> index 0 (+X), mBack -> index 1 (-X)
+ *  - lateralele (mSide) -> index 4/5 (±Z)
+ */
+function makeMaterialsCapsOnX(brand, L){
+  const sideT  = brandTex(brand,'side');  const side  = sideT?.clone()  ?? null;
+  const topT   = brandTex(brand,'top');   const top   = topT?.clone()   ?? null;
+  const frontT = brandTex(brand,'front'); const front = frontT?.clone() ?? null;
+  const backT  = brandTex(brand,'back');  const back  = backT?.clone()  ?? null;
 
-  const sideT  = brandTex(brand, 'side'); const side = sideT?.clone() ?? null;
-  const topT   = brandTex(brand, 'top');  const top  = topT?.clone()  ?? null;
-  const frontT = brandTex(brand, 'front');const front= frontT?.clone()?? null;
-  const backT  = brandTex(brand, 'back'); const back = backT?.clone() ?? null;
+  // întindem o singură hartă pe față (fără tiling de logo)
+  if (side){ side.wrapS = side.wrapT = THREE.ClampToEdgeWrapping; side.center.set(0.5,0.5); side.rotation = 0; side.repeat.set(1,1); }
+  if (top ){ top.wrapS  = top.wrapT  = THREE.ClampToEdgeWrapping; top.center.set(0.5,0.5);  top.rotation  = 0; top.repeat.set(1,1); }
+  if (front){ front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping; }
+  if (back ){ back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping; }
 
-  if (side){
-    side.wrapS = side.wrapT = THREE.ClampToEdgeWrapping;
-    side.center.set(0.5,0.5);
-    side.rotation = Math.PI / 2; // 🔄 Rotește textura laterală cu 90°
-    side.repeat.set(repeatL, 1);
-  }
-  if (top){
-    top.wrapS = top.wrapT = THREE.ClampToEdgeWrapping;
-    top.center.set(0.5,0.5);
-    top.rotation = Math.PI / 2; // 🔄 Rotește textura top
-    top.repeat.set(repeatL, 1);
-  }
-
-  const mSide   = new THREE.MeshStandardMaterial({ color: side?0xffffff:0x9aa0a6, map: side,  roughness:0.8, metalness:0.1 });
+  const mSide   = new THREE.MeshStandardMaterial({ color: side?0xffffff:0x9aa0a6, map: side,  roughness:0.8,  metalness:0.1 });
   const mTop    = new THREE.MeshStandardMaterial({ color: top?0xffffff:0x8a8f95,   map: top,   roughness:0.85, metalness:0.1 });
   const mBottom = new THREE.MeshStandardMaterial({ color: 0x8a8f95, roughness:0.9, metalness:0.1 });
-  const mFront  = new THREE.MeshStandardMaterial({ color: front?0xffffff:0xcccccc, map: front, roughness:0.8, metalness:0.1 });
-  const mBack   = new THREE.MeshStandardMaterial({ color: back?0xffffff:0xcccccc,  map: back,  roughness:0.8, metalness:0.1 });
+  const mFront  = new THREE.MeshStandardMaterial({ color: front?0xffffff:0xcccccc, map: front, roughness:0.8,  metalness:0.1 });
+  const mBack   = new THREE.MeshStandardMaterial({ color: back?0xffffff:0xcccccc,  map: back,  roughness:0.8,  metalness:0.1 });
 
-  // Ordine three.js: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
-  return [mSide, mSide, mTop, mBottom, mFront, mBack];
+  // mapare: caps pe ±X, laterale pe ±Z
+  return [mFront, mBack, mTop, mBottom, mSide, mSide];
 }
 
 function parsePos(p){
@@ -92,11 +85,10 @@ function parsePos(p){
 
 export default function createContainersABC(data, layout){
   const layer = new THREE.Group();
-  const list = (data?.containers||[])
-    .map(r=>({rec:r, pos:parsePos(r.pos ?? r.posicion)}))
-    .filter(x=>x.pos);
+  const list = (data?.containers||[]).map(r=>({rec:r, pos:parsePos(r.pos ?? r.posicion)})).filter(x=>x.pos);
   if (!list.length) return layer;
 
+  // bucket pe (tipo, brand)
   const groups = new Map();
   for (const {rec,pos} of list){
     const tipo  = (rec.tipo||'40bajo').toLowerCase();
@@ -108,8 +100,9 @@ export default function createContainersABC(data, layout){
   }
 
   groups.forEach(g=>{
+    // Geometria are L pe axa X (implicit), deci NU rotim mesh-ul pentru caps pe X.
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
-    const mats = makeMaterialsABC(g.brand, g.dims.L);
+    const mats = makeMaterialsCapsOnX(g.brand, g.dims.L);
     const mesh = new THREE.InstancedMesh(geom, mats, g.items.length);
     mesh.castShadow = mesh.receiveShadow = true;
 
@@ -117,8 +110,9 @@ export default function createContainersABC(data, layout){
     g.items.forEach((slot,i)=>{
       const wp = slotToWorld({lane:slot.band,index:slot.index,tier:slot.level},{...layout,abcNumbersReversed:true});
       P.copy(wp.position);
-      Q.setFromAxisAngle(new THREE.Vector3(0,1,0), 0); // 🔄 Rotește containerul 90° (lungime pe X)
-      M.compose(P,Q,S); 
+      // rotY = 0 → lungime pe X, front/back pe ±X (exact ce vrei)
+      Q.setFromAxisAngle(new THREE.Vector3(0,1,0), 0);
+      M.compose(P,Q,S);
       mesh.setMatrixAt(i,M);
     });
 
