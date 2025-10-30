@@ -586,37 +586,41 @@ const send = async () => {
         <div ref={endRef} />
       </main>
 
-      <footer className={styles.inputBar}>
-         <input
-           ref={inputRef}
-           className={styles.input}
-           placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
-           value={text}
-           onChange={(e) => setText(e.target.value)}
-           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
-         />
+           <footer className={styles.inputBar}>
+        <input
+          ref={inputRef}
+          className={styles.input}
+          placeholder="Escribe aquí… (ej.: Quiero llegar a TCB)"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
+        />
         <button className={styles.sendBtn} onClick={send}>Enviar</button>
-         <button
+        <button
           type="button"
-           className={styles.liveBtn}
-           onClick={() => setLiveOpen(true)}
-           title="Ține apăsat pentru a vorbi"
-         >
-           ● Live
-         </button>
+          className={styles.liveBtn}
+          onClick={() => setLiveOpen(true)}
+          title="Ține apăsat pentru a vorbi"
+        >
+          ● Live
+        </button>
       </footer>
-    </div>
-    
-    <RaynaLiveOverlay
-         open={liveOpen}
-         onClose={() => { setLiveOpen(false); stop({ fallbackText: "" }); setSpeaking(false); }}
-         speaking={speaking}
+
+      {/* Live overlay (stă în interiorul .shell ca frate al <footer/>) */}
+      <RaynaLiveOverlay
+        open={liveOpen}
+        onClose={() => {
+          setLiveOpen(false);
+          stop({ fallbackText: "" });
+          setSpeaking(false);
+        }}
+        speaking={speaking}
         onHoldStart={() => start()}
         onHoldEnd={({ fallbackText }) =>
-           stop({ fallbackText: (fallbackText || inputRef?.current?.value || "").trim() })
-         }
-         composerValueRef={inputRef}
-       />
-     </div>
+          stop({ fallbackText: (fallbackText || inputRef?.current?.value || "").trim() })
+        }
+        composerValueRef={inputRef}
+      />
+    </div>
   );
 }
