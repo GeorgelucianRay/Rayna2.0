@@ -3,16 +3,21 @@
 /* ===== CONTAINER ===== */
 .searchContainer {
   position: absolute;
-  top: 64px; /* mai jos pe mobil, să nu se suprapună cu top bar */
+  top: 64px;                 /* default: sub top bar */
   left: 50%;
   transform: translateX(-50%);
   width: 320px;
-  z-index: 200;
+  z-index: 300;              /* peste card pe toate dispozitivele */
 }
 
-@media (min-width: 768px) {
+/* Mobil: ocupă lățimea disponibilă, nu se mai suprapune cu butoanele din dreapta */
+@media (max-width: 600px) {
   .searchContainer {
-    top: 20px; /* pe tabletă/laptop revine mai sus */
+    top: calc(env(safe-area-inset-top, 0px) + 96px); /* mai jos pe iOS/Android */
+    left: 12px;
+    right: 12px;
+    width: auto;
+    transform: none;         /* NU mai centrăm cu transform */
   }
 }
 
@@ -23,7 +28,7 @@
 
 .searchInput {
   width: 100%;
-  padding: 10px 42px 10px 16px; /* spațiu pentru ✕ în dreapta */
+  padding: 10px 42px 10px 16px;   /* spațiu pentru ✕ */
   font-size: 16px;
   border-radius: 20px;
   border: 1px solid #ccc;
@@ -62,6 +67,11 @@
   width: 100%;
 }
 
+/* pe mobil, menținem lista peste restul UI */
+@media (max-width: 600px) {
+  .resultsList { z-index: 310; position: relative; }
+}
+
 .resultItem {
   padding: 10px 16px;
   cursor: pointer;
@@ -72,13 +82,8 @@
   transition: background 0.15s;
 }
 
-.resultItem:last-child {
-  border-bottom: none;
-}
-
-.resultItem:hover {
-  background-color: #f5f5f5;
-}
+.resultItem:last-child { border-bottom: none; }
+.resultItem:hover { background-color: #f5f5f5; }
 
 .resultDetails {
   font-size: 12px;
@@ -86,12 +91,4 @@
   background-color: #e9ecef;
   padding: 2px 6px;
   border-radius: 8px;
-}
-
-/* ===== PREVINE SUPRAPUNEREA PE MOBIL ===== */
-@media (max-width: 600px) {
-  .resultsList {
-    position: relative;
-    z-index: 150;
-  }
 }
