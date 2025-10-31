@@ -11,6 +11,7 @@ import createSky from '../threeWorld/createSky';
 import createLandscape from '../threeWorld/createLandscape';
 import createBaseWorld from '../threeWorld/createBaseWorld';
 import createFirstPerson from '../threeWorld/firstPerson';
+import { slotToWorld } from '../threeWorld/slotToWorld'; // 👈 ADĂUGAT
 
 import createBuildController from '../world/buildController';
 import styles from '../Map3DStandalone.module.css';
@@ -72,22 +73,18 @@ export function useDepotScene({ mountRef }) {
   // parametri orbit libre (poziție cameră în cerc, infinit de lin)
   const autoOrbitRef = useRef({
     angle: 0,
-    // viteză (rad/s): lent, dar fluid (nu „cu încetinitorul”)
-    speed: Math.PI / 28,   // ~ 6.4 sec/tură; crești/scazi după gust
-    radius: Math.hypot(YARD_WIDTH, YARD_DEPTH) * 0.55, // puțin în afara centrului
-    height: 10,            // înălțimea camerei când e auto-orbit
-    target: new THREE.Vector3(0, 1, 0), // centrul curții
+    speed: Math.PI / 28,                   // ~6.4s/tură
+    radius: Math.hypot(YARD_WIDTH, YARD_DEPTH) * 0.55,
+    height: 10,
+    target: new THREE.Vector3(0, 1, 0),
     clockwise: true,
   });
 
   // clamp pentru target și poziție cameră
   function clampOrbit(camera, controls) {
-    // ținta rămâne în curte
     controls.target.x = THREE.MathUtils.clamp(controls.target.x, yardMinX, yardMaxX);
     controls.target.z = THREE.MathUtils.clamp(controls.target.z, yardMinZ, yardMaxZ);
-    // camera deasupra solului
     if (camera.position.y < 0.5) camera.position.y = 0.5;
-    // camera nu iese din curte în X/Z
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, yardMinX, yardMaxX);
     camera.position.z = THREE.MathUtils.clamp(camera.position.z, yardMinZ, yardMaxZ);
   }
@@ -133,6 +130,71 @@ export function useDepotScene({ mountRef }) {
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
+  // ===== Teleport / focus pe un container (SMOOTH) =====
+  const focusCameraOnContainer = useCallback((container) => {
+    if (!container || !cameraRef.current || !controlsRef.current) return;
+
+    // oprim turul automat, ca să nu tragă camera înapoi
+    setOrbitLibre(false);
+
+    // slotul: ex. "B12A" / "E03C"
+    const slot = container.pos || container.posicion;
+    if (!slot || typeof slot !== 'string') return;
+
+    // calculăm poziția în lume, exact ca la plasarea containerelor
+    const wp = slotToWorld(
+      {
+        lane: slot[0],
+        index: parseInt(slot.match(/\d+/)?.[0] || '0', 10),
+        tier: slot.match(/[A-Z]$/)?.[0] || 'A',
+      },
+      { ...CFG.ground, abcNumbersReversed: true }
+    );
+    if (!wp?.position) return;
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    // țintim ușor deasupra slotului
+    const target = wp.position.clone();
+    target.y = 1.5;
+
+    // poziția camerei: puțin lateral & sus
+    const desiredPos = target.clone().add(new THREE.Vector3(6, 4, 6));
+
+    // animăm tranziția (easeOutQuad ~ 1s)
+    const duration = 1000;
+    const start = {
+      x: camera.position.x, y: camera.position.y, z: camera.position.z,
+      tx: controls.target.x, ty: controls.target.y, tz: controls.target.z
+    };
+    const end = {
+      x: desiredPos.x, y: desiredPos.y, z: desiredPos.z,
+      tx: target.x,    ty: target.y,    tz: target.z
+    };
+    const t0 = performance.now();
+
+    function step(now) {
+      const t = Math.min(1, (now - t0) / duration);
+      const e = t * (2 - t); // easeOutQuad
+
+      camera.position.set(
+        start.x + (end.x - start.x) * e,
+        start.y + (end.y - start.y) * e,
+        start.z + (end.z - start.z) * e
+      );
+      controls.target.set(
+        start.tx + (end.tx - start.tx) * e,
+        start.ty + (end.ty - start.ty) * e,
+        start.tz + (end.tz - start.tz) * e
+      );
+      controls.update();
+
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }, []);
+
   // FP bounds (poți relaxa marginile)
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
@@ -164,18 +226,16 @@ export function useDepotScene({ mountRef }) {
 
     // === LIMITĂRI ORBIT ===
     controls.enablePan = true;
-    controls.screenSpacePanning = false;         // păstrează Y-ul „sus”
-    controls.minPolarAngle = 0.05;               // nu te uiți perfect orizontal
-    controls.maxPolarAngle = Math.PI / 2 - 0.03; // nu cobori sub ground
+    controls.screenSpacePanning = false;
+    controls.minPolarAngle = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.03;
     controls.minDistance   = 4;
     controls.maxDistance   = Math.max(YARD_WIDTH, YARD_DEPTH);
 
-    // ținta implicită (exact cum aveai)
     controls.target.set(0, 1, 0);
-
     controlsRef.current = controls;
 
-    // FP (parametri de mers urcând rampe)
+    // FP
     fpRef.current = createFirstPerson(camera, bounds, {
       eyeHeight: 1.7,
       stepMax: 0.6,
@@ -187,15 +247,13 @@ export function useDepotScene({ mountRef }) {
     const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
     scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
 
-    // ===== Peisaj (munți, iarba mare etc.) =====
+    // ===== Peisaj / Bază / Grup editabil =====
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
-    // ===== Lume statică de bază (drumuri/rampe/sens) =====
     const baseWorld = createBaseWorld();
     scene.add(baseWorld);
 
-    // ===== Grupul editabil (pentru Build) =====
     const worldGroup = new THREE.Group();
     worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
@@ -205,7 +263,6 @@ export function useDepotScene({ mountRef }) {
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
 
-    // Gard perimetral cu deschideri pe VEST (conform JSON-ului tău)
     const fence = createFence({
       width: YARD_WIDTH - 4,
       depth: YARD_DEPTH - 4,
@@ -217,9 +274,7 @@ export function useDepotScene({ mountRef }) {
           { z: -7, width: 4 },
           { z: -9, width: 4 },
         ],
-        east:  [],
-        north: [],
-        south: [],
+        east:  [], north: [], south: [],
       }
     });
 
@@ -234,13 +289,13 @@ export function useDepotScene({ mountRef }) {
       groundMesh,
       raycastTargets: [
         ...(groundNode.userData?.raycastTargets || [groundMesh]),
-        baseWorld,    // plasare peste baza statică
-        landscape     // opțional, plasare peste relief
+        baseWorld,
+        landscape
       ],
       grid: 1
     });
     buildRef.current?.setMode(buildMode);
-    buildRef.current?.setType?.('road.segment'); // preview rapid
+    buildRef.current?.setType?.('road.segment');
 
     // ===== Containere =====
     (async () => {
@@ -254,30 +309,17 @@ export function useDepotScene({ mountRef }) {
     })();
 
     // ===== FP WALKABLES & COLLIDERS =====
-    // 1) Walkables (pe ce calcă)
-    const walkables = [
-      groundMesh,
-      baseWorld,
-      worldGroup,
-      landscape
-    ];
+    const walkables = [groundMesh, baseWorld, worldGroup, landscape];
     fpRef.current.setWalkables?.(walkables);
 
-    // 2) Colliders (în ce mă lovesc) – totul în afară de “grass”
     const landscapeSolids = collectMeshes(landscape, { excludeNameIncludes: ['grass'] });
     const baseWorldSolids = collectMeshes(baseWorld, { excludeNameIncludes: ['grass'] });
 
-    const colliders = [
-      baseWorld,
-      ...baseWorldSolids,
-      worldGroup,
-      fence,
-      ...landscapeSolids
-    ];
+    const colliders = [baseWorld, ...baseWorldSolids, worldGroup, fence, ...landscapeSolids];
 
     const attachCollidersWhenReady = () => {
       const layer = containersLayerRef.current;
-      const colGroup = layer?.userData?.colliders; // setat în createContainersLayerOptimized
+      const colGroup = layer?.userData?.colliders;
       if (colGroup) {
         colliders.push(colGroup);
       } else {
@@ -350,36 +392,23 @@ export function useDepotScene({ mountRef }) {
       const controls = controlsRef.current;
 
       if (isFPRef.current) {
-        // First Person
         fpRef.current?.update(delta);
       } else {
-        // Orbit / Orbit Libre
         if (orbitLibreRef.current && camera && controls) {
-          // orbităm POZIȚIA camerei în jurul centrului, la înălțime constantă
           const p = autoOrbitRef.current;
           p.angle += (p.clockwise ? 1 : -1) * p.speed * delta;
-
           const cx = Math.cos(p.angle) * p.radius;
           const cz = Math.sin(p.angle) * p.radius;
-
-          // punem target mereu în centru și camera pe cerc
           controls.target.copy(p.target);
           camera.position.set(cx, p.height, cz);
-
-          // privim spre target
           camera.lookAt(p.target);
-          // menținem amortizarea OrbitControls (șterge jitter-ul la intrare/ieșire)
           controls.update();
         } else {
-          // orbit normal, controlat de utilizator
           controls.update();
         }
-
-        // blocăm camera în curte & deasupra solului
         clampOrbit(camera, controls);
       }
 
-      // render
       renderer.render(scene, camera);
     };
     animate();
@@ -408,7 +437,7 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => {
     const orbit = controlsRef.current; if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
-    if (!orbit.enabled) setOrbitLibre(false); // dacă dezactivezi orbit, oprești și turul
+    if (!orbit.enabled) setOrbitLibre(false);
   }, [buildActive]);
 
   return {
@@ -423,9 +452,11 @@ export function useDepotScene({ mountRef }) {
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
 
+    // API focus cameră pentru SearchBox / Navbar
+    focusCameraOnContainer, // 👈 ADĂUGAT
+
     // === API Orbit Libre ===
     startOrbitLibre: (opts = {}) => {
-      // oprește FP & build, activează Orbit + turul
       setFPEnabled(false);
       setBuildActive(false);
       const p = autoOrbitRef.current;
@@ -433,7 +464,6 @@ export function useDepotScene({ mountRef }) {
       if (opts.radius)  p.radius = opts.radius;
       if (opts.height)  p.height = opts.height;
       if (opts.clockwise != null) p.clockwise = !!opts.clockwise;
-      // stabilizează: țintim centrul
       const controls = controlsRef.current;
       if (controls) controls.target.set(0, 1, 0);
       setOrbitLibre(true);
