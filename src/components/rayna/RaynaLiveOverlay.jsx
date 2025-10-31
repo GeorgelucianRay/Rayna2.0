@@ -47,7 +47,7 @@ export default function RaynaLiveOverlay({
   if (!open) return null;
 
   const modelScale = 1.0;
-  // MODIFICARE 1: Setăm modelul la o poziție neutră pe Y (0,0,0)
+  // Poziția neutră a modelului (Y=0)
   const modelPos = useMemo(() => [0, 0, 0], []); 
 
   return (
@@ -61,9 +61,9 @@ export default function RaynaLiveOverlay({
           <Canvas
             key={RAYNA_MODEL_URL}            // remount când schimbi ?v=
             dpr={[1, 2]}
-            // MODIFICARE 2: Mutăm camera mai în spate (Z=3.5) pentru a vedea întregul model pe mobil
+            // Camera mutată mai în spate (Z=3.5) pentru a cuprinde tot modelul
             camera={{ position: [0, 1.5, 3.5], fov: 40 }}
-            // MODIFICARE 3: Setăm camera să se uite la centrul vizual al modelului (Y=1.0)
+            // Camera se uită la centrul vizual al modelului (Y=1.0)
             onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}
             style={{ width: '100%', height: '100%' }}
           >
@@ -71,11 +71,13 @@ export default function RaynaLiveOverlay({
             <directionalLight position={[2.5, 5, 2]} intensity={1} />
             <Suspense fallback={<CanvasFallback />}>
               {/* NUMAI noduri THREE în Canvas */}
-              <group position={modelPos} scale={modelScale} rotation={[0, Math.PI, 0]}>
+              {/* CORECȚIE: S-a eliminat rotația de 180 de grade (Math.PI) 
+                  pentru ca modelul să privească spre cameră (axa Z negativă) */}
+              <group position={modelPos} scale={modelScale}> 
                 <RaynaSkin />
               </group>
               <Environment preset="city" />
-              {/* MODIFICARE 4: Mutăm umbrele aproape de baza modelului (Y=0) */}
+              {/* Umbrele de contact așezate la baza modelului (Y=0) */}
               <ContactShadows position={[0, -0.01, 0]} opacity={0.35} blur={2.5} far={3} />
             </Suspense>
           </Canvas>
