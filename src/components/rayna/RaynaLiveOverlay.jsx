@@ -1,6 +1,6 @@
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, OrbitControls, ContactShadows } from '@react-three/drei';
+import { Environment, ContactShadows } from '@react-three/drei';
 import RaynaSkin from './RaynaSkin';
 import styles from './RaynaLiveOverlay.module.css';
 
@@ -47,8 +47,9 @@ export default function RaynaLiveOverlay({
 }) {
   if (!open) return null;
 
-  const modelScale = 1.1;
-  const modelPos   = useMemo(() => [0, -1.4, 0], []);
+  // încadrăm modelul: puțin mai sus, ușor micșorat
+  const modelScale = 1.0;
+  const modelPos   = useMemo(() => [0, -1.2, 0], []); // ridicat față de -1.4
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true">
@@ -58,15 +59,23 @@ export default function RaynaLiveOverlay({
 
       <div className={styles.stage}>
         <OverlayErrorBoundary onClose={onClose}>
-          <Canvas dpr={[1, 2]} camera={{ position: [0.6, 1.6, 2.1], fov: 42 }} style={{ width:'100%', height:'100%' }}>
-            <ambientLight intensity={0.7} />
-            <directionalLight position={[3, 5, 2]} intensity={1} />
+          <Canvas
+            dpr={[1, 2]}
+            camera={{ position: [0, 1.55, 2.4], fov: 40 }}
+            onCreated={({ camera }) => camera.lookAt(0, 1.45, 0)}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <ambientLight intensity={0.8} />
+            <directionalLight position={[2.5, 5, 2]} intensity={1} />
             <Suspense fallback={<FallbackView />}>
-              <RaynaSkin position={modelPos} scale={modelScale} />
+              {/* întoarcem 180° pe Y ca să privească spre cameră */}
+              <group position={modelPos} scale={modelScale} rotation={[0, Math.PI, 0]}>
+                <RaynaSkin />
+              </group>
               <Environment preset="city" />
               <ContactShadows position={[0, -1.5, 0]} opacity={0.35} blur={2.5} far={3} />
             </Suspense>
-            <OrbitControls enablePan={false} enableZoom={false} target={[0, 1.4, 0]} />
+            {/* fără OrbitControls → camera e blocată, nu se poate roti/zoom/pan */}
           </Canvas>
         </OverlayErrorBoundary>
       </div>
