@@ -15,9 +15,9 @@
     }
   ],
   "rewrites": [
-    { "source": "/models/(.*)\\.glb", "destination": "/models/$1.glb" },   // NO-OP: scurtcircuitează catch-all
-    { "source": "/draco/(.*)",        "destination": "/draco/$1" },        // NO-OP pentru fișierele decoder
-    { "source": "/(.*)",              "destination": "/index.html" }       // app-shell pentru restul
+    { "source": "/models/(.*)\\.glb", "destination": "/models/$1.glb" },
+    { "source": "/draco/(.*)", "destination": "/draco/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "cleanUrls": true,
   "trailingSlash": false
