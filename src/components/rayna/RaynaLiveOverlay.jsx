@@ -21,8 +21,13 @@ class OverlayErrorBoundary extends React.Component {
       return (
         <div className={styles.errorWrap}>
           <div className={styles.errorTitle}>Nu pot încărca modelul Rayna</div>
+          {this.state.err?.message && (
+            <div className={styles.errorHint} style={{whiteSpace:'pre-wrap', opacity:.9}}>
+              {String(this.state.err.message)}
+            </div>
+          )}
           <div className={styles.errorHint}>
-            Deschide <code>/models/raynaskin.glb?v=8</code> direct în browser să confirmi că se descarcă.
+            Test: deschide <code>/models/raynaskin.glb?v=9</code> direct în browser (ar trebui să se descarce).
           </div>
           <button className={styles.retryBtn} onClick={this.props.onClose}>Înapoi</button>
         </div>
@@ -54,7 +59,7 @@ export default function RaynaLiveOverlay({
       <div className={styles.stage}>
         <OverlayErrorBoundary onClose={onClose}>
           <Canvas
-            key={RAYNA_MODEL_URL}        // remount când schimbăm ?v=
+            key={RAYNA_MODEL_URL}                 // remount când crești ?v=
             dpr={[1, 2]}
             camera={{ position: [0, 1.55, 2.4], fov: 40 }}
             onCreated={({ camera }) => camera.lookAt(0, 1.45, 0)}
@@ -63,7 +68,8 @@ export default function RaynaLiveOverlay({
             <ambientLight intensity={0.8} />
             <directionalLight position={[2.5, 5, 2]} intensity={1} />
             <Suspense fallback={<FallbackView />}>
-              <group position={modelPos} scale={modelScale}>
+              {/* 180° pe Y, ca să fie cu fața la cameră */}
+              <group position={modelPos} scale={modelScale} rotation={[0, Math.PI, 0]}>
                 <RaynaSkin />
               </group>
               <Environment preset="city" />
