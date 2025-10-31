@@ -1,54 +1,132 @@
-// Simplu: pe mousedown încearcă Web Speech API; pe mouseup/leave/blur finalizează.
-// Dacă nu e suportat sau user a refuzat, folosește fallback: ia textul din input curent.
+// Hook pentru "ține apăsat • Speak" cu Web Speech API (Android/Chrome)
+// + fallback elegant pentru iOS (unde SpeechRecognition nu este disponibil nativ)
 
 export function makeSpeechHold({
-  onResult,         // (string) -> void
-  onStartChange,    // (bool) -> void   (true când captează)
-  lang = 'es-ES',   // poți schimba la 'ro-RO' / 'ca-ES' dinamic
+  onResult,        // (text: string) => void
+  onStartChange,   // (speaking: boolean) => void
+  lang = 'es-ES',  // cod limbă: 'es-ES' | 'ro-RO' | 'ca-ES' | 'en-US' etc.
 }) {
-  let recog = null;
-  let listening = false;
-  let transcript = '';
+  let recognition = null;
+  let mediaStream = null;
+  let finalText = '';
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SR =
+    (typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition)) ||
+    null;
 
-  function start() {
-    onStartChange?.(true);
-    transcript = '';
-    if (!SpeechRecognition) {
-      // fără suport — lăsăm onResult să fie declanșat de caller cu fallback text
-      return;
-    }
+  // mic util — promite/rezolvă permisiunea de microfon (și declanșează promptul)
+  async function ensureMicPermission() {
+    if (!navigator.mediaDevices?.getUserMedia) return null;
     try {
-      recog = new SpeechRecognition();
-      recog.lang = lang;
-      recog.interimResults = true;
-      recog.continuous = true;
-      listening = true;
-
-      recog.onresult = (e) => {
-        let t = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          t += e.results[i][0].transcript;
-        }
-        transcript = t;
-      };
-      recog.onerror = () => { /* lasă fallback la mouseup */ };
-      recog.start();
-    } catch {}
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return stream; // trebuie oprit ulterior
+    } catch (e) {
+      throw new Error('Permisiune microfon refuzată sau indisponibilă.');
+    }
   }
 
-  function stop({ fallbackText } = {}) {
-    if (listening && recog) {
-      try { recog.stop(); } catch {}
+  async function start() {
+    // iOS / Safari: nu există SpeechRecognition → anunț clar și ieșire
+    if (!SR) {
+      // semnalăm UI-ului că "vorbim" (pornește butonul) doar o clipă, apoi oprim
+      onStartChange?.(true);
+      setTimeout(() => onStartChange?.(false), 250);
+
+      // Poți înlocui cu un toast în UI:
+      alert(
+        'Pe acest dispozitiv nu există recunoaștere vocală în browser. Folosește tastatura sau Android/Chrome pentru voice.'
+      );
+      return;
     }
-    listening = false;
+
+    try {
+      // 1) forțăm promptul de permisiune microfon (uneori Chrome nu-l cere fără gUM)
+      mediaStream = await ensureMicPermission();
+
+      // 2) creăm recunoașterea
+      recognition = new SR();
+      recognition.lang = lang;
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.maxAlternatives = 1;
+
+      finalText = '';
+      onStartChange?.(true);
+
+      recognition.onresult = (ev) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const res = ev.results[i];
+          if (res.isFinal) {
+            finalText += res[0]?.transcript || '';
+          }
+        }
+      };
+
+      recognition.onerror = (ev) => {
+        // erori tipice: 'no-speech', 'aborted', 'audio-capture'
+        // nu spamăm UI-ul; lăsăm stop() să facă fallback
+        console.warn('[speech] onerror:', ev?.error);
+      };
+
+      recognition.onend = () => {
+        // când se închide de la sine (pauză lungă etc.) îl considerăm stop
+        stop({ fallbackText: '' });
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error('[speech] start error:', e);
+      // fallback: anunț și ieșire
+      onStartChange?.(false);
+      alert('Nu pot porni recunoașterea vocală pe acest dispozitiv.');
+    }
+  }
+
+  function cleanup() {
+    try {
+      if (recognition) {
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        try { recognition.stop(); } catch {}
+      }
+    } catch {}
+    recognition = null;
+
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks()?.forEach((t) => t.stop());
+      }
+    } catch {}
+    mediaStream = null;
+  }
+
+  // stop({ fallbackText }) — cheamă la mouseup/touchend sau când vrei să închizi sesiunea
+  function stop({ fallbackText = '' } = {}) {
+    // Închidem imediat UI-ul de "speaking"
     onStartChange?.(false);
 
-    const finalText = (transcript || '').trim() || (fallbackText || '').trim();
-    if (finalText) onResult?.(finalText);
-    transcript = '';
-    recog = null;
+    // Oprim recognition + microfon
+    try {
+      if (recognition) {
+        try { recognition.stop(); } catch {}
+      }
+    } catch {}
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks()?.forEach((t) => t.stop());
+      }
+    } catch {}
+    recognition = null;
+    mediaStream = null;
+
+    const spoken = (finalText || '').trim();
+    finalText = '';
+
+    // dacă nu am rezultat audio, folosim fallback din input (ce ai în composer)
+    const deliver = spoken || (fallbackText || '').trim();
+    if (deliver) onResult?.(deliver);
   }
 
   return { start, stop };
