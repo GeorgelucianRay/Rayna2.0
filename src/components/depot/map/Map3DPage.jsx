@@ -29,13 +29,16 @@ export default function Map3DPage() {
     openWorldItems,
     setOnContainerSelected,
 
+    // teleport camera la containerul selectat din search
+    focusCameraOnContainer,
+
     // orbit libre
     isOrbitLibre,
     startOrbitLibre,
     stopOrbitLibre,
   } = useDepotScene({ mountRef });
 
-  // Card info container selectat
+  // Card info container selectat când dai click în scenă
   useEffect(() => {
     setOnContainerSelected(selected => setSelectedContainer(selected));
   }, [setOnContainerSelected]);
@@ -45,7 +48,17 @@ export default function Map3DPage() {
       {/* Navbar */}
       <Navbar3D
         containers={containers}
-        onSelectContainer={() => {}}
+        onSelectContainer={(c) => {
+          // 1) afișează cardul
+          setSelectedContainer(c);
+          // 2) oprește auto-orbit (ca să nu-ți mute camera)
+          if (isOrbitLibre) stopOrbitLibre();
+          // 3) ieși din FP dacă e activ (ca să poți pilota cu Orbit spre țintă)
+          setFPEnabled(false);
+          // 4) focusează camera lin către container
+          //    Poți ajusta durata/înălțimea dacă vrei (depinde de implementarea hook-ului tău)
+          focusCameraOnContainer?.(c, { smooth: true });
+        }}
         onToggleFP={() => setFPEnabled(prev => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
