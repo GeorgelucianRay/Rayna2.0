@@ -1,11 +1,11 @@
-import React, { useMemo, Suspense, useRef } from 'react';
-import * as THREE from 'three';
-import { Canvas, useThree } from '@react-three/fiber';
+import React, { useMemo, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { Html, Environment, ContactShadows } from '@react-three/drei';
 import RaynaSkin, { RAYNA_MODEL_URL } from './RaynaSkin';
 import styles from './RaynaLiveOverlay.module.css';
 
 function CanvasFallback() {
+  // HTML în Canvas trebuie învelit în <Html />, altfel apare eroarea R3F: Div...
   return (
     <Html center>
       <div className={styles.loadingWrap}>
@@ -16,39 +16,7 @@ function CanvasFallback() {
   );
 }
 
-// 👉 Potrivește camera la bounding box-ul modelului, orice aspect ratio.
-function FitToModel({ targetRef, padding = 1.2 }) {
-  const { camera, size } = useThree();
-  React.useEffect(() => {
-    const obj = targetRef.current;
-    if (!obj) return;
-
-    const box = new THREE.Box3().setFromObject(obj);
-    const sizeV = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    // distanța necesară ca să încapă pe înălțime/lățime
-    const fov = (camera.fov * Math.PI) / 180;
-    const aspect = size.width / size.height;
-
-    const fitHeightDist = (sizeV.y / 2) / Math.tan(fov / 2);
-    const fitWidthDist  = (sizeV.x / 2) / Math.tan(fov / 2) / aspect;
-    const distance = Math.max(fitHeightDist, fitWidthDist) * padding;
-
-    // ridicăm puțin ținta pe Y ca să vedem fața, nu creștetul
-    const eyeYOffset = sizeV.y * 0.05;
-
-    camera.position.set(center.x, center.y + eyeYOffset, distance);
-    camera.near = Math.max(0.01, distance / 100);
-    camera.far  = distance + Math.max(10, sizeV.z * 10);
-    camera.lookAt(center.x, center.y + eyeYOffset, center.z);
-    camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height, targetRef]);
-
-  return null;
-}
-
-// ErrorBoundary în afara Canvas-ului
+// ErrorBoundary rămâne ÎN AFARA Canvas-ului
 class OverlayErrorBoundary extends React.Component {
   constructor(p){ super(p); this.state = { hasError:false, err:null }; }
   static getDerivedStateFromError(err){ return { hasError:true, err }; }
@@ -63,7 +31,7 @@ class OverlayErrorBoundary extends React.Component {
             </div>
           )}
           <div className={styles.errorHint}>
-            Verifică <code>/models/raynaskin.glb?v=11</code> – trebuie să se descarce.
+            Verifică <code>/models/raynaskin.glb?v=10</code> – trebuie să se descarce.
           </div>
           <button className={styles.retryBtn} onClick={this.props.onClose}>Înapoi</button>
         </div>
@@ -78,10 +46,9 @@ export default function RaynaLiveOverlay({
 }) {
   if (!open) return null;
 
-  const modelRef = useRef(null);
-
-  // îl orientăm spre cameră (față în față)
-  const groupRotation = useMemo(() => [0, Math.PI, 0], []);
+  const modelScale = 1.0;
+  // MODIFICARE 1: Setăm modelul la o poziție neutră pe Y (0,0,0)
+  const modelPos = useMemo(() => [0, 0, 0], []); 
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true">
@@ -92,25 +59,24 @@ export default function RaynaLiveOverlay({
       <div className={styles.stage}>
         <OverlayErrorBoundary onClose={onClose}>
           <Canvas
-            key={RAYNA_MODEL_URL}
+            key={RAYNA_MODEL_URL}            // remount când schimbi ?v=
             dpr={[1, 2]}
-            camera={{ position: [0, 1.5, 2.5], fov: 40 }}  // inițial, va fi recalibrată imediat
+            // MODIFICARE 2: Mutăm camera mai în spate (Z=3.5) pentru a vedea întregul model pe mobil
+            camera={{ position: [0, 1.5, 3.5], fov: 40 }}
+            // MODIFICARE 3: Setăm camera să se uite la centrul vizual al modelului (Y=1.0)
+            onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}
             style={{ width: '100%', height: '100%' }}
-            onCreated={({ camera }) => camera.lookAt(0, 1.4, 0)}
           >
             <ambientLight intensity={0.8} />
             <directionalLight position={[2.5, 5, 2]} intensity={1} />
-
             <Suspense fallback={<CanvasFallback />}>
-              <group ref={modelRef} rotation={groupRotation}>
+              {/* NUMAI noduri THREE în Canvas */}
+              <group position={modelPos} scale={modelScale} rotation={[0, Math.PI, 0]}>
                 <RaynaSkin />
               </group>
-
-              {/* 🔥 acesta face magia de încadrate corectă */}
-              <FitToModel targetRef={modelRef} padding={1.25} />
-
               <Environment preset="city" />
-              <ContactShadows position={[0, -1.5, 0]} opacity={0.35} blur={2.5} far={3} />
+              {/* MODIFICARE 4: Mutăm umbrele aproape de baza modelului (Y=0) */}
+              <ContactShadows position={[0, -0.01, 0]} opacity={0.35} blur={2.5} far={3} />
             </Suspense>
           </Canvas>
         </OverlayErrorBoundary>
