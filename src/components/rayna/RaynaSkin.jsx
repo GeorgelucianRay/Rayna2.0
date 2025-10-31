@@ -1,53 +1,62 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
-import { useFrame } from '@react-three/fiber';
 
-// URL ABSOLUT ca să nu depindem de base; crește v când redeployezi
+// URL absolut (nu mai depindem de base). Crește v=… la nevoie.
 export const RAYNA_MODEL_URL =
   (typeof window !== 'undefined'
-    ? `${window.location.origin}/models/raynaskin.glb?v=8`
-    : '/models/raynaskin.glb?v=8'
+    ? `${window.location.origin}/models/raynaskin.glb?v=9`
+    : '/models/raynaskin.glb?v=9'
   );
 
-function isGlbSignature(buf) {
-  const u8 = new Uint8Array(buf.slice(0, 4));
+function isGlb(buf) {
+  const u = new Uint8Array(buf.slice(0, 4));
   // 'glTF' = 0x67 0x6c 0x54 0x46
-  return u8[0] === 0x67 && u8[1] === 0x6c && u8[2] === 0x54 && u8[3] === 0x46;
+  return u[0] === 0x67 && u[1] === 0x6c && u[2] === 0x54 && u[3] === 0x46;
 }
 
-async function fetchGlbArrayBuffer(url) {
+async function fetchArrayBuffer(url) {
   const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
   if (!res.ok) throw new Error(`HTTP ${res.status} la ${url}`);
   const buf = await res.arrayBuffer();
-  if (!isGlbSignature(buf)) throw new Error(`Nu e GLB (probabil app-shell în loc de fișier): ${url}`);
+  if (!isGlb(buf)) throw new Error('Răspunsul nu e GLB (probabil app-shell HTML din cache SW).');
   return buf;
 }
 
 export default function RaynaSkin(props) {
-  const [gltf, setGltf] = useState(null);
+  const [scene, setScene] = useState(null);
   const [err, setErr] = useState(null);
 
-  // instanțiem o singură dată loaderul
   const loader = useMemo(() => new GLTFLoader(), []);
 
   useEffect(() => {
     let dead = false;
     (async () => {
       try {
-        const buf = await fetchGlbArrayBuffer(RAYNA_MODEL_URL);
+        // 1) Prefetch binar (bypass cache SW)
+        const buf = await fetchArrayBuffer(RAYNA_MODEL_URL);
         if (dead) return;
-        const parsed = await new Promise((resolve, reject) => {
-          loader.parse(
-            buf,                       // ArrayBuffer
-            '/',                       // base path (nu e folosit la GLB)
-            (g) => resolve(g),
-            (e) => reject(e)
-          );
-        });
-        if (!dead) setGltf(parsed);
+
+        // 2) Încearcă parse în memorie
+        try {
+          const gltf = await loader.parseAsync(buf, '/');
+          if (dead) return;
+          setScene(gltf.scene);
+          return;
+        } catch (e1) {
+          // 3) Fallback pe blob:ObjectURL (mai “clasic”, stabil pe Safari)
+          const blob = new Blob([buf], { type: 'model/gltf-binary' });
+          const url = URL.createObjectURL(blob);
+          try {
+            const gltf = await loader.loadAsync(url);
+            if (!dead) setScene(gltf.scene);
+          } catch (e2) {
+            throw new Error(`Parse eșuat (memorie și blob). Detalii: ${e1?.message || e1} / ${e2?.message || e2}`);
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        }
       } catch (e) {
-        console.error('[RaynaSkin] load error:', e);
+        console.error('[RaynaSkin] Eroare încărcare:', e);
         if (!dead) setErr(e);
       }
     })();
@@ -55,13 +64,7 @@ export default function RaynaSkin(props) {
   }, [loader]);
 
   if (err) throw err;
-  if (!gltf) return null;
+  if (!scene) return null;
 
-  // mic „idle” foarte fin, ca să nu pară complet static
-  const ref = React.useRef();
-  useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.y = Math.PI; // ține mereu fața spre cameră
-  });
-
-  return <primitive ref={ref} object={gltf.scene} {...props} />;
+  return <primitive object={scene} {...props} />;
 }
