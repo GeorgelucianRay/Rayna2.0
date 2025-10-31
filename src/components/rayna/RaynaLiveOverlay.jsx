@@ -1,11 +1,11 @@
-import React, { useMemo, Suspense } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, Environment, ContactShadows } from '@react-three/drei';
 import RaynaSkin, { RAYNA_MODEL_URL } from './RaynaSkin';
+import { makeSpeechHold } from '../rayna/useSpeechHold'; // ⬅️ HOOK-ul actualizat (ON/OFF)
 import styles from './RaynaLiveOverlay.module.css';
 
 function CanvasFallback() {
-  // HTML în Canvas trebuie învelit în <Html />, altfel apare eroarea R3F: Div...
   return (
     <Html center>
       <div className={styles.loadingWrap}>
@@ -42,13 +42,43 @@ class OverlayErrorBoundary extends React.Component {
 }
 
 export default function RaynaLiveOverlay({
-  open, onClose, speaking, onHoldStart, onHoldEnd, composerValueRef
+  open,
+  onClose,
+  onVoiceResult,          // ⬅️ NOU: primește textul recunoscut și îl trimiți în RaynaHub ca mesaj
+  composerValueRef,       // (opțional) pentru fallback când nu recunoaște nimic
 }) {
   if (!open) return null;
 
+  const [listening, setListening] = useState(false);
+
+  // ——— HOOK-ul ON/OFF pentru voce (Android: SR nativ; iPhone: doar mesaj informativ)
+  const speech = useMemo(() => makeSpeechHold({
+    lang: 'es-ES',
+    maxMs: 8000,                          // safety stop după 8s
+    onStartChange: setListening,          // aprinde/stinge starea de “ascult”
+    onResult: (txt) => {                  // întoarce textul final
+      const t = (txt || '').trim();
+      if (!t) return;
+      onVoiceResult?.(t);                 // ⇠ îl trimiți în fluxul RaynaHub
+    },
+    debug: false,
+  }), [onVoiceResult]);
+
+  // ——— click unic: ON/OFF
+  const handleVoiceButton = async () => {
+    if (speech.isListening()) {
+      // OPRIRE: livrează și fallback dacă nu s-a recunoscut nimic
+      speech.stop({ fallbackText: composerValueRef?.current?.value || '' });
+    } else {
+      // PORNIRE
+      await speech.start();
+    }
+  };
+
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
   const modelScale = 1.0;
-  // Poziția neutră a modelului (Y=0)
-  const modelPos = useMemo(() => [0, 0, 0], []); 
+  const modelPos = [0, 0, 0];
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true">
@@ -61,41 +91,33 @@ export default function RaynaLiveOverlay({
           <Canvas
             key={RAYNA_MODEL_URL}            // remount când schimbi ?v=
             dpr={[1, 2]}
-            // Camera mutată mai în spate (Z=3.5) pentru a cuprinde tot modelul
             camera={{ position: [0, 1.5, 3.5], fov: 40 }}
-            // Camera se uită la centrul vizual al modelului (Y=1.0)
             onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}
             style={{ width: '100%', height: '100%' }}
           >
             <ambientLight intensity={0.8} />
             <directionalLight position={[2.5, 5, 2]} intensity={1} />
             <Suspense fallback={<CanvasFallback />}>
-              {/* NUMAI noduri THREE în Canvas */}
-              {/* CORECȚIE: S-a eliminat rotația de 180 de grade (Math.PI) 
-                  pentru ca modelul să privească spre cameră (axa Z negativă) */}
-              <group position={modelPos} scale={modelScale}> 
+              <group position={modelPos} scale={modelScale}>
                 <RaynaSkin />
               </group>
               <Environment preset="city" />
-              {/* Umbrele de contact așezate la baza modelului (Y=0) */}
               <ContactShadows position={[0, -0.01, 0]} opacity={0.35} blur={2.5} far={3} />
             </Suspense>
           </Canvas>
         </OverlayErrorBoundary>
       </div>
 
+      {/* —— Butonul ON/OFF pus AICI, cum ai cerut —— */}
       <div className={styles.footer}>
         <button
-          className={`${styles.speakBtn} ${speaking ? styles.speaking : ''}`}
-          onMouseDown={onHoldStart}
-          onMouseUp={() => onHoldEnd({ fallbackText: composerValueRef?.current?.value || '' })}
-          onMouseLeave={() => onHoldEnd({ fallbackText: composerValueRef?.current?.value || '' })}
-          onTouchStart={(e) => { e.preventDefault(); onHoldStart(); }}
-          onTouchEnd={(e) => { e.preventDefault(); onHoldEnd({ fallbackText: composerValueRef?.current?.value || '' }); }}
-          aria-pressed={speaking}
-          title="Ține apăsat pentru a vorbi"
+          type="button"
+          className={`${styles.speakBtn} ${listening ? styles.speaking : ''}`}
+          onClick={handleVoiceButton}
+          aria-pressed={listening}
+          title={isIOS ? 'Apasă pentru a înregistra (iPhone – răspuns în scris)' : 'Apasă pentru a vorbi (Android)'}
         >
-          {speaking ? 'Vorbește…' : 'Ține apăsat • Speak'}
+          {listening ? '■ Oprește' : '● Vorbește'}
         </button>
       </div>
     </div>
