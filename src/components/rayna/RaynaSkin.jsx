@@ -9,7 +9,7 @@ export const RAYNA_MODEL_URL =
 
 function isGlb(buf) {
   const u = new Uint8Array(buf.slice(0, 4));
-  return u[0] === 0x67 && u[1] === 0x6c && u[2] === 0x54 && u[3] === 0x46;
+  return u[0] === 0x67 && u[1] === 0x6c && u[2] === 0x54 && u[3] === 0x46; // 'glTF'
 }
 
 async function fetchBuffer(url) {
@@ -44,6 +44,5 @@ export default function RaynaSkin(props) {
   if (err) throw err;
   if (!scene) return null;
 
-  // ✅ returnăm un obiect THREE, nu un element React/HTML
   return <primitive object={scene} {...props} />;
 }
