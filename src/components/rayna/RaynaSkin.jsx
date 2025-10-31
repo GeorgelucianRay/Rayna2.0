@@ -1,17 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, forwardRef } from 'react';
 import { GLTFLoader } from 'three-stdlib';
 
 export const RAYNA_MODEL_URL =
   (typeof window !== 'undefined'
-    ? `${window.location.origin}/models/raynaskin.glb?v=10`
-    : '/models/raynaskin.glb?v=10'
+    ? `${window.location.origin}/models/raynaskin.glb?v=11`
+    : '/models/raynaskin.glb?v=11'
   );
 
 function isGlb(buf) {
   const u = new Uint8Array(buf.slice(0, 4));
   return u[0] === 0x67 && u[1] === 0x6c && u[2] === 0x54 && u[3] === 0x46; // 'glTF'
 }
-
 async function fetchBuffer(url) {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status} la ${url}`);
@@ -20,7 +19,7 @@ async function fetchBuffer(url) {
   return buf;
 }
 
-export default function RaynaSkin(props) {
+const RaynaSkin = forwardRef(function RaynaSkin(props, ref) {
   const [scene, setScene] = useState(null);
   const [err, setErr] = useState(null);
   const loader = useMemo(() => new GLTFLoader(), []);
@@ -44,5 +43,11 @@ export default function RaynaSkin(props) {
   if (err) throw err;
   if (!scene) return null;
 
-  return <primitive object={scene} {...props} />;
-}
+  return (
+    <group ref={ref} {...props}>
+      <primitive object={scene} />
+    </group>
+  );
+});
+
+export default RaynaSkin;
