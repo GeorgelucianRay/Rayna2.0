@@ -315,3 +315,15 @@
     padding:12px 16px;
   }
 }
+
+.liveBtn{
+  margin-left: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(94,234,212,.4);
+  background: linear-gradient(90deg, #22d3ee, #7c3aed);
+  color: #04121f;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(79,70,229,.25);
+}
+.liveBtn:active{ transform: scale(.97); }
