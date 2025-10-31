@@ -13,23 +13,17 @@ function FallbackView() {
   );
 }
 
-// ⬇️ CATCH all – dacă useGLTF aruncă, NU se mai face ecran alb.
+// ErrorBoundary ca să nu mai fie ecran alb dacă loaderul aruncă.
 class OverlayErrorBoundary extends React.Component {
-  constructor(p) {
-    super(p);
-    this.state = { hasError: false, err: null };
-  }
-  static getDerivedStateFromError(err) {
-    return { hasError: true, err };
-  }
+  constructor(p) { super(p); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
   render() {
     if (this.state.hasError) {
       return (
         <div className={styles.errorWrap}>
           <div className={styles.errorTitle}>Nu pot încărca modelul Rayna</div>
           <div className={styles.errorHint}>
-            Verifică fișierul în deploy la <code>/models/raynaskin.glb</code> și că URL-ul
-            <code> {RAYNA_MODEL_URL}</code> răspunde (încearcă îl deschizi direct).
+            Deschide <code>/models/raynaskin.glb?v=7</code> direct în browser să confirmi că se descarcă.
           </div>
           <button className={styles.retryBtn} onClick={this.props.onClose}>Înapoi</button>
         </div>
@@ -49,7 +43,7 @@ export default function RaynaLiveOverlay({
 }) {
   if (!open) return null;
 
-  // încadrăm modelul: puțin mai sus, camera din față
+  // încadrăm modelul: puțin mai sus; camera fixă din față
   const modelScale = 1.0;
   const modelPos   = useMemo(() => [0, -1.2, 0], []);
 
@@ -61,7 +55,7 @@ export default function RaynaLiveOverlay({
 
       <div className={styles.stage}>
         <OverlayErrorBoundary onClose={onClose}>
-          {/* key pe URL: dacă schimbi ?v=, remontează curat */}
+          {/* key pe URL → când schimbi ?v=, Canvas se remontează curat */}
           <Canvas
             key={RAYNA_MODEL_URL}
             dpr={[1, 2]}
@@ -71,15 +65,16 @@ export default function RaynaLiveOverlay({
           >
             <ambientLight intensity={0.8} />
             <directionalLight position={[2.5, 5, 2]} intensity={1} />
+
             <Suspense fallback={<FallbackView />}>
-              {/* rotit 180° pe Y ca să privească spre cameră */}
+              {/* întoarcem 180° pe Y ca să privească spre cameră */}
               <group position={modelPos} scale={modelScale} rotation={[0, Math.PI, 0]}>
                 <RaynaSkin />
               </group>
               <Environment preset="city" />
               <ContactShadows position={[0, -1.5, 0]} opacity={0.35} blur={2.5} far={3} />
             </Suspense>
-            {/* fără OrbitControls -> camera blocată */}
+            {/* fără OrbitControls ⇒ camera e blocată */}
           </Canvas>
         </OverlayErrorBoundary>
       </div>
