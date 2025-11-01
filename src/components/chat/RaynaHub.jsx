@@ -13,6 +13,9 @@ import { supabase } from "../../supabaseClient";
 // —— multi-limbă
 import { detectLang, pickTextByLang } from "./nlu/lang";
 
+// —— Fallback semantic (TFJS/USE)
+import { semanticMatch } from "./semanticFallback";
+
 // intenții
 import ALL_INTENTS from "../../intents";
 
@@ -23,7 +26,6 @@ import { dispatchAction } from "./dispatchAction";
 import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
 
-// ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
 export default function RaynaHub() {
@@ -32,32 +34,24 @@ export default function RaynaHub() {
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
-  // —— chat state
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
-
-  // —— context parking
   const [parkingCtx, setParkingCtx] = useState(null);
 
-  // —— intenții
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
 
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
-  // —— geo helpers (refactor)
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles, setMessages, setAwaiting, setParkingCtx,
   });
 
-  // —— quick actions (refactor)
   const quickAprender = makeQuickAprender({ supabase, styles, setMessages });
   const quickReport   = makeQuickReport({ setMessages, setAwaiting });
 
-  // —— salut personalizat (în limba utilizatorului la primul mesaj tastat)
-  // dacă userul nu scrie nimic, păstrăm salutul implicit în ES (comportament anterior)
   useEffect(() => {
     if (loading) return;
     if (messages.length > 0) return;
@@ -65,7 +59,6 @@ export default function RaynaHub() {
     const defaultSaludo = (() => {
       const sal = intentsData.find((i) => i.id === "saludo")?.response?.text;
       if (!sal) return "¡Hola! ¿En qué te puedo ayudar hoy?";
-      // fără input de la utilizator, folosim ES
       return pickTextByLang(sal, "es") || "¡Hola! ¿En qué te puedo ayudar hoy!";
     })();
 
@@ -83,7 +76,6 @@ export default function RaynaHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
 
-  // —— dispecer acțiuni (refactor)
   const runAction = (intent, slots, userText, lang) =>
     dispatchAction({
       intent, slots, userText,
@@ -93,18 +85,14 @@ export default function RaynaHub() {
       askUserLocationInteractive, tryGetUserPos,
     });
 
-  // —— trimitere mesaje
   const send = async () => {
     const userText = text.trim();
     if (!userText) return;
 
-    // 1) detectăm limba mesajului curent
-    const lang = detectLang(userText); // 'es' | 'ro' | 'ca'
-
+    const lang = detectLang(userText); // 'es'|'ro'|'ca'
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
-    // 2) blocuri „awaiting” — trecem limba pentru ca handler-ele să o poată folosi
     const wasHandled = await handleAwaiting({
       awaiting, setAwaiting,
       userText, profile, role, lang,
@@ -114,13 +102,37 @@ export default function RaynaHub() {
     });
     if (wasHandled) return;
 
-    // 3) detectare intent clasic
+    // 1) NLU regulat
     let det = detectIntent(userText, intentsData);
-    // forțăm limba detectată în acest pas (det.lang e ignorat dacă exista)
     if (!det) det = {};
     det.lang = lang;
 
-    // 4) rutare intent (dacă există) — handler-ele primesc 'lang'
+    // 2) Dacă nu a găsit intent, încercăm semantic (TFJS/USE)  ⬅️ NOU
+    if (!det?.intent?.type) {
+      const sem = await semanticMatch({
+        userText,
+        intentsData,
+        lang,
+        // Activezi KB când ai populat tabelul:
+        fetchKbRows: async () => {
+          const { data } = await supabase
+            .from('kb_faq')
+            .select('id,q,a,lang,is_active')
+            .eq('is_active', true)
+            .limit(500);
+          return data || [];
+        }
+      });
+
+      if (sem?.kind === 'intent') {
+        det = { intent: sem.intent, slots: {}, lang };
+      } else if (sem?.kind === 'kb') {
+        setMessages(m => [...m, { from:"bot", reply_text: sem.answer }]);
+        return;
+      }
+    }
+
+    // 3) rutăm dacă avem un intent (din NLU sau semantic)
     if (det?.intent?.type) {
       await routeIntent({
         det, intentsData,
@@ -131,14 +143,10 @@ export default function RaynaHub() {
       return;
     }
 
-    // 5) fallback în limba utilizatorului
+    // 4) fallback în limba userului
     const fbObj = intentsData.find((i) => i.id === "fallback")?.response?.text;
     const fb = pickTextByLang(
-      fbObj || {
-        es: "No te he entendido.",
-        ro: "Nu te-am înțeles.",
-        ca: "No t'he entès.",
-      },
+      fbObj || { es:"No te he entendido.", ro:"Nu te-am înțeles.", ca:"No t'he entès." },
       lang
     );
     setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
