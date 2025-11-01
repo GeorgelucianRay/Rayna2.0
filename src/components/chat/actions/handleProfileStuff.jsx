@@ -1,9 +1,8 @@
-// src/components/chat/actions/handleProfileStuff.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-/* ───────────────────────── VIDEO: ventajas de completar el perfil ───────────────────────── */
+/* ───────── VIDEO: ventajas de completar el perfil ───────── */
 export async function handleProfileAdvantagesVideo({ setMessages }) {
   const NEEDLES = [
     "perfil completado","perfil completo","ventajas perfil",
@@ -64,7 +63,7 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
   ]);
 }
 
-/* ───────────────────────── util: traduce rolul intern la ES ───────────────────────── */
+/* ───────── util: rol → ES ───────── */
 function roleToEs(role = "") {
   const r = String(role).toLowerCase().trim();
   if (r === "sofer" || r === "şofer" || r === "șofer" || r === "driver") return "chofer";
@@ -73,7 +72,7 @@ function roleToEs(role = "") {
   return r || "chofer";
 }
 
-/* ───────────────────────── QUIÉN SOY ───────────────────────── */
+/* ───────── QUIÉN SOY ───────── */
 export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
@@ -92,7 +91,7 @@ export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
   setAwaiting("confirm_view_profile");
 }
 
-/* ───────────────────────── date helpers ───────────────────────── */
+/* ───────── date helpers ───────── */
 function fmtDateDDMMYYYY(raw) {
   if (!raw) return null;
   const d = new Date(raw);
@@ -127,7 +126,7 @@ async function getTrailerItvByProfile(profile) {
   return fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv || null;
 }
 
-/* ───────────────────────── ABRIR MI CAMIÓN ───────────────────────── */
+/* ───────── ABRIR MI CAMIÓN ───────── */
 export async function handleOpenMyTruck({ profile, setMessages }) {
   const truckId   = profile?.camion_id || profile?.camioane?.id || profile?.truck?.id;
   const truck     = profile?.camioane || profile?.truck || {};
@@ -163,8 +162,7 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
         <div className={styles.card}>
           <div className={styles.cardTitle}>Mi camión</div>
           <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${tr
-uckId}`}>
+            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${truckId}`}>
               Ver camión
             </a>
           </div>
@@ -174,7 +172,7 @@ uckId}`}>
   ]);
 }
 
-/* ───────────────────────── SELF INFO (CAP/ADR/lic/ITV rapide) ───────────────────────── */
+/* ───────── SELF INFO (CAP/ADR/lic/ITV rapide) ───────── */
 export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   const topic = intent?.meta?.topic;
 
@@ -228,8 +226,7 @@ export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   ]);
 }
 
-/* ───────────────────────── VEHÍCULO: ITV / ACEITE / ADBLUE ───────────────────────── */
-/* IMPORTANT: acum acceptă `lang` și afișează ITP (RO) / ITV (ES, CA) și nu mai întoarce „—” dacă există în DB */
+/* ───────── VEHÍCULO: ITV / ACEITE / ADBLUE ───────── */
 export async function handleVehItvTruck({ profile, setMessages, lang = "es" }) {
   const uiLang = ["es","ca","ro"].includes(lang) ? lang : "es";
   const LABEL = uiLang === "ro" ? "ITP camion" : (uiLang === "ca" ? "ITV camió" : "ITV camión");
@@ -309,7 +306,7 @@ export async function handleVehAdblueFilterStatus({ profile, setMessages }) {
   setMessages(m => [...m, { from: "bot", reply_text: `Filtro AdBlue — último: **${last}** · próximo: **${next}**.` }]);
 }
 
-/* ───────────────────────── INIȚIERE COMPLETARE PROFIL ───────────────────────── */
+/* ───────── INIȚIERE COMPLETARE PROFIL ───────── */
 export async function handleProfileCompletionStart({ setMessages }) {
   setMessages(m => [
     ...m,
@@ -329,13 +326,13 @@ export async function handleProfileCompletionStart({ setMessages }) {
   ]);
 }
 
-/* ───────────────────────── ¿Qué sabes de mí? ───────────────────────── */
+/* ───────── ¿Qué sabes de mí? ───────── */
 export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
 
   const adr = (profile?.driver?.adr ?? profile?.tiene_adr ?? null);
-  const cap = profile?.driver?.cap || profile?.cap_expirare || "";
+  const cap = profile?.driver?.cap || profile?.cap_expirare || ""
   const lic = profile?.driver?.lic || profile?.carnet_caducidad || "";
 
   const truckObj    = profile?.camioane || profile?.truck || {};
@@ -349,27 +346,21 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   try {
     const truckId = profile?.camion_id || truckObj?.id;
     if (truckId && !tMarca && !tPlaca) {
-      const { data: t, error: terr } = await supabase
+      const { data: t } = await supabase
         .from("camioane")
         .select("marca,matricula,brand,plate")
         .eq("id", truckId)
         .maybeSingle();
-      if (!terr && t) {
-        tMarca = t.marca || t.brand || "";
-        tPlaca = t.matricula || t.plate || "";
-      }
+      if (t) { tMarca = t.marca || t.brand || ""; tPlaca = t.matricula || t.plate || ""; }
     }
     const trailerId = profile?.remorca_id || trailerObj?.id;
     if (trailerId && !rMarca && !rPlaca) {
-      const { data: r, error: rerr } = await supabase
+      const { data: r } = await supabase
         .from("remorci")
         .select("marca,matricula,brand,plate")
         .eq("id", trailerId)
         .maybeSingle();
-      if (!rerr && r) {
-        rMarca = r.marca || r.brand || "";
-        rPlaca = r.matricula || r.plate || "";
-      }
+      if (r) { rMarca = r.marca || r.brand || ""; rPlaca = r.matricula || r.plate || ""; }
     }
   } catch {}
 
@@ -382,20 +373,13 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   const hadTruckId   = !!(profile?.camion_id || truckObj?.id);
   const hadTrailerId = !!(profile?.remorca_id || trailerObj?.id);
 
-  if (tMarca || tPlaca) {
-    bullets.push(`• Camión: **${tMarca || "—"}${tPlaca ? " · " + tPlaca : ""}**.`);
-  } else if (hadTruckId) {
-    bullets.push("• Tienes un camión asignado.");
-  }
+  if (tMarca || tPlaca) bullets.push(`• Camión: **${tMarca || "—"}${tPlaca ? " · " + tPlaca : ""}**.`);
+  else if (hadTruckId)  bullets.push("• Tienes un camión asignado.");
 
-  if (rMarca || rPlaca) {
-    bullets.push(`• Remolque: **${rMarca || "—"}${rPlaca ? " · " + rPlaca : ""}**.`);
-  } else if (hadTrailerId) {
-    bullets.push("• Tienes un remolque asignado.");
-  }
+  if (rMarca || rPlaca) bullets.push(`• Remolque: **${rMarca || "—"}${rPlaca ? " · " + rPlaca : ""}**.`);
+  else if (hadTrailerId) bullets.push("• Tienes un remolque asignado.");
 
-  const hasCore =
-    adr !== null || !!lic || !!cap || (tMarca || tPlaca || hadTruckId) || (rMarca || rPlaca || hadTrailerId);
+  const hasCore = adr !== null || !!lic || !!cap || (tMarca || tPlaca || hadTruckId) || (rMarca || rPlaca || hadTrailerId);
 
   if (hasCore) {
     setMessages(m => [
@@ -413,7 +397,7 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   setAwaiting && setAwaiting("confirm_complete_profile");
 }
 
-/* ───────────────────────── Card «Aprender: Perfil completado» (fallback manual) ───────────────────────── */
+/* ───────── Card «Aprender: Perfil completado» ───────── */
 export async function handleShowAprenderPerfil({ setMessages }) {
   setMessages(m => [
     ...m,
@@ -435,13 +419,10 @@ export async function handleShowAprenderPerfil({ setMessages }) {
   ]);
 }
 
-/* ───────────────────────── WIZARD: completar perfil (CAP, carnet, ADR, camión, remolque) ───────────────────────── */
+/* ───────── WIZARD: completar perfil (CAP, carnet, ADR, camión, remolque) ───────── */
 function parseDateLoose(input) {
   if (!input) return null;
-  const txt = String(input).trim()
-    .toLowerCase()
-    .replace(/\s+de\s+/g, "/")
-    .replace(/[.\-]/g, "/");
+  const txt = String(input).trim().toLowerCase().replace(/\s+de\s+/g, "/").replace(/[.\-]/g, "/");
 
   if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(txt) || /^\d{4}-\d{1,2}-\d{1,2}$/.test(input)) {
     const [y, m, d] = txt.split(/[\/\-]/).map(Number);
