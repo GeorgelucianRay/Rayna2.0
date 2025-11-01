@@ -58,8 +58,7 @@
     },
     "meta": {
       "category": "depot",
-      "topic": "lookup",
-      "requires": ["num_contenedor"]
+      "topic": "lookup"
     }
   },
   {
