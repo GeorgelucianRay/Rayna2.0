@@ -12,9 +12,9 @@ import { supabase } from "../../supabaseClient";
 
 import { shortenForNLU } from "./nlu/shorten";
 import { semanticMatch } from "./semanticFallback";
-import { detectLanguage, normalizeLang } from "./nlu/lang"; // ⬅️ PAS1
-import { STR, pushBot } from "./nlu/i18n";                  // ⬅️ PAS2
-import { getIntentIndex } from "./nlu/semantic";            // pre-încălzire USE
+import { detectLanguage, normalizeLang } from "./nlu/lang";
+import { STR, pushBot } from "./nlu/i18n";
+import { getIntentIndex } from "./nlu/semantic";
 
 // intenții (ale tale existente)
 import ALL_INTENTS from "../../intents";
@@ -28,6 +28,24 @@ import { routeIntent } from "./routerIntent";
 
 // ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
+
+// ——— fallback i18n dacă lipsesc cheile în STR
+const FBGREET = (lang, name) => {
+  const N = name ? `${name}. ` : "";
+  if (lang === "ro") return `Salut, ${N}Cu ce te pot ajuta azi?`;
+  if (lang === "ca") return `Hola, ${N}En què et puc ajudar avui?`;
+  return `¡Hola, ${N}¿En qué te puedo ayudar hoy?`;
+};
+const FBTHINK = (lang) => (lang === "ro"
+  ? "O secundă… înțeleg ce ai scris…"
+  : lang === "ca"
+  ? "Un segon… estic entenent el teu missatge…"
+  : "Un segundo… entendiendo tu mensaje…");
+const FBDONT = (lang) => (lang === "ro"
+  ? "Nu te-am înțeles."
+  : lang === "ca"
+  ? "No t'he entès."
+  : "No te he entendido.");
 
 export default function RaynaHub() {
   useIOSNoInputZoom();
@@ -47,7 +65,7 @@ export default function RaynaHub() {
   // —— intenții
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
 
-  // —— limbă curentă (se decide per-mesaj, dar ținem ultima detecție)
+  // —— limbă curentă (memorăm ultima detecție)
   const langRef = useRef("es");
 
   const endRef = useRef(null);
@@ -65,15 +83,13 @@ export default function RaynaHub() {
   const quickAprender = makeQuickAprender({ supabase, styles, setMessages });
   const quickReport   = makeQuickReport({ setMessages, setAwaiting });
 
-  // —— salut personalizat (în limba implicită detectată din navigator)
+  // —— salut personalizat (în limba implicită)
   useEffect(() => {
     if (loading) return;
     if (messages.length > 0) return;
 
-    // limba implicită a UI
     const uiLang = normalizeLang(
-      profile?.preferred_lang ||
-      (navigator.language || "es")
+      profile?.preferred_lang || (navigator.language || "es")
     );
     langRef.current = uiLang;
 
@@ -83,12 +99,20 @@ export default function RaynaHub() {
       return profile?.username || "";
     })();
 
-    const greetText = STR.greeting[uiLang](firstName);
-    pushBot(setMessages, greetText, uiLang);
+    // STR.greeting[lang] poate fi funcție; dacă nu există → fallback
+    const greetText =
+      (STR?.greeting &&
+        (typeof STR.greeting[uiLang] === "function"
+          ? STR.greeting[uiLang](firstName)
+          : STR.greeting[uiLang])) ||
+      FBGREET(uiLang, firstName);
+
+    // pushBot acceptă parametru extra — dacă implementarea ta îl ignoră, e ok
+    pushBot(setMessages, greetText, { lang: uiLang });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
 
-  // —— pre-încălzire index semantic (Universal Sentence Encoder) — optional dar util
+  // —— pre-încălzire index semantic (Universal Sentence Encoder)
   useEffect(() => {
     if (!loading) {
       getIntentIndex(intentsData).catch(() => {});
@@ -135,7 +159,10 @@ export default function RaynaHub() {
     if (!det?.intent?.type) {
       let addedNLULoading = false;
       if (!nluInitRef.current) {
-        pushBot(setMessages, STR.thinking, langRef.current, { _tag: "nlu-loading" });
+        const thinking =
+          (STR?.thinking && STR.thinking[langRef.current]) ||
+          FBTHINK(langRef.current);
+        pushBot(setMessages, thinking, { _tag: "nlu-loading", lang: langRef.current });
         addedNLULoading = true;
       }
 
@@ -143,7 +170,7 @@ export default function RaynaHub() {
         userText: preNLU,
         intentsData,
         fetchKbRows: async () => {
-          // dacă ai creat tabela kb_faq:
+          // dacă ai creat tabela kb_faq, altfel întoarce []
           const { data } = await supabase
             .from("kb_faq")
             .select("id,q,a,lang,tags")
@@ -161,11 +188,11 @@ export default function RaynaHub() {
       if (sem?.kind === "intent") {
         det = { intent: sem.intent, slots: {}, lang: langRef.current };
       } else if (sem?.kind === "kb") {
-        // răspuns direct din KB, în limba curentă dacă există
-        const answer = typeof sem.answer === "object"
-          ? (sem.answer[langRef.current] || sem.answer.es || sem.answer.ro || sem.answer.ca)
-          : sem.answer;
-        pushBot(setMessages, answer, langRef.current);
+        const answer =
+          typeof sem.answer === "object"
+            ? (sem.answer[langRef.current] || sem.answer.es || sem.answer.ro || sem.answer.ca)
+            : sem.answer;
+        pushBot(setMessages, answer, { lang: langRef.current });
         return;
       }
     }
@@ -177,14 +204,16 @@ export default function RaynaHub() {
         role, profile,
         setMessages, setAwaiting, setSaving,
         runAction,
-        // poți trece lang dacă handler-ele tale vor să știe:
         lang: langRef.current,
       });
       return;
     }
 
     // 5) fallback final în limba curentă
-    pushBot(setMessages, STR.dontUnderstand, langRef.current);
+    const dont =
+      (STR?.dontUnderstand && STR.dontUnderstand[langRef.current]) ||
+      FBDONT(langRef.current);
+    pushBot(setMessages, dont, { lang: langRef.current });
   };
 
   return (
