@@ -3,7 +3,7 @@ import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-/* ——— VIDEO: ventajas de completar el perfil (căutare în aprender_links) ——— */
+/* ───────────────────────── VIDEO: ventajas de completar el perfil ───────────────────────── */
 export async function handleProfileAdvantagesVideo({ setMessages }) {
   const NEEDLES = [
     "perfil completado","perfil completo","ventajas perfil",
@@ -64,7 +64,7 @@ export async function handleProfileAdvantagesVideo({ setMessages }) {
   ]);
 }
 
-/* ——— util: traduce rolul intern la ES ——— */
+/* ───────────────────────── util: traduce rolul intern la ES ───────────────────────── */
 function roleToEs(role = "") {
   const r = String(role).toLowerCase().trim();
   if (r === "sofer" || r === "şofer" || r === "șofer" || r === "driver") return "chofer";
@@ -73,7 +73,7 @@ function roleToEs(role = "") {
   return r || "chofer";
 }
 
-/* ——— QUIÉN SOY ——— */
+/* ───────────────────────── QUIÉN SOY ───────────────────────── */
 export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
@@ -92,6 +92,7 @@ export async function handleWhoAmI({ profile, setMessages, setAwaiting }) {
   setAwaiting("confirm_view_profile");
 }
 
+/* ───────────────────────── date helpers ───────────────────────── */
 function fmtDateDDMMYYYY(raw) {
   if (!raw) return null;
   const d = new Date(raw);
@@ -126,9 +127,7 @@ async function getTrailerItvByProfile(profile) {
   return fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv || null;
 }
 
-
-
-/* ——— ABRIR MI CAMIÓN ——— */
+/* ───────────────────────── ABRIR MI CAMIÓN ───────────────────────── */
 export async function handleOpenMyTruck({ profile, setMessages }) {
   const truckId   = profile?.camion_id || profile?.camioane?.id || profile?.truck?.id;
   const truck     = profile?.camioane || profile?.truck || {};
@@ -164,7 +163,8 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
         <div className={styles.card}>
           <div className={styles.cardTitle}>Mi camión</div>
           <div className={styles.cardActions}>
-            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${truckId}`}>
+            <a className={styles.actionBtn} data-variant="primary" href={`/camion/${tr
+uckId}`}>
               Ver camión
             </a>
           </div>
@@ -174,7 +174,7 @@ export async function handleOpenMyTruck({ profile, setMessages }) {
   ]);
 }
 
-/* ——— SELF INFO (CAP/ADR/lic/ITV rapide) ——— */
+/* ───────────────────────── SELF INFO (CAP/ADR/lic/ITV rapide) ───────────────────────── */
 export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   const topic = intent?.meta?.topic;
 
@@ -202,7 +202,7 @@ export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   if (topic === "driver_credentials") {
     const capRaw = profile?.cap_expirare ?? null;
     const licRaw = profile?.carnet_caducidad ?? null;
-    const hasAdr = profile?.tiene_adr ?? null;   // true/false/null
+    const hasAdr = profile?.tiene_adr ?? null;
     const adrRaw = profile?.adr_caducidad ?? null;
 
     const cap = fmtDateDDMMYYYY(capRaw) || capRaw || "—";
@@ -228,30 +228,75 @@ export async function handleDriverSelfInfo({ profile, intent, setMessages }) {
   ]);
 }
 
+/* ───────────────────────── VEHÍCULO: ITV / ACEITE / ADBLUE ───────────────────────── */
+/* IMPORTANT: acum acceptă `lang` și afișează ITP (RO) / ITV (ES, CA) și nu mai întoarce „—” dacă există în DB */
+export async function handleVehItvTruck({ profile, setMessages, lang = "es" }) {
+  const uiLang = ["es","ca","ro"].includes(lang) ? lang : "es";
+  const LABEL = uiLang === "ro" ? "ITP camion" : (uiLang === "ca" ? "ITV camió" : "ITV camión");
 
+  let itv = await getTruckItvByProfile(profile);
 
-/* ——— VEHÍCULO: ITV / ACEITE / ADBLUE ——— */
-export async function handleVehItvTruck({ profile, setMessages }) {
-  const itv = await getTruckItvByProfile(profile);
+  if (!itv) {
+    const truckId = profile?.camion_id;
+    if (truckId) {
+      const { data, error } = await supabase
+        .from("camioane")
+        .select("fecha_itv")
+        .eq("id", truckId)
+        .maybeSingle();
+      if (!error && data?.fecha_itv) {
+        itv = fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv;
+      }
+    }
+  }
+
   setMessages(m => [
     ...m,
     { from: "bot", reply_text: itv
-      ? `ITV camión: **${itv}**.`
-      : "No encuentro la ITV del camión asociado a tu perfil." }
+      ? `${LABEL}: **${itv}**.`
+      : (uiLang === "ro"
+          ? "Nu găsesc ITP/ITV pentru camionul din profil."
+          : uiLang === "ca"
+            ? "No trobo la ITV del camió del teu perfil."
+            : "No encuentro la ITV del camión asociado a tu perfil."
+        )
+    }
   ]);
 }
 
+export async function handleVehItvTrailer({ profile, setMessages, lang = "es" }) {
+  const uiLang = ["es","ca","ro"].includes(lang) ? lang : "es";
+  const LABEL = uiLang === "ro" ? "ITP remorcă" : (uiLang === "ca" ? "ITV remolc" : "ITV remolque");
 
-export async function handleVehItvTrailer({ profile, setMessages }) {
-  const itv = await getTrailerItvByProfile(profile);
+  let itv = await getTrailerItvByProfile(profile);
+
+  if (!itv) {
+    const trailerId = profile?.remorca_id;
+    if (trailerId) {
+      const { data, error } = await supabase
+        .from("remorci")
+        .select("fecha_itv")
+        .eq("id", trailerId)
+        .maybeSingle();
+      if (!error && data?.fecha_itv) {
+        itv = fmtDateDDMMYYYY(data.fecha_itv) || data.fecha_itv;
+      }
+    }
+  }
+
   setMessages(m => [
     ...m,
     { from: "bot", reply_text: itv
-      ? `ITV remolque: **${itv}**.`
-      : "No encuentro la ITV del remolque asociado a tu perfil." }
+      ? `${LABEL}: **${itv}**.`
+      : (uiLang === "ro"
+          ? "Nu găsesc ITP/ITV pentru remorca din profil."
+          : uiLang === "ca"
+            ? "No trobo la ITV del remolc del teu perfil."
+            : "No encuentro la ITV del remolque asociado a tu perfil."
+        )
+    }
   ]);
 }
-
 
 export async function handleVehOilStatus({ profile, setMessages }) {
   const last = profile?.mantenimientos?.aceite?.ultimo || "—";
@@ -264,7 +309,7 @@ export async function handleVehAdblueFilterStatus({ profile, setMessages }) {
   setMessages(m => [...m, { from: "bot", reply_text: `Filtro AdBlue — último: **${last}** · próximo: **${next}**.` }]);
 }
 
-/* ——— INIȚIERE COMPLETARE PROFIL ——— */
+/* ───────────────────────── INIȚIERE COMPLETARE PROFIL ───────────────────────── */
 export async function handleProfileCompletionStart({ setMessages }) {
   setMessages(m => [
     ...m,
@@ -284,17 +329,15 @@ export async function handleProfileCompletionStart({ setMessages }) {
   ]);
 }
 
-/* ——— ¿Qué sabes de mí? ——— */
+/* ───────────────────────── ¿Qué sabes de mí? ───────────────────────── */
 export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }) {
   const nombre = profile?.nombre_completo || profile?.username || "usuario";
   const rolEs  = roleToEs(profile?.role);
 
-  // ————— normalizări info driver
   const adr = (profile?.driver?.adr ?? profile?.tiene_adr ?? null);
   const cap = profile?.driver?.cap || profile?.cap_expirare || "";
   const lic = profile?.driver?.lic || profile?.carnet_caducidad || "";
 
-  // ————— normalizări inițiale camion/remorcă din profile
   const truckObj    = profile?.camioane || profile?.truck || {};
   const trailerObj  = profile?.remolque || profile?.trailer || profile?.remorci || {};
 
@@ -303,9 +346,7 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   let rMarca = trailerObj?.marca || trailerObj?.brand || profile?.remorca_marca || "";
   let rPlaca = trailerObj?.matricula || trailerObj?.plate || profile?.remorca_matricula || "";
 
-  // ————— dacă avem ID dar lipsesc detalii → le luăm din DB
   try {
-    // camion
     const truckId = profile?.camion_id || truckObj?.id;
     if (truckId && !tMarca && !tPlaca) {
       const { data: t, error: terr } = await supabase
@@ -318,7 +359,6 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
         tPlaca = t.matricula || t.plate || "";
       }
     }
-    // remorcă (tabela ta pare a fi „remorci”; schimbă la „remolques” dacă așa se numește)
     const trailerId = profile?.remorca_id || trailerObj?.id;
     if (trailerId && !rMarca && !rPlaca) {
       const { data: r, error: rerr } = await supabase
@@ -331,11 +371,8 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
         rPlaca = r.matricula || r.plate || "";
       }
     }
-  } catch (_) {
-    // best-effort: ignorăm erorile aici ca să nu stricăm răspunsul
-  }
+  } catch {}
 
-  // ————— compunem răspunsul
   const bullets = [];
   bullets.push(`• Te llamas **${nombre}** (${rolEs}).`);
   if (adr !== null) bullets.push(`• ADR: **${adr ? "sí" : "no"}**.`);
@@ -376,7 +413,7 @@ export async function handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwai
   setAwaiting && setAwaiting("confirm_complete_profile");
 }
 
-/* ——— Card «Aprender: Perfil completado» (fallback manual) ——— */
+/* ───────────────────────── Card «Aprender: Perfil completado» (fallback manual) ───────────────────────── */
 export async function handleShowAprenderPerfil({ setMessages }) {
   setMessages(m => [
     ...m,
@@ -397,19 +434,15 @@ export async function handleShowAprenderPerfil({ setMessages }) {
     }
   ]);
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// WIZARD: completar perfil en chat (CAP, carnet, ADR, camión, remolque)
-// ─────────────────────────────────────────────────────────────────────────────
 
-/** Parsează “orice” dată într-un YYYY-MM-DD (acceptă 12/5/26, 12-05-2026, 2026-05-12 etc.) */
+/* ───────────────────────── WIZARD: completar perfil (CAP, carnet, ADR, camión, remolque) ───────────────────────── */
 function parseDateLoose(input) {
   if (!input) return null;
   const txt = String(input).trim()
     .toLowerCase()
-    .replace(/\s+de\s+/g, "/")      // 12 de marzo de 2026 -> 12/marzo/2026
-    .replace(/[.\-]/g, "/");        // 12-05-2026 -> 12/05/2026
+    .replace(/\s+de\s+/g, "/")
+    .replace(/[.\-]/g, "/");
 
-  // 1) ISO direct
   if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(txt) || /^\d{4}-\d{1,2}-\d{1,2}$/.test(input)) {
     const [y, m, d] = txt.split(/[\/\-]/).map(Number);
     if (y >= 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
@@ -417,7 +450,6 @@ function parseDateLoose(input) {
     }
   }
 
-  // 2) Zi/lună/an cu / (12/5/26) sau cu nume de lună (12/mayo/2026)
   const MONTHS = {
     "ene":"01","enero":"01","jan":"01","january":"01",
     "feb":"02","febrero":"02","february":"02",
@@ -436,27 +468,18 @@ function parseDateLoose(input) {
   const parts = txt.split("/");
   if (parts.length === 3) {
     let [d, m, y] = parts;
-
-    // lună ca text?
     if (isNaN(Number(m)) && MONTHS[m]) m = MONTHS[m];
-
-    d = Number(d);
-    m = Number(m);
-
-    // an cu 2 cifre -> 20xx
+    d = Number(d); m = Number(m);
     y = String(y);
     if (y.length === 2) y = (Number(y) <= 69 ? "20" : "19") + y;
     y = Number(y);
-
     if (y >= 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
       return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     }
   }
-
   return null;
 }
 
-/** update parțial în tabela profiles */
 async function updateProfileFields(userId, fields) {
   if (!userId) return { error: "No user id" };
   const { error } = await supabase
@@ -466,8 +489,7 @@ async function updateProfileFields(userId, fields) {
   return { error };
 }
 
-/** Start wizard */
-export async function handleProfileWizardStart({ setMessages, setAwaiting }) {
+export async function handleProfileCompletionStart({ setMessages, setAwaiting }) {
   setMessages(m => [
     ...m,
     { from: "bot", reply_text: "Empezamos a completar tu perfil. Primero, ¿cuándo te caduca el CAP?" }
@@ -475,50 +497,30 @@ export async function handleProfileWizardStart({ setMessages, setAwaiting }) {
   setAwaiting("pf_cap_date");
 }
 
-/** Un singur handler pentru toți pașii wizard-ului */
 export async function handleProfileWizardStep({ awaiting, userText, profile, setMessages, setAwaiting }) {
   const userId = profile?.id || profile?.user_id;
+  const askRetry = (msg) => setMessages(m => [...m, { from: "bot", reply_text: msg }]);
 
-  // helper “reciclabil” pentru întrebare invalidă la dată
-  const askRetry = (msg) => {
-    setMessages(m => [...m, { from: "bot", reply_text: msg }]);
-  };
-
-  // ── CAP caducidad ─────────────────────────────────────────────
   if (awaiting === "pf_cap_date") {
     const iso = parseDateLoose(userText);
     if (!iso) return askRetry("No he entendido la fecha del CAP. Dímela en formato libre (ej.: 15/05/2026).");
-
     const { error } = await updateProfileFields(userId, { cap_expirare: iso });
     if (error) return askRetry("No he podido guardar el CAP. Intenta otra vez.");
-
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: `Perfecto, CAP: **${iso}**.` },
-      { from: "bot", reply_text: "Ahora dime, ¿cuándo te caduca el carnet de conducir?" }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: `Perfecto, CAP: **${iso}**.` }, { from: "bot", reply_text: "Ahora dime, ¿cuándo te caduca el carnet de conducir?" }]);
     setAwaiting("pf_lic_date");
     return;
   }
 
-  // ── Carnet caducidad ─────────────────────────────────────────
   if (awaiting === "pf_lic_date") {
     const iso = parseDateLoose(userText);
     if (!iso) return askRetry("No he entendido la fecha del carnet. Dímela en formato libre (ej.: 12-12-2025).");
-
     const { error } = await updateProfileFields(userId, { carnet_caducidad: iso });
     if (error) return askRetry("No he podido guardar el carnet. Intenta otra vez.");
-
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: `Genial, carnet: **${iso}**.` },
-      { from: "bot", reply_text: "¿Tienes ADR? (sí / no)" }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: `Genial, carnet: **${iso}**.` }, { from: "bot", reply_text: "¿Tienes ADR? (sí / no)" }]);
     setAwaiting("pf_adr_yesno");
     return;
   }
 
-  // ── ADR (sí/no) ──────────────────────────────────────────────
   if (awaiting === "pf_adr_yesno") {
     const n = String(userText).trim().toLowerCase();
     const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
@@ -527,10 +529,7 @@ export async function handleProfileWizardStep({ awaiting, userText, profile, set
     if (YES.includes(n)) {
       const { error } = await updateProfileFields(userId, { tiene_adr: true });
       if (error) return askRetry("No he podido guardar el ADR. Intenta otra vez.");
-      setMessages(m => [
-        ...m,
-        { from: "bot", reply_text: "Perfecto. ¿Cuál es la fecha de caducidad del ADR?" }
-      ]);
+      setMessages(m => [...m, { from: "bot", reply_text: "Perfecto. ¿Cuál es la fecha de caducidad del ADR?" }]);
       setAwaiting("pf_adr_date");
       return;
     }
@@ -538,12 +537,7 @@ export async function handleProfileWizardStep({ awaiting, userText, profile, set
     if (NO.includes(n)) {
       const { error } = await updateProfileFields(userId, { tiene_adr: false, adr_caducidad: null });
       if (error) return askRetry("No he podido guardar el ADR. Intenta otra vez.");
-      // trecem la camión
-      setMessages(m => [
-        ...m,
-        { from: "bot", reply_text: "Entendido (ADR: no)." },
-        { from: "bot", reply_text: "Dime la matrícula de tu **camión** (ej.: 1710KKY). Si no tienes, escribe «no»." }
-      ]);
+      setMessages(m => [...m, { from: "bot", reply_text: "Entendido (ADR: no)." }, { from: "bot", reply_text: "Dime la matrícula de tu **camión** (ej.: 1710KKY). Si no tienes, escribe «no»." }]);
       setAwaiting("pf_truck_plate");
       return;
     }
@@ -552,50 +546,30 @@ export async function handleProfileWizardStep({ awaiting, userText, profile, set
     return;
   }
 
-  // ── ADR caducidad ────────────────────────────────────────────
   if (awaiting === "pf_adr_date") {
     const iso = parseDateLoose(userText);
     if (!iso) return askRetry("No he entendido la fecha del ADR. Dímela en formato libre (ej.: 12/07/2027).");
-
     const { error } = await updateProfileFields(userId, { adr_caducidad: iso, tiene_adr: true });
     if (error) return askRetry("No he podido guardar el ADR. Intenta otra vez.");
-
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: `Anotado, ADR: **${iso}**.` },
-      { from: "bot", reply_text: "Dime la matrícula de tu **camión** (ej.: 1710KKY). Si no tienes, escribe «no»." }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: `Anotado, ADR: **${iso}**.` }, { from: "bot", reply_text: "Dime la matrícula de tu **camión** (ej.: 1710KKY). Si no tienes, escribe «no»." }]);
     setAwaiting("pf_truck_plate");
     return;
   }
 
-  // ── Camión: matrícula ────────────────────────────────────────
   if (awaiting === "pf_truck_plate") {
     const txt = String(userText).trim().toUpperCase();
     if (txt === "NO") {
-      setMessages(m => [
-        ...m,
-        { from: "bot", reply_text: "Ok, sin camión asignado." },
-        { from: "bot", reply_text: "¿Y tu **remolque**? Dime la matrícula o «no» si no tienes." }
-      ]);
+      setMessages(m => [...m, { from: "bot", reply_text: "Ok, sin camión asignado." }, { from: "bot", reply_text: "¿Y tu **remolque**? Dime la matrícula o «no» si no tienes." }]);
       setAwaiting("pf_trailer_plate");
       return;
     }
-
-    // salvăm în profiles câmpul temporar folosit deja de modalul tău
     const { error } = await updateProfileFields(userId, { new_camion_matricula: txt });
     if (error) return askRetry("No he podido guardar la matrícula del camión. Intenta otra vez.");
-
-    setMessages(m => [
-      ...m,
-      { from: "bot", reply_text: `Camión anotado: **${txt}**.` },
-      { from: "bot", reply_text: "Ahora, matrícula del **remolque** o «no» si no tienes." }
-    ]);
+    setMessages(m => [...m, { from: "bot", reply_text: `Camión anotado: **${txt}**.` }, { from: "bot", reply_text: "Ahora, matrícula del **remolque** o «no» si no tienes." }]);
     setAwaiting("pf_trailer_plate");
     return;
   }
 
-  // ── Remolque: matrícula ──────────────────────────────────────
   if (awaiting === "pf_trailer_plate") {
     const txt = String(userText).trim().toUpperCase();
     if (txt !== "NO") {
@@ -606,7 +580,6 @@ export async function handleProfileWizardStep({ awaiting, userText, profile, set
       setMessages(m => [...m, { from: "bot", reply_text: "Ok, sin remolque asignado." }]);
     }
 
-    // Final
     setMessages(m => [
       ...m,
       { from: "bot", reply_text: "¡Listo! He guardado los cambios. Puedes revisar o completar más detalles desde tu perfil." },
