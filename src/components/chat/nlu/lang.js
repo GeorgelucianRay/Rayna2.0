@@ -1,74 +1,48 @@
-// src/components/chat/nlu/lang.js
-import { franc } from 'franc';
+// Detectarea limbii pentru ES / RO / CA — zero dependențe, foarte rapid.
+// Heuristică bazată pe cuvinte-cheie frecvente + fallback pe spaniolă.
 
-// mapare coduri franc -> ce folosim noi
-const MAP = {
-  // spaniolă
-  spa: 'es', est: 'es', // est = eroare ocazională, îl corectăm la es
-  // catalană
-  cat: 'ca', ron: 'ro', // ron = română (ISO 639-2)
-  // română
-  rum: 'ro', // cod vechi
+const SIGNS = {
+  es: [
+    "hola","buenas","cuando","cuándo","camión","camion","remolque","aceite","próximo","proximo","itv","filtro","adblue",
+    "quiero","llegar","buscar","cerca","tengo","disco","ruta","aparcar","parking"
+  ],
+  ro: [
+    "bună","buna","salut","când","cand","camion","remorcă","remorca","ulei","următor","urmator","itp","filtru","adblue",
+    "vreau","ajunge","caută","cauta","aproape","am","discul","parcare","rutie","traseu"
+  ],
+  ca: [
+    "hola","bones","quan","camió","camio","remolc","oli","proper","itv","filtre","adblue",
+    "vull","arribar","cerca","tinc","disc","ruta","aparcament","aparcament"
+  ],
 };
-
-const FALLBACK = 'es';
 
 export function detectLang(text) {
-  const s = String(text || '').trim();
-  if (!s) return FALLBACK;
-  // franc cere minim ~3+ litere ca să întoarcă ceva ok
-  let code3 = 'und';
-  try {
-    code3 = franc(s, { minLength: 3 });
-  } catch {}
-  const lang = MAP[code3] || FALLBACK;
-  return lang;
+  const t = String(text || "").toLowerCase();
+
+  // scurt-circuit: diacritice tipice
+  if (/[ăâîșşţț]/.test(t)) return "ro";
+  if (/[óñ¿¡]/.test(t)) return "es";
+  if (/ç|à|è|é|í|ï|ò|ó|ú|ü/.test(t)) {
+    // poate fi es sau ca → mergem la scoruri
+  }
+
+  const score = { es: 0, ro: 0, ca: 0 };
+  for (const lang of Object.keys(SIGNS)) {
+    for (const w of SIGNS[lang]) {
+      if (t.includes(w)) score[lang] += 1;
+    }
+  }
+
+  // alegem maximul; dacă egalitate, preferăm spaniola (default aplicației)
+  const best = Object.entries(score).sort((a,b)=>b[1]-a[1])[0];
+  if (!best || best[1] === 0) return "es";
+  return best[0];
 }
 
-// mini helper pentru a afișa text localizat
-export const STRINGS = {
-  es: {
-    hi: (name) => (name ? `Hola, ${name}. ¿En qué te puedo ayudar hoy?` : '¡Hola! ¿En qué te puedo ayudar hoy?'),
-    aprender: 'Aprender',
-    reclamar: 'Reclamar',
-    say: 'Escribe aquí… (p. ej.: Quiero llegar a TCB)',
-    not_understood: 'No te he entendido.',
-    report_prompt: 'Claro, dime qué problema hay. Me encargo de resolverlo.',
-    reported_ok: 'Gracias. He registrado el reporte. Me encargo de revisarlo.',
-    reported_fail: 'Lo siento, no he podido registrar el reporte ahora mismo.',
-    need_problem: 'Necesito que me escribas el problema para poder reportarlo.',
-    need_location: 'Necesito tu ubicación',
-    ask_time: '¿Cuánto disco te queda? (ej.: 1:25 o 45 min)',
-  },
-  ca: {
-    hi: (name) => (name ? `Hola, ${name}. En què et puc ajudar avui?` : 'Hola! En què et puc ajudar avui?'),
-    aprender: 'Aprendre',
-    reclamar: 'Reclamar',
-    say: 'Escriu aquí… (p. ex.: Vull arribar a TCB)',
-    not_understood: 'No t’he entès.',
-    report_prompt: 'És clar, digue’m quin problema hi ha. M’encarrego de resoldre-ho.',
-    reported_ok: 'Gràcies. He registrat la incidència. Ho revisaré.',
-    reported_fail: 'Ho sento, no he pogut registrar la incidència ara mateix.',
-    need_problem: 'Necessito que m’escriguis el problema per poder registrar-lo.',
-    need_location: 'Necessito la teva ubicació',
-    ask_time: 'Quant disc et queda? (ex.: 1:25 o 45 min)',
-  },
-  ro: {
-    hi: (name) => (name ? `Salut, ${name}. Cu ce te pot ajuta azi?` : 'Salut! Cu ce te pot ajuta azi?'),
-    aprender: 'Învățare',
-    reclamar: 'Reclamă',
-    say: 'Scrie aici… (ex.: Vreau să ajung la TCB)',
-    not_understood: 'Nu te-am înțeles.',
-    report_prompt: 'Sigur, spune-mi ce problemă este. Mă ocup să o rezolv.',
-    reported_ok: 'Mulțumesc. Am înregistrat reclamația. Mă ocup să o verific.',
-    reported_fail: 'Îmi pare rău, nu am putut înregistra reclamația acum.',
-    need_problem: 'Am nevoie să-mi scrii problema ca să o pot înregistra.',
-    need_location: 'Am nevoie de locația ta',
-    ask_time: 'Cât disc ți-a rămas? (ex.: 1:25 sau 45 min)',
-  },
-};
-
-export function i18nPick(strings, lang, key) {
-  const L = strings[lang] ? lang : 'es';
-  return strings[L][key];
+export function pickTextByLang(obj, lang) {
+  // obj poate fi fie un string, fie un { es, ro, ca }
+  if (!obj) return "";
+  if (typeof obj === "string") return obj;
+  const map = obj;
+  return map[lang] || map.es || map.ro || map.ca || "";
 }
