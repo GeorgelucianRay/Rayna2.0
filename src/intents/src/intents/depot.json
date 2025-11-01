@@ -1,0 +1,104 @@
+[
+  {
+    "id": "depot_lookup",
+    "priority": 95,
+    "type": "action",
+    "action": "depot_lookup",
+    "patterns_any": [
+      // 🇪🇸 Español
+      "contenedor",
+      "número de contenedor",
+      "donde está el contenedor",
+      "dónde se encuentra el contenedor",
+      "muéstrame el contenedor",
+      "detalles del contenedor",
+      "dame detalles del contenedor",
+      "busca el contenedor",
+      "localiza el contenedor",
+      "ver contenedor",
+      "mostrar contenedor",
+      "posición del contenedor",
+      "ubicación del contenedor",
+      "cont en depot",
+      "buscar en el depósito",
+      "contenedor en el depósito",
+      // 🇷🇴 Română
+      "container",
+      "număr container",
+      "numarul containerului",
+      "unde este containerul",
+      "unde se află containerul",
+      "arata-mi containerul",
+      "vezi containerul",
+      "detalii container",
+      "detalii despre container",
+      "verifică containerul",
+      "poziția containerului",
+      "localizează containerul",
+      "container în depozit",
+      "verifică în depozit",
+      // 🇨🇦 Català
+      "contenidor",
+      "número de contenidor",
+      "on està el contenidor",
+      "on es troba el contenidor",
+      "mostra'm el contenidor",
+      "veure contenidor",
+      "detalls del contenidor",
+      "dona'm detalls del contenidor",
+      "cerca el contenidor",
+      "localitza el contenidor",
+      "posició del contenidor",
+      "contenidor al dipòsit",
+      "busca al dipòsit"
+    ],
+    "response": {
+      "text": {
+        "es": "Un momento… busco el contenedor en el depósito.",
+        "ro": "Un moment… caut containerul în depozit.",
+        "ca": "Un segon… estic buscant el contenidor al dipòsit."
+      }
+    },
+    "meta": {
+      "category": "depot",
+      "topic": "lookup",
+      "requires": ["num_contenedor"]
+    }
+  },
+  {
+    "id": "depot_details",
+    "priority": 94,
+    "type": "action",
+    "action": "depot_lookup",
+    "patterns_any": [
+      // 🇪🇸 Español
+      "detalles del contenedor",
+      "mostrar detalles contenedor",
+      "info del contenedor",
+      "información del contenedor",
+      "dame la ficha del contenedor",
+      // 🇷🇴 Română
+      "detalii container",
+      "vezi detalii container",
+      "informații container",
+      "fisa containerului",
+      "arată fișa containerului",
+      // 🇨🇦 Català
+      "detalls del contenidor",
+      "mostra detalls contenidor",
+      "informació contenidor",
+      "fitxa del contenidor"
+    ],
+    "response": {
+      "text": {
+        "es": "Busco los detalles del contenedor...",
+        "ro": "Caut detaliile containerului...",
+        "ca": "Busco els detalls del contenidor..."
+      }
+    },
+    "meta": {
+      "category": "depot",
+      "topic": "details"
+    }
+  }
+]
