@@ -1,70 +1,43 @@
 // src/components/chat/nlu/lang.js
 
-/**
- * Detectează limba aproximativă a unui text între:
- *  - 'es' (spaniolă)
- *  - 'ro' (română)
- *  - 'ca' (catalană)
- *
- * Heuristici:
- *  1) diacritice / grafeme specifice
- *  2) cuvinte foarte frecvente per limbă (stopwords scurte)
- *  3) tie-breaker → 'es'
- */
-
-const DIACR = {
-  ro: /[ăâîșţțșĂÂÎȘŢȚ]/i,     // română: ă â î ș ț (inclusiv variante cu sedilă)
-  ca: /[àèéíïòóúç·]/i,        // catalană: ç, ·, diacritice frecvente
-  es: /[áéíóúñü]/i            // spaniolă: ñ, ü, vocale accentuate
-};
-
-const WORDS = {
-  es: [
-    "el","la","de","que","y","en","un","una","para","con","cuando","cuándo",
-    "próximo","proximo","itv","camión","camion","aceite","estado","kilometros","kilómetros"
-  ],
-  ro: [
-    "și","si","în","in","pe","la","este","nu","când","cand","următor","urmator",
-    "itp","camion","ulei","stare","kilometri","km"
-  ],
-  ca: [
-    "el","la","de","que","i","en","un","una","per","amb","quan","pròxim","proper",
-    "itv","camió","oli","estat","quilòmetres","quilometres","km"
-  ],
-};
-
-function scoreWords(text, list) {
-  const tokens = String(text).toLowerCase().split(/[^a-zà-ÿ·çñü]+/i).filter(Boolean);
-  let s = 0;
-  for (const t of tokens) if (list.includes(t)) s++;
-  return s;
+// Normalizează coduri de limbă diverse la {es, ro, ca}
+export function normalizeLang(code) {
+  const c = String(code || "").toLowerCase();
+  if (c.startsWith("es")) return "es";
+  if (c.startsWith("ro")) return "ro";
+  if (c.startsWith("ca")) return "ca";
+  // acceptăm și valori custom care deja sunt corecte
+  if (c === "es" || c === "ro" || c === "ca") return c;
+  // fallback
+  return "es";
 }
 
+// Heuristică simplă de detectare limbă (fără dependențe externe)
 export function detectLanguage(text) {
-  const s = String(text || "");
+  const t = String(text || "").toLowerCase();
 
-  // 1) diacritice specifice (cel mai puternic semnal)
-  const hasRO = DIACR.ro.test(s);
-  const hasCA = DIACR.ca.test(s);
-  const hasES = DIACR.es.test(s);
+  // semne/diacritice foarte distinctive
+  const hasRO = /[ăâîșşţț]/i.test(t);
+  const hasES = /[ñ¡¿]/i.test(t);
+  const hasCA = /[ç·]/i.test(t) || /l·l/.test(t);
 
-  if (hasRO && !hasCA && !hasES) return "ro";
-  if (hasCA && !hasRO && !hasES) return "ca";
+  if (hasRO && !hasES && !hasCA) return "ro";
   if (hasES && !hasRO && !hasCA) return "es";
+  if (hasCA && !hasRO && !hasES) return "ca";
 
-  // 2) scor pe cuvinte frecvente
-  const scES = scoreWords(s, WORDS.es);
-  const scRO = scoreWords(s, WORDS.ro);
-  const scCA = scoreWords(s, WORDS.ca);
+  // cuvinte frecvente – liste scurte, sigure
+  const roWords = /\b(când|cand|ulei|remorc|camion|itp|salut|mulțum|multum)\b/;
+  const esWords = /\b(cuándo|cuando|aceite|remolque|camión|camion|itv|hola|gracias|próxima|proxima)\b/;
+  const caWords = /\b(quan|oli|remolc|camió|camio|itv|hola|gràcies|gracies|pròxim|proxim)\b/;
 
-  const max = Math.max(scES, scRO, scCA);
-  if (max === 0) return "es"; // fallback
+  const roScore = roWords.test(t) ? 1 : 0;
+  const esScore = esWords.test(t) ? 1 : 0;
+  const caScore = caWords.test(t) ? 1 : 0;
 
-  if (max === scRO && scRO > scES && scRO > scCA) return "ro";
-  if (max === scCA && scCA > scES && scCA > scRO) return "ca";
-  if (max === scES && scES > scRO && scES > scCA) return "es";
+  if (roScore > esScore && roScore > caScore) return "ro";
+  if (esScore > roScore && esScore > caScore) return "es";
+  if (caScore > roScore && caScore > esScore) return "ca";
 
-  // 3) tie-breaker
-  if (scRO === scCA && scRO > scES) return "ro"; // bias ușor spre ro
+  // dacă sunt la egalitate sau nu găsim nimic clar → spaniolă
   return "es";
 }
