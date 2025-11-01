@@ -1,41 +1,56 @@
-import { supabase } from '../../../supabaseClient';
-import { showContainerCard } from './uiHelpers'; // funcția ta existentă care creează cartonașul vizual
+// src/components/chat/actions/handleDepotChat.js
+import { supabase } from "../../../supabaseClient";
+import styles from "../Chatbot.module.css";
+import { showContainerCard } from "./uiHelpers"; // ai zis că există
 
-export const handleDepotChat = async (message, user) => {
-  const lowerMsg = message.toLowerCase();
+// helper: push bot
+function pushBot(setMessages, text) {
+  setMessages((m) => [...m, { from: "bot", reply_text: text }]);
+}
 
-  // === 1️⃣ extragem codul containerului (ex: "MRSK1234567")
-  const contRegex = /([A-Z]{4}\d{6,7})/i;
-  const match = message.match(contRegex);
-  const containerCode = match ? match[1].toUpperCase() : null;
+// ISO 6346: 4 litere + 7 cifre (accept și 6-7 pentru toleranță)
+const CONT_REGEX = /([A-Z]{4}\d{6,7})/i;
 
+export default async function handleDepotChat({ user, userText, setMessages }) {
+  const lowerMsg = (userText || "").toLowerCase();
+  const m = String(userText || "").match(CONT_REGEX);
+  const containerCode = m ? m[1].toUpperCase() : null;
+
+  // 1) validare cod
   if (!containerCode) {
-    return "No he encontrado ningún número de contenedor en tu mensaje.";
+    pushBot(setMessages, "No he encontrado ningún número de contenedor en tu mensaje.");
+    return;
   }
 
-  // === 2️⃣ verificăm rolul
-  const role = user?.role || 'unknown';
-  if (role === 'sofer') {
-    return "Lo siento, no tienes acceso al Depot. ¿Quieres que te ayude en algo más?";
+  // 2) rol
+  const role = (user?.role || "").toLowerCase();
+  if (role === "sofer" || role === "șofer" || role === "şofer" || role === "driver") {
+    pushBot(setMessages, "Lo siento, no tienes acceso al Depot. ¿Quieres que te ayude en algo más?");
+    return;
   }
 
-  // === 3️⃣ căutăm containerul în toate tabelele
+  // 3) căutare în tabele (în ordinea ta)
+  const tables = [
+    "contenedores",
+    "contenedores_rotos",
+    "contenedores_programados",
+    "contenedores_salidos",
+  ];
+
   let container = null;
   let origen = null;
-
-  const tables = [
-    'contenedores',
-    'contenedores_rotos',
-    'contenedores_programados',
-    'contenedores_salidos'
-  ];
 
   for (const table of tables) {
     const { data, error } = await supabase
       .from(table)
-      .select('*')
-      .eq('num_contenedor', containerCode)
+      .select("*")
+      .eq("num_contenedor", containerCode)
       .maybeSingle();
+
+    if (error) {
+      // nu blocăm fluxul; dar anunțăm
+      console.warn("[Depot] error select", table, error);
+    }
 
     if (data) {
       container = data;
@@ -44,37 +59,44 @@ export const handleDepotChat = async (message, user) => {
     }
   }
 
-  // === 4️⃣ dacă nu există
   if (!container) {
-    return `No he encontrado el contenedor ${containerCode} en el depósito.`;
+    pushBot(setMessages, `No he encontrado el contenedor **${containerCode}** en el depósito.`);
+    return;
   }
 
-  // === 5️⃣ Construim răspunsul de bază
-  const position = container.posicion || '—';
-  let response = `El contenedor **${containerCode}** está en la posición **${position}**.`;
+  // 4) răspuns de bază
+  const position =
+    container.posicion ||
+    container.posicio ||
+    container.position ||
+    "—";
 
-  // === 6️⃣ Detalii suplimentare cerute
-  if (lowerMsg.includes('detall')) {
-    response = `Claro, aquí tienes todos los datos del contenedor **${containerCode}** 👇`;
-    await showContainerCard(container); // cartonașul tău existent vizual
-  }
+  pushBot(setMessages, `El contenedor **${containerCode}** está en la posición **${position}**.`);
 
-  // === 7️⃣ Adăugăm mesaje dinamice în funcție de rol și stare
-  if (role === 'mecanic') {
-    if (origen === 'contenedores_programados') {
-      response += `\n\nEste contenedor está programado, ¿quieres marcarlo como **Hecho**?`;
-    } else {
-      response += `\n\nSi quieres le cambiamos el sitio.`;
+  // 5) „detalii” — dacă userul a cerut
+  if (lowerMsg.includes("detalle") || lowerMsg.includes("detalles") || lowerMsg.includes("detall")) {
+    pushBot(setMessages, `Claro, aquí tienes todos los datos del contenedor **${containerCode}** 👇`);
+    try {
+      await showContainerCard(container); // card-ul tău existent
+    } catch (e) {
+      console.warn("[Depot] showContainerCard error:", e);
     }
   }
 
-  if (role === 'dispecer' || role === 'admin') {
-    if (origen === 'contenedores_programados') {
-      response += `\n\nEste contenedor está **programado**. ¿Quieres marcarlo como **Hecho** o cambiar su posición?`;
+  // 6) mesaj dinamic în funcție de rol/stare
+  if (role === "mecanic" || role === "mecánico" || role === "mechanic") {
+    if (origen === "contenedores_programados") {
+      pushBot(setMessages, "Este contenedor está **programado**. ¿Quieres marcarlo como **Hecho**?");
     } else {
-      response += `\n\nSi quieres, lo podemos **programar**, **cambiar posición** o **sacarlo del Depot**. Dime qué necesitas.`;
+      pushBot(setMessages, "Si quieres le cambiamos el sitio.");
     }
   }
 
-  return response;
-};
+  if (role === "dispecer" || role === "dispatcher" || role === "admin") {
+    if (origen === "contenedores_programados") {
+      pushBot(setMessages, "Este contenedor está **programado**. ¿Quieres marcarlo como **Hecho** o cambiar su posición?");
+    } else {
+      pushBot(setMessages, "Si quieres, lo podemos **programar**, **cambiar posición** o **sacarlo del Depot**. Dime qué necesitas.");
+    }
+  }
+}
