@@ -23,6 +23,7 @@ import {
   handleParkingNearStart,
   handleParkingNext,
   handleParkingRecomputeByTime,
+handleDepotChat,
 } from "./actions";
 
 export async function dispatchAction({
@@ -84,6 +85,8 @@ export async function dispatchAction({
       setAwaiting("parking_time_left");
     },
   };
+  
+  depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
 
   try {
     if (table[actionKey]) return await table[actionKey]();
