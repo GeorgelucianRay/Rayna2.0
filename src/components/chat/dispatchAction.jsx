@@ -1,4 +1,4 @@
-// src/components/chat/dispatchAction.js
+// src/components/chat/dispatchAction.jsx
 import {
   handleOpenCamera,
   handleShowAnnouncement,
@@ -23,7 +23,9 @@ import {
   handleParkingNearStart,
   handleParkingNext,
   handleParkingRecomputeByTime,
-handleDepotChat,
+
+  // ⬇️ nou (asigură-te că e exportat în actions/index.js)
+  handleDepotChat,
 } from "./actions";
 
 export async function dispatchAction({
@@ -36,32 +38,32 @@ export async function dispatchAction({
   const actionKey = (intent?.action || intent?.id || "").trim();
 
   const table = {
-    // camere / anunț
+    // ——— camere / anunț
     open_camera: () => handleOpenCamera({ intent, slots, setMessages }),
     show_announcement: () => handleShowAnnouncement({ intent, setMessages }),
 
-    // GPS
+    // ——— GPS
     gps_route_preview: () => handleGpsNavigate({ intent, slots, setMessages, userText }),
-    gps_place_info: () => handleGpsInfo({ intent, slots, setMessages }),
-    gps_list: () => handleGpsLists({ intent, setMessages }),
+    gps_place_info:    () => handleGpsInfo({ intent, slots, setMessages }),
+    gps_list:          () => handleGpsLists({ intent, setMessages }),
 
-    // profil
-    who_am_i: () => handleWhoAmI({ profile, setMessages, setAwaiting }),
-    open_my_truck: () => handleOpenMyTruck({ profile, setMessages }),
-    profile_start_completion: () => handleProfileCompletionStart({ setMessages }),
-    profile_advantages_video:      () => handleProfileAdvantagesVideo({ setMessages }),
+    // ——— profil
+    who_am_i:                   () => handleWhoAmI({ profile, setMessages, setAwaiting }),
+    open_my_truck:              () => handleOpenMyTruck({ profile, setMessages }),
+    profile_start_completion:   () => handleProfileCompletionStart({ setMessages }),
+    profile_advantages_video:   () => handleProfileAdvantagesVideo({ setMessages }),
     profile_show_advantages_video: () => handleProfileAdvantagesVideo({ setMessages }),
-    profile_what_you_know: () => handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
-    profile_complete_start: () => handleProfileWizardStart({ setMessages, setAwaiting }),
-    driver_self_info: () => handleDriverSelfInfo({ profile, intent, setMessages }),
+    profile_what_you_know:      () => handleWhatDoYouKnowAboutMe({ profile, setMessages, setAwaiting }),
+    profile_complete_start:     () => handleProfileWizardStart({ setMessages, setAwaiting }),
+    driver_self_info:           () => handleDriverSelfInfo({ profile, intent, setMessages }),
 
-    // vehicul
-    veh_itv_truck: () => handleVehItvTruck({ profile, setMessages }),
-    veh_itv_trailer: () => handleVehItvTrailer({ profile, setMessages }),
-    veh_oil_status: () => handleVehOilStatus({ profile, setMessages }),
-    veh_adblue_filter_status: () => handleVehAdblueFilterStatus({ profile, setMessages }),
+    // ——— vehicul
+    veh_itv_truck:           () => handleVehItvTruck({ profile, setMessages }),
+    veh_itv_trailer:         () => handleVehItvTrailer({ profile, setMessages }),
+    veh_oil_status:          () => handleVehOilStatus({ profile, setMessages }),
+    veh_adblue_filter_status:() => handleVehAdblueFilterStatus({ profile, setMessages }),
 
-    // parking
+    // ——— parking
     gps_find_parking_near: async () => {
       const userPos = await tryGetUserPos();
       return handleParkingNearStart({ slots, userText, setMessages, setParkingCtx, userPos });
@@ -84,15 +86,24 @@ export async function dispatchAction({
       ]);
       setAwaiting("parking_time_left");
     },
-  };
-  
-  depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
+
+    // ——— DEPOT
+    depot_lookup: () => handleDepotChat({ message: userText, user: profile, setMessages }),
+  }; // 👈 IMPORTANT: obiectul se închide aici
 
   try {
-    if (table[actionKey]) return await table[actionKey]();
-    setMessages(m => [...m, { from:"bot", reply_text:`Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` }]);
+    if (table[actionKey]) {
+      return await table[actionKey]();
+    }
+    setMessages(m => [
+      ...m,
+      { from:"bot", reply_text:`Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` }
+    ]);
   } catch (err) {
-    console.error("[RaynaHub] Handler error:", err);
-    setMessages(m => [...m, { from:"bot", reply_text:"Ups, algo ha fallado al ejecutar la acción. Intenta de nuevo." }]);
+    console.error("[dispatchAction] Handler error:", err);
+    setMessages(m => [
+      ...m,
+      { from:"bot", reply_text:"Ups, algo ha fallado al ejecutar la acción. Intenta de nuevo." }
+    ]);
   }
 }
