@@ -1,48 +1,36 @@
-// Detectarea limbii pentru ES / RO / CA — zero dependențe, foarte rapid.
-// Heuristică bazată pe cuvinte-cheie frecvente + fallback pe spaniolă.
+// src/components/chat/nlu/lang.js
 
-const SIGNS = {
-  es: [
-    "hola","buenas","cuando","cuándo","camión","camion","remolque","aceite","próximo","proximo","itv","filtro","adblue",
-    "quiero","llegar","buscar","cerca","tengo","disco","ruta","aparcar","parking"
-  ],
-  ro: [
-    "bună","buna","salut","când","cand","camion","remorcă","remorca","ulei","următor","urmator","itp","filtru","adblue",
-    "vreau","ajunge","caută","cauta","aproape","am","discul","parcare","rutie","traseu"
-  ],
-  ca: [
-    "hola","bones","quan","camió","camio","remolc","oli","proper","itv","filtre","adblue",
-    "vull","arribar","cerca","tinc","disc","ruta","aparcament","aparcament"
-  ],
-};
-
+// Detectare limbă simplă (euristică) pentru fiecare mesaj.
+// Rezultatul va fi unul dintre: 'es' | 'ro' | 'ca' (fallback: 'es').
 export function detectLang(text) {
-  const t = String(text || "").toLowerCase();
+  const s = (text || "").toLowerCase();
 
-  // scurt-circuit: diacritice tipice
-  if (/[ăâîșşţț]/.test(t)) return "ro";
-  if (/[óñ¿¡]/.test(t)) return "es";
-  if (/ç|à|è|é|í|ï|ò|ó|ú|ü/.test(t)) {
-    // poate fi es sau ca → mergem la scoruri
-  }
+  // diacritice / semne specifice
+  const hasEs = /[ñáéíóúü]|[¿¡]/.test(s);
+  const hasRo = /[ăâîșşţț]/.test(s);   // includem atât sedilă, cât și virguliță
+  const hasCa = /[ïòàèéíóúç·]/.test(s);
 
-  const score = { es: 0, ro: 0, ca: 0 };
-  for (const lang of Object.keys(SIGNS)) {
-    for (const w of SIGNS[lang]) {
-      if (t.includes(w)) score[lang] += 1;
-    }
-  }
+  // cuvinte-cheie uzuale pe domeniul tău
+  const esWords = /\b(aceite|camión|camion|remolque|próxim|proximo|itv|cuando|ruta|aprender|parking)\b/;
+  const roWords = /\b(itp|ulei|remorc|camion|verific|când|cand|profil|parcare|parcari)\b/;
+  const caWords = /\b(què|que|quant|camió|camio|remolc|pròxim|proper|itv|aprendre|aprenedre|aparcament)\b/;
 
-  // alegem maximul; dacă egalitate, preferăm spaniola (default aplicației)
-  const best = Object.entries(score).sort((a,b)=>b[1]-a[1])[0];
-  if (!best || best[1] === 0) return "es";
-  return best[0];
+  if (hasRo || roWords.test(s)) return "ro";
+  if (hasCa || caWords.test(s)) return "ca";
+  if (hasEs || esWords.test(s)) return "es";
+  return "es";
 }
 
-export function pickTextByLang(obj, lang) {
-  // obj poate fi fie un string, fie un { es, ro, ca }
-  if (!obj) return "";
-  if (typeof obj === "string") return obj;
-  const map = obj;
-  return map[lang] || map.es || map.ro || map.ca || "";
+// Alege replica corectă dintr-un obiect {es, ro, ca}.
+// Dacă primește string simplu, îl returnează ca atare ca să nu stricăm handler-ele vechi.
+export function pickTextByLang(textObjOrString, lang = "es") {
+  if (typeof textObjOrString === "string") return textObjOrString;
+  if (!textObjOrString || typeof textObjOrString !== "object") return "";
+  return (
+    textObjOrString[lang] ??
+    textObjOrString.es ??
+    textObjOrString.ro ??
+    textObjOrString.ca ??
+    ""
+  );
 }
