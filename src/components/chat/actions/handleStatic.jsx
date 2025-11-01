@@ -1,31 +1,15 @@
-// src/components/chat/actions/handleStatic.jsx
-import React from "react";
-import ActionsRenderer from "../ui/ActionsRenderer";
-import { tpl } from "../helpers/templating";
+// src/components/chat/actions/handleStatic.js
+export async function handleStatic({ intent, setMessages, lang = 'es' }) {
+  const byLang = intent?.response?.text;
+  let reply = null;
 
-export default async function handleStatic({ intent, setMessages }) {
-  const objs = intent.response?.objects || [];
-  if (!objs.length) {
-    setMessages((m) => [...m, { from: "bot", reply_text: intent.response.text }]);
-    return;
+  if (byLang && typeof byLang === 'object') {
+    reply = byLang[lang] || byLang.es || Object.values(byLang)[0];
+  } else if (typeof intent?.response?.text === 'string') {
+    reply = intent.response.text; // compatibilitate veche
   }
-  const first = objs[0];
-  if (first?.type === "card") {
-    const card = {
-      title: tpl(first.title || "", {}),
-      subtitle: tpl(first.subtitle || "", {}),
-      actions: (first.actions || []).map((a) => ({
-        ...a,
-        label: tpl(a.label || "", {}),
-        route: tpl(a.route || "", {}),
-        newTab: a.newTab,
-      })),
-    };
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: intent.response.text, render: () => <ActionsRenderer card={card} /> },
-    ]);
-    return;
+
+  if (reply) {
+    setMessages(m => [...m, { from: "bot", reply_text: reply }]);
   }
-  setMessages((m) => [...m, { from: "bot", reply_text: intent.response.text }]);
 }
