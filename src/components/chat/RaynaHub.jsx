@@ -4,28 +4,29 @@ import styles from "./Chatbot.module.css";
 
 import { useAuth } from "../../AuthContext";
 import { detectIntent } from "../../nlu";
-import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 
+import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 import { supabase } from "../../supabaseClient";
 
-// —— multi-limbă
-import { detectLang, pickTextByLang } from "./nlu/lang";
-
-// —— Fallback semantic (TFJS/USE)
+import { shortenForNLU } from "./nlu/shorten";
 import { semanticMatch } from "./semanticFallback";
+import { detectLanguage, normalizeLang } from "./nlu/lang"; // ⬅️ PAS1
+import { STR, pushBot } from "./nlu/i18n";                  // ⬅️ PAS2
+import { getIntentIndex } from "./nlu/semantic";            // pre-încălzire USE
 
-// intenții
+// intenții (ale tale existente)
 import ALL_INTENTS from "../../intents";
 
-// ——— refactor intern (doar în /chat)
+// refactor intern (ale tale existente)
 import { makeQuickAprender, makeQuickReport } from "./quickActions";
 import { makeGeoHelpers } from "./geo";
 import { dispatchAction } from "./dispatchAction";
 import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
 
+// ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
 export default function RaynaHub() {
@@ -34,33 +35,47 @@ export default function RaynaHub() {
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
 
+  // —— chat state
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // —— context parking
   const [parkingCtx, setParkingCtx] = useState(null);
 
+  // —— intenții
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
+
+  // —— limbă curentă (se decide per-mesaj, dar ținem ultima detecție)
+  const langRef = useRef("es");
 
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
+  // ——— marker pentru “loading NLU” (o singură dată)
+  const nluInitRef = useRef(false);
+
+  // —— geo helpers
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles, setMessages, setAwaiting, setParkingCtx,
   });
 
+  // —— quick actions
   const quickAprender = makeQuickAprender({ supabase, styles, setMessages });
   const quickReport   = makeQuickReport({ setMessages, setAwaiting });
 
+  // —— salut personalizat (în limba implicită detectată din navigator)
   useEffect(() => {
     if (loading) return;
     if (messages.length > 0) return;
 
-    const defaultSaludo = (() => {
-      const sal = intentsData.find((i) => i.id === "saludo")?.response?.text;
-      if (!sal) return "¡Hola! ¿En qué te puedo ayudar hoy?";
-      return pickTextByLang(sal, "es") || "¡Hola! ¿En qué te puedo ayudar hoy!";
-    })();
+    // limba implicită a UI
+    const uiLang = normalizeLang(
+      profile?.preferred_lang ||
+      (navigator.language || "es")
+    );
+    langRef.current = uiLang;
 
     const firstName = (() => {
       const n = (profile?.nombre_completo || "").trim();
@@ -68,88 +83,108 @@ export default function RaynaHub() {
       return profile?.username || "";
     })();
 
-    const saludo = firstName
-      ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?`
-      : defaultSaludo;
-
-    setMessages([{ from: "bot", reply_text: saludo }]);
+    const greetText = STR.greeting[uiLang](firstName);
+    pushBot(setMessages, greetText, uiLang);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
 
-  const runAction = (intent, slots, userText, lang) =>
+  // —— pre-încălzire index semantic (Universal Sentence Encoder) — optional dar util
+  useEffect(() => {
+    if (!loading) {
+      getIntentIndex(intentsData).catch(() => {});
+    }
+  }, [loading, intentsData]);
+
+  // —— dispecer acțiuni (rămâne ca la tine)
+  const runAction = (intent, slots, userText) =>
     dispatchAction({
       intent, slots, userText,
-      profile, role, lang,
+      profile, role,
       setMessages, setAwaiting, saving, setSaving,
       parkingCtx, setParkingCtx,
       askUserLocationInteractive, tryGetUserPos,
     });
 
+  // —— trimitere mesaje
   const send = async () => {
     const userText = text.trim();
     if (!userText) return;
 
-    const lang = detectLang(userText); // 'es'|'ro'|'ca'
+    // 0) detectăm limba acestui mesaj și o memorăm
+    const detected = normalizeLang(detectLanguage(userText));
+    langRef.current = detected || langRef.current || "es";
+
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
 
+    // 1) blocuri „awaiting”
     const wasHandled = await handleAwaiting({
       awaiting, setAwaiting,
-      userText, profile, role, lang,
+      userText, profile, role,
       setMessages, setSaving, saving,
       intentsData,
       parkingCtx, setParkingCtx,
     });
     if (wasHandled) return;
 
-    // 1) NLU regulat
-    let det = detectIntent(userText, intentsData);
-    if (!det) det = {};
-    det.lang = lang;
+    // 2) detectare intent clasic (cu scurtare pentru NLU)
+    const preNLU = shortenForNLU(userText);
+    let det = detectIntent(preNLU, intentsData);
 
-    // 2) Dacă nu a găsit intent, încercăm semantic (TFJS/USE)  ⬅️ NOU
+    // 3) fallback semantic (intenții / KB) numai dacă n-am găsit nimic
     if (!det?.intent?.type) {
+      let addedNLULoading = false;
+      if (!nluInitRef.current) {
+        pushBot(setMessages, STR.thinking, langRef.current, { _tag: "nlu-loading" });
+        addedNLULoading = true;
+      }
+
       const sem = await semanticMatch({
-        userText,
+        userText: preNLU,
         intentsData,
-        lang,
-        // Activezi KB când ai populat tabelul:
         fetchKbRows: async () => {
+          // dacă ai creat tabela kb_faq:
           const { data } = await supabase
-            .from('kb_faq')
-            .select('id,q,a,lang,is_active')
-            .eq('is_active', true)
+            .from("kb_faq")
+            .select("id,q,a,lang,tags")
+            .eq("is_active", true)
             .limit(500);
           return data || [];
         }
       });
 
-      if (sem?.kind === 'intent') {
-        det = { intent: sem.intent, slots: {}, lang };
-      } else if (sem?.kind === 'kb') {
-        setMessages(m => [...m, { from:"bot", reply_text: sem.answer }]);
+      if (addedNLULoading) {
+        nluInitRef.current = true;
+        setMessages((m) => m.filter((b) => b._tag !== "nlu-loading"));
+      }
+
+      if (sem?.kind === "intent") {
+        det = { intent: sem.intent, slots: {}, lang: langRef.current };
+      } else if (sem?.kind === "kb") {
+        // răspuns direct din KB, în limba curentă dacă există
+        const answer = typeof sem.answer === "object"
+          ? (sem.answer[langRef.current] || sem.answer.es || sem.answer.ro || sem.answer.ca)
+          : sem.answer;
+        pushBot(setMessages, answer, langRef.current);
         return;
       }
     }
 
-    // 3) rutăm dacă avem un intent (din NLU sau semantic)
+    // 4) dacă avem un intent → rutăm normal
     if (det?.intent?.type) {
       await routeIntent({
         det, intentsData,
-        role, profile, lang,
+        role, profile,
         setMessages, setAwaiting, setSaving,
-        runAction: (intent, slots, txt) => runAction(intent, slots, txt, lang),
+        runAction,
+        // poți trece lang dacă handler-ele tale vor să știe:
+        lang: langRef.current,
       });
       return;
     }
 
-    // 4) fallback în limba userului
-    const fbObj = intentsData.find((i) => i.id === "fallback")?.response?.text;
-    const fb = pickTextByLang(
-      fbObj || { es:"No te he entendido.", ro:"Nu te-am înțeles.", ca:"No t'he entès." },
-      lang
-    );
-    setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
+    // 5) fallback final în limba curentă
+    pushBot(setMessages, STR.dontUnderstand, langRef.current);
   };
 
   return (
@@ -170,10 +205,20 @@ export default function RaynaHub() {
 
       <div className={styles.subHeaderBar}>
         <div className={styles.headerQuickActions}>
-          <button type="button" className={styles.quickBtn} onClick={quickAprender} aria-label="Abrir Aprender">
+          <button
+            type="button"
+            className={styles.quickBtn}
+            onClick={quickAprender}
+            aria-label="Abrir Aprender"
+          >
             Aprender
           </button>
-          <button type="button" className={styles.quickBtn} onClick={quickReport} aria-label="Reclamar un error">
+          <button
+            type="button"
+            className={styles.quickBtn}
+            onClick={quickReport}
+            aria-label="Reclamar un error"
+          >
             Reclamar
           </button>
         </div>
@@ -183,7 +228,9 @@ export default function RaynaHub() {
         {messages.map((m, i) =>
           m.from === "user"
             ? <div key={i} className={`${styles.bubble} ${styles.me}`}>{m.text}</div>
-            : <BotBubble key={i} reply_text={m.reply_text}>{m.render ? m.render() : null}</BotBubble>
+            : <BotBubble key={i} reply_text={m.reply_text}>
+                {m.render ? m.render() : null}
+              </BotBubble>
         )}
         <div ref={endRef} />
       </main>
