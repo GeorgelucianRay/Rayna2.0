@@ -10,8 +10,10 @@ import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 import { supabase } from "../../supabaseClient";
+
 import { semanticMatch } from "./semanticFallback";
-import { shortenForNLU } from "./nlu/shorten"; // opțional
+import { shortenForNLU } from "./nlu/shorten";
+import { getIntentIndex } from "./nlu/semantic"; // ⬅️ pentru pre-încălzire (pasul 6)
 
 // intenții
 import ALL_INTENTS from "../../intents";
@@ -47,6 +49,9 @@ export default function RaynaHub() {
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
+  // ——— marker pentru “loading NLU” (pasul 5)
+  const nluInitRef = useRef(false);
+
   // —— geo helpers (refactor)
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles, setMessages, setAwaiting, setParkingCtx,
@@ -71,9 +76,23 @@ export default function RaynaHub() {
       return profile?.username || "";
     })();
 
-    setMessages([{ from:"bot", reply_text: firstName ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?` : saludoDefault }]);
+    setMessages([
+      {
+        from: "bot",
+        reply_text: firstName
+          ? `Hola, ${firstName}. ¿En qué te puedo ayudar hoy?`
+          : saludoDefault
+      }
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
+
+  // —— pre-încălzire index semantic (pasul 6)
+  useEffect(() => {
+    if (!loading) {
+      getIntentIndex(intentsData).catch(() => {});
+    }
+  }, [loading, intentsData]);
 
   // —— dispecer acțiuni (refactor)
   const runAction = (intent, slots, userText) =>
@@ -104,47 +123,63 @@ export default function RaynaHub() {
     if (wasHandled) return;
 
     // 1) detectare intent clasic (cu pre-procesare pentru mesaje lungi)
-const rawText = userText;
-const preNLU  = shortenForNLU(rawText); // dacă e scurt, rămâne neschimbat
-let det = detectIntent(preNLU, intentsData);
+    const rawText = userText;
+    const preNLU  = shortenForNLU(rawText); // dacă e scurt, rămâne neschimbat
+    let det = detectIntent(preNLU, intentsData);
 
-// 2) fallback semantic (intenții / KB) doar dacă detectIntent nu a găsit nimic clar
-if (!det?.intent?.type) {
-  const sem = await semanticMatch({
-    userText: preNLU,
-    intentsData,
-    // (opțional) activează KB când ai tabelul:
-    // fetchKbRows: async () => {
-    //   const { data } = await supabase.from('kb_faq').select('id,q,a').limit(500);
-    //   return data || [];
-    // }
-  });
+    // 2) fallback semantic (intenții / KB) doar dacă detectIntent nu a găsit nimic clar
+    if (!det?.intent?.type) {
+      // — pasul 5: afișăm un mic mesaj de “încărc NLU” doar o singură dată
+      let addedNLULoading = false;
+      if (!nluInitRef.current) {
+        setMessages(m => [
+          ...m,
+          { from:"bot", reply_text:"Un segundo… entendiendo tu mensaje…", _tag:"nlu-loading" }
+        ]);
+        addedNLULoading = true;
+      }
 
-  if (sem?.kind === 'intent') {
-    // folosește routeIntent cu “det” sintetizat din potrivirea semantică
-    det = { intent: sem.intent, slots: {}, lang: 'es' };
-  } else if (sem?.kind === 'kb') {
-    setMessages(m => [...m, { from:"bot", reply_text: sem.answer }]);
-    return;
-  }
-}
+      const sem = await semanticMatch({
+        userText: preNLU,
+        intentsData,
+        // (opțional) activează KB când ai tabelul:
+        // fetchKbRows: async () => {
+        //   const { data } = await supabase.from('kb_faq').select('id,q,a').limit(500);
+        //   return data || [];
+        // }
+      });
 
-// 3) dacă avem un intent (din detectIntent sau semantic), rutăm normal
-if (det?.intent?.type) {
-  await routeIntent({
-    det, intentsData,
-    role, profile,
-    setMessages, setAwaiting, setSaving,
-    runAction,
-  });
-  return;
-}
+      // scoatem mesajul de încărcare dacă l-am arătat
+      if (addedNLULoading) {
+        nluInitRef.current = true;
+        setMessages(m => m.filter(b => b._tag !== "nlu-loading"));
+      }
 
-// 4) fallback final
-const fb =
-  intentsData.find((i) => i.id === "fallback")?.response?.text ||
-  "No te he entendido.";
-setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
+      if (sem?.kind === 'intent') {
+        det = { intent: sem.intent, slots: {}, lang: 'es' };
+      } else if (sem?.kind === 'kb') {
+        setMessages(m => [...m, { from:"bot", reply_text: sem.answer }]);
+        return;
+      }
+    }
+
+    // 3) dacă avem un intent (din detectIntent sau semantic), rutăm normal
+    if (det?.intent?.type) {
+      await routeIntent({
+        det, intentsData,
+        role, profile,
+        setMessages, setAwaiting, setSaving,
+        runAction,
+      });
+      return;
+    }
+
+    // 4) fallback final
+    const fb =
+      intentsData.find((i) => i.id === "fallback")?.response?.text ||
+      "No te he entendido.";
+    setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
+  };
 
   return (
     <div className={styles.shell}>
@@ -164,10 +199,20 @@ setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
 
       <div className={styles.subHeaderBar}>
         <div className={styles.headerQuickActions}>
-          <button type="button" className={styles.quickBtn} onClick={quickAprender} aria-label="Abrir Aprender">
+          <button
+            type="button"
+            className={styles.quickBtn}
+            onClick={quickAprender}
+            aria-label="Abrir Aprender"
+          >
             Aprender
           </button>
-          <button type="button" className={styles.quickBtn} onClick={quickReport} aria-label="Reclamar un error">
+          <button
+            type="button"
+            className={styles.quickBtn}
+            onClick={quickReport}
+            aria-label="Reclamar un error"
+          >
             Reclamar
           </button>
         </div>
