@@ -10,6 +10,8 @@ import useIOSNoInputZoom from "../../hooks/useIOSNoInputZoom";
 import { BotBubble } from "./ui";
 import { scrollToBottom } from "./helpers";
 import { supabase } from "../../supabaseClient";
+import { semanticMatch } from "./semanticFallback";
+import { shortenForNLU } from "./nlu/shorten"; // opțional
 
 // intenții
 import ALL_INTENTS from "../../intents";
@@ -101,15 +103,48 @@ export default function RaynaHub() {
     });
     if (wasHandled) return;
 
-    // 1) detect intenție + rutare (refactor)
-    const det = detectIntent(userText, intentsData);
-    await routeIntent({
-      det, intentsData,
-      role, profile,
-      setMessages, setAwaiting, setSaving,
-      runAction,
-    });
-  };
+    // 1) detectare intent clasic (cu pre-procesare pentru mesaje lungi)
+const rawText = userText;
+const preNLU  = shortenForNLU(rawText); // dacă e scurt, rămâne neschimbat
+let det = detectIntent(preNLU, intentsData);
+
+// 2) fallback semantic (intenții / KB) doar dacă detectIntent nu a găsit nimic clar
+if (!det?.intent?.type) {
+  const sem = await semanticMatch({
+    userText: preNLU,
+    intentsData,
+    // (opțional) activează KB când ai tabelul:
+    // fetchKbRows: async () => {
+    //   const { data } = await supabase.from('kb_faq').select('id,q,a').limit(500);
+    //   return data || [];
+    // }
+  });
+
+  if (sem?.kind === 'intent') {
+    // folosește routeIntent cu “det” sintetizat din potrivirea semantică
+    det = { intent: sem.intent, slots: {}, lang: 'es' };
+  } else if (sem?.kind === 'kb') {
+    setMessages(m => [...m, { from:"bot", reply_text: sem.answer }]);
+    return;
+  }
+}
+
+// 3) dacă avem un intent (din detectIntent sau semantic), rutăm normal
+if (det?.intent?.type) {
+  await routeIntent({
+    det, intentsData,
+    role, profile,
+    setMessages, setAwaiting, setSaving,
+    runAction,
+  });
+  return;
+}
+
+// 4) fallback final
+const fb =
+  intentsData.find((i) => i.id === "fallback")?.response?.text ||
+  "No te he entendido.";
+setMessages((m) => [...m, { from: "bot", reply_text: fb }]);
 
   return (
     <div className={styles.shell}>
