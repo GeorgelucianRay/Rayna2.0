@@ -140,14 +140,18 @@ export default function RaynaHub() {
       }
 
       const sem = await semanticMatch({
-        userText: preNLU,
-        intentsData,
-        // (opțional) activează KB când ai tabelul:
-        // fetchKbRows: async () => {
-        //   const { data } = await supabase.from('kb_faq').select('id,q,a').limit(500);
-        //   return data || [];
-        // }
-      });
+  userText: preNLU,
+  intentsData,
+  fetchKbRows: async () => {
+    // ia doar câmpurile necesare
+    const { data, error } = await supabase
+      .from('kb_faq')
+      .select('id,q,a,lang,tags')
+      .eq('is_active', true)
+      .limit(500); // ajustează după nevoie; 200-500 e ok
+    return data || [];
+  }
+});
 
       // scoatem mesajul de încărcare dacă l-am arătat
       if (addedNLULoading) {
