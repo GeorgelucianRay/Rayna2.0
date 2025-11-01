@@ -5,7 +5,6 @@
     "type": "action",
     "action": "depot_lookup",
     "patterns_any": [
-      // 🇪🇸 Español
       "contenedor",
       "número de contenedor",
       "donde está el contenedor",
@@ -22,7 +21,6 @@
       "cont en depot",
       "buscar en el depósito",
       "contenedor en el depósito",
-      // 🇷🇴 Română
       "container",
       "număr container",
       "numarul containerului",
@@ -37,7 +35,6 @@
       "localizează containerul",
       "container în depozit",
       "verifică în depozit",
-      // 🇨🇦 Català
       "contenidor",
       "número de contenidor",
       "on està el contenidor",
@@ -71,19 +68,16 @@
     "type": "action",
     "action": "depot_lookup",
     "patterns_any": [
-      // 🇪🇸 Español
       "detalles del contenedor",
       "mostrar detalles contenedor",
       "info del contenedor",
       "información del contenedor",
       "dame la ficha del contenedor",
-      // 🇷🇴 Română
       "detalii container",
       "vezi detalii container",
       "informații container",
       "fisa containerului",
       "arată fișa containerului",
-      // 🇨🇦 Català
       "detalls del contenidor",
       "mostra detalls contenidor",
       "informació contenidor",
