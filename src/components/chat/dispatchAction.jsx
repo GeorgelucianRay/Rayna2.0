@@ -89,8 +89,9 @@ export async function dispatchAction({
     },
 
     // DEPOT
-    depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
-    depot_list:   () => handleDepotList({ userText, setMessages }),
+    // DEPOT
+depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
+depot_list:   () => handleDepotList({ userText, setMessages, setAwaiting }),
   };
 
   try {
