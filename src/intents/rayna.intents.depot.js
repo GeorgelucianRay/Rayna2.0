@@ -1,7 +1,7 @@
 const depot = [
   {
     id: "depot_lookup",
-    priority: 95,
+    priority: 110,
     type: "action",
     action: "depot_lookup",
     patterns_any: [
@@ -28,7 +28,7 @@ const depot = [
   },
   {
     id: "depot_details",
-    priority: 94,
+    priority: 110,
     type: "action",
     action: "depot_lookup",
     patterns_any: [
