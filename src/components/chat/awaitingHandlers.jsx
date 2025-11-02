@@ -1,4 +1,5 @@
 // src/components/chat/awaitingHandlers.jsx
+
 import { normalize } from "../../nlu";
 import { supabase } from "../../supabaseClient";
 import { handleDialog } from "./actions";
@@ -8,7 +9,11 @@ import {
   handleParkingRecomputeByTime,
   parseTimeToMinutes,
 } from "./actions";
-import { parseSizeFromAnswer, runDepotListFromCtx, clearDepotCtx } from "./actions/handleDepotList.jsx";
+import {
+  parseSizeFromAnswer,
+  runDepotListFromCtx,
+  clearDepotCtx
+} from "./actions/handleDepotList.jsx";
 
 // 🔗 Integrare wizard GPS
 import { handleAwaitingGpsWizard } from "./ui/handleAwaiting.jsx";
@@ -182,11 +187,10 @@ export async function handleAwaiting({
       setMessages((m) => [...m, { from: "bot", reply_text: "No te he entendido. ¿20 o 40?" }]);
       return true;
     }
-    // salvăm alegerea și continuăm
-    const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
+    const ctx = getCtx(); // te asigură că e importat dacă vrei să reutilizezi
     ctx.size = size;
     ctx.awaiting = null;
-    sessionStorage.setItem("depot_list_ctx", JSON.stringify(ctx));
+    saveCtx(ctx);
     setAwaiting(null);
     await runDepotListFromCtx({ setMessages });
     return true;
@@ -197,7 +201,6 @@ export async function handleAwaiting({
     const YES = ["si", "sí", "da", "yes", "ok", "vale", "claro", "correcto"];
     const NO = ["no", "nop", "nu", "nope"];
     if (YES.some((x) => ans.includes(x))) {
-      const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
       setAwaiting(null);
       await runDepotListFromCtx({ setMessages });
       clearDepotCtx();
