@@ -1,9 +1,10 @@
-// src/components/chat/awaitingHandlers.js
+// src/components/chat/actions/depot/parseDepotFilters.js
 import { normalize } from "../../nlu";
 import { supabase } from "../../supabaseClient";
 import { handleDialog } from "./actions";
 import { handleProfileWizardStart, handleProfileWizardStep, handleParkingRecomputeByTime, parseTimeToMinutes } from "./actions";
-import { parseSizeFromAnswer, runDepotListFromCtx } from "./actions/handleDepotList.jsx";
+// Importul corect din fișierul actualizat
+import { parseSizeFromAnswer, runDepotListFromCtx, getCtx, saveCtx } from "./actions/handleDepotList.jsx"; 
 
 export async function handleAwaiting({
   awaiting, setAwaiting,
@@ -14,7 +15,7 @@ export async function handleAwaiting({
 }) {
   if (!awaiting) return false;
 
-  // 0.a) raportare
+  // 0.a) raportare (PASTRAT)
   if (awaiting === "report_error_text") {
     const trimmed = userText.trim();
     if (!trimmed) {
@@ -42,7 +43,7 @@ export async function handleAwaiting({
     return true;
   }
 
-  // 0.b) confirm view profile
+  // 0.b) confirm view profile (PASTRAT)
   if (awaiting === "confirm_view_profile") {
     const n = normalize(userText);
     setAwaiting(null);
@@ -77,7 +78,7 @@ export async function handleAwaiting({
     return true;
   }
 
-  // 0.c) confirm wizard profil
+  // 0.c) confirm wizard profil (PASTRAT)
   if (awaiting === "confirm_complete_profile") {
     const n = normalize(userText);
     const YES = ["si","sí","da","yes","ok","vale","hai","sure","claro","correcto"];
@@ -97,13 +98,13 @@ export async function handleAwaiting({
     return true;
   }
 
-  // 0.d) pașii „pf_*”
+  // 0.d) pașii „pf_*” (PASTRAT)
   if (awaiting && awaiting.startsWith("pf_")) {
     await handleProfileWizardStep({ awaiting, userText, profile, setMessages, setAwaiting });
     return true;
   }
 
-  // 1) dialog „anuncio”
+  // 1) dialog „anuncio” (PASTRAT)
   if (awaiting === "anuncio_text") {
     await handleDialog.stepAnuncio({
       userText, role, setMessages, setAwaiting, saving, setSaving, intentsData,
@@ -111,7 +112,7 @@ export async function handleAwaiting({
     return true;
   }
 
-  // 2) parking time
+  // 2) parking time (PASTRAT)
   if (awaiting === "parking_time_left") {
     setAwaiting(null);
     const mins = parseTimeToMinutes(userText);
@@ -124,77 +125,56 @@ export async function handleAwaiting({
     return true;
   }
   
-  // ─── Depot: aștept tipul 20/40/igual ───
-if (awaiting === "depot_list_size") {
-  const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
-  const size = parseSizeFromAnswer(userText);
-  // atenție: parseSizeFromAnswer întoarce:
-  //  "20" sau "40" sau "40hc"  → clar
-  //  null (pt. "da igual")     → tot clar (mergem înainte)
-  //  undefined                 → neclar (întrebăm din nou)
-  if (size === undefined) {
-    setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. ¿20, 40 o da igual?" }]);
+  // ─── DEPOT LIST: Pasul 2 — Aștept tipul (20/40/igual) ───
+  if (awaiting === "depot_list_size") {
+    const ctx = getCtx();
+    const size = parseSizeFromAnswer(userText); // Returnează "20", "40", "40hc", null (da igual), sau false (nu înțelege)
+    
+    // 🚨 CORECTAT: Verificăm `false` pentru neînțelegere
+    if (size === false) {
+      setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. ¿20, 40 o da igual?" }]);
+      return true; // Rămâne în starea 'depot_list_size'
+    }
+
+    setAwaiting(null);
+    const next = { 
+      ...ctx, 
+      awaiting: null, 
+      lastQuery: { ...(ctx.lastQuery || {}), size } // Salvează size (chiar dacă este null)
+    };
+    saveCtx(next);
+    
+    // Rulează interogarea cu filtrul de size nou adăugat. Aceasta va afișa lista și va cere confirmarea Excel.
+    await runDepotListFromCtx({ setMessages }); 
     return true;
   }
-  const next = { 
-    ...ctx, 
-    size, 
-    awaiting: null, 
-    lastQuery: { ...(ctx.lastQuery || {}), size } 
-  };
-  sessionStorage.setItem("depot_list_ctx", JSON.stringify(next));
-  await runDepotListFromCtx({ setMessages }); // afișează lista și va întreba de Excel
-  setAwaiting(null);
-  return true;
-}
 
-// ─── Depot: aștept confirmarea pentru Excel ───
-if (awaiting === "depot_list_excel") {
-  const yes = /\b(si|sí|da|yes|claro)\b/i.test(userText);
-  setAwaiting(null);
-  if (!yes) {
-    setMessages(m => [...m, { from:"bot", reply_text:"Vale, sin Excel. ¿Algo más?" }]);
-    return true;
-  }
-  // Reafișăm lista; cardul are butonul “Descargar Excel”
-  await runDepotListFromCtx({ setMessages });
-  setMessages(m => [...m, { from:"bot", reply_text:'Pulsa "Descargar Excel" para obtener el archivo.' }]);
-  return true;
-}
+  // ─── DEPOT LIST: Pasul 3 — Aștept confirmarea pentru Excel (sí/no) ───
+  if (awaiting === "depot_list_excel") {
+    const ans = normalize(userText);
+    const YES = ["si","sí","da","yes","ok","vale","claro","correcto"];
+    setAwaiting(null);
 
-// ——— DEPOT LIST: pas 2 — răspuns pentru tip (20/40/igual)
-if (awaiting === "depot_list_size") {
-  setAwaiting(null);
-  // importă din handler:
-  //   import { parseSizeFromAnswer, runDepotListFromCtx } from "./actions/handleDepotList.jsx";
-  const size = parseSizeFromAnswer(userText || "");
-  const ctx  = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
-  const last = ctx.lastQuery || {};
-  const next = { ...last, size };
-  sessionStorage.setItem("depot_list_ctx", JSON.stringify({ ...ctx, lastQuery: next }));
-  await runDepotListFromCtx({ setMessages });
-  return true;
-}
-
-// ——— DEPOT LIST: pas 3 — confirm export Excel (sí/no)
-if (awaiting === "depot_list_excel") {
-  setAwaiting(null);
-  const ans = String(userText || "").toLowerCase();
-  const YES = ["si","sí","da","yes","ok","vale","claro","correcto"];
-  if (YES.includes(ans)) {
-    const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
-    const rows = ctx._lastRows || [];
-    if (!rows.length) {
-      setMessages(m=>[...m,{from:"bot",reply_text:"No tengo filas para exportar ahora."}]);
+    if (YES.includes(ans)) {
+      const ctx = getCtx();
+      const rows = ctx._lastRows || [];
+      
+      if (!rows.length) {
+        setMessages(m=>[...m,{from:"bot",reply_text:"No tengo filas para exportar ahora."}]);
+        return true;
+      }
+      
+      // Reafișăm lista (fără a cere din nou Excel) pentru a arăta butonul "Descargar Excel"
+      await runDepotListFromCtx({ setMessages });
+      setMessages(m => [...m, { from:"bot", reply_text:'Claro, aquí lo tienes. Pulsa "Descargar Excel" para obtener el archivo.' }]);
       return true;
     }
-    // butonul din card descarcă; aici doar confirmăm (sau poți declanșa direct download dacă vrei)
-    setMessages(m=>[...m,{from:"bot",reply_text:"Listo. Usa el botón «Descargar Excel»."}]);
+    
+    setMessages(m => [...m, { from:"bot", reply_text:"Entendido. ¿Algo más?" }]);
     return true;
   }
-  setMessages(m=>[...m,{from:"bot",reply_text:"Entendido. ¿Algo más?"}]);
-  return true;
-}
 
+  // 🚨 ATENȚIE: Blocurile duplicate originale sunt ELIMINATE de aici.
+  
   return false;
 }
