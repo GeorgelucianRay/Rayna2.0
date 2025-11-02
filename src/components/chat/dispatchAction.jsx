@@ -24,10 +24,11 @@ import {
   handleParkingNext,
   handleParkingRecomputeByTime,
 
-  // din ./actions: export default as handleDepotChat / handleDepotList
   handleDepotChat,
   handleDepotList,
 } from "./actions";
+
+import AddGpsModalWizard from "./wizards/AddGpsModalWizard.jsx"; // 👈 necesar pt wizardul GPS
 
 export async function dispatchAction({
   intent, slots, userText,
@@ -39,16 +40,45 @@ export async function dispatchAction({
   const actionKey = (intent?.action || intent?.id || "").trim();
 
   const table = {
-    // camere / anunț
+    // 📸 Camere / Anunțuri
     open_camera: () => handleOpenCamera({ intent, slots, setMessages }),
     show_announcement: () => handleShowAnnouncement({ intent, setMessages }),
 
-    // GPS
+    // 🧭 GPS
     gps_route_preview: () => handleGpsNavigate({ intent, slots, setMessages, userText }),
     gps_place_info:    () => handleGpsInfo({ intent, slots, setMessages }),
     gps_list:          () => handleGpsLists({ intent, setMessages }),
 
-    // profil
+    // 🆕 Adăugare locație (wizard GPS)
+    gps_add_place: () => {
+      setMessages((m) => [
+        ...m,
+        {
+          from: "bot",
+          reply_text: "Abrimos el asistente para añadir la ubicación.",
+          render: () => (
+            <div className="card" style={{ padding: 0 }}>
+              <AddGpsModalWizard
+                onDone={() => {
+                  setMessages((mm) => [
+                    ...mm,
+                    { from: "bot", reply_text: "¡Listo! He guardado la ubicación." },
+                  ]);
+                }}
+                onCancel={() => {
+                  setMessages((mm) => [
+                    ...mm,
+                    { from: "bot", reply_text: "He cancelado el asistente." },
+                  ]);
+                }}
+              />
+            </div>
+          ),
+        },
+      ]);
+    },
+
+    // 👤 Profil
     who_am_i:                   () => handleWhoAmI({ profile, setMessages, setAwaiting }),
     open_my_truck:              () => handleOpenMyTruck({ profile, setMessages }),
     profile_start_completion:   () => handleProfileCompletionStart({ setMessages }),
@@ -58,23 +88,22 @@ export async function dispatchAction({
     profile_complete_start:     () => handleProfileWizardStart({ setMessages, setAwaiting }),
     driver_self_info:           () => handleDriverSelfInfo({ profile, intent, setMessages }),
 
-    // vehicul
+    // 🚛 Vehicul
     veh_itv_truck:            () => handleVehItvTruck({ profile, setMessages }),
     veh_itv_trailer:          () => handleVehItvTrailer({ profile, setMessages }),
     veh_oil_status:           () => handleVehOilStatus({ profile, setMessages }),
     veh_adblue_filter_status: () => handleVehAdblueFilterStatus({ profile, setMessages }),
 
-    // parking
+    // 🅿️ Parking
     gps_find_parking_near: async () => {
       const userPos = await tryGetUserPos();
       return handleParkingNearStart({ slots, userText, setMessages, setParkingCtx, userPos });
     },
     gps_parking_next_suggestion: () =>
       handleParkingNext({ parkingCtx, setMessages }),
-
     gps_parking_ask_time: async () => {
       if (!parkingCtx?.dest) {
-        setMessages(m => [...m, { from:"bot", reply_text:"Primero pídeme un parking cerca de un sitio." }]);
+        setMessages(m => [...m, { from: "bot", reply_text: "Primero pídeme un parking cerca de un sitio." }]);
         return;
       }
       if (!parkingCtx?.userPos) {
@@ -83,28 +112,27 @@ export async function dispatchAction({
       }
       setMessages(m => [
         ...m,
-        { from:"bot", reply_text:"¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+        { from: "bot", reply_text: "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" },
       ]);
       setAwaiting("parking_time_left");
     },
 
-    // DEPOT
-    // DEPOT
-depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
-depot_list:   () => handleDepotList({ userText, setMessages, setAwaiting }),
+    // 🏗️ Depot
+    depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
+    depot_list:   () => handleDepotList({ userText, setMessages, setAwaiting }),
   };
 
   try {
     if (table[actionKey]) return await table[actionKey]();
     setMessages(m => [
       ...m,
-      { from:"bot", reply_text:`Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` }
+      { from: "bot", reply_text: `Tengo la intención (“${actionKey}”), pero aún no tengo handler para esta acción.` },
     ]);
   } catch (err) {
     console.error("[dispatchAction] Handler error:", err);
     setMessages(m => [
       ...m,
-      { from:"bot", reply_text:"Ups, algo ha fallado al ejecutar la acción. Intenta de nuevo." }
+      { from: "bot", reply_text: "Ups, algo ha fallado al ejecutar la acción. Intenta de nuevo." },
     ]);
   }
 }
