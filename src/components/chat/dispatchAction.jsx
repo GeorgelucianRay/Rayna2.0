@@ -49,34 +49,13 @@ export async function dispatchAction({
     gps_place_info:    () => handleGpsInfo({ intent, slots, setMessages }),
     gps_list:          () => handleGpsLists({ intent, setMessages }),
 
-    // 🆕 Adăugare locație (wizard GPS)
-    gps_add_place: () => {
-      setMessages((m) => [
-        ...m,
-        {
-          from: "bot",
-          reply_text: "Abrimos el asistente para añadir la ubicación.",
-          render: () => (
-            <div className="card" style={{ padding: 0 }}>
-              <AddGpsWizard
-                onDone={() => {
-                  setMessages((mm) => [
-                    ...mm,
-                    { from: "bot", reply_text: "¡Listo! He guardado la ubicación." },
-                  ]);
-                }}
-                onCancel={() => {
-                  setMessages((mm) => [
-                    ...mm,
-                    { from: "bot", reply_text: "He cancelado el asistente." },
-                  ]);
-                }}
-              />
-            </div>
-          ),
-        },
-      ]);
-    },
+   gps_add_place: () => {
+  setAwaiting("gps_add_type");
+  setMessages(m => [...m, {
+    from: "bot",
+    reply_text: "¡Claro! ¿Qué tipo de ubicación quieres añadir? (cliente, terminal, servicio, parking)"
+  }]);
+},
 
     // 👤 Profil
     who_am_i:                   () => handleWhoAmI({ profile, setMessages, setAwaiting }),
