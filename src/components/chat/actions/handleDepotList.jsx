@@ -173,6 +173,20 @@ async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) 
 export default async function handleDepotList({ userText, setMessages, setAwaiting }) {
   const { kind, estado, size, naviera, wantExcel } = parseDepotFilters(userText);
 
+  // 🔍 DEBUG: Afișează în chat ce filtre s-au extras
+  setMessages(m => [
+    ...m,
+    {
+      from: "bot",
+      reply_text: `🛠️ Filtre detectate:
+• Estado: ${estado ?? "null"}
+• Tamaño: ${size ?? "null"}
+• Naviera: ${naviera ?? "null"}
+• Excel: ${wantExcel ? "da" : "nu"}`
+    }
+  ]);
+
+  // 🧪 Dacă e cod container, doar notificare
   if (kind === "single") {
     setMessages(m => [...m, {
       from: "bot",
@@ -180,6 +194,29 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     }]);
     return;
   }
+
+  // 🧠 Dacă nu știm mărimea, dar știm alte filtre → întreabă interactiv
+  if (size === null && (estado || naviera)) {
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)"
+    }]);
+    setAwaiting("depot_list_size");
+    saveCtx({ awaiting: "depot_list_size", lastQuery: { estado, size: null, naviera } });
+    return;
+  }
+
+  // 🔄 Încearcă să generezi lista
+  try {
+    await queryAndRender({ estado, size, naviera, setMessages, askExcel: wantExcel });
+  } catch (e) {
+    console.error("[handleDepotList] error:", e);
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "No he podido leer la lista ahora."
+    }]);
+  }
+}
 
   // 👇 declanșăm procesul interactiv dacă lipsește size dar există altceva
   const needSize = size === null && (estado !== null || naviera !== null);
