@@ -96,8 +96,8 @@ export async function handleAwaitingGpsWizard({
     saveGpsAddCtx(next);
     setAwaiting("gps_add_photo");
     setMessages(m => [...m, {
-      from:"bot",
-      reply_text:"Gracias. ¿Tienes una foto del lugar?",
+      from: "bot",
+      reply_text: "Gracias. ¿Tienes una foto del lugar?",
       render: () => (
         <PhotoUploadInline
           onUploaded={(url) => {
@@ -105,7 +105,11 @@ export async function handleAwaitingGpsWizard({
             updated.link_foto = url;
             saveGpsAddCtx(updated);
             setAwaiting("gps_add_confirm");
-            setMessages(mm => [...mm, { from: "me", text: url }, { from: "bot", reply_text: "Foto subida. ¿Quieres guardarlo?" }]);
+            setMessages(mm => [
+              ...mm,
+              { from: "me", text: url },
+              { from: "bot", reply_text: "Foto subida. ¿Quieres guardarlo?" }
+            ]);
           }}
         />
       )
@@ -114,72 +118,75 @@ export async function handleAwaitingGpsWizard({
   }
 
   if (awaiting === "gps_add_photo") {
-  if (n.includes("no")) {
-    next.link_foto = null;
-    saveGpsAddCtx(next);
-    setAwaiting("gps_add_confirm");
+    if (n.includes("no")) {
+      next.link_foto = null;
+      saveGpsAddCtx(next);
+      setAwaiting("gps_add_confirm");
+      return true;
+    }
+
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "Puedes subir una foto o decir «no» si no tienes.",
+      render: () => (
+        <PhotoUploadInline
+          onUploaded={(url) => {
+            const u = getGpsAddCtx();
+            u.link_foto = url;
+            saveGpsAddCtx(u);
+            setAwaiting("gps_add_confirm");
+            setMessages((mm) => [
+              ...mm,
+              { from: "me", text: url },
+              { from: "bot", reply_text: "Foto recibida." },
+            ]);
+          }}
+        />
+      )
+    }]);
+
+    return true;
   }
 
-  setMessages(m => [...m, {
-    from: "bot",
-    reply_text: "Puedes subir una foto o decir «no» si no tienes.",
-    render: () => (
-      <PhotoUploadInline
-        onUploaded={(url) => {
-          const u = getGpsAddCtx();
-          u.link_foto = url;
-          saveGpsAddCtx(u);
-          setAwaiting("gps_add_confirm");
-          setMessages((mm) => [
-            ...mm,
-            { from: "me", text: url },
-            { from: "bot", reply_text: "Foto recibida." },
-          ]);
-        }}
-      />
-    )
-  }]);
-
-  return true;
-}
+  if (awaiting === "gps_add_confirm") {
+    const u = getGpsAddCtx();
 
     const summary = [
-      `🟩 Tipo: ${next.tipo}`,
-      `📍 Nombre: ${next.nombre}`,
-      `🏠 Dirección: ${next.direccion || "-"}`,
-      `🌍 Coordenadas: ${next.coordenadas || "-"}`,
-      `🗺️ Link Maps: ${next.link_maps || "-"}`,
-      `🖼️ Foto: ${next.link_foto ? "Sí" : "No"}`
+      `🟩 Tipo: ${u.tipo}`,
+      `📍 Nombre: ${u.nombre}`,
+      `🏠 Dirección: ${u.direccion || "-"}`,
+      `🌍 Coordenadas: ${u.coordenadas || "-"}`,
+      `🗺️ Link Maps: ${u.link_maps || "-"}`,
+      `🖼️ Foto: ${u.link_foto ? "Sí" : "No"}`
     ].join("\n");
 
     setMessages(m => [...m, {
-      from:"bot",
-      reply_text:`Perfecto. Este es el resumen:\n\n${summary}\n\n¿Quieres guardarlo?`,
+      from: "bot",
+      reply_text: `Perfecto. Este es el resumen:\n\n${summary}\n\n¿Quieres guardarlo?`,
       render: () => (
         <div className="card" style={{ marginTop: 8 }}>
           <div className="cardActions">
             <button
               className="actionBtn"
               onClick={async () => {
-                const payload = { ...next };
-                delete payload.tipo; // 🔥 eliminăm 'tipo' înainte de salvare
-
+                const payload = { ...u };
+                delete payload.tipo;
                 const tableMap = {
                   cliente: "gps_clientes",
                   terminal: "gps_terminale",
                   servicio: "gps_servicios",
                   parking: "gps_parkings",
                 };
-                const table = tableMap[next.tipo?.toLowerCase()];
+                const table = tableMap[u.tipo?.toLowerCase()];
                 if (!table) {
-                  setMessages(mm => [...mm, { from:"bot", reply_text:"Error: tipo inválido." }]);
+                  setMessages(mm => [...mm, { from: "bot", reply_text: "Error: tipo inválido." }]);
                   return;
                 }
                 const { error } = await supabase.from(table).insert([payload]);
                 if (error) {
-                  setMessages(mm => [...mm, { from:"bot", reply_text:"Error al guardar: " + error.message }]);
+                  setMessages(mm => [...mm, { from: "bot", reply_text: "Error al guardar: " + error.message }]);
                 } else {
-                  setMessages(mm => [...mm, { from:"bot",reply_text:"¡Ubicación guardada con éxito!" }]);
+                  setMessages(mm => [...mm, { from: "bot", reply_text: "¡Ubicación guardada con éxito!" }]);
                 }
                 localStorage.removeItem(gpsCtxKey);
                 setAwaiting(null);
@@ -188,7 +195,7 @@ export async function handleAwaitingGpsWizard({
             <button
               className="actionBtn"
               onClick={() => {
-                setMessages(m => [...m, { from:"bot", reply_text:"He cancelado la operación." }]);
+                setMessages(m => [...m, { from: "bot", reply_text: "He cancelado la operación." }]);
                 setAwaiting(null);
                 localStorage.removeItem(gpsCtxKey);
               }}
@@ -197,6 +204,7 @@ export async function handleAwaitingGpsWizard({
         </div>
       )
     }]);
+
     return true;
   }
 
