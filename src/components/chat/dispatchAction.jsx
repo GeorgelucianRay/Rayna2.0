@@ -58,7 +58,7 @@ export async function dispatchAction({
           reply_text: "Abrimos el asistente para añadir la ubicación.",
           render: () => (
             <div className="card" style={{ padding: 0 }}>
-              <AddGpsModalWizard
+              <AddGpsWizard
                 onDone={() => {
                   setMessages((mm) => [
                     ...mm,
