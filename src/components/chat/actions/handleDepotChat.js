@@ -1,21 +1,35 @@
 // src/components/chat/actions/handleDepotChat.js
 import { supabase } from "../../../supabaseClient";
 
-export default async function handleDepotChat({ userText, profile, setMessages }) {
-  const lowerMsg = String(userText || "").toLowerCase();
+/** Extrage codul ISO al containerului (4 litere + 7 cifre),
+ *  tolerând spații, liniuțe, punctuație, newline, etc. */
+export function extractContainerCode(input = "") {
+  const up = String(input).toUpperCase();
+  // eliminăm tot ce nu e literă/cifră în spații, ca să putem potrivi "HLBU 219 6392", "HLBU-2196392", etc.
+  const cleaned = up.replace(/[^A-Z0-9]+/g, " ").trim();
+  // potrivim 4 litere + 7 cifre, permițând spații între ele
+  const m = cleaned.match(/(?:^|\s)([A-Z]{4})\s*([0-9]{7})(?:\s|$)/);
+  return m ? m[1] + m[2] : null;
+}
 
-  // cod container (4 litere + 6-7 cifre)
-  const m = lowerMsg.match(/([a-z]{4}\d{6,7})/i);
-  const containerCode = m ? m[1].toUpperCase() : null;
+export default async function handleDepotChat({ userText, profile, setMessages }) {
+  const containerCode = extractContainerCode(userText);
 
   if (!containerCode) {
-    setMessages((mm) => [...mm, { from: "bot", reply_text: "Necesito el número del contenedor (ej.: HLBU1234567)." }]);
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Necesito el número del contenedor (ej.: **HLBU1234567**)." }
+    ]);
     return;
   }
 
+  // verificăm rol
   const role = (profile?.role || "").toLowerCase();
-  if (role === "sofer" || role === "șofer" || role === "sofér" || role === "driver") {
-    setMessages((mm) => [...mm, { from: "bot", reply_text: "No tienes acceso al Depot. ¿Algo más?" }]);
+  if (role === "sofer" || role === "șofer" || role === "driver") {
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: "Lo siento, no tienes acceso al Depot. ¿Te ayudo con otra cosa?" }
+    ]);
     return;
   }
 
@@ -30,27 +44,35 @@ export default async function handleDepotChat({ userText, profile, setMessages }
   let origen = null;
 
   for (const table of tables) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from(table)
       .select("*")
       .eq("num_contenedor", containerCode)
       .maybeSingle();
-    if (data) { container = data; origen = table; break; }
+
+    if (data && !error) { container = data; origen = table; break; }
   }
 
   if (!container) {
-    setMessages((mm) => [...mm, { from: "bot", reply_text: `No he encontrado el contenedor **${containerCode}** en el depósito.` }]);
+    setMessages(m => [
+      ...m,
+      { from: "bot", reply_text: `No he encontrado el contenedor **${containerCode}** en el depósito.` }
+    ]);
     return;
   }
 
-  const pos = container.posicion || "—";
-  let reply = `El contenedor **${containerCode}** está en la posición **${pos}**.`;
+  const position = container.posicion || container.posicio || "—";
+  let reply = `El contenedor **${containerCode}** está en la posición **${position}**.`;
 
   if (origen === "contenedores_programados") {
-    reply += "\n\nEstá **programado**. ¿Lo marcamos como *Hecho* o cambiamos posición?";
-  } else {
-    reply += "\n\nPuedo **programarlo**, **cambiar posición** o **sacarlo del Depot**.";
+    if (role === "mecanic" || role === "mecánico") {
+      reply += `\n\nEstá **programado**. ¿Quieres marcarlo como **Hecho**?`;
+    } else {
+      reply += `\n\nEstá **programado**. ¿Lo marcamos **Hecho** o cambiamos posición?`;
+    }
+  } else if (role === "dispecer" || role === "dispatcher" || role === "admin") {
+    reply += `\n\nPuedo **programarlo**, **cambiar posición** o **sacarlo del Depot**.`;
   }
 
-  setMessages((mm) => [...mm, { from: "bot", reply_text: reply }]);
+  setMessages(m => [...m, { from: "bot", reply_text: reply }]);
 }
