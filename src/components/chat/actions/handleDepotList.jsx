@@ -260,3 +260,35 @@ export default async function handleDepotList({ userText, setMessages }) {
     setMessages(m => [...m, { from:"bot", reply_text:"No he podido leer la lista ahora." }]);
   }
 }
+
+/* ─────────────────────────────
+   Exporturi necesare pentru build
+   ───────────────────────────── */
+
+// ✅ funcția care extrage mărimea din textul liber (20 / 40 / da igual)
+export function parseSizeFromAnswer(text = "") {
+  const t = text.toLowerCase();
+  if (/\b20\b/.test(t)) return "20";
+  if (/\b40\s*hc\b|\b40hc\b|\bhigh\s*cube\b|\balto\b/.test(t)) return "40hc";
+  if (/\b40\b/.test(t)) return "40";
+  if (/da\s*igual|cualquiera|me da igual|igual/.test(t)) return null;
+  return false;
+}
+
+// ✅ funcție care rulează din context (pentru awaitingHandlers)
+export async function runDepotListFromCtx({ setMessages }) {
+  const ctx = getCtx();
+  const last = ctx.lastQuery || {};
+  await queryAndRender({ ...last, setMessages, askExcel: false });
+}
+
+// ✅ dacă lipseau, exportă și astea (să fie sigure)
+export const getCtx = () => JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
+export const saveCtx = (p) => {
+  const next = { ...(getCtx() || {}), ...(p || {}) };
+  sessionStorage.setItem("depot_list_ctx", JSON.stringify(next));
+  return next;
+};
+export function clearDepotCtx() {
+  sessionStorage.removeItem("depot_list_ctx");
+}
