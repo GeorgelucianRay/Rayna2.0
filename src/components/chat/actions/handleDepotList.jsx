@@ -180,7 +180,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
 
-  if (size === false && (estado || naviera)) {
+  if (size === null && (estado || naviera)) {
     setMessages(m => [...m,{ from:"bot", reply_text:"Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)" }]);
     setAwaiting("depot_list_size");
     saveCtx({ awaiting:"depot_list_size", lastQuery:{ estado, size:null, naviera } });
