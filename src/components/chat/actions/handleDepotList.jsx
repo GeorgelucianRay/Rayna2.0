@@ -1,176 +1,235 @@
-// src/components/chat/actions/handleDepotList.jsx
 import React from "react";
+import * as XLSX from "xlsx";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-// ——— helpers: parsare text → filtre
-function parseFilters(userText = "") {
-  const t = userText.toLowerCase();
+/* ───────── helpers ───────── */
+function parseQuerySlots(txt) {
+  const t = (txt || "").toLowerCase();
+  const slots = {
+    categoria: null,   // 'vacio' | 'lleno' | 'rotos' | 'programados' | null (toate)
+    naviera: null,     // ex: 'maersk'
+    tamanio: null,     // '20' | '40' | '45' | null
+  };
 
-  // categorie → alege tabela
-  let category = null;
-  let table = "contenedores";
-  if (/(programad[oa]s?|programación|programacion)/.test(t)) {
-    category = "programados"; table = "contenedores_programados";
-  } else if (/(rot[oa]s?|defect[oa]s?|averiad[oa]s?)/.test(t)) {
-    category = "rotos"; table = "contenedores_rotos";
-  } else if (/(salid[ao]s?)/.test(t)) {
-    category = "salidos"; table = "contenedores_salidos";
-  } else if (/(vac[ií]o?s?)/.test(t)) {
-    category = "vacios"; table = "contenedores"; // se filtrează ulterior în rows
-  }
+  if (/\broto[s]?\b|defect/i.test(t)) slots.categoria = "rotos";
+  else if (/programad/i.test(t) || /\bpendiente[s]?\b/.test(t)) slots.categoria = "programados";
+  else if (/\bvaci[óo]/.test(t)) slots.categoria = "vacio";
+  else if (/\blleno[s]?\b/.test(t)) slots.categoria = "lleno";
 
-  // naviera (simplu)
-  const NAVS = ["maersk","msc","hapag","cma","evergreen","cosco","one","yang ming","zim","hmm"];
-  const naviera = NAVS.find(n => t.includes(n)) || null;
+  const mNav = t.match(/\b(maersk|msc|cma|cosco|evergreen|hapag|one|yml|yang\s?ming)\b/i);
+  if (mNav) slots.naviera = mNav[1].toUpperCase();
 
-  // tip 20/40
-  let size = null;
-  if (/\b20\b/.test(t)) size = "20";
-  if (/\b40\b/.test(t)) size = "40";
+  const mSize = t.match(/\b(20|40|45)\b/);
+  if (mSize) slots.tamanio = mSize[1];
 
-  return { table, category, naviera, size };
+  return slots;
 }
 
-// ——— Excel export simplu (CSV)
-function downloadCSV(filename, rows) {
+function rowsToExcel(rows, title = "Lista", filename = "lista.xlsx") {
   if (!rows?.length) return;
-  const headers = ["Contenedor","Naviera","Tipo","Posición","Entrada"];
-  const csv = [
-    headers.join(","),
-    ...rows.map(r => [
-      r.num_contenedor || r.codigo || "",
-      r.naviera || "",
-      r.tipo || r.type || "",
-      r.posicion || "",
-      (r.fecha_entrada || r.created_at || "").toString().slice(0,10)
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(","))
-  ].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 20 }));
+  XLSX.utils.book_append_sheet(wb, ws, title);
+  XLSX.writeFile(wb, filename);
 }
 
-// ——— UI card listă
-function ListCard({ title, sub, rows }) {
+/* ───────── UI ───────── */
+function ListCard({ title, subtitle, rows, onExcel }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>{title}</div>
-      <div style={{ opacity:.8, fontSize:13, margin:"4px 0 10px" }}>{sub}</div>
-
-      <div style={{
-        borderRadius:12, overflow:"hidden", border:"1px solid rgba(255,255,255,.12)"
-      }}>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead style={{ background:"rgba(255,255,255,.08)" }}>
-            <tr>
-              <th style={th}>Contenedor</th>
-              <th style={th}>Naviera</th>
-              <th style={th}>Tipo</th>
-              <th style={th}>Posición</th>
-              <th style={th}>Entrada</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r,i)=>(
-              <tr key={i} style={{ borderTop:"1px solid rgba(255,255,255,.08)" }}>
-                <td style={td}>{r.num_contenedor || r.codigo || "—"}</td>
-                <td style={td}>{r.naviera || "—"}</td>
-                <td style={td}>{r.tipo || r.type || "—"}</td>
-                <td style={td}>{r.posicion || "—"}</td>
-                <td style={td}>{(r.fecha_entrada || r.created_at || "—").toString().slice(0,10)}</td>
+      <div style={{opacity:.85, marginBottom:8}}>{subtitle}</div>
+      {(!rows || rows.length === 0) ? (
+        <div style={{opacity:.8}}>No hay datos.</div>
+      ) : (
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%", borderCollapse:"collapse"}}>
+            <thead>
+              <tr>
+                <th align="left">Contenedor</th>
+                <th align="left">Naviera</th>
+                <th align="left">Tipo</th>
+                <th align="left">Posición</th>
+                <th align="left">Estado/Empresa</th>
+                <th align="left">Fecha</th>
+                <th align="left">Hora</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className={styles.cardActions} style={{ marginTop:12 }}>
-        <button
-          className={styles.actionBtn}
-          onClick={() => downloadCSV(
-            `${title.replace(/\s+/g,"_")}.csv`,
-            rows
-          )}
-        >
-          Descargar Excel
-        </button>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} style={{borderTop:"1px solid rgba(255,255,255,.15)"}}>
+                  <td>{r.matricula_contenedor || ""}</td>
+                  <td>{r.naviera || ""}</td>
+                  <td>{r.tipo || ""}</td>
+                  <td>{r.posicion || ""}</td>
+                  <td>{r.empresa_descarga || r.estado || r.detalles || ""}</td>
+                  <td>{r.fecha || (r.created_at ? String(r.created_at).slice(0,10) : "")}</td>
+                  <td>{r.hora || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {rows?.length > 0 && (
+        <div className={styles.cardActions} style={{marginTop:12}}>
+          <button className={styles.actionBtn} onClick={onExcel}>Descargar Excel</button>
+        </div>
+      )}
     </div>
   );
 }
 
-const th = { textAlign:"left", padding:"10px 12px", fontWeight:600, fontSize:13 };
-const td = { padding:"10px 12px", fontSize:14 };
+/* ───────── main handler ─────────
+   Tabele & coloane corecte:
+   - contenedores: matricula_contenedor, naviera, tipo, posicion, estado, created_at
+   - contenedores_programados: matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado
+   - contenedores_rotos: matricula_contenedor, naviera, tipo, posicion, detalles, created_at
+*/
+export default async function handleDepotList({ userText, setMessages }) {
+  const { categoria, naviera, tamanio } = parseQuerySlots(userText);
 
-// ——— handler principal
-export default async function handleDepotList({ userText, profile, setMessages }) {
-  // permisiune (aceleași reguli ca la depot chat, ajustează dacă vrei)
-  const role = (profile?.role || "").toLowerCase();
-  if (["sofer","șofer","şofer","driver"].includes(role)) {
-    setMessages(m => [...m, { from:"bot", reply_text:"No tienes acceso al Depot." }]);
-    return;
-  }
+  try {
+    let title = "Lista contenedores";
+    let subtitle = [];
 
-  const { table, category, naviera, size } = parseFilters(userText);
+    if (categoria) title += ` · ${categoria}`;
+    if (naviera)   subtitle.push(naviera);
+    if (tamanio)   subtitle.push(tamanio);
 
-  // query bază
-  let q = supabase.from(table).select("*").order("fecha_entrada", { ascending:false }).limit(500);
-  if (naviera) q = q.ilike("naviera", `%${naviera}%`);
-  if (size)    q = q.ilike("tipo", `%${size}%`);
+    // 1) programados
+    if (categoria === "programados") {
+      let q = supabase
+        .from("contenedores_programados")
+        .select("matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, estado, created_at")
+        .order("created_at", { ascending: false });
 
-  const { data, error } = await q;
-  if (error) {
-    console.error("[DepotList] supabase error:", error);
-    setMessages(m => [...m, { from:"bot", reply_text:"No he podido leer la lista ahora." }]);
-    return;
-  }
-  let rows = data || [];
+      if (naviera) q = q.ilike("naviera", `%${naviera}%`);
+      if (tamanio) q = q.ilike("tipo", `%${tamanio}%`);
 
-  // filtru „vacío” (poate fi stocat în diferite câmpuri)
-  if (category === "vacios") {
-    rows = rows.filter(r => {
-      const hay = `${r.categoria||""} ${r.estado||""} ${r.tipo||""}`.toLowerCase();
-      return /vac[ií]o/.test(hay);
-    });
-  }
+      const { data, error } = await q;
+      if (error) throw error;
 
-  // dacă nu există rezultate → mesaj dedicat
-  if (!rows.length) {
-    const label = category === "programados" ? "programados"
-                 : category === "rotos" ? "rotos/defectuosos"
-                 : category === "salidos" ? "salidos"
-                 : category === "vacios" ? "vacíos"
-                 : "en depósito";
-    setMessages(m => [
-      ...m,
-      { from:"bot", reply_text:`No hay contenedores ${label}${naviera ? ` de ${naviera.toUpperCase()}` : ""}.` }
-    ]);
-    return;
-  }
+      const rows = (data || []).map(r => ({
+        ...r,
+        // safe formatting
+        tipo: r.tipo || "",
+        fecha: r.fecha || "",
+        hora: r.hora || "",
+      }));
 
-  // titlu + subtitlu
-  const today = new Date().toLocaleDateString();
-  const filtroTxt = [
-    category ? category : "todos",
-    naviera ? naviera.toUpperCase() : null,
-    size ? size : null
-  ].filter(Boolean).join(" · ");
+      const file = `Programados_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const onExcel = () => rowsToExcel(rows.map(r => ({
+        "Contenedor": r.matricula_contenedor,
+        "Naviera": r.naviera,
+        "Tipo": r.tipo,
+        "Posición": r.posicion,
+        "Empresa": r.empresa_descarga,
+        "Fecha": r.fecha,
+        "Hora": r.hora,
+        "Estado": r.estado || "programado",
+      })), "Programados", file);
 
-  setMessages(m => [
-    ...m,
+      setMessages(m => [...m,
+        { from:"bot", reply_text:"Aquí tienes la lista." },
+        { from:"bot", render: () => (
+            <ListCard
+              title={title}
+              subtitle={(subtitle.join(" · ") || "todos") + " · " + new Date().toLocaleDateString("es-ES")}
+              rows={rows}
+              onExcel={onExcel}
+            />
+        )},
+      ]);
+      return;
+    }
+
+    // 2) rotos (din contenedores_rotos)
+    if (categoria === "rotos") {
+      let q = supabase
+        .from("contenedores_rotos")
+        .select("matricula_contenedor, naviera, tipo, posicion, detalles, created_at")
+        .order("created_at", { ascending: false });
+
+      if (naviera) q = q.ilike("naviera", `%${naviera}%`);
+      if (tamanio) q = q.ilike("tipo", `%${tamanio}%`);
+
+      const { data, error } = await q;
+      if (error) throw error;
+
+      const rows = (data || []).map(r => ({
+        ...r,
+        estado: "roto",
+        empresa_descarga: r.detalles || "",
+      }));
+
+      const file = `Rotos_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const onExcel = () => rowsToExcel(rows.map(r => ({
+        "Contenedor": r.matricula_contenedor,
+        "Naviera": r.naviera,
+        "Tipo": r.tipo,
+        "Posición": r.posicion,
+        "Detalles": r.detalles || "",
+        "Fecha entrada": r.created_at ? String(r.created_at).slice(0,10) : "",
+      })), "Rotos", file);
+
+      setMessages(m => [...m,
+        { from:"bot", reply_text:"Aquí tienes la lista." },
+        { from:"bot", render: () => (
+            <ListCard
+              title={title}
+              subtitle={(subtitle.join(" · ") || "todos") + " · " + new Date().toLocaleDateString("es-ES")}
+              rows={rows}
+              onExcel={onExcel}
+            />
+        )},
+      ]);
+      return;
+    }
+
+    // 3) en depósito (din contenedores) cu opționale: vacio/lleno, naviera, 20/40
     {
-      from: "bot",
-      reply_text: "Aquí tienes la lista.",
-      render: () => (
-        <ListCard
-          title="Lista contenedores"
-          sub={`${filtroTxt || "todos"} · ${today}`}
-          rows={rows}
-        />
-      ),
-    },
-  ]);
+      let q = supabase
+        .from("contenedores")
+        .select("matricula_contenedor, naviera, tipo, posicion, estado, created_at")
+        .order("created_at", { ascending: false });
+
+      if (categoria === "vacio") q = q.eq("estado", "vacio");
+      if (categoria === "lleno") q = q.eq("estado", "lleno");
+      if (naviera) q = q.ilike("naviera", `%${naviera}%`);
+      if (tamanio) q = q.ilike("tipo", `%${tamanio}%`);
+
+      const { data, error } = await q;
+      if (error) throw error;
+
+      const rows = data || [];
+
+      const file = `EnDeposito_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const onExcel = () => rowsToExcel(rows.map(r => ({
+        "Contenedor": r.matricula_contenedor,
+        "Naviera": r.naviera,
+        "Tipo": r.tipo,
+        "Posición": r.posicion,
+        "Estado": r.estado,
+        "Fecha entrada": r.created_at ? String(r.created_at).slice(0,10) : "",
+      })), "En Deposito", file);
+
+      setMessages(m => [...m,
+        { from:"bot", reply_text:"Aquí tienes la lista." },
+        { from:"bot", render: () => (
+            <ListCard
+              title={title}
+              subtitle={(subtitle.join(" · ") || "todos") + " · " + new Date().toLocaleDateString("es-ES")}
+              rows={rows}
+              onExcel={onExcel}
+            />
+        )},
+      ]);
+    }
+  } catch (err) {
+    console.error("[handleDepotList] error:", err);
+    setMessages(m => [...m, { from:"bot", reply_text:"No he podido leer la lista ahora." }]);
+  }
 }
