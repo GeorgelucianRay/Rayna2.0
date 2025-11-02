@@ -14,7 +14,7 @@
   ],
   "negative_any": [
     "parking", "aparcar", "aparcamiento", "estacionamiento",
-    "parcare", "pàrquing"
+    "parcare", "pàrquing", "contenedor"
   ],
   "stopwords": ["a", "la", "al", "el", "de", "del", "en", "către", "pe"],
   "slots": {
