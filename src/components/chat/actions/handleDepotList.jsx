@@ -1,193 +1,114 @@
-// src/components/chat/actions/handleDepotList.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-// ——————————————————————————————
-// Helpers: normalizare & parsare cerere
-// ——————————————————————————————
-function normalize(s = "") {
-  return String(s)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+/* ===================== PARSARE CERERE ===================== */
+function norm(s=""){return s.normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase();}
 
-/**
- * Extragem sloturi din text liber:
- *  - categoria: vacio | lleno | rotos | programados | salidos
- *  - naviera: maersk, msc, hapag, etc (pattern simplu)
- *  - tamanio: 20 | 40 | 45 (dacă apare)
- */
-function parseQuerySlots(text) {
-  const t = normalize(text);
+function parseRequest(userText="") {
+  const t = norm(userText);
 
-  let categoria = null;
-  if (/\broto(s)?\b|defect[oa]s?/i.test(t)) categoria = "rotos";
-  else if (/programad[oa]s?|\bpendiente(s)?\b/i.test(t)) categoria = "programados";
-  else if (/\bvaci(?:o|os|os)?\b|\bbuit(s)?\b/i.test(t)) categoria = "vacio";
-  else if (/\bllen(?:o|os|a|as)\b|\bplin(e)?\b|\bple(ns)?\b/i.test(t)) categoria = "lleno";
-  else if (/\bsalid[oa]s?\b|\bfuera\b/i.test(t)) categoria = "salidos";
+  // ce listă vrea
+  let kind = "todos";
+  if (/\bprogramad/.test(t)) kind = "programados";
+  else if (/\brot[oa]s?\b|\bdefect/.test(t)) kind = "rotos";
+  else if (/\blleno[s]?\b/.test(t)) kind = "llenos";
+  else if (/\bvacio[s]?\b/.test(t)) kind = "vacios";
+  else if (/\blista\b|\bcontenedores?\b/.test(t)) kind = "todos";
 
-  const mNav = t.match(
-    /\b(maersk|msc|cma|cosco|evergreen|hapag|one|yml|yang\s?ming|zim|hmm)\b/i
-  );
-  const naviera = mNav ? mNav[1] : null;
+  // tipul (20/40)
+  let tipo = null;
+  if (/\b20\b/.test(t)) tipo = "20";
+  if (/\b40\b/.test(t)) tipo = "40";
 
-  const mSize = t.match(/\b(20|40|45)\b/);
-  const tamanio = mSize ? mSize[1] : null;
-
-  return { categoria, naviera, tamanio };
-}
-
-// ——————————————————————————————
-// Query builder: alege tabelul + filtrele
-// ——————————————————————————————
-function tableForCategory(categoria) {
-  switch (categoria) {
-    case "rotos":
-      return "contenedores_rotos";
-    case "programados":
-      return "contenedores_programados";
-    case "salidos":
-      return "contenedores_salidos";
-    default:
-      // "vacio", "lleno" sau nimic -> en depósito
-      return "contenedores";
-  }
-}
-
-/**
- * Aplică filtre tolerante (ilike) pe coloanele standard:
- *   - num_contenedor (string)
- *   - naviera (string)
- *   - tipo (ex: "40 Alto", "20 Bajo" etc.)
- *   - posicion (ex: "B2A")
- *   - estado (ex: "vacio" / "lleno")
- *   - fecha_entrada (date) – pentru afisare
- *   - empresa (opțional)
- *
- *  NOTE: Dacă ai denumiri diferite, ajustează maparea în `rowToDisplay()`.
- */
-function buildQuery({ categoria, naviera, tamanio }) {
-  const table = tableForCategory(categoria);
-  let q = supabase.from(table).select("*").order("fecha_entrada", { ascending: false });
-
-  // filtre de stare (doar când suntem în "contenedores")
-  if (table === "contenedores") {
-    if (categoria === "vacio") q = q.ilike("estado", "vaci%");  // vacío/vacios/VACIO...
-    if (categoria === "lleno") q = q.ilike("estado", "llen%");  // lleno/llenos/LLENO...
+  // naviera (heuristic simplu: caută mărci comune; sau cuvânt după "de ")
+  let naviera = null;
+  const known = ["MAERSK","MSC","HAPAG","HMM","ONE","COSCO","EVERGREEN","CMA","YANG MING","ZIM"];
+  for (const k of known) if (t.includes(norm(k))) { naviera = k; break; }
+  if (!naviera) {
+    const m = userText.match(/\bde\s+([A-Za-z][\w\s-]{2,})$/i);
+    if (m) naviera = m[1].trim().toUpperCase();
   }
 
-  if (naviera) q = q.ilike("naviera", `%${naviera}%`);
-  if (tamanio) q = q.ilike("tipo", `${tamanio}%`); // ex.: "40 Alto" -> începe cu 40
-
-  return { table, q };
+  return { kind, tipo, naviera };
 }
 
-// ——————————————————————————————
-// Transformare rând pentru UI/CSV (defensiv)
-// ——————————————————————————————
-function safe(v, def = "—") {
-  if (v === null || v === undefined) return def;
-  const s = String(v).trim();
-  return s || def;
+/* ===================== QUERIES ===================== */
+// Notă: numele coloanelor sunt cele reale din DB:
+// contenedores:            matricula_contenedor, naviera, tipo, posicion, estado ('vacio'|'lleno'), created_at
+// contenedores_programados:matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, estado ('programado'|'pendiente')
+// contenedores_rotos:      matricula_contenedor, naviera, tipo, posicion, detalles, created_at
+
+async function qContenedores({ estado, tipo, naviera }) {
+  let q = supabase.from("contenedores").select("*");
+  if (estado)  q = q.eq("estado", estado);           // 'vacio' | 'lleno'
+  if (tipo)    q = q.eq("tipo", tipo);               // '20' | '40' (sau '40 Alto' – vezi mai jos)
+  if (naviera) q = q.eq("naviera", naviera);
+  return (await q.order("created_at", { ascending:false })).data || [];
 }
 
-function rowToDisplay(row) {
-  return {
-    contenedor: safe(row.num_contenedor),
-    naviera: safe(row.naviera),
-    tipo: safe(row.tipo || row.tamano || row.size),
-    posicion: safe(row.posicion || row.pos || row.ubicacion),
-    estado: safe(row.estado || row.status),
-    empresa: safe(row.empresa || row.company),
-    fecha: safe((row.fecha_entrada || row.created_at || "").toString().slice(0, 10)),
-  };
+async function qProgramados({ tipo, naviera }) {
+  let q = supabase.from("contenedores_programados").select("*");
+  if (tipo)    q = q.eq("tipo", tipo);
+  if (naviera) q = q.eq("naviera", naviera);
+  return (await q.order("created_at", { ascending:false })).data || [];
 }
 
-// ——————————————————————————————
-// Export CSV (rapid, compatibil Excel)
-// ——————————————————————————————
-function toCSV(rows) {
-  const headers = ["Contenedor", "Naviera", "Tipo", "Posición", "Estado", "Empresa", "Fecha"];
-  const lines = [headers.join(",")];
-  for (const r of rows) {
-    const vals = [
-      r.contenedor,
-      r.naviera,
-      r.tipo,
-      r.posicion,
-      r.estado,
-      r.empresa,
-      r.fecha,
-    ].map((x) => `"${String(x).replace(/"/g, '""')}"`);
-    lines.push(vals.join(","));
-  }
-  return lines.join("\r\n");
+async function qRotos({ tipo, naviera }) {
+  let q = supabase.from("contenedores_rotos").select("*");
+  if (tipo)    q = q.eq("tipo", tipo);
+  if (naviera) q = q.eq("naviera", naviera);
+  return (await q.order("created_at", { ascending:false })).data || [];
 }
 
-function downloadCSVFile(filename, csvText) {
-  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+/* ===================== UI: TABEL + EXPORT ===================== */
+function toCSV(rows, headers) {
+  const esc = (v)=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const head = headers.map(h=>esc(h.label)).join(",");
+  const body = rows.map(r => headers.map(h=>esc(h.get(r))).join(",")).join("\n");
+  return head+"\n"+body;
+}
+
+function downloadCSV(filename, csv) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
 }
 
-// ——————————————————————————————
-// UI: card listă + buton export
-// ——————————————————————————————
-function ListCard({ title, subtitle, rows }) {
+function ListCard({ title, subtitle, rows, columns, fileName }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>{title}</div>
-      <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 8 }}>{subtitle}</div>
+      <div style={{opacity:.8, fontSize:14, marginTop:4}}>{subtitle}</div>
 
-      <div className={styles.tableWrap}>
+      <div style={{overflowX:"auto", marginTop:10}}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Contenedor</th>
-              <th>Naviera</th>
-              <th>Tipo</th>
-              <th>Posición</th>
-              <th>Estado</th>
-              <th>Empresa</th>
-              <th>Fecha</th>
+              {columns.map(c => (
+                <th key={c.label} style={{whiteSpace:"nowrap"}}>{c.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={`${r.contenedor}-${i}`}>
-                <td>{r.contenedor}</td>
-                <td>{r.naviera}</td>
-                <td>{r.tipo}</td>
-                <td>{r.posicion}</td>
-                <td>{r.estado}</td>
-                <td>{r.empresa}</td>
-                <td>{r.fecha}</td>
+            {rows.map((r,i)=>(
+              <tr key={i}>
+                {columns.map(c => <td key={c.label}>{c.get(r)}</td>)}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className={styles.cardActions} style={{ marginTop: 10 }}>
+      <div className={styles.cardActions} style={{marginTop:10}}>
         <button
           className={styles.actionBtn}
-          onClick={() => {
-            const csv = toCSV(rows);
-            // Exemplu: Lista contenedores (vacio • maersk • 40) - 2025-02-11.csv
-            const today = new Date().toISOString().slice(0, 10);
-            const name = `${title} - ${today}.csv`.replace(/\s+/g, " ");
-            downloadCSVFile(name, csv);
+          onClick={()=>{
+            const csv = toCSV(rows, columns);
+            downloadCSV(`${fileName}.csv`, csv);
           }}
         >
           Descargar Excel
@@ -197,57 +118,80 @@ function ListCard({ title, subtitle, rows }) {
   );
 }
 
-// ——————————————————————————————
-// HANDLER principal
-// ——————————————————————————————
-export default async function handleDepotList({ userText = "", setMessages }) {
-  // 1) parsăm cererea
-  const { categoria, naviera, tamanio } = parseQuerySlots(userText);
+/* ===================== HANDLER PRINCIPAL ===================== */
+export default async function handleDepotList({ userText, setMessages }) {
+  const { kind, tipo, naviera } = parseRequest(userText);
 
-  // 2) interogăm tabelul potrivit
-  const { table, q } = buildQuery({ categoria, naviera, tamanio });
-  const { data, error } = await q;
+  // fetch în tabela corectă
+  let rows = [];
+  let label = "todos";
+  try {
+    if (kind === "vacios") {
+      rows = await qContenedores({ estado:"vacio", tipo, naviera });
+      label = `vacíos${tipo?` ${tipo}`:""}${naviera?` · ${naviera}`:""}`;
+    } else if (kind === "llenos") {
+      rows = await qContenedores({ estado:"lleno", tipo, naviera });
+      label = `llenos${tipo?` ${tipo}`:""}${naviera?` · ${naviera}`:""}`;
+    } else if (kind === "rotos") {
+      rows = await qRotos({ tipo, naviera });
+      label = `rotos${tipo?` ${tipo}`:""}${naviera?` · ${naviera}`:""}`;
+    } else if (kind === "programados") {
+      rows = await qProgramados({ tipo, naviera });
+      label = `programados${tipo?` ${tipo}`:""}${naviera?` · ${naviera}`:""}`;
+    } else {
+      rows = await qContenedores({ tipo, naviera });
+      label = `en depósito${tipo?` ${tipo}`:""}${naviera?` · ${naviera}`:""}`;
+    }
+  } catch (e) {
+    console.error("[handleDepotList] supabase error:", e);
+  }
 
-  if (error) {
-    console.error("[DepotList] supabase error:", error);
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "No he podido leer la lista ahora." },
-    ]);
+  // dacă nu există rezultate → mesaj dedicat (nu mai cade pe altă listă)
+  if (!rows?.length) {
+    setMessages(m=>[...m,{from:"bot",reply_text:`No he podido leer ${label} ahora o no hay resultados.`}]);
     return;
   }
 
-  const rows = (data || []).map(rowToDisplay);
+  // adaptare coloană „extra” per sursă
+  const isProg = rows[0] && Object.prototype.hasOwnProperty.call(rows[0],"empresa_descarga");
+  const isRoto = rows[0] && Object.prototype.hasOwnProperty.call(rows[0],"detalles");
 
-  // 3) mesaje speciale când nu ai rezultate
-  if (!rows.length) {
-    let why = "No hay contenedores para ese filtro.";
-    if (table === "contenedores_programados") why = "No hay contenedores programados.";
-    if (table === "contenedores_rotos") why = "No hay contenedores con defectos.";
-    if (table === "contenedores_salidos") why = "No hay contenedores marcados como salida.";
-    setMessages((m) => [...m, { from: "bot", reply_text: why }]);
-    return;
-  }
+  const columns = [
+    { label:"Contenedor", get:r=>r.matricula_contenedor || "—" },
+    { label:"Naviera",    get:r=>r.naviera || "—" },
+    { label:"Tipo",       get:r=>r.tipo || "—" },
+    { label:"Posición",   get:r=>r.posicion || "—" },
+    isProg
+      ? { label:"Empresa", get:r=>r.empresa_descarga || "—" }
+      : isRoto
+        ? { label:"Detalle", get:r=>r.detalles || "—" }
+        : { label:"Estado",  get:r=>r.estado || "—" },
+    isProg
+      ? { label:"Fecha", get:r=>r.fecha || "—" }
+      : { label:"Fecha", get:r=>(r.created_at||"").toString().slice(0,10) || "—" },
+    isProg
+      ? { label:"Hora", get:r=>r.hora || "—" }
+      : { label:"Hora", get:()=> "—" },
+  ].filter(Boolean);
 
-  // 4) titlu + subtitlu informativ
   const title = "Lista contenedores";
-  const subtitleParts = [];
-  if (categoria) subtitleParts.push(categoria);
-  else subtitleParts.push("todos");
-  if (naviera) subtitleParts.push(naviera);
-  if (tamanio) subtitleParts.push(tamanio);
+  const subtitle = `${label} · ${new Date().toLocaleDateString()}`;
+  const fileName = `lista_${kind}${tipo?`_${tipo}`:""}${naviera?`_${naviera}`:""}_${new Date().toISOString().slice(0,10)}`;
 
-  const today = new Date();
-  const subtitle = `${subtitleParts.join(" · ")} · ${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
-
-  // 5) afișăm
-  setMessages((m) => [
+  setMessages(m=>[
     ...m,
-    { from: "bot", reply_text: "Aquí tienes la lista." },
     {
-      from: "bot",
-      reply_text: "",
-      render: () => <ListCard title={title} subtitle={subtitle} rows={rows} />,
-    },
+      from:"bot",
+      reply_text:"Aquí tienes la lista.",
+      render: () => (
+        <ListCard
+          title={title}
+          subtitle={subtitle}
+          rows={rows}
+          columns={columns}
+          fileName={fileName}
+        />
+      )
+    }
   ]);
 }
