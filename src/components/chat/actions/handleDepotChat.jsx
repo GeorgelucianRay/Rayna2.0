@@ -1,22 +1,17 @@
 import React from "react";
-import { supabase } from "../../../supabaseClient";
 import styles from "../Chatbot.module.css";
+import { supabase } from "../../../supabaseClient";
 
-/** Extrage cod BIC: 4 litere + 7 cifre; tolerează bold **, spațiu sau '-' */
-function extractContainerCode(raw) {
-  if (!raw) return null;
-  const txt = String(raw)
-    .replace(/\*\*/g, "")       // scoate **bold**
-    .replace(/[()]/g, " ")      // paranteze → spațiu
-    .toUpperCase();
-
-  // permite HLBU-2196392 sau HLBU 2196392 sau HLBU2196392
-  const m = txt.match(/\b([A-Z]{4})[ -]?(\d{7})\b/);
-  if (!m) return null;
-  return `${m[1]}${m[2]}`; // lipit fără separatori
+// —————————— UTILS ——————————
+/** Extrage codul de container din fraze cu spații/punctuație (ex: "HLBU 2196392") */
+function extractContainerCode(input = "") {
+  const compact = String(input).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const m = compact.match(/[A-Z]{4}\d{7}/);
+  return m ? m[0] : null;
 }
 
-async function findContainerAnyTable(code) {
+/** Caută în toate tabelele posibile; întoarce primul hit. */
+async function lookupContainer(code) {
   const tables = [
     "contenedores",
     "contenedores_rotos",
@@ -24,125 +19,96 @@ async function findContainerAnyTable(code) {
     "contenedores_salidos",
   ];
 
-  // încercăm coloane uzuale
-  const columns = [
-    "num_contenedor", "numero_contenedor",
-    "matricula", "placa",
-    "code", "codigo"
-  ];
+  for (const t of tables) {
+    // match strict
+    let q = await supabase.from(t).select("*").eq("num_contenedor", code).maybeSingle();
+    if (!q.error && q.data) return { data: q.data, table: t };
 
-  for (const table of tables) {
-    // 1) încercare exactă (eq) pe coloane cunoscute
-    for (const col of columns) {
-      const { data, error } = await supabase
-        .from(table)
-        .select("*")
-        .eq(col, code)
-        .maybeSingle();
+    // fallback ilike (dacă e salvat cu varianta "HLBU-2196392" etc)
+    q = await supabase.from(t).select("*").ilike("num_contenedor", `%${code}%`).maybeSingle();
+    if (!q.error && q.data) return { data: q.data, table: t };
 
-      if (error) {
-        // dacă RLS blochează, raportăm clar
-        return { error: `Permisos/RLS (${table}): ${error.message}` };
-      }
-      if (data) return { data, table };
-    }
-
-    // 2) fallback: ilike %CODE% pe coloane cunoscute
-    const orExpr = columns.map((c) => `${c}.ilike.%${code}%`).join(",");
-    const { data: list, error: err2 } = await supabase
-      .from(table)
-      .select("*")
-      .or(orExpr)
-      .limit(1);
-
-    if (err2) {
-      return { error: `Permisos/RLS (${table}): ${err2.message}` };
-    }
-    if (list && list.length) return { data: list[0], table };
+    // fallback pentru coloane alternative
+    q = await supabase.from(t).select("*").eq("codigo", code).maybeSingle();
+    if (!q.error && q.data) return { data: q.data, table: t };
   }
-
   return { data: null, table: null };
 }
 
-function pick(any, ...keys) {
-  for (const k of keys) {
-    const v = any?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
-  }
-  return null;
+/** Verifică dacă userul are voie (ca la GPS). Ajustează după rolurile tale. */
+function hasDepotAccess(role = "") {
+  const r = String(role).toLowerCase();
+  return !["sofer", "șofer", "şofer", "driver"].includes(r);
 }
 
+// —————————— CARD UI ——————————
+function ContainerCard({ code, table, row }) {
+  const pos = row?.posicion ?? "—";
+  const tipo = row?.tipo ?? row?.type ?? "—";
+  const entrada = (row?.fecha_entrada || row?.created_at || "—")?.toString()?.slice(0, 10);
+  const estado =
+    row?.estado ??
+    row?.status ??
+    (table === "contenedores_rotos" ? "Roto" :
+     table === "contenedores_programados" ? "Programado" :
+     table === "contenedores_salidos" ? "Salido" : "En depósito");
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardTitle}>Contenedor {code}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6, whiteSpace: "pre-line" }}>
+        <div><strong>Posición:</strong> {pos}</div>
+        <div><strong>Tipo:</strong> {tipo}</div>
+        <div><strong>Estado:</strong> {estado}</div>
+        <div><strong>Origen tabla:</strong> {table}</div>
+        <div><strong>Entrada:</strong> {entrada}</div>
+      </div>
+      <div className={styles.cardActions} style={{ marginTop: 10 }}>
+        {/* Pune aici butoane reale când ai rutele/fluxurile (programar, mover, sacar, etc.) */}
+        <button className={styles.actionBtn} onClick={() => alert("Pendiente: cambiar posición")}>
+          Cambiar posición
+        </button>
+        <button className={styles.actionBtn} onClick={() => alert("Pendiente: marcar hecho")}>
+          Marcar hecho
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// —————————— HANDLER ——————————
 export default async function handleDepotChat({ userText, profile, setMessages }) {
   const code = extractContainerCode(userText);
 
   if (!code) {
     setMessages((m) => [
       ...m,
-      {
-        from: "bot",
-        reply_text:
-          "Necesito el **número del contenedor** (ej.: HLBU1234567). Puedes escribirlo junto cu fraza: «Dónde está **HLBU1234567**».",
-      },
+      { from: "bot", reply_text: "Necesito el número del contenedor (ej.: HLBU1234567)." },
     ]);
     return;
   }
 
-  // filtrare rol minim (șoferii nu au acces)
-  const role = (profile?.role || "").toLowerCase();
-  if (role === "sofer" || role === "șofer" || role === "şofer" || role === "driver") {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "Lo siento, no tienes acceso al módulo Depot." },
-    ]);
+  if (!hasDepotAccess(profile?.role)) {
+    setMessages((m) => [...m, { from: "bot", reply_text: "No tienes acceso al Depot." }]);
     return;
   }
 
-  // căutare
-  const { data, table, error } = await findContainerAnyTable(code);
-
-  if (error) {
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: `No he podido consultar el depósito: ${error}` },
-    ]);
-    return;
-  }
+  const { data, table } = await lookupContainer(code);
 
   if (!data) {
     setMessages((m) => [
       ...m,
-      {
-        from: "bot",
-        reply_text: `No he encontrado el contenedor **${code}** en el depósito.`,
-      },
+      { from: "bot", reply_text: `No he encontrado el contenedor **${code}** en el depósito.` },
     ]);
     return;
   }
 
-  // câmpuri posibile
-  const pos   = pick(data, "posicion", "posición", "position", "posicion_txt") || "—";
-  const tipo  = pick(data, "tipo", "type") || "—";
-  const fecha = pick(data, "fecha_entrada", "fecha", "created_at") || "—";
-  const linea = pick(data, "naviera", "linea", "shipping_line") || "—";
-
-  // card simplu
   setMessages((m) => [
     ...m,
     {
       from: "bot",
-      reply_text: "",
-      render: () => (
-        <div className={styles.card} style={{ padding: 12 }}>
-          <div className={styles.cardTitle}>Contenedor {code}</div>
-          <div className={styles.cardBody}>
-            <div>Tabla: <b>{table}</b></div>
-            <div>Posición: <b>{pos}</b></div>
-            <div>Tipo: <b>{tipo}</b></div>
-            <div>Fecha entrada: <b>{String(fecha).slice(0,10)}</b></div>
-            {linea ? <div>Naviera: <b>{linea}</b></div> : null}
-          </div>
-        </div>
-      ),
+      reply_text: `Contenedor **${code}** encontrado.`,
+      render: () => <ContainerCard code={code} table={table} row={data} />,
     },
   ]);
 }
