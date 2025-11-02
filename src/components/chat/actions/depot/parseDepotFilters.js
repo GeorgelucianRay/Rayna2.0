@@ -1,5 +1,4 @@
-// src/components/chat/actions/depot/parseDepotFilters.js (ACTUALIZAT ȘI CORECTAT)
-
+// src/components/chat/actions/depot/parseDepotFilters.js (ULTIMA CORECȚIE)
 function norm(s = "") {
   return String(s)
     .normalize("NFD")
@@ -10,7 +9,7 @@ function norm(s = "") {
 
 export function parseDepotFilters(userText = "") {
   const raw = String(userText || "");
-  const t = norm(raw);
+  const t = norm(raw); // 'que contenedores vacios hay?' -> 'que contenedores vacios hay'
 
   // 1) detect cod container -> nu e listă
   const compact = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
@@ -18,15 +17,15 @@ export function parseDepotFilters(userText = "") {
     return { kind: "single", estado: null, size: null, naviera: null, wantExcel: false };
   }
 
-  // 2) estado (ordine contează – „vacio” înainte de „lleno” etc.)
+  // 2) estado (ordine contează)
   let estado = null;
+  // 🚨 CORECTAT: Căutăm rădăcina cuvintelor pentru a fi mai robust:
   if (/\bprogramad/.test(t)) estado = "programado";
   else if (/\brot[oa]s?\b|\bdefect/.test(t)) estado = "roto";
-  else if (/\bvacios?\b/.test(t)) estado = "vacio";
+  else if (/\bvacios?|\bvacios?\b|\bvaci\b/.test(t)) estado = "vacio"; // Caută 'vacio', 'vacios' sau 'vaci'
   else if (/\bllenos?\b/.test(t)) estado = "lleno";
 
-  // 3) size: 40hc | 40 | 20 
-  // 🚨 CORECȚIE: Menținem ordinea corectă: 40hc ÎNAINTE de 40 pentru specificitate.
+  // 3) size: 40hc | 40 | 20
   let size = null;
   if (/\b40\s*hc\b|\b40hc\b|\b40\s*alto\b/.test(t)) size = "40hc";
   else if (/\b40\b/.test(t)) size = "40";
@@ -38,17 +37,13 @@ export function parseDepotFilters(userText = "") {
     "MAERSK","MSC","HAPAG","HMM","ONE","COSCO",
     "EVERGREEN","CMA","YANG MING","ZIM","MESSINA"
   ];
-  const tn = t; // deja normalizat
+  const tn = t;
   for (const k of KNOWN) {
-    // Folosim o potrivire mai strictă pentru a evita match-uri false, ex: "lista maersk"
-    // Adăugăm spațiu/limită la începutul/sfârșitul cuvântului căutat în text
     const pattern = new RegExp(`\\b${norm(k)}\\b`);
     if (pattern.test(tn)) { naviera = k; break; }
   }
   
   if (!naviera) {
-    // 🚨 CORECȚIE: Îmbunătățim regex-ul de fallback pentru a cere minim 3 litere și a nu prinde cuvinte generice (ca 'de hoy')
-    // Caută: "de [spațiu] [3+ litere/cifre/liniuțe]"
     const m = raw.match(/\bde\s+([A-Za-z0-9][\w\s-]{2,})/i); 
     if (m) naviera = m[1].trim().toUpperCase();
   }
