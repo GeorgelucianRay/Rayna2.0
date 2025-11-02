@@ -2,12 +2,11 @@ import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-// handler DEPOT
 export default async function handleDepotChat({ userText, profile, setMessages }) {
   const msg = String(userText || "");
   const lowerMsg = msg.toLowerCase();
 
-  // 1) extragem codul de container (ex: MRSK1234567, 4 litere + 6-7 cifre)
+  // 1) extrage cod container (4 litere + 6-7 cifre)
   const contRegex = /([A-Z]{4}\d{6,7})/i;
   const match = msg.match(contRegex);
   const containerCode = match ? match[1].toUpperCase() : null;
@@ -21,7 +20,7 @@ export default async function handleDepotChat({ userText, profile, setMessages }
     return;
   }
 
-  // 2) verificăm rol (șoferii nu au acces)
+  // 2) rol – șoferii nu au acces
   const role = (profile?.role || "").toLowerCase();
   if (role === "sofer" || role === "șofer" || role === "driver") {
     setMessages(m => [
@@ -31,7 +30,7 @@ export default async function handleDepotChat({ userText, profile, setMessages }
     return;
   }
 
-  // 3) căutăm în tabele
+  // 3) caută în tabele
   const tables = [
     "contenedores",
     "contenedores_rotos",
@@ -66,9 +65,8 @@ export default async function handleDepotChat({ userText, profile, setMessages }
 
   // 4) răspuns de bază
   const pos = found.posicion || "—";
-  let base = `El contenedor **${containerCode}** está en la posición **${pos}**.`;
+  const base = `El contenedor **${containerCode}** está en la posición **${pos}**.`;
 
-  // 5) dacă utilizatorul a cerut detalii, afișăm card
   const wantsDetails =
     lowerMsg.includes("detalle") || lowerMsg.includes("detalles") || lowerMsg.includes("detall");
 
@@ -77,23 +75,24 @@ export default async function handleDepotChat({ userText, profile, setMessages }
     return;
   }
 
-  // 6) card cu detalii (render JSX)
+  // 5) card detalii — FĂRĂ JSX (folosim React.createElement)
   setMessages(m => [
     ...m,
     { from: "bot", reply_text: "Claro, aquí tienes los detalles:" },
     {
       from: "bot",
       reply_text: "",
-      render: () => (
-        <div
-          className={styles.card}
-          style={{ padding: 12 }}
-        >
-          <div className={styles.cardTitle}>Contenedor {containerCode}</div>
-          <div className={styles.cardSubtitle}>Origen: {origen}</div>
+      render: () => {
+        const pre = React.createElement(
+          "pre",
+          { style: { margin: 0 } },
+          JSON.stringify(found, null, 2)
+        );
 
-          <div
-            style={{
+        const box = React.createElement(
+          "div",
+          {
+            style: {
               marginTop: 10,
               borderRadius: 12,
               border: "1px solid #eee",
@@ -103,14 +102,30 @@ export default async function handleDepotChat({ userText, profile, setMessages }
               fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
               fontSize: 12,
               lineHeight: 1.4
-            }}
-          >
-            <pre style={{ margin: 0 }}>
-              {JSON.stringify(found, null, 2)}
-            </pre>
-          </div>
-        </div>
-      ),
-    },
+            }
+          },
+          pre
+        );
+
+        const title = React.createElement(
+          "div",
+          { className: styles.cardTitle },
+          `Contenedor ${containerCode}`
+        );
+        const subtitle = React.createElement(
+          "div",
+          { className: styles.cardSubtitle },
+          `Origen: ${origen}`
+        );
+
+        return React.createElement(
+          "div",
+          { className: styles.card, style: { padding: 12 } },
+          title,
+          subtitle,
+          box
+        );
+      }
+    }
   ]);
 }
