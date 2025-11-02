@@ -10,6 +10,9 @@ import {
 } from "./actions";
 import { parseSizeFromAnswer, runDepotListFromCtx, clearDepotCtx } from "./actions/handleDepotList.jsx";
 
+// 🔗 Integrare wizard GPS
+import { handleAwaiting as handleAwaitingGpsWizard } from "./ui/handleAwaiting.jsx";
+
 export async function handleAwaiting({
   awaiting,
   setAwaiting,
@@ -24,6 +27,23 @@ export async function handleAwaiting({
   setParkingCtx,
 }) {
   if (!awaiting) return false;
+
+  // 🧭 Wizard pentru adăugare locație GPS
+  const gpsHandled = await handleAwaitingGpsWizard({
+    awaiting,
+    setAwaiting,
+    userText,
+    profile,
+    role,
+    setMessages,
+    setSaving,
+    saving,
+    intentsData,
+    parkingCtx,
+    setParkingCtx,
+  });
+
+  if (gpsHandled) return true;
 
   /* ──────────────── REPORTARE PROBLEMĂ ──────────────── */
   if (awaiting === "report_error_text") {
