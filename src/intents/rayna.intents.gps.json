@@ -192,6 +192,33 @@
     }
   }
 },
+{
+  "id": "adauga_locatie",
+  "action": "gps_add_place",
+  "type": "action",
+  "priority": 100,
+  "patterns_any": [
+    "vreau sa adaug o locatie",
+    "vreau să adaug o locație",
+    "adaugare locatie",
+    "adaugă locație",
+    "adauga locatie",
+    "introdu o locatie noua",
+    "introdu o locație nouă",
+    "adaugare punct gps",
+    "añadir ubicación",
+    "quiero añadir una ubicación",
+    "nueva ubicación",
+    "nou punt gps"
+  ],
+  "response": {
+    "text": {
+      "ro": "Deschid asistentul pentru a adăuga locația.",
+      "es": "Abriendo asistente para añadir ubicación.",
+      "ca": "Obrint l’assistent per afegir ubicació."
+    }
+  }
+},
   {
     "id": "gps_list_servicios",
     "priority": 115,
