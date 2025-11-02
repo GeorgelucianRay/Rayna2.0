@@ -6,7 +6,7 @@ import anuncios  from "./rayna.intents.anuncios.json";
 import perfil    from "./rayna.intents.perfil.json";
 import vehiculo  from "./rayna.intents.vehiculo.json"; // 👈 ADĂUGAT
 import depot     from "./rayna.intents.depot.js";
-
+import depotList from "./rayna.intents.depot_list.js";
 
 // ——— opțional: validare ușoară la runtime (în dev)
 function validateIntents(intents) {
@@ -31,6 +31,7 @@ const all = [
   ...perfil,
   ...vehiculo,
   ...depot,
+  ...depotList,
 ];
 
 if (import.meta?.env?.DEV) validateIntents(all);
