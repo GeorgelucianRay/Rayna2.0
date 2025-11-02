@@ -114,13 +114,34 @@ export async function handleAwaitingGpsWizard({
   }
 
   if (awaiting === "gps_add_photo") {
-    if (n.includes("no")) {
-      next.link_foto = null;
-    } else if (userText.startsWith("http")) {
-      next.link_foto = userText;
-    }
+  if (n.includes("no")) {
+    next.link_foto = null;
     saveGpsAddCtx(next);
     setAwaiting("gps_add_confirm");
+  }
+
+  setMessages(m => [...m, {
+    from: "bot",
+    reply_text: "Puedes subir una foto o decir «no» si no tienes.",
+    render: () => (
+      <PhotoUploadInline
+        onUploaded={(url) => {
+          const u = getGpsAddCtx();
+          u.link_foto = url;
+          saveGpsAddCtx(u);
+          setAwaiting("gps_add_confirm");
+          setMessages((mm) => [
+            ...mm,
+            { from: "me", text: url },
+            { from: "bot", reply_text: "Foto recibida." },
+          ]);
+        }}
+      />
+    )
+  }]);
+
+  return true;
+}
 
     const summary = [
       `🟩 Tipo: ${next.tipo}`,
