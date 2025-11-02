@@ -25,7 +25,7 @@ import { makeGeoHelpers } from "./geo";
 import { dispatchAction } from "./dispatchAction";
 import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
-import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.js";
+import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.jsx";
 
 // ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
