@@ -1,4 +1,4 @@
-// src/components/chat/actions/handleDepotList.jsx (FINAL - CU LOGICĂ DE FLUX ASIGURATĂ)
+// src/components/chat/actions/handleDepotList.jsx (FINAL - CORECTAT ȘI EXPORTAT)
 
 import React from "react";
 // Importă stilurile și clientul Supabase (presupuse din contextul tău)
@@ -9,8 +9,9 @@ import { parseDepotFilters } from "./depot/parseDepotFilters";
 
 /* ── Context simplu în sessionStorage (pentru pasul 2/Excel) ── */
 const CTX_KEY = "depot_list_ctx";
-const getCtx  = () => JSON.parse(sessionStorage.getItem(CTX_KEY) || "{}");
-const saveCtx = (p) => {
+// 🚨 CORECȚIE: Adăugăm export la funcțiile de context pentru a fi accesibile în awaitingHandlers.jsx
+export const getCtx  = () => JSON.parse(sessionStorage.getItem(CTX_KEY) || "{}");
+export const saveCtx = (p) => {
   const next = { ...(getCtx() || {}), ...(p || {}) };
   sessionStorage.setItem(CTX_KEY, JSON.stringify(next));
   return next;
@@ -202,7 +203,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
   }
 
   // 🚨 JOCUL INTERACTIV (PASUL 1): Dacă lipsește tipul, întreabă.
-  // Această condiție se declanșează DOAR dacă parseDepotFilters detectează măcar un filtru de stare SAU navieră.
+  // Condiția este: lipsește 'size' ȘI există cel puțin 'estado' SAU 'naviera'
   if (!size && (estado || naviera)) {
     setMessages(m=>[
       ...m,
@@ -213,10 +214,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
   
-  // Dacă dialogul nu a început (adică, !size este fals SAU (estado || naviera) este fals),
-  // atunci se trece direct la interogare.
-  
-  // 🚨 PASUL 2: Execută interogarea și întreabă de Excel
+  // 🚨 PASUL 2: Execută interogarea și întreabă de Excel (se execută dacă size este prezent SAU dacă nu au fost detectate filtre)
   try {
     await queryAndRender({ estado, size, naviera, setMessages, askExcel:true });
   } catch (e) {
