@@ -1,4 +1,4 @@
-// src/components/chat/actions/handleDepotList.jsx (COMPLET ȘI CORECTAT)
+// src/components/chat/actions/handleDepotList.jsx (FINAL - CU LOGICĂ DE FLUX ASIGURATĂ)
 
 import React from "react";
 // Importă stilurile și clientul Supabase (presupuse din contextul tău)
@@ -69,8 +69,6 @@ async function qRotos({ size, naviera }) {
 }
 
 /* ── CSV (Excel îl deschide) ── */
-// NOTĂ: Funcțiile toCSV, downloadCSV și componenta TableList sunt preluate din contextul tău anterior, dar incluse aici pentru completitudine.
-
 function toCSV(rows, titleLine = "") {
   const head = ["Contenedor","Naviera","Tipo","Posición","Estado/Empresa","Entrada/Fecha"];
   const lines = [];
@@ -203,7 +201,8 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
 
-  // 🚨 PASUL 1: Dacă lipsește tipul, întreabă (Flux Multistep)
+  // 🚨 JOCUL INTERACTIV (PASUL 1): Dacă lipsește tipul, întreabă.
+  // Această condiție se declanșează DOAR dacă parseDepotFilters detectează măcar un filtru de stare SAU navieră.
   if (!size && (estado || naviera)) {
     setMessages(m=>[
       ...m,
@@ -213,7 +212,10 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     saveCtx({ awaiting:"depot_list_size", lastQuery:{ estado, size:null, naviera } });
     return;
   }
-
+  
+  // Dacă dialogul nu a început (adică, !size este fals SAU (estado || naviera) este fals),
+  // atunci se trece direct la interogare.
+  
   // 🚨 PASUL 2: Execută interogarea și întreabă de Excel
   try {
     await queryAndRender({ estado, size, naviera, setMessages, askExcel:true });
