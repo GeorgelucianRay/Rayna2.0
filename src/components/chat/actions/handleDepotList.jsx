@@ -21,6 +21,7 @@ function likeTipo(q, size) {
   if (size === "20") return q.ilike("tipo", "20%");
   return q;
 }
+
 function likeNaviera(q, naviera) {
   return naviera ? q.ilike("naviera", `%${naviera}%`) : q;
 }
@@ -186,7 +187,6 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     }
   ]);
 
-  // 🧪 Dacă e cod container, doar notificare
   if (kind === "single") {
     setMessages(m => [...m, {
       from: "bot",
@@ -195,33 +195,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
 
-  // 🧠 Dacă nu știm mărimea, dar știm alte filtre → întreabă interactiv
   if (size === null && (estado || naviera)) {
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)"
-    }]);
-    setAwaiting("depot_list_size");
-    saveCtx({ awaiting: "depot_list_size", lastQuery: { estado, size: null, naviera } });
-    return;
-  }
-
-  // 🔄 Încearcă să generezi lista
-  try {
-    await queryAndRender({ estado, size, naviera, setMessages, askExcel: wantExcel });
-  } catch (e) {
-    console.error("[handleDepotList] error:", e);
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "No he podido leer la lista ahora."
-    }]);
-  }
-}
-
-  // 👇 declanșăm procesul interactiv dacă lipsește size dar există altceva
-  const needSize = size === null && (estado !== null || naviera !== null);
-
-  if (needSize) {
     setMessages(m => [...m, {
       from: "bot",
       reply_text: "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)"
