@@ -25,6 +25,7 @@ import { makeGeoHelpers } from "./geo";
 import { dispatchAction } from "./dispatchAction";
 import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
+import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.js";
 
 // ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
@@ -140,6 +141,13 @@ export default function RaynaHub() {
 
     setMessages((m) => [...m, { from: "user", text: userText }]);
     setText("");
+    
+    // ——— Short-circuit Depot: dacă există un cod ISO (ex: HLBU2196392), merg direct pe Depot
+const code = extractContainerCode(userText);
+if (code) {
+  await handleDepotChat({ userText, profile, setMessages });
+  return;
+}
 
     // 1) blocuri „awaiting”
     const wasHandled = await handleAwaiting({
