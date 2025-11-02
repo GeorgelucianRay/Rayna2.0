@@ -1,16 +1,19 @@
+// src/components/chat/actions/handleDepotChat.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 
-// —————————— UTILS ——————————
-/** Extrage codul de container din fraze cu spații/punctuație (ex: "HLBU 2196392") */
-function extractContainerCode(input = "") {
+/** ===================== UTILS ===================== */
+/** Extrage codul ISO al containerului din text liber.
+ *  Acceptă variante cu spații sau semne: "HLBU 2196392", "HLBU-2196392" etc.
+ *  Returnează de forma "HLBU2196392" sau null dacă nu există. */
+export function extractContainerCode(input = "") {
   const compact = String(input).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   const m = compact.match(/[A-Z]{4}\d{7}/);
   return m ? m[0] : null;
 }
 
-/** Caută în toate tabelele posibile; întoarce primul hit. */
+/** Caută containerul într-o listă de tabele și întoarce primul hit. */
 async function lookupContainer(code) {
   const tables = [
     "contenedores",
@@ -24,24 +27,24 @@ async function lookupContainer(code) {
     let q = await supabase.from(t).select("*").eq("num_contenedor", code).maybeSingle();
     if (!q.error && q.data) return { data: q.data, table: t };
 
-    // fallback ilike (dacă e salvat cu varianta "HLBU-2196392" etc)
+    // fallback ilike (dacă e salvat cu delimitatori)
     q = await supabase.from(t).select("*").ilike("num_contenedor", `%${code}%`).maybeSingle();
     if (!q.error && q.data) return { data: q.data, table: t };
 
-    // fallback pentru coloane alternative
+    // fallback pe altă coloană posibilă
     q = await supabase.from(t).select("*").eq("codigo", code).maybeSingle();
     if (!q.error && q.data) return { data: q.data, table: t };
   }
   return { data: null, table: null };
 }
 
-/** Verifică dacă userul are voie (ca la GPS). Ajustează după rolurile tale. */
+/** Permisiuni Depot – ajustează dacă ai alte roluri. */
 function hasDepotAccess(role = "") {
-  const r = String(role).toLowerCase();
+  const r = String(role || "").toLowerCase();
   return !["sofer", "șofer", "şofer", "driver"].includes(r);
 }
 
-// —————————— CARD UI ——————————
+/** ===================== UI CARD ===================== */
 function ContainerCard({ code, table, row }) {
   const pos = row?.posicion ?? "—";
   const tipo = row?.tipo ?? row?.type ?? "—";
@@ -56,15 +59,15 @@ function ContainerCard({ code, table, row }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>Contenedor {code}</div>
-      <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6, whiteSpace: "pre-line" }}>
+      <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6 }}>
         <div><strong>Posición:</strong> {pos}</div>
         <div><strong>Tipo:</strong> {tipo}</div>
         <div><strong>Estado:</strong> {estado}</div>
-        <div><strong>Origen tabla:</strong> {table}</div>
+        <div><strong>Origen:</strong> {table}</div>
         <div><strong>Entrada:</strong> {entrada}</div>
       </div>
       <div className={styles.cardActions} style={{ marginTop: 10 }}>
-        {/* Pune aici butoane reale când ai rutele/fluxurile (programar, mover, sacar, etc.) */}
+        {/* Leagă butoanele de fluxurile reale când le ai */}
         <button className={styles.actionBtn} onClick={() => alert("Pendiente: cambiar posición")}>
           Cambiar posición
         </button>
@@ -76,7 +79,7 @@ function ContainerCard({ code, table, row }) {
   );
 }
 
-// —————————— HANDLER ——————————
+/** ===================== HANDLER ===================== */
 export default async function handleDepotChat({ userText, profile, setMessages }) {
   const code = extractContainerCode(userText);
 
