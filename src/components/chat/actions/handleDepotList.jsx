@@ -240,3 +240,7 @@ export async function runDepotListFromCtx({ setMessages }) {
   const q = ctx.lastQuery || {};
   await queryAndRender({ ...q, setMessages, askExcel:false }); // askExcel:false este crucial
 }
+
+export function clearDepotCtx() {
+  sessionStorage.removeItem(CTX_KEY);
+}
