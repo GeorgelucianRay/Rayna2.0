@@ -1,5 +1,3 @@
-// src/components/chat/actions/handleDepotList.jsx
-
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
@@ -59,18 +57,18 @@ async function qRotos({ size, naviera }) {
 }
 
 function toCSV(rows, titleLine = "") {
-  const head = ["Contenedor","Naviera","Tipo","Posición","Estado/Empresa","Entrada/Fecha"];
+  const head = ["Contenedor", "Naviera", "Tipo", "Posición", "Estado/Empresa", "Entrada/Fecha"];
   const lines = [];
   if (titleLine) lines.push(`# ${titleLine}`);
   lines.push(head.join(","));
   for (const r of rows) {
-    const num   = r.matricula_contenedor ?? r.codigo ?? "";
-    const nav   = r.naviera ?? "";
-    const tip   = r.tipo ?? "";
-    const pos   = r.posicion ?? "";
-    const est   = (r.estado ?? r.empresa_descarga ?? r.detalles ?? "").toString();
+    const num = r.matricula_contenedor ?? r.codigo ?? "";
+    const nav = r.naviera ?? "";
+    const tip = r.tipo ?? "";
+    const pos = r.posicion ?? "";
+    const est = (r.estado ?? r.empresa_descarga ?? r.detalles ?? "").toString();
     const fecha = (r.fecha || r.created_at || "").toString().slice(0, 10);
-    lines.push([num,nav,tip,pos,est,fecha].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+    lines.push([num, nav, tip, pos, est, fecha].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
   }
   return lines.join("\n");
 }
@@ -91,9 +89,9 @@ function TableList({ rows, subtitle, excelTitle }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>Lista contenedores</div>
-      <div style={{ opacity: 0.7, marginTop:2 }}>{subtitle}</div>
-      <div style={{ overflowX:"auto", marginTop:10 }}>
-        <table className={styles.table} style={{ width:"100%" }}>
+      <div style={{ opacity: 0.7, marginTop: 2 }}>{subtitle}</div>
+      <div style={{ overflowX: "auto", marginTop: 10 }}>
+        <table className={styles.table} style={{ width: "100%" }}>
           <thead>
             <tr>
               <th>Contenedor</th><th>Naviera</th><th>Tipo</th>
@@ -101,13 +99,13 @@ function TableList({ rows, subtitle, excelTitle }) {
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 10).map((r,i)=>{
-              const num   = r.matricula_contenedor ?? r.codigo ?? "";
-              const nav   = r.naviera ?? "";
-              const tip   = r.tipo ?? "";
-              const pos   = r.posicion ?? "";
-              const est   = r.estado ?? r.empresa_descarga ?? r.detalles ?? "";
-              const fecha = (r.fecha || r.created_at || "").toString().slice(0,10);
+            {rows.slice(0, 10).map((r, i) => {
+              const num = r.matricula_contenedor ?? r.codigo ?? "";
+              const nav = r.naviera ?? "";
+              const tip = r.tipo ?? "";
+              const pos = r.posicion ?? "";
+              const est = r.estado ?? r.empresa_descarga ?? r.detalles ?? "";
+              const fecha = (r.fecha || r.created_at || "").toString().slice(0, 10);
               return (
                 <tr key={i}>
                   <td>{num}</td><td>{nav}</td><td>{tip}</td>
@@ -118,10 +116,10 @@ function TableList({ rows, subtitle, excelTitle }) {
           </tbody>
         </table>
       </div>
-      <div className={styles.cardActions} style={{ marginTop:12 }}>
+      <div className={styles.cardActions} style={{ marginTop: 12 }}>
         <button
           className={styles.actionBtn}
-          onClick={()=>{
+          onClick={() => {
             const ctx = getCtx();
             const rows = ctx._lastRows || [];
             const title = ctx._excelTitle || "Lista contenedores";
@@ -138,9 +136,9 @@ function TableList({ rows, subtitle, excelTitle }) {
 async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) {
   let rows = [];
   if (estado === "programado") rows = await qProgramados({ size, naviera });
-  else if (estado === "roto")  rows = await qRotos({ size, naviera });
+  else if (estado === "roto") rows = await qRotos({ size, naviera });
   else if (estado === "vacio" || estado === "lleno") rows = await qContenedores({ estado, size, naviera });
-  else rows = await qContenedores({ estado:null, size, naviera });
+  else rows = await qContenedores({ estado: null, size, naviera });
 
   const subtitle = [
     estado || "todos",
@@ -150,7 +148,7 @@ async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) 
   ].join(" · ");
 
   if (!rows.length) {
-    setMessages(m => [...m, { from:"bot", reply_text: `No hay resultados para: ${subtitle}.` }]);
+    setMessages(m => [...m, { from: "bot", reply_text: `No hay resultados para: ${subtitle}.` }]);
     return;
   }
 
@@ -160,15 +158,15 @@ async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) 
   setMessages(m => [
     ...m,
     {
-      from:"bot",
-      reply_text:"Vale, aquí tienes la lista.",
-      render:()=> <TableList rows={rows} subtitle={subtitle} excelTitle={excelTitle} />
+      from: "bot",
+      reply_text: "Vale, aquí tienes la lista.",
+      render: () => <TableList rows={rows} subtitle={subtitle} excelTitle={excelTitle} />
     }
   ]);
 
   if (askExcel) {
-    setMessages(m => [...m,{ from:"bot", reply_text:"¿Quieres que te lo dé en Excel? (sí/no)" }]);
-    saveCtx({ awaiting:"depot_list_excel", lastQuery:{ estado, size, naviera } });
+    setMessages(m => [...m, { from: "bot", reply_text: "¿Quieres que te lo dé en Excel? (sí/no)" }]);
+    saveCtx({ awaiting: "depot_list_excel", lastQuery: { estado, size, naviera } });
   }
 }
 
@@ -176,14 +174,23 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
   const { kind, estado, size, naviera, wantExcel } = parseDepotFilters(userText);
 
   if (kind === "single") {
-    setMessages(m => [...m,{ from:"bot", reply_text:"Eso parece un número de contenedor. Para listas: «lista vacíos 40 Maersk», por ejemplo." }]);
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "Eso parece un número de contenedor. Para listas: «lista vacíos 40 Maersk», por ejemplo."
+    }]);
     return;
   }
 
-  if (size === null && (estado || naviera)) {
-    setMessages(m => [...m,{ from:"bot", reply_text:"Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)" }]);
+  // 👇 declanșăm procesul interactiv dacă lipsește size dar există altceva
+  const needSize = size === null && (estado !== null || naviera !== null);
+
+  if (needSize) {
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)"
+    }]);
     setAwaiting("depot_list_size");
-    saveCtx({ awaiting:"depot_list_size", lastQuery:{ estado, size:null, naviera } });
+    saveCtx({ awaiting: "depot_list_size", lastQuery: { estado, size: null, naviera } });
     return;
   }
 
@@ -191,7 +198,10 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     await queryAndRender({ estado, size, naviera, setMessages, askExcel: wantExcel });
   } catch (e) {
     console.error("[handleDepotList] error:", e);
-    setMessages(m => [...m,{ from:"bot", reply_text:"No he podido leer la lista ahora." }]);
+    setMessages(m => [...m, {
+      from: "bot",
+      reply_text: "No he podido leer la lista ahora."
+    }]);
   }
 }
 
