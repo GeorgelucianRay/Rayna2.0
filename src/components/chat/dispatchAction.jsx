@@ -26,6 +26,8 @@ import {
 
   // 👇 asigură-te că există export default în actions/handleDepotChat.js
   handleDepotChat,
+  handleDepotList,
+  
 } from "./actions";
 
 export async function dispatchAction({
@@ -89,6 +91,8 @@ export async function dispatchAction({
 
     // DEPOT
     depot_lookup: () => handleDepotChat({ message: userText, user: profile, setMessages }),
+    depot_list: () =>
+  handleDepotList({ userText, profile, setMessages }),
   };
 
   try {
