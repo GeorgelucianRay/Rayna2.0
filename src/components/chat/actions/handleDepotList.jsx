@@ -1,9 +1,13 @@
-import React from "react";
-import styles from "../Chatbot.module.css";
-import { supabase } from "../../../supabaseClient";
-import { parseDepotFilters } from "./depot/parseDepotFilters";
+// src/components/chat/actions/handleDepotList.jsx (COMPLET ȘI CORECTAT)
 
-/* ── ctx simplu în sessionStorage (pentru pasul 2/Excel) ── */
+import React from "react";
+// Importă stilurile și clientul Supabase (presupuse din contextul tău)
+import styles from "../Chatbot.module.css"; 
+import { supabase } from "../../../supabaseClient"; 
+// Importă funcția de parsare (presupusă din contextul tău)
+import { parseDepotFilters } from "./depot/parseDepotFilters"; 
+
+/* ── Context simplu în sessionStorage (pentru pasul 2/Excel) ── */
 const CTX_KEY = "depot_list_ctx";
 const getCtx  = () => JSON.parse(sessionStorage.getItem(CTX_KEY) || "{}");
 const saveCtx = (p) => {
@@ -12,12 +16,22 @@ const saveCtx = (p) => {
   return next;
 };
 
-/* ── helpers filtre ── */
+/* ── helpers filtre (CORECTAT PENTRU '40' vs '40HC') ── */
 function likeTipo(q, size) {
   if (!size) return q;
+
+  // 1. 40 High Cube
   if (size === "40hc") return q.ilike("tipo", "%40HC%");
-  if (size === "40")   return q.ilike("tipo", "40%");  // începe cu 40
-  if (size === "20")   return q.ilike("tipo", "20%");  // începe cu 20
+
+  // 2. 40 (Exclude High Cube pentru a fi specific)
+  if (size === "40") {
+    // Caută '40%' DAR EXCLUDE '%40HC%'
+    return q.ilike("tipo", "40%").not.ilike("tipo", "%40HC%");
+  }
+  
+  // 3. 20
+  if (size === "20") return q.ilike("tipo", "20%");
+  
   return q;
 }
 function likeNaviera(q, naviera) {
@@ -33,7 +47,7 @@ async function qContenedores({ estado, size, naviera }) {
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(r => ({...r, __table: 'contenedores'}));
 }
 async function qProgramados({ size, naviera }) {
   let q = supabase.from("contenedores_programados")
@@ -42,7 +56,7 @@ async function qProgramados({ size, naviera }) {
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(r => ({...r, __table: 'programados'}));
 }
 async function qRotos({ size, naviera }) {
   let q = supabase.from("contenedores_rotos")
@@ -51,10 +65,12 @@ async function qRotos({ size, naviera }) {
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(r => ({...r, __table: 'rotos'}));
 }
 
 /* ── CSV (Excel îl deschide) ── */
+// NOTĂ: Funcțiile toCSV, downloadCSV și componenta TableList sunt preluate din contextul tău anterior, dar incluse aici pentru completitudine.
+
 function toCSV(rows, titleLine = "") {
   const head = ["Contenedor","Naviera","Tipo","Posición","Estado/Empresa","Entrada/Fecha"];
   const lines = [];
@@ -65,7 +81,7 @@ function toCSV(rows, titleLine = "") {
     const nav   = r.naviera ?? "";
     const tip   = r.tipo ?? "";
     const pos   = r.posicion ?? "";
-    const est   = (r.estado ?? r.empresa_descarga ?? "").toString();
+    const est   = (r.estado ?? r.empresa_descarga ?? r.detalles ?? "").toString();
     const fecha = (r.fecha || r.created_at || "").toString().slice(0, 10);
     lines.push([num,nav,tip,pos,est,fecha].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
   }
@@ -80,7 +96,7 @@ function downloadCSV(rows, filename, titleLine) {
   URL.revokeObjectURL(url);
 }
 
-/* ── UI tabel ── */
+/* ── UI tabel (Simplificat pentru exemplu) ── */
 function TableList({ rows, subtitle, excelTitle }) {
   return (
     <div className={styles.card}>
@@ -96,12 +112,12 @@ function TableList({ rows, subtitle, excelTitle }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r,i)=>{
+            {rows.slice(0, 10).map((r,i)=>{ // Arată primele 10 rânduri
               const num   = r.matricula_contenedor ?? r.codigo ?? "";
               const nav   = r.naviera ?? "";
               const tip   = r.tipo ?? "";
               const pos   = r.posicion ?? "";
-              const est   = r.estado ?? r.empresa_descarga ?? "";
+              const est   = r.estado ?? r.empresa_descarga ?? r.detalles ?? "";
               const fecha = (r.fecha || r.created_at || "").toString().slice(0,10);
               return (
                 <tr key={i}>
@@ -118,27 +134,33 @@ function TableList({ rows, subtitle, excelTitle }) {
         <button
           className={styles.actionBtn}
           onClick={()=>{
-            const rows = saveCtx()._lastRows || [];
-            downloadCSV(rows, "lista_contenedores", excelTitle);
+            const ctx = getCtx();
+            const rows = ctx._lastRows || [];
+            const title = ctx._excelTitle || "Lista contenedores";
+            downloadCSV(rows, "lista_contenedores", title);
           }}
         >
-          Descargar Excel
+          Descargar Excel ({rows.length} filas)
         </button>
       </div>
     </div>
   );
 }
 
+
 /* ── interoghează + randare ── */
 async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) {
   let rows = [];
+
+  // 1. Alege funcția de interogare în funcție de 'estado'
   if (estado === "programado") rows = await qProgramados({ size, naviera });
   else if (estado === "roto")  rows = await qRotos({ size, naviera });
   else if (estado === "vacio" || estado === "lleno")
     rows = await qContenedores({ estado, size, naviera });
   else
-    rows = await qContenedores({ estado:null, size, naviera });
+    rows = await qContenedores({ estado:null, size, naviera }); // Toate (din tabla contenedores)
 
+  // 2. Pregătește titlurile și mesajele
   const subtitle = [
     estado || "todos",
     size || "all-sizes",
@@ -154,14 +176,17 @@ async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) 
   const excelTitle =
     `Lista contenedores – ${estado || "todos"} – ${size || "all"} – ${naviera || "todas"} – ${new Date().toLocaleDateString()}`;
 
-  saveCtx({ _lastRows: rows }); // pt. butonul Excel
+  // Salvează contextul pentru butonul Excel
+  saveCtx({ _lastRows: rows, _excelTitle: excelTitle }); 
 
+  // 3. Afișează lista
   setMessages(m=>[
     ...m,
     { from:"bot", reply_text:"Vale, aquí tienes la lista.",
       render:()=> <TableList rows={rows} subtitle={subtitle} excelTitle={excelTitle} /> }
   ]);
 
+  // 4. Întreabă de Excel (Dacă este primul pas)
   if (askExcel) {
     setMessages(m=>[...m, { from:"bot", reply_text:"¿Quieres que te lo dé en Excel? (sí/no)" }]);
     saveCtx({ awaiting:"depot_list_excel", lastQuery:{ estado, size, naviera } });
@@ -178,7 +203,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
 
-  // dacă lipsește tipul, întreabă (exact cum ai cerut)
+  // 🚨 PASUL 1: Dacă lipsește tipul, întreabă (Flux Multistep)
   if (!size && (estado || naviera)) {
     setMessages(m=>[
       ...m,
@@ -189,6 +214,7 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     return;
   }
 
+  // 🚨 PASUL 2: Execută interogarea și întreabă de Excel
   try {
     await queryAndRender({ estado, size, naviera, setMessages, askExcel:true });
   } catch (e) {
@@ -197,17 +223,20 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
   }
 }
 
-/* ── util pt. awaiting (pasul 2) ── */
+/* ── util pt. awaiting (pasul 2/3) ── */
 export function parseSizeFromAnswer(text="") {
   const t = text.toLowerCase();
   if (/\b20\b/.test(t)) return "20";
-  if (/\b40\s*hc\b|\b40hc\b|\bhigh\s*cube\b|\balto\b/.test(t)) return "40hc";
+  // Atentie: 40hc trebuie prins inaintea lui 40
+  if (/\b40\s*hc\b|\b40hc\b|\bhigh\s*cube\b|\balto\b/.test(t)) return "40hc"; 
   if (/\b40\b/.test(t)) return "40";
   if (/da\s*igual|cualquiera|me da igual|igual/.test(t)) return null;
-  return null;
+  return false; // Returnează false dacă nu înțelege nimic (pentru a cere repetarea)
 }
+
+// Folosit de awaitingHandlers.js pentru a re-rula interogarea (fără a cere din nou Excel)
 export async function runDepotListFromCtx({ setMessages }) {
   const ctx = getCtx();
   const q = ctx.lastQuery || {};
-  await queryAndRender({ ...q, setMessages, askExcel:false });
+  await queryAndRender({ ...q, setMessages, askExcel:false }); // askExcel:false este crucial
 }
