@@ -162,5 +162,39 @@ if (awaiting === "depot_list_excel") {
   return true;
 }
 
+// ——— DEPOT LIST: pas 2 — răspuns pentru tip (20/40/igual)
+if (awaiting === "depot_list_size") {
+  setAwaiting(null);
+  // importă din handler:
+  //   import { parseSizeFromAnswer, runDepotListFromCtx } from "./actions/handleDepotList.jsx";
+  const size = parseSizeFromAnswer(userText || "");
+  const ctx  = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
+  const last = ctx.lastQuery || {};
+  const next = { ...last, size };
+  sessionStorage.setItem("depot_list_ctx", JSON.stringify({ ...ctx, lastQuery: next }));
+  await runDepotListFromCtx({ setMessages });
+  return true;
+}
+
+// ——— DEPOT LIST: pas 3 — confirm export Excel (sí/no)
+if (awaiting === "depot_list_excel") {
+  setAwaiting(null);
+  const ans = String(userText || "").toLowerCase();
+  const YES = ["si","sí","da","yes","ok","vale","claro","correcto"];
+  if (YES.includes(ans)) {
+    const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
+    const rows = ctx._lastRows || [];
+    if (!rows.length) {
+      setMessages(m=>[...m,{from:"bot",reply_text:"No tengo filas para exportar ahora."}]);
+      return true;
+    }
+    // butonul din card descarcă; aici doar confirmăm (sau poți declanșa direct download dacă vrei)
+    setMessages(m=>[...m,{from:"bot",reply_text:"Listo. Usa el botón «Descargar Excel»."}]);
+    return true;
+  }
+  setMessages(m=>[...m,{from:"bot",reply_text:"Entendido. ¿Algo más?"}]);
+  return true;
+}
+
   return false;
 }
