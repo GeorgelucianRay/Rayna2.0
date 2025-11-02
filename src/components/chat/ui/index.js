@@ -7,4 +7,4 @@ export { default as GeoCaptureButton } from "./GeoCaptureButton.jsx";
 export { default as PhotoUploadInline } from "./PhotoUploadInline.jsx";
 export { default as PlaceInfoCard } from "./PlaceInfoCard.jsx";
 export { default as SimpleList } from "./SimpleList.jsx";
-export * from "./handleAwaiting.js";
+export { handleAwaitingGps } from "./handleAwaiting.jsx";
