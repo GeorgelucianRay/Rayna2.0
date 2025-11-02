@@ -24,10 +24,9 @@ import {
   handleParkingNext,
   handleParkingRecomputeByTime,
 
-  // 👇 asigură-te că există export default în actions/handleDepotChat.js
+  // din ./actions: export default as handleDepotChat / handleDepotList
   handleDepotChat,
   handleDepotList,
-  
 } from "./actions";
 
 export async function dispatchAction({
@@ -90,9 +89,8 @@ export async function dispatchAction({
     },
 
     // DEPOT
-    depot_lookup: () => handleDepotChat({ message: userText, user: profile, setMessages }),
-    depot_list: () =>
-  handleDepotList({ userText, profile, setMessages }),
+    depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
+    depot_list:   () => handleDepotList({ userText, setMessages }),
   };
 
   try {
