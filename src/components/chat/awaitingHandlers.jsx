@@ -3,6 +3,7 @@ import { normalize } from "../../nlu";
 import { supabase } from "../../supabaseClient";
 import { handleDialog } from "./actions";
 import { handleProfileWizardStart, handleProfileWizardStep, handleParkingRecomputeByTime, parseTimeToMinutes } from "./actions";
+import { parseSizeFromAnswer, runDepotListFromCtx } from "./actions/handleDepotList.jsx";
 
 export async function handleAwaiting({
   awaiting, setAwaiting,
@@ -122,6 +123,44 @@ export async function handleAwaiting({
     await handleParkingRecomputeByTime({ parkingCtx, minutes: mins, setMessages, setParkingCtx });
     return true;
   }
+  
+  // ─── Depot: aștept tipul 20/40/igual ───
+if (awaiting === "depot_list_size") {
+  const ctx = JSON.parse(sessionStorage.getItem("depot_list_ctx") || "{}");
+  const size = parseSizeFromAnswer(userText);
+  // atenție: parseSizeFromAnswer întoarce:
+  //  "20" sau "40" sau "40hc"  → clar
+  //  null (pt. "da igual")     → tot clar (mergem înainte)
+  //  undefined                 → neclar (întrebăm din nou)
+  if (size === undefined) {
+    setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. ¿20, 40 o da igual?" }]);
+    return true;
+  }
+  const next = { 
+    ...ctx, 
+    size, 
+    awaiting: null, 
+    lastQuery: { ...(ctx.lastQuery || {}), size } 
+  };
+  sessionStorage.setItem("depot_list_ctx", JSON.stringify(next));
+  await runDepotListFromCtx({ setMessages }); // afișează lista și va întreba de Excel
+  setAwaiting(null);
+  return true;
+}
+
+// ─── Depot: aștept confirmarea pentru Excel ───
+if (awaiting === "depot_list_excel") {
+  const yes = /\b(si|sí|da|yes|claro)\b/i.test(userText);
+  setAwaiting(null);
+  if (!yes) {
+    setMessages(m => [...m, { from:"bot", reply_text:"Vale, sin Excel. ¿Algo más?" }]);
+    return true;
+  }
+  // Reafișăm lista; cardul are butonul “Descargar Excel”
+  await runDepotListFromCtx({ setMessages });
+  setMessages(m => [...m, { from:"bot", reply_text:'Pulsa "Descargar Excel" para obtener el archivo.' }]);
+  return true;
+}
 
   return false;
 }
