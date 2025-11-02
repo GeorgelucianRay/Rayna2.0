@@ -28,7 +28,7 @@ import {
   handleDepotList,
 } from "./actions";
 
-import AddGpsModalWizard from "./wizards/AddGpsModalWizard.jsx"; // 👈 necesar pt wizardul GPS
+import AddGpsWizard from "./ui/AddGpsWizard.jsx";
 
 export async function dispatchAction({
   intent, slots, userText,
