@@ -17,7 +17,6 @@ function saveGpsAddCtx(data) {
   localStorage.setItem(gpsCtxKey, JSON.stringify(data || {}));
 }
 
-// ✅ Export NAMED cu nume clar și unic
 export async function handleAwaitingGpsWizard({
   awaiting, userText, setMessages, setAwaiting
 }) {
@@ -96,7 +95,21 @@ export async function handleAwaitingGpsWizard({
     }
     saveGpsAddCtx(next);
     setAwaiting("gps_add_photo");
-    setMessages(m => [...m, { from:"bot", reply_text:"Gracias. ¿Tienes una foto del lugar?" }]);
+    setMessages(m => [...m, {
+      from:"bot",
+      reply_text:"Gracias. ¿Tienes una foto del lugar?",
+      render: () => (
+        <PhotoUploadInline
+          onUploaded={(url) => {
+            const updated = getGpsAddCtx();
+            updated.link_foto = url;
+            saveGpsAddCtx(updated);
+            setAwaiting("gps_add_confirm");
+            setMessages(mm => [...mm, { from: "me", text: url }, { from: "bot", reply_text: "Foto subida. ¿Quieres guardarlo?" }]);
+          }}
+        />
+      )
+    }]);
     return true;
   }
 
@@ -128,6 +141,8 @@ export async function handleAwaitingGpsWizard({
               className="actionBtn"
               onClick={async () => {
                 const payload = { ...next };
+                delete payload.tipo; // 🔥 eliminăm 'tipo' înainte de salvare
+
                 const tableMap = {
                   cliente: "gps_clientes",
                   terminal: "gps_terminale",
