@@ -28,8 +28,6 @@ import {
   handleDepotList,
 } from "./actions";
 
-import AddGpsWizard from "./ui/AddGpsWizard.jsx";
-
 export async function dispatchAction({
   intent, slots, userText,
   profile, role,
