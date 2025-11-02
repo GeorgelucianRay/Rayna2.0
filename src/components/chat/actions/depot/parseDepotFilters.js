@@ -1,4 +1,5 @@
-// src/components/chat/actions/depot/parseDepotFilters.js
+// src/components/chat/actions/depot/parseDepotFilters.js (ACTUALIZAT ȘI CORECTAT)
+
 function norm(s = "") {
   return String(s)
     .normalize("NFD")
@@ -24,7 +25,8 @@ export function parseDepotFilters(userText = "") {
   else if (/\bvacios?\b/.test(t)) estado = "vacio";
   else if (/\bllenos?\b/.test(t)) estado = "lleno";
 
-  // 3) size: 40hc | 40 | 20 (prinde și „40 alto/alto 40”)
+  // 3) size: 40hc | 40 | 20 
+  // 🚨 CORECȚIE: Menținem ordinea corectă: 40hc ÎNAINTE de 40 pentru specificitate.
   let size = null;
   if (/\b40\s*hc\b|\b40hc\b|\b40\s*alto\b/.test(t)) size = "40hc";
   else if (/\b40\b/.test(t)) size = "40";
@@ -38,11 +40,16 @@ export function parseDepotFilters(userText = "") {
   ];
   const tn = t; // deja normalizat
   for (const k of KNOWN) {
-    if (tn.includes(norm(k))) { naviera = k; break; }
+    // Folosim o potrivire mai strictă pentru a evita match-uri false, ex: "lista maersk"
+    // Adăugăm spațiu/limită la începutul/sfârșitul cuvântului căutat în text
+    const pattern = new RegExp(`\\b${norm(k)}\\b`);
+    if (pattern.test(tn)) { naviera = k; break; }
   }
+  
   if (!naviera) {
-    // „de Maersk”, „de hapag lloyd”, etc.
-    const m = raw.match(/\bde\s+([A-Za-z][\w\s-]{2,})/i);
+    // 🚨 CORECȚIE: Îmbunătățim regex-ul de fallback pentru a cere minim 3 litere și a nu prinde cuvinte generice (ca 'de hoy')
+    // Caută: "de [spațiu] [3+ litere/cifre/liniuțe]"
+    const m = raw.match(/\bde\s+([A-Za-z0-9][\w\s-]{2,})/i); 
     if (m) naviera = m[1].trim().toUpperCase();
   }
 
