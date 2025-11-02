@@ -1,6 +1,6 @@
 import { supabase } from "../../../supabaseClient";
 import PhotoUploadInline from "./PhotoUploadInline.jsx";
-import GeoCaptureButton from "./GeoCaptureButton.jsx";
+import GeoCaptureCard from "./GeoCaptureCard";
 
 const gpsCtxKey = "gpsAddCtx";
 
@@ -56,26 +56,23 @@ export async function handleAwaiting({ awaiting, userText, setMessages, setAwait
     saveGpsAddCtx(next);
     setAwaiting("gps_add_coords");
     setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "¿Tienes coordenadas, un link de Google Maps o quieres usar tu ubicación?",
-      render: () => (
-        <div className="card" style={{ marginTop: 8 }}>
-          <div className="cardActions">
-            <GeoCaptureButton
-              onGotCoords={(c) => {
-                const u = getGpsAddCtx();
-                u.coordenadas = c;
-                u.link_maps = `https://maps.google.com/?q=${c}`;
-                saveGpsAddCtx(u);
-                setMessages(mm => [...mm, { from: "me", text: c }, { from: "bot", reply_text: "Ubicación recibida. ¿Tienes una foto del lugar?" }]);
-                setAwaiting("gps_add_photo");
-              }}
-              onError={(msg) => alert(msg)}
-            />
-          </div>
-        </div>
-      )
-    }]);
+  from: "bot",
+  reply_text: "¿Tienes coordenadas, un link de Google Maps o quieres usar tu ubicación?",
+  render: () => (
+    <GeoCaptureCard onGotCoords={(coords) => {
+      const u = getGpsAddCtx();
+      u.coordenadas = coords;
+      u.link_maps = `https://maps.google.com/?q=${coords}`;
+      saveGpsAddCtx(u);
+      setAwaiting("gps_add_photo");
+      setMessages(mm => [
+        ...mm,
+        { from: "me", text: coords },
+        { from: "bot", reply_text: "Ubicación recibida. ¿Tienes una foto del lugar?" }
+      ]);
+    }} />
+  )
+}]);
     return true;
   }
 
