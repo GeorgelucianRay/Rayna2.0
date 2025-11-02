@@ -1,8 +1,10 @@
+// src/components/chat/actions/handleDepotList.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 import { parseDepotFilters } from "./depot/parseDepotFilters";
 
+// ─────────────── CONTEXT local (pentru interacțiuni în mai multe etape)
 const CTX_KEY = "depot_list_ctx";
 export const getCtx = () => JSON.parse(sessionStorage.getItem(CTX_KEY) || "{}");
 export const saveCtx = (p) => {
@@ -10,10 +12,9 @@ export const saveCtx = (p) => {
   sessionStorage.setItem(CTX_KEY, JSON.stringify(next));
   return next;
 };
-export function clearDepotCtx() {
-  sessionStorage.removeItem(CTX_KEY);
-}
+export const clearDepotCtx = () => sessionStorage.removeItem(CTX_KEY);
 
+// ─────────────── HELPERS PENTRU QUERY
 function likeTipo(q, size) {
   if (!size) return q;
   if (size === "40hc") return q.ilike("tipo", "%40HC%");
@@ -26,39 +27,53 @@ function likeNaviera(q, naviera) {
   return naviera ? q.ilike("naviera", `%${naviera}%`) : q;
 }
 
+// ─────────────── INTEROGĂRI
 async function qContenedores({ estado, size, naviera }) {
-  let q = supabase.from("contenedores")
+  let q = supabase
+    .from("contenedores")
     .select("id,created_at,matricula_contenedor,naviera,tipo,posicion,estado");
   if (estado) q = q.eq("estado", estado);
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map(r => ({ ...r, __table: "contenedores" }));
+  return (data || []).map((r) => ({ ...r, __table: "contenedores" }));
 }
 
 async function qProgramados({ size, naviera }) {
-  let q = supabase.from("contenedores_programados")
-    .select("id,created_at,matricula_contenedor,naviera,tipo,posicion,empresa_descarga,fecha,hora,matricula_camion,estado");
+  let q = supabase
+    .from("contenedores_programados")
+    .select(
+      "id,created_at,matricula_contenedor,naviera,tipo,posicion,empresa_descarga,fecha,hora,matricula_camion,estado"
+    );
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map(r => ({ ...r, __table: "programados" }));
+  return (data || []).map((r) => ({ ...r, __table: "programados" }));
 }
 
 async function qRotos({ size, naviera }) {
-  let q = supabase.from("contenedores_rotos")
+  let q = supabase
+    .from("contenedores_rotos")
     .select("id,created_at,matricula_contenedor,naviera,tipo,posicion,estado,notas");
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map(r => ({ ...r, __table: "rotos" }));
+  return (data || []).map((r) => ({ ...r, __table: "rotos" }));
 }
 
+// ─────────────── EXPORT CSV
 function toCSV(rows, titleLine = "") {
-  const head = ["Contenedor", "Naviera", "Tipo", "Posición", "Estado/Empresa", "Entrada/Fecha"];
+  const head = [
+    "Contenedor",
+    "Naviera",
+    "Tipo",
+    "Posición",
+    "Estado/Empresa",
+    "Entrada/Fecha",
+  ];
   const lines = [];
   if (titleLine) lines.push(`# ${titleLine}`);
   lines.push(head.join(","));
@@ -69,13 +84,19 @@ function toCSV(rows, titleLine = "") {
     const pos = r.posicion ?? "";
     const est = (r.estado ?? r.empresa_descarga ?? r.detalles ?? "").toString();
     const fecha = (r.fecha || r.created_at || "").toString().slice(0, 10);
-    lines.push([num, nav, tip, pos, est, fecha].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+    lines.push(
+      [num, nav, tip, pos, est, fecha]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
   }
   return lines.join("\n");
 }
 
 function downloadCSV(rows, filename, titleLine) {
-  const blob = new Blob([toCSV(rows, titleLine)], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([toCSV(rows, titleLine)], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -86,7 +107,9 @@ function downloadCSV(rows, filename, titleLine) {
   URL.revokeObjectURL(url);
 }
 
+// ─────────────── UI
 function TableList({ rows, subtitle, excelTitle }) {
+  const total = rows.length;
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>Lista contenedores</div>
@@ -95,8 +118,12 @@ function TableList({ rows, subtitle, excelTitle }) {
         <table className={styles.table} style={{ width: "100%" }}>
           <thead>
             <tr>
-              <th>Contenedor</th><th>Naviera</th><th>Tipo</th>
-              <th>Posición</th><th>Estado/Empresa</th><th>Entrada/Fecha</th>
+              <th>Contenedor</th>
+              <th>Naviera</th>
+              <th>Tipo</th>
+              <th>Posición</th>
+              <th>Estado/Empresa</th>
+              <th>Entrada/Fecha</th>
             </tr>
           </thead>
           <tbody>
@@ -109,8 +136,12 @@ function TableList({ rows, subtitle, excelTitle }) {
               const fecha = (r.fecha || r.created_at || "").toString().slice(0, 10);
               return (
                 <tr key={i}>
-                  <td>{num}</td><td>{nav}</td><td>{tip}</td>
-                  <td>{pos}</td><td>{est}</td><td>{fecha}</td>
+                  <td>{num}</td>
+                  <td>{nav}</td>
+                  <td>{tip}</td>
+                  <td>{pos}</td>
+                  <td>{est}</td>
+                  <td>{fecha}</td>
                 </tr>
               );
             })}
@@ -127,79 +158,98 @@ function TableList({ rows, subtitle, excelTitle }) {
             downloadCSV(rows, "lista_contenedores", title);
           }}
         >
-          Descargar Excel ({(getCtx()._lastRows || []).length} filas)
+          Descargar Excel ({total} filas)
         </button>
       </div>
     </div>
   );
 }
 
+// ─────────────── LOGICĂ PRINCIPALĂ
 async function queryAndRender({ estado, size, naviera, setMessages, askExcel }) {
   let rows = [];
   if (estado === "programado") rows = await qProgramados({ size, naviera });
   else if (estado === "roto") rows = await qRotos({ size, naviera });
-  else if (estado === "vacio" || estado === "lleno") rows = await qContenedores({ estado, size, naviera });
+  else if (estado === "vacio" || estado === "lleno")
+    rows = await qContenedores({ estado, size, naviera });
   else rows = await qContenedores({ estado: null, size, naviera });
 
   const subtitle = [
     estado || "todos",
     size || "all-sizes",
     naviera || "todas navieras",
-    new Date().toLocaleDateString()
+    new Date().toLocaleDateString(),
   ].join(" · ");
 
   if (!rows.length) {
-    setMessages(m => [...m, { from: "bot", reply_text: `No hay resultados para: ${subtitle}.` }]);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: `No hay resultados para: ${subtitle}.` },
+    ]);
     return;
   }
 
-  const excelTitle = `Lista contenedores – ${estado || "todos"} – ${size || "all"} – ${naviera || "todas"} – ${new Date().toLocaleDateString()}`;
+  const excelTitle = `Lista contenedores – ${estado || "todos"} – ${
+    size || "all"
+  } – ${naviera || "todas"} – ${new Date().toLocaleDateString()}`;
   saveCtx({ _lastRows: rows, _excelTitle: excelTitle });
 
-  setMessages(m => [
+  setMessages((m) => [
     ...m,
     {
       from: "bot",
       reply_text: "Vale, aquí tienes la lista.",
-      render: () => <TableList rows={rows} subtitle={subtitle} excelTitle={excelTitle} />
-    }
+      render: () => (
+        <TableList rows={rows} subtitle={subtitle} excelTitle={excelTitle} />
+      ),
+    },
   ]);
 
   if (askExcel) {
-    setMessages(m => [...m, { from: "bot", reply_text: "¿Quieres que te lo dé en Excel? (sí/no)" }]);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "¿Quieres que te lo dé en Excel? (sí/no)" },
+    ]);
     saveCtx({ awaiting: "depot_list_excel", lastQuery: { estado, size, naviera } });
   }
 }
 
+// ─────────────── HANDLER PRINCIPAL
 export default async function handleDepotList({ userText, setMessages, setAwaiting }) {
   const { kind, estado, size, naviera, wantExcel } = parseDepotFilters(userText);
 
-  // 🔍 DEBUG: Afișează în chat ce filtre s-au extras
-  setMessages(m => [
+  // 🔍 LOG DEBUG
+  setMessages((m) => [
     ...m,
     {
       from: "bot",
-      reply_text: `🛠️ Filtre detectate:
-• Estado: ${estado ?? "null"}
-• Tamaño: ${size ?? "null"}
-• Naviera: ${naviera ?? "null"}
-• Excel: ${wantExcel ? "da" : "nu"}`
-    }
+      reply_text: `🛠️ Filtre detectate:\n• Estado: ${estado ?? "null"}\n• Tamaño: ${
+        size ?? "null"
+      }\n• Naviera: ${naviera ?? "null"}\n• Excel: ${wantExcel ? "da" : "nu"}`,
+    },
   ]);
 
   if (kind === "single") {
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "Eso parece un número de contenedor. Para listas: «lista vacíos 40 Maersk», por ejemplo."
-    }]);
+    setMessages((m) => [
+      ...m,
+      {
+        from: "bot",
+        reply_text:
+          "Eso parece un número de contenedor. Para listas: «lista vacíos 40 Maersk», por ejemplo.",
+      },
+    ]);
     return;
   }
 
-  if (size === null && (estado || naviera)) {
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)"
-    }]);
+  if (!size && (estado || naviera)) {
+    setMessages((m) => [
+      ...m,
+      {
+        from: "bot",
+        reply_text:
+          "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)",
+      },
+    ]);
     setAwaiting("depot_list_size");
     saveCtx({ awaiting: "depot_list_size", lastQuery: { estado, size: null, naviera } });
     return;
@@ -209,19 +259,21 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
     await queryAndRender({ estado, size, naviera, setMessages, askExcel: wantExcel });
   } catch (e) {
     console.error("[handleDepotList] error:", e);
-    setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "No he podido leer la lista ahora."
-    }]);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "No he podido leer la lista ahora." },
+    ]);
   }
 }
 
+// ─────────────── RE-RUN DIN CONTEXT (pentru răspunsul Excel)
 export async function runDepotListFromCtx({ setMessages }) {
   const ctx = getCtx();
   const last = ctx.lastQuery || {};
   await queryAndRender({ ...last, setMessages, askExcel: false });
 }
 
+// ─────────────── PARSARE RĂSPUNS DIMENSIUNE
 export function parseSizeFromAnswer(text = "") {
   const t = text.toLowerCase();
   if (/\b20\b/.test(t)) return "20";
