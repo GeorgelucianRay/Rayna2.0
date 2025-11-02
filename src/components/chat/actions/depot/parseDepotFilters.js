@@ -2,7 +2,7 @@
 function norm(s = "") {
   return String(s)
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")   // strip accente (safe pe iOS)
+    .replace(/[\u0300-\u036f]/g, "") // scoate diacritice (iOS-friendly)
     .toLowerCase()
     .trim();
 }
@@ -11,49 +11,42 @@ export function parseDepotFilters(userText = "") {
   const raw = String(userText || "");
   const t = norm(raw);
 
-  // ——— dacă a introdus un cod exact de container, nu e listă
+  // 1) detect cod container -> nu e listă
   const compact = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   if (/[A-Z]{4}\d{7}/.test(compact)) {
     return { kind: "single", estado: null, size: null, naviera: null, wantExcel: false };
   }
 
-  // ——— estado
+  // 2) estado (ordine contează – „vacio” înainte de „lleno” etc.)
   let estado = null;
-  if (/\bprogramad/.test(t))               estado = "programado";         // programado/a(s)
-  else if (/\brot[oa]s?\b|\bdefect/.test(t)) estado = "roto";             // roto/a(s), defectos
-  else if (/\bllenos?\b/.test(t))          estado = "lleno";              // 'lleno' sau 'llenos'
-  else if (/\bvacios?\b/.test(t))          estado = "vacio";              // 'vacio' sau 'vacios'
+  if (/\bprogramad/.test(t)) estado = "programado";
+  else if (/\brot[oa]s?\b|\bdefect/.test(t)) estado = "roto";
+  else if (/\bvacios?\b/.test(t)) estado = "vacio";
+  else if (/\bllenos?\b/.test(t)) estado = "lleno";
 
-  // ——— mărime
+  // 3) size: 40hc | 40 | 20 (prinde și „40 alto/alto 40”)
   let size = null;
-  if (/\b40\s*hc\b|\b40hc\b/.test(t))      size = "40hc";
-  else if (/\b40\b/.test(t))               size = "40";
-  else if (/\b20\b/.test(t))               size = "20";
+  if (/\b40\s*hc\b|\b40hc\b|\b40\s*alto\b/.test(t)) size = "40hc";
+  else if (/\b40\b/.test(t)) size = "40";
+  else if (/\b20\b/.test(t)) size = "20";
 
-  // ——— naviera (aliasuri frecvente)
+  // 4) naviera (din listă + fallback „de XYZ”)
   let naviera = null;
   const KNOWN = [
-    "MAERSK","MAERSK LINE",
-    "MSC",
-    "HAPAG","HAPAG-LLOYD",
-    "HMM",
-    "ONE",
-    "COSCO",
-    "EVERGREEN",
-    "CMA","CMA CGM",
-    "YANG MING",
-    "ZIM",
-    "MESSINA"
+    "MAERSK","MSC","HAPAG","HMM","ONE","COSCO",
+    "EVERGREEN","CMA","YANG MING","ZIM","MESSINA"
   ];
+  const tn = t; // deja normalizat
   for (const k of KNOWN) {
-    if (t.includes(norm(k))) { naviera = k; break; }
+    if (tn.includes(norm(k))) { naviera = k; break; }
   }
   if (!naviera) {
-    // „de Maersk”, „de hapag-lloyd”, etc.
+    // „de Maersk”, „de hapag lloyd”, etc.
     const m = raw.match(/\bde\s+([A-Za-z][\w\s-]{2,})/i);
     if (m) naviera = m[1].trim().toUpperCase();
   }
 
+  // 5) excel?
   const wantExcel = /\bexcel\b|\bdescargar\b|\bdescarga\b/.test(t);
 
   return { kind: "list", estado, size, naviera, wantExcel };
