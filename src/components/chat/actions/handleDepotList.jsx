@@ -200,3 +200,12 @@ export async function runDepotListFromCtx({ setMessages }) {
   const last = ctx.lastQuery || {};
   await queryAndRender({ ...last, setMessages, askExcel: false });
 }
+
+export function parseSizeFromAnswer(text = "") {
+  const t = text.toLowerCase();
+  if (/\b20\b/.test(t)) return "20";
+  if (/\b40\s*hc\b|\b40hc\b|\bhigh\s*cube\b|\balto\b/.test(t)) return "40hc";
+  if (/\b40\b/.test(t)) return "40";
+  if (/da\s*igual|cualquiera|me da igual|igual/.test(t)) return null;
+  return false;
+}
