@@ -17,7 +17,8 @@ function saveGpsAddCtx(data) {
   localStorage.setItem(gpsCtxKey, JSON.stringify(data || {}));
 }
 
-export async function handleAwaitingGps({
+// ✅ Export NAMED cu nume clar și unic
+export async function handleAwaitingGpsWizard({
   awaiting, userText, setMessages, setAwaiting
 }) {
   if (!awaiting?.startsWith("gps_add_")) return false;
@@ -30,13 +31,13 @@ export async function handleAwaitingGps({
     const validTypes = ["cliente", "terminal", "servicio", "parking"];
     const tipo = n;
     if (!validTypes.includes(tipo)) {
-      setMessages(m => [...m, { from: "bot", reply_text: "Tipo no válido. Por favor dime: cliente, terminal, servicio o parking." }]);
+      setMessages(m => [...m, { from:"bot", reply_text:"Tipo no válido. Por favor dime: cliente, terminal, servicio o parking." }]);
       return true;
     }
     next.tipo = tipo;
     saveGpsAddCtx(next);
     setAwaiting("gps_add_name");
-    setMessages(m => [...m, { from: "bot", reply_text: "Perfecto. ¿Qué nombre tiene esta ubicación?" }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"Perfecto. ¿Qué nombre tiene esta ubicación?" }]);
     return true;
   }
 
@@ -44,7 +45,7 @@ export async function handleAwaitingGps({
     next.nombre = userText;
     saveGpsAddCtx(next);
     setAwaiting("gps_add_address");
-    setMessages(m => [...m, { from: "bot", reply_text: "Genial. ¿Sabes la dirección?" }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"Genial. ¿Sabes la dirección?" }]);
     return true;
   }
 
@@ -57,8 +58,8 @@ export async function handleAwaitingGps({
     saveGpsAddCtx(next);
     setAwaiting("gps_add_coords");
     setMessages(m => [...m, {
-      from: "bot",
-      reply_text: "¿Tienes coordenadas, un link de Google Maps o quieres usar tu ubicación?",
+      from:"bot",
+      reply_text:"¿Tienes coordenadas, un link de Google Maps o quieres usar tu ubicación?",
       render: () => (
         <div className="card" style={{ marginTop: 8 }}>
           <div className="cardActions">
@@ -71,12 +72,12 @@ export async function handleAwaitingGps({
                 setAwaiting("gps_add_photo");
                 setMessages(mm => [
                   ...mm,
-                  { from: "me", text: coords },
-                  { from: "bot", reply_text: "Ubicación recibida. ¿Tienes una foto del lugar?" }
+                  { from:"me", text:coords },
+                  { from:"bot", reply_text:"Ubicación recibida. ¿Tienes una foto del lugar?" }
                 ]);
               }}
               onError={(msg) => {
-                setMessages(mm => [...mm, { from: "bot", reply_text: "Error: " + msg }]);
+                setMessages(mm => [...mm, { from:"bot", reply_text:"Error: " + msg }]);
               }}
             />
           </div>
@@ -95,7 +96,7 @@ export async function handleAwaitingGps({
     }
     saveGpsAddCtx(next);
     setAwaiting("gps_add_photo");
-    setMessages(m => [...m, { from: "bot", reply_text: "Gracias. ¿Tienes una foto del lugar?" }]);
+    setMessages(m => [...m, { from:"bot", reply_text:"Gracias. ¿Tienes una foto del lugar?" }]);
     return true;
   }
 
@@ -118,8 +119,8 @@ export async function handleAwaitingGps({
     ].join("\n");
 
     setMessages(m => [...m, {
-      from: "bot",
-      reply_text: `Perfecto. Este es el resumen:\n\n${summary}\n\n¿Quieres guardarlo?`,
+      from:"bot",
+      reply_text:`Perfecto. Este es el resumen:\n\n${summary}\n\n¿Quieres guardarlo?`,
       render: () => (
         <div className="card" style={{ marginTop: 8 }}>
           <div className="cardActions">
@@ -135,14 +136,14 @@ export async function handleAwaitingGps({
                 };
                 const table = tableMap[next.tipo?.toLowerCase()];
                 if (!table) {
-                  setMessages(mm => [...mm, { from: "bot", reply_text: "Error: tipo inválido." }]);
+                  setMessages(mm => [...mm, { from:"bot", reply_text:"Error: tipo inválido." }]);
                   return;
                 }
                 const { error } = await supabase.from(table).insert([payload]);
                 if (error) {
-                  setMessages(mm => [...mm, { from: "bot", reply_text: "Error al guardar: " + error.message }]);
+                  setMessages(mm => [...mm, { from:"bot", reply_text:"Error al guardar: " + error.message }]);
                 } else {
-                  setMessages(mm => [...mm, { from: "bot", reply_text: "¡Ubicación guardada con éxito!" }]);
+                  setMessages(mm => [...mm, { from:"bot",reply_text:"¡Ubicación guardada con éxito!" }]);
                 }
                 localStorage.removeItem(gpsCtxKey);
                 setAwaiting(null);
@@ -151,7 +152,7 @@ export async function handleAwaitingGps({
             <button
               className="actionBtn"
               onClick={() => {
-                setMessages(m => [...m, { from: "bot", reply_text: "He cancelado la operación." }]);
+                setMessages(m => [...m, { from:"bot", reply_text:"He cancelado la operación." }]);
                 setAwaiting(null);
                 localStorage.removeItem(gpsCtxKey);
               }}
