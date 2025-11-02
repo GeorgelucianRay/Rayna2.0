@@ -11,7 +11,7 @@ import {
 import { parseSizeFromAnswer, runDepotListFromCtx, clearDepotCtx } from "./actions/handleDepotList.jsx";
 
 // 🔗 Integrare wizard GPS
-import { handleAwaiting as handleAwaitingGpsWizard } from "./ui/handleAwaiting";
+import { handleAwaitingGpsWizard } from "./ui/handleAwaiting.jsx";
 
 export async function handleAwaiting({
   awaiting,
