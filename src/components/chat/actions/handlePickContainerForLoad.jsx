@@ -1,4 +1,4 @@
-import React from "react";
+import React from "react"
 import { supabase } from "../../../supabaseClient";
 import styles from "../Chatbot.module.css";
 import { parseNavieraFromAnswer } from "./handleDepotList.jsx";
