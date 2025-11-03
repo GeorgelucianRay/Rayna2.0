@@ -28,6 +28,8 @@ import {
   handleDepotList,
 } from "./actions";
 
+import handlePickContainerForLoad from "./actions/handlePickContainerForLoad.jsx";
+
 export async function dispatchAction({
   intent, slots, userText,
   profile, role,
@@ -36,6 +38,14 @@ export async function dispatchAction({
   askUserLocationInteractive, tryGetUserPos,
 }) {
   const actionKey = (intent?.action || intent?.id || "").trim();
+
+// 🔎 Shortcut text -> pick for load (fără intent, util pt. testare rapidă)
+if (
+  !actionKey &&
+  /(?:^|\b)(?:dame|asigna|necesito|quiero)\b.*\bcontenedor(?:es)?\b.*\b(cargar|para cargar)\b/i.test(userText || "")
+) {
+  return await handlePickContainerForLoad({ userText, setMessages, setAwaiting });
+}
 
   const table = {
     // 📸 Camere / Anunțuri
