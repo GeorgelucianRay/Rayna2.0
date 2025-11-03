@@ -1,86 +1,104 @@
-// src/components/chat/ui/ErrorTray.jsx
-import React, { useEffect, useState } from "react";
-import { onError } from "../errorBus";
-import styles from "../Chatbot.module.css";
+import React, { useEffect, useState, useRef } from "react";
+
+const box = {
+  position: "fixed",
+  right: 10,
+  bottom: 10,
+  width: 320,
+  maxHeight: "55vh",
+  background: "rgba(0,0,0,0.85)",
+  color: "#fff",
+  borderRadius: 10,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+  overflow: "hidden",
+  zIndex: 9999
+};
+const head = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "8px 10px",
+  background: "rgba(255,255,255,0.06)",
+  borderBottom: "1px solid rgba(255,255,255,0.12)"
+};
+const btn = {
+  background: "transparent",
+  color: "#fff",
+  border: "1px solid rgba(255,255,255,0.35)",
+  borderRadius: 6,
+  padding: "2px 8px",
+  cursor: "pointer"
+};
+const list = { padding: 8, overflow: "auto", maxHeight: "46vh", fontSize: 12, lineHeight: 1.35 };
 
 export default function ErrorTray() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
+  const [logs, setLogs] = useState(window.__raynaBus?.logs || []);
+  const endRef = useRef(null);
 
   useEffect(() => {
-    const off = onError((row) => {
-      setItems((prev) => [row, ...prev].slice(0, 20));
-      setOpen(true);
-    });
-    return off;
+    const onLog = (ev) => {
+      const arr = window.__raynaBus?.logs || [];
+      setLogs([...arr]); // clone ca să declanșeze render
+    };
+    window.addEventListener("rayna-log", onLog);
+    return () => window.removeEventListener("rayna-log", onLog);
   }, []);
 
-  if (!items.length) return null;
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs, open]);
 
   return (
-    <div style={{
-      position: "fixed",
-      right: 12,
-      bottom: 12,
-      zIndex: 9999,
-      maxWidth: 420
-    }}>
-      <div className={styles.card}>
-        <div className={styles.cardTitle} style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-          <span>⚠️ Chat errors ({items.length})</span>
-          <div style={{display:"flex", gap:8}}>
-            <button className={styles.actionBtn} onClick={() => setOpen((v)=>!v)}>
-              {open ? "Hide" : "Show"}
-            </button>
-            <button className={styles.actionBtn} onClick={() => setItems([])}>
-              Clear
-            </button>
+    <div style={{ position: "fixed", right: 10, bottom: 10, zIndex: 9999 }}>
+      {!open && (
+        <button style={{ ...btn, background: "#111", padding: "8px 10px" }} onClick={() => setOpen(true)}>
+          ⚙️ Debug ({logs.length})
+        </button>
+      )}
+      {open && (
+        <div style={box}>
+          <div style={head}>
+            <strong>Rayna • Debug</strong>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                style={btn}
+                onClick={() => {
+                  window.__raynaBus?.clear();
+                  setLogs([]);
+                }}
+              >
+                Clear
+              </button>
+              <button style={btn} onClick={() => setOpen(false)}>Close</button>
+            </div>
           </div>
-        </div>
-
-        {open && (
-          <div style={{ maxHeight: 300, overflow: "auto", marginTop: 8 }}>
-            {items.map((e) => (
-              <div key={e.id} style={{
-                border: "1px solid rgba(0,0,0,.1)",
-                borderRadius: 8,
-                padding: 8,
-                marginBottom: 8
-              }}>
-                <div style={{ fontSize: 12, opacity: .7 }}>{new Date(e.time).toLocaleString()}</div>
-                <div style={{ fontWeight: 600, marginTop: 4 }}>{e.message}</div>
-                {e.meta && Object.keys(e.meta).length > 0 && (
-                  <pre style={{
-                    background: "#f7f7f8",
-                    padding: 8,
-                    borderRadius: 6,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    marginTop: 6
-                  }}>{JSON.stringify(e.meta, null, 2)}</pre>
-                )}
-                {e.stack ? (
-                  <details style={{ marginTop: 6 }}>
-                    <summary>Stack</summary>
-                    <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{e.stack}</pre>
-                  </details>
-                ) : null}
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button
-                    className={styles.actionBtn}
-                    onClick={() => {
-                      const text = JSON.stringify(e, null, 2);
-                      navigator.clipboard?.writeText(text);
-                    }}
-                  >
-                    Copy JSON
-                  </button>
+          <div style={list}>
+            {logs.map((l, i) => (
+              <div key={i} style={{ marginBottom: 10, borderLeft: `3px solid ${colorFor(l.level)}`, paddingLeft: 6 }}>
+                <div style={{ opacity: 0.9 }}>
+                  <b>{new Date(l.ts).toLocaleTimeString()}</b> · {badge(l.level)} · {l.title}
                 </div>
+                {l.data != null && (
+                  <pre style={{ whiteSpace: "pre-wrap", margin: "4px 0 0 0" }}>
+                    {typeof l.data === "string" ? l.data : JSON.stringify(l.data, null, 2)}
+                  </pre>
+                )}
               </div>
             ))}
+            <div ref={endRef} />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function colorFor(level) {
+  if (level === "error") return "#e74c3c";
+  if (level === "warn" || level === "warning") return "#f39c12";
+  return "#2ecc71";
+}
+function badge(level) {
+  if (level === "error") return "❌ error";
+  if (level === "warn" || level === "warning") return "⚠️ warn";
+  return "ℹ️ info";
 }
