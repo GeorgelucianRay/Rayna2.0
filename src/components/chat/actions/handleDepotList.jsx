@@ -1,7 +1,17 @@
+// src/components/chat/actions/handleDepotList.jsx
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
 import { parseDepotFilters } from "./depot/parseDepotFilters";
+
+/* ─────────────────────────────
+   Logger vizibil în UI (ErrorTray)
+   ───────────────────────────── */
+function logUI(title, data, level = "info") {
+  try {
+    if (window.__raynaLog) window.__raynaLog(title, data, level);
+  } catch {}
+}
 
 /* ─────────────────────────────
    Context (pas cu pas, stocat)
@@ -33,9 +43,24 @@ function likeNaviera(q, naviera) {
 }
 
 /* ─────────────────────────────
-   Interogări DB (coloane corecte)
+   Card eroare pentru chat (ErrorBody)
+   ───────────────────────────── */
+function ErrorBody({ title = "Eroare", details }) {
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardTitle}>{title}</div>
+      <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, marginTop: 8 }}>
+        {details}
+      </pre>
+    </div>
+  );
+}
+
+/* ─────────────────────────────
+   Interogări DB (coloane corecte) + LOG
    ───────────────────────────── */
 export async function qContenedores({ estado, size, naviera }) {
+  logUI("DepotList/qContenedores:START", { estado, size, naviera });
   let q = supabase
     .from("contenedores")
     .select(
@@ -44,12 +69,18 @@ export async function qContenedores({ estado, size, naviera }) {
   if (estado) q = q.eq("estado", estado); // "vacio" | "lleno"
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
+
   const { data, error } = await q.order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    logUI("DepotList/qContenedores:ERROR", { error }, "error");
+    throw error;
+  }
+  logUI("DepotList/qContenedores:OK", { rows: data?.length || 0 });
   return (data || []).map((r) => ({ ...r, __table: "contenedores" }));
 }
 
 export async function qProgramados({ size, naviera }) {
+  logUI("DepotList/qProgramados:START", { size, naviera });
   let q = supabase
     .from("contenedores_programados")
     .select(
@@ -58,11 +89,16 @@ export async function qProgramados({ size, naviera }) {
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    logUI("DepotList/qProgramados:ERROR", { error }, "error");
+    throw error;
+  }
+  logUI("DepotList/qProgramados:OK", { rows: data?.length || 0 });
   return (data || []).map((r) => ({ ...r, __table: "programados" }));
 }
 
 export async function qRotos({ size, naviera }) {
+  logUI("DepotList/qRotos:START", { size, naviera });
   let q = supabase
     .from("contenedores_rotos")
     .select(
@@ -71,7 +107,11 @@ export async function qRotos({ size, naviera }) {
   q = likeTipo(q, size);
   q = likeNaviera(q, naviera);
   const { data, error } = await q.order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    logUI("DepotList/qRotos:ERROR", { error }, "error");
+    throw error;
+  }
+  logUI("DepotList/qRotos:OK", { rows: data?.length || 0 });
   return (data || []).map((r) => ({ ...r, __table: "rotos" }));
 }
 
@@ -215,7 +255,7 @@ export function parseNavieraFromAnswer(text = "") {
 }
 
 /* ─────────────────────────────
-   Query centralizat + render
+   Query centralizat + render + LOG + ErrorBody
    ───────────────────────────── */
 async function queryAndRender({
   estado,
@@ -225,12 +265,38 @@ async function queryAndRender({
   setAwaiting,
   askExcel = true,
 }) {
+  logUI("DepotList/queryAndRender:INPUT", { estado, size, naviera, askExcel });
+
   let rows = [];
-  if (estado === "programado") rows = await qProgramados({ size, naviera });
-  else if (estado === "roto") rows = await qRotos({ size, naviera });
-  else if (estado === "vacio" || estado === "lleno")
-    rows = await qContenedores({ estado, size, naviera });
-  else rows = await qContenedores({ estado: null, size, naviera });
+  try {
+    if (estado === "programado") rows = await qProgramados({ size, naviera });
+    else if (estado === "roto") rows = await qRotos({ size, naviera });
+    else if (estado === "vacio" || estado === "lleno")
+      rows = await qContenedores({ estado, size, naviera });
+    else rows = await qContenedores({ estado: null, size, naviera });
+  } catch (e) {
+    // Afișăm un “error body” direct în chat
+    const details =
+      (e?.message || "Unknown error") +
+      "\n\n" +
+      JSON.stringify(
+        { hint: e?.hint, code: e?.code, details: e?.details },
+        null,
+        2
+      );
+    logUI("DepotList/queryAndRender:ERROR", { error: e }, "error");
+    setMessages((m) => [
+      ...m,
+      {
+        from: "bot",
+        reply_text: "No he podido leer la lista ahora.",
+        render: () => <ErrorBody title="Supabase error" details={details} />,
+      },
+    ]);
+    return;
+  }
+
+  logUI("DepotList/queryAndRender:ROWS", { count: rows.length });
 
   const subtitle = [
     estado || "todos",
@@ -240,7 +306,6 @@ async function queryAndRender({
   ].join(" · ");
 
   if (!rows.length) {
-    // ✨ curățăm contextul ca să nu rămânem cu state vechi
     clearDepotCtx();
     if (setAwaiting) setAwaiting(null);
     setMessages((m) => [
@@ -286,6 +351,7 @@ async function queryAndRender({
 export async function runDepotListFromCtx({ setMessages, setAwaiting }) {
   const ctx = getCtx();
   const last = ctx.lastQuery || {};
+  logUI("DepotList/runFromCtx", last);
   await queryAndRender({
     ...last,
     setMessages,
@@ -298,8 +364,10 @@ export async function runDepotListFromCtx({ setMessages, setAwaiting }) {
    Handler principal (traseu acțiune)
    ───────────────────────────── */
 export default async function handleDepotList({ userText, setMessages, setAwaiting }) {
-  const { kind, estado, size, naviera, wantExcel } =
-    parseDepotFilters(userText);
+  const parsed = parseDepotFilters(userText);
+  logUI("DepotList/handle:PARSED", parsed);
+
+  const { kind, estado, size, naviera, wantExcel } = parsed;
 
   if (kind === "single") {
     setMessages((m) => [
@@ -323,41 +391,20 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
           "Un momento para decirte correcto… ¿De cuál tipo te interesa? (20/40/da igual)",
       },
     ]);
-    saveCtx({ awaiting: "depot_list_size", lastQuery: { estado, size: null, naviera } });
+    saveCtx({
+      awaiting: "depot_list_size",
+      lastQuery: { estado, size: null, naviera },
+    });
     if (setAwaiting) setAwaiting("depot_list_size");
     return;
   }
 
-  try {
-    await queryAndRender({
-      estado,
-      size,
-      naviera,
-      setMessages,
-      setAwaiting,
-      askExcel: wantExcel, // dacă a cerut Excel direct, întrebăm
-    });
-  } catch (e) {
-    console.error("[handleDepotList] error:", e);
-    setMessages((m) => [
-      ...m,
-      { from: "bot", reply_text: "No he podido leer la lista ahora." },
-    ]);
-  }
+  await queryAndRender({
+    estado,
+    size,
+    naviera,
+    setMessages,
+    setAwaiting,
+    askExcel: wantExcel, // dacă a cerut Excel direct, întrebăm
+  });
 }
-
-/* ─────────────────────────────
-   Exporturi unice (evită dublurile)
-   ───────────────────────────── */
-export {
-  // context
-  // getCtx, saveCtx, clearDepotCtx (deja exportate mai sus)
-  // queries
-  // qContenedores, qProgramados, qRotos (exportate mai sus)
-  // UI
-  // TableList (exportat mai sus)
-  // parsere
-  // parseSizeFromAnswer, parseNavieraFromAnswer (exportate mai sus)
-  // runner
-  // runDepotListFromCtx (exportat mai sus)
-};
