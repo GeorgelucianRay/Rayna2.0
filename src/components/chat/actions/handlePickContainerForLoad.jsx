@@ -1,343 +1,278 @@
 // src/components/chat/actions/handlePickContainerForLoad.jsx
 import React from "react";
-import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
+import styles from "../Chatbot.module.css";
+
+// Folosim parser-ele deja existente (evităm duplicarea)
+import {
+  parseSizeFromAnswer,
+  parseNavieraFromAnswer,
+} from "./handleDepotList.jsx";
 
 /* ─────────────────────────────
-   Logger (ErrorTray) + ErrorBody
+   Logger UI (folosește ErrorTray dacă e prezent)
    ───────────────────────────── */
 function logUI(title, data, level = "info") {
-  try { if (window.__raynaLog) window.__raynaLog(title, data, level); } catch {}
-}
-function ErrorBody({ title = "Error", details }) {
-  return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>{title}</div>
-      <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, marginTop: 8 }}>{details}</pre>
-    </div>
-  );
-}
-
-/* ─────────────────────────────
-   Context local flux interactiv
-   ───────────────────────────── */
-const CTX_KEY = "pick_load_ctx";
-const getCtx = () => JSON.parse(sessionStorage.getItem(CTX_KEY) || "{}");
-const saveCtx = (p) => {
-  const next = { ...(getCtx() || {}), ...(p || {}) };
-  sessionStorage.setItem(CTX_KEY, JSON.stringify(next));
-  return next;
-};
-export function clearPickLoadCtx() { sessionStorage.removeItem(CTX_KEY); }
-
-/* ─────────────────────────────
-   Helpers de parsare & poziții
-   ───────────────────────────── */
-// poziție: A2C => { fila:'A', col:2, nivel:'C' }
-function parsePos(pos = "") {
-  const m = String(pos).trim().match(/^([A-F])\s*([1-9]|10|7)\s*([A-Z])$/i);
-  if (!m) return null;
-  return { fila: m[1].toUpperCase(), col: parseInt(m[2],10), nivel: m[3].toUpperCase() };
-}
-const levelRank = ch => (ch && ch.length === 1) ? (ch.charCodeAt(0) - "A".charCodeAt(0)) : -1;
-
-// top-of-stack: nu există nimeni cu același (fila, col) și nivel mai MARE
-function computeTopOfStack(rows) {
-  // indexăm toate nivelele existente pe (fila,col)
-  const map = new Map(); // key: "A|2" -> set nivele
-  for (const r of rows) {
-    const p = parsePos(r.posicion || r.posicio || r.position || "");
-    if (!p) continue;
-    const k = `${p.fila}|${p.col}`;
-    if (!map.has(k)) map.set(k, new Set());
-    map.get(k).add(p.nivel);
-  }
-  return rows.filter(r => {
-    const p = parsePos(r.posicion || r.posicio || r.position || "");
-    if (!p) return false;
-    const k = `${p.fila}|${p.col}`;
-    const levels = map.get(k) || new Set();
-    // e top dacă nu există nivel > al lui
-    for (const lv of levels) {
-      if (levelRank(lv) > levelRank(p.nivel)) return false;
-    }
-    return true;
-  });
-}
-
-// ordonare deterministă (poți ajusta după preferințe)
-function rankCandidates(rows) {
-  return [...rows].sort((a, b) => {
-    const pa = parsePos(a.posicion || "");
-    const pb = parsePos(b.posicion || "");
-    if (!pa && !pb) return 0;
-    if (!pa) return 1;
-    if (!pb) return -1;
-    // prefer D–F înaintea A–C (mai “apropiate” de ieșire? — e un exemplu)
-    const filaOrder = "DEFABC";
-    const da = filaOrder.indexOf(pa.fila);
-    const db = filaOrder.indexOf(pb.fila);
-    if (da !== db) return da - db;
-    // apoi coloană crescător
-    if (pa.col !== pb.col) return pa.col - pb.col;
-    // apoi nivel mai mare (C peste B) înseamnă mai probabil top
-    return levelRank(pb.nivel) - levelRank(pa.nivel);
-  });
-}
-
-/* ─────────────────────────────
-   Parsere simple de răspuns
-   ───────────────────────────── */
-export function parseSizeAnswer(t = "") {
-  const s = t.toLowerCase();
-  if (/\b40\s*hc\b|\b40hc\b|\bhigh\s*cube\b|\balto\b/.test(s)) return "40hc";
-  if (/\b40\b/.test(s)) return "40";
-  if (/\b20\b/.test(s)) return "20";
-  return null;
-}
-export function parseNavieraAnswer(t = "") {
-  const KNOWN = ["MAERSK","MSC","HAPAG","HMM","ONE","COSCO","EVERGREEN","CMA","YANG MING","ZIM","MESSINA"];
-  const up = t.toUpperCase();
-  for (const k of KNOWN) if (up.includes(k)) return k;
-  const m = t.match(/\bde\s+([A-Za-z0-9][\w\s-]{2,})/i);
-  return m ? m[1].trim().toUpperCase() : null;
-}
-export function parseQtyAnswer(t = "") {
-  const n = parseInt(String(t).match(/\d+/)?.[0] || "1", 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 10) : 1;
-}
-
-/* ─────────────────────────────
-   Card container + buton Map3D
-   ───────────────────────────── */
-function ContainerCard({ row, onOpen3D }) {
-  const pos = row?.posicion ?? "—";
-  const p = parsePos(pos);
-  return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>
-        Contenedor {row?.matricula_contenedor || "—"}
-      </div>
-      <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6 }}>
-        <div><strong>Naviera:</strong> {row?.naviera || "—"}</div>
-        <div><strong>Tipo:</strong> {row?.tipo || "—"}</div>
-        <div><strong>Posición:</strong> {pos}</div>
-        <div><strong>Estado:</strong> {row?.estado || "—"}</div>
-      </div>
-      <div className={styles.cardActions} style={{ marginTop: 8 }}>
-        <button className={styles.actionBtn} onClick={() => onOpen3D?.(p, row)}>
-          Ver mapa 3D
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────
-   Query candidați (contenedores)
-   ───────────────────────────── */
-async function fetchCandidates({ size, naviera }) {
-  logUI("PickLoad/fetchCandidates:INPUT", { size, naviera });
-  let q = supabase
-    .from("contenedores")
-    .select("id,created_at,matricula_contenedor,naviera,tipo,posicion,estado,matricula_camion,detalles");
-  // pentru încărcare avem nevoie de VACÍO
-  q = q.eq("estado", "vacio");
-  if (size === "40hc")      q = q.ilike("tipo", "%40HC%");
-  else if (size === "40")   q = q.ilike("tipo", "40%").not.ilike("tipo", "%40HC%");
-  else if (size === "20")   q = q.ilike("tipo", "20%");
-  if (naviera)              q = q.ilike("naviera", `%${naviera}%`);
-
-  const { data, error } = await q.order("created_at", { ascending: false });
-  if (error) {
-    logUI("PickLoad/fetchCandidates:ERROR", { error }, "error");
-    throw error;
-  }
-  logUI("PickLoad/fetchCandidates:OK", { rows: data?.length || 0 });
-  return data || [];
-}
-
-/* ─────────────────────────────
-   Render răspuns & salvare context
-   ───────────────────────────── */
-function pushExplaining(setMessages, text) {
-  setMessages(m => [...m, { from: "bot", reply_text: text }]);
-}
-function showPicks({ picks, setMessages, setAwaiting }) {
-  const ctx = saveCtx({ picks }); // salvăm pentru follow-up (ex: "de dónde sabes…")
-  const first = picks[0];
-  pushExplaining(setMessages, "¡Claro! Aquí tengo tu contenedor perfecto:");
-  setMessages(m => [
-    ...m,
-    {
-      from: "bot",
-      reply_text: "",
-      render: () => (
-        <ContainerCard
-          row={first}
-          onOpen3D={(p) => {
-            logUI("PickLoad/open3D", { pos: p, code: first?.matricula_contenedor });
-            // Aici doar emitem eveniment simplu – tu în Map3D citești url/hash sau window event
-            const qp = p ? `?pos=${p.fila}-${p.col}-${p.nivel}` : "";
-            window.location.href = `/map3d${qp}`;
-          }}
-        />
-      )
-    }
-  ]);
-  // sugerăm user-ului “de unde știi…”
-  setMessages(m => [...m, { from:"bot", reply_text:"Si quieres, te explico por qué es el más óptimo." }]);
-  if (setAwaiting) setAwaiting("pick_load_why");
-}
-
-/* ─────────────────────────────
-   Runner principal (cu interogare)
-   ───────────────────────────── */
-async function runPick({ size, naviera, qty = 1, setMessages, setAwaiting }) {
-  logUI("PickLoad/runPick:INPUT", { size, naviera, qty });
-
-  let data = [];
   try {
-    data = await fetchCandidates({ size, naviera });
-  } catch (e) {
-    const details =
-      (e?.message || "Unknown error") + "\n\n" +
-      JSON.stringify({ hint: e?.hint, code: e?.code, details: e?.details }, null, 2);
-    setMessages(m => [
-      ...m,
-      { from:"bot", reply_text:"No he podido buscar candidatos ahora.", render: () => <ErrorBody title="Supabase error" details={details} /> }
-    ]);
-    return;
-  }
-
-  // determinăm top-of-stack
-  const topOnly = computeTopOfStack(data);
-  logUI("PickLoad/topOnly", { total: data.length, top: topOnly.length });
-
-  if (!topOnly.length) {
-    setMessages(m => [...m, { from:"bot", reply_text:"No hay contenedores vacíos disponibles arriba de la pila para esos filtros." }]);
-    return;
-  }
-
-  const ranked = rankCandidates(topOnly);
-  const picks = ranked.slice(0, Math.max(1, qty));
-  showPicks({ picks, setMessages, setAwaiting });
+    if (window.__raynaLog) window.__raynaLog(title, data, level);
+  } catch {}
 }
 
 /* ─────────────────────────────
-   API public: handler + awaiting
+   Context pick (sessionStorage)
    ───────────────────────────── */
-/**
- * Pornire flux:
- * - dacă lipsesc size/naviera/cantidad → întreabă etapizat (awaiting)
- * - altfel rulează selecția
- */
-export default async function handlePickContainerForLoad({
-  userText, setMessages, setAwaiting
-}) {
-  logUI("PickLoad/handle:RAW", { text: userText });
+const PICK_CTX_KEY = "pick_load_ctx";
 
-  const ctx = getCtx();
-  let { size, naviera, qty } = ctx;
-
-  // 1) extrage eventuale info din comanda inițială
-  const s = parseSizeAnswer(userText || "");
-  if (s) size = s;
-  const n = parseNavieraAnswer(userText || "");
-  if (n) naviera = n;
-  if (!qty) qty = parseQtyAnswer(userText || "");
-
-  // 2) întrebări lipsă
-  if (!naviera) {
-    saveCtx({ size, qty });
-    setAwaiting("pick_load_naviera");
-    setMessages(m => [...m, { from:"bot", reply_text:"¿De qué naviera lo necesitas? (Maersk, MSC, Hapag…)" }]);
-    return;
-  }
-  if (!size) {
-    saveCtx({ naviera, qty });
-    setAwaiting("pick_load_size");
-    setMessages(m => [...m, { from:"bot", reply_text:"¿De 20, 40 o 40HC?" }]);
-    return;
-  }
-
-  // 3) gata — rulăm selecția
-  saveCtx({ naviera, size, qty, picks: null });
-  await runPick({ size, naviera, qty, setMessages, setAwaiting });
+function getPickCtx() {
+  try { return JSON.parse(sessionStorage.getItem(PICK_CTX_KEY) || "{}"); }
+  catch { return {}; }
+}
+function savePickCtx(p) {
+  const next = { ...(getPickCtx() || {}), ...(p || {}) };
+  sessionStorage.setItem(PICK_CTX_KEY, JSON.stringify(next));
+  return next;
+}
+export function clearPickCtx() {
+  sessionStorage.removeItem(PICK_CTX_KEY);
 }
 
-/**
- * Awaiting pentru etapele intermediare + “¿De dónde sabes…?”
- */
-export async function handleAwaitingPickLoad({
-  awaiting, userText, setMessages, setAwaiting
+/* ─────────────────────────────
+   Card simplu pentru rezultat
+   ───────────────────────────── */
+function ContainerPickCard({ row }) {
+  const pos = row?.posicion ?? "—";
+  const tip = row?.tipo ?? "—";
+  const nav = row?.naviera ?? "—";
+  const est = row?.estado ?? "—";
+  const code = row?.matricula_contenedor ?? "—";
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardTitle}>Contenedor propuesto</div>
+      <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6 }}>
+        <div><strong>Código:</strong> {code}</div>
+        <div><strong>Posición:</strong> {pos}</div>
+        <div><strong>Tipo:</strong> {tip}</div>
+        <div><strong>Naviera:</strong> {nav}</div>
+        <div><strong>Estado:</strong> {est}</div>
+      </div>
+
+      <div className={styles.cardActions} style={{ marginTop: 10 }}>
+        <a
+          className={styles.actionBtn}
+          href={`/map3d?focus=${encodeURIComponent(pos)}`}
+        >
+          Ver mapa 3D
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────
+   Heuristica: “topmost” pe coloana de stivă
+   ipoteză: ultima literă din `posicion` e nivelul (A < B < ... < H),
+   deci cel cu litera “cea mai mare” e topul (nu are nimic deasupra).
+   ───────────────────────────── */
+function parseStackKey(pos = "") {
+  // ex. "A2C" -> baza "A2", nivel "C"
+  const m = String(pos).trim().match(/^([A-F][0-9]{1,2})([A-Z])$/i);
+  if (!m) return { base: null, level: null };
+  return { base: m[1].toUpperCase(), level: m[2].toUpperCase() };
+}
+function levelRank(l) {
+  // A..Z crescător
+  if (!l) return -1;
+  return l.charCodeAt(0) - 65; // 'A' -> 0
+}
+
+/* ─────────────────────────────
+   Găsire candidat optim:
+   1) luăm TOATE contenedores pentru a afla topul pe fiecare stivă (base)
+   2) aplicăm filtrele (size/naviera/estado pentru încărcare: “vacio”)
+   3) păstrăm doar cele care sunt topmost în stiva lor
+   4) returnăm primul (poți optimiza după reguli ulterioare)
+   ───────────────────────────── */
+async function pickBestContainer({ size, naviera }) {
+  logUI("Pick/pickBestContainer:INPUT", { size, naviera });
+
+  // 1) luăm toate pentru a calcula “topul” pe fiecare stivă
+  const { data: allRows, error: eAll } = await supabase
+    .from("contenedores")
+    .select("id,matricula_contenedor,naviera,tipo,posicion,estado,detalles,created_at");
+  if (eAll) throw eAll;
+
+  // mapă: base -> rank maxim (top)
+  const topByBase = {};
+  for (const r of allRows || []) {
+    const { base, level } = parseStackKey(r.posicion || "");
+    if (!base || !level) continue;
+    const rank = levelRank(level);
+    if (!(base in topByBase) || rank > topByBase[base]) {
+      topByBase[base] = rank;
+    }
+  }
+
+  // 2) candidați compatibili pentru ÎNCĂRCARE:
+  //    - implicit căutăm “vacio” / liber (dacă folosești altă convenție, ajustează)
+  const candidates = (allRows || []).filter((r) => {
+    // filtru naviera
+    if (naviera && !(String(r.naviera || "").toUpperCase().includes(String(naviera).toUpperCase())))
+      return false;
+
+    // filtru size
+    if (size === "40hc") {
+      if (!String(r.tipo || "").toUpperCase().includes("40HC")) return false;
+    } else if (size === "40") {
+      const t = String(r.tipo || "").toUpperCase();
+      if (!(t.startsWith("40") && !t.includes("40HC"))) return false;
+    } else if (size === "20") {
+      if (!String(r.tipo || "").toUpperCase().startsWith("20")) return false;
+    }
+
+    // filtru “pregătit pentru încărcare”: presupunem estado = 'vacio' sau null
+    const est = (r.estado || "").toLowerCase();
+    if (est && est !== "vacio") return false;
+
+    return true;
+  });
+
+  // 3) păstrăm doar cele topmost în stiva lor
+  const topCandidates = candidates.filter((r) => {
+    const { base, level } = parseStackKey(r.posicion || "");
+    if (!base || !level) return false;
+    return levelRank(level) === topByBase[base];
+  });
+
+  // 4) ordonare simplă (poți schimba regula):
+  //    cele mai recente la urmă (preferăm “de sus” dar și mai “vechi” ca să eliberăm depozitul)
+  topCandidates.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+
+  const best = topCandidates[0] || null;
+  logUI("Pick/pickBestContainer:RESULT", { total: candidates.length, topOk: topCandidates.length, picked: best?.matricula_contenedor || null });
+  return { best, alternatives: topCandidates.slice(1, 3) };
+}
+
+/* ─────────────────────────────
+   START: pornește dialogul
+   ───────────────────────────── */
+export async function startPickContainerForLoad({ setMessages, setAwaiting }) {
+  clearPickCtx();
+  savePickCtx({ awaiting: "pick_load_ask_size", size: null, naviera: null });
+
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: "¿Qué tamaño necesitas? (20/40/40HC) Puedes decir también la naviera si ya la sabes." },
+  ]);
+  setAwaiting("pick_load_ask_size");
+}
+
+/* ─────────────────────────────
+   AWAITING steps
+   ───────────────────────────── */
+export async function handleAwaitingPickForLoad({
+  awaiting,
+  userText,
+  setMessages,
+  setAwaiting,
 }) {
-  if (!awaiting) return false;
+  if (!awaiting?.startsWith?.("pick_load_")) return false;
 
-  const ctx = getCtx();
+  const ctx = getPickCtx();
+  const t = String(userText || "");
 
-  if (awaiting === "pick_load_naviera") {
-    const naviera = parseNavieraAnswer(userText || "");
-    if (!naviera) {
-      setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. Dime una naviera (Maersk, MSC, …)" }]);
-      return true;
-    }
-    saveCtx({ ...ctx, naviera });
-    setAwaiting(null);
-    // dacă lipsește size, întrebăm
-    if (!ctx.size) {
-      setAwaiting("pick_load_size");
-      setMessages(m => [...m, { from:"bot", reply_text:"Perfecto. ¿De 20, 40 o 40HC?" }]);
-      return true;
-    }
-    // altfel rulăm
-    await runPick({ naviera, size: ctx.size, qty: ctx.qty || 1, setMessages, setAwaiting });
-    return true;
-  }
+  // Pas 1: mărimea (opțional) + posibil naviera în același răspuns
+  if (awaiting === "pick_load_ask_size") {
+    const size = parseSizeFromAnswer(t);         // "20" | "40" | "40hc" | null | false
+    const nav  = parseNavieraFromAnswer(t);      // "MAERSK" | ... | null | undefined
 
-  if (awaiting === "pick_load_size") {
-    const size = parseSizeAnswer(userText || "");
-    if (!size) {
-      setMessages(m => [...m, { from:"bot", reply_text:"No te he entendido. Dime 20, 40 o 40HC." }]);
-      return true;
-    }
-    saveCtx({ ...ctx, size });
-    setAwaiting(null);
-    await runPick({ naviera: ctx.naviera, size, qty: ctx.qty || 1, setMessages, setAwaiting });
-    return true;
-  }
-
-  if (awaiting === "pick_load_why") {
-    setAwaiting(null);
-    const picks = getCtx().picks || [];
-    if (!picks.length) {
-      setMessages(m => [...m, { from:"bot", reply_text:"Aún no tengo un candidato seleccionado." }]);
-      return true;
-    }
-    // explicăm și (dacă există) arătăm #2
-    setMessages(m => [...m, { from:"bot", reply_text:"Porque está arriba de su pila (no hay nada encima), así evitamos movimientos innecesarios." }]);
-
-    if (picks.length >= 2) {
-      const second = picks[1];
-      setMessages(m => [
+    // Dacă nu am înțeles nimic, mai întreb
+    if (size === false && nav === undefined) {
+      setMessages((m) => [
         ...m,
-        {
-          from: "bot",
-          reply_text: "Aquí tienes la segunda mejor opción:",
-          render: () => (
-            <ContainerCard
-              row={second}
-              onOpen3D={(p) => {
-                logUI("PickLoad/open3D#2", { pos: p, code: second?.matricula_contenedor });
-                const qp = p ? `?pos=${p.fila}-${p.col}-${p.nivel}` : "";
-                window.location.href = `/map3d${qp}`;
-              }}
-            />
-          )
-        }
+        { from: "bot", reply_text: "No te he entendido. Dime: 20, 40 o 40HC (puedes añadir naviera: MAERSK, MSC…)" },
       ]);
-    } else {
-      setMessages(m => [...m, { from:"bot", reply_text:"No hay otra opción igual de óptima ahora mismo." }]);
+      return true;
+    }
+
+    const next = {
+      size:   size === false ? ctx.size ?? null : size,
+      naviera:nav === undefined ? ctx.naviera ?? null : nav,
+    };
+    savePickCtx(next);
+
+    // Dacă nu avem naviera, o cerem; altfel trecem la calcul
+    if (!next.naviera) {
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "¿De qué naviera? (MAERSK, MSC, HAPAG, ONE, COSCO… o di «sin preferencia»)" },
+      ]);
+      setAwaiting("pick_load_ask_naviera");
+      savePickCtx({ awaiting: "pick_load_ask_naviera" });
+      return true;
+    }
+
+    // Avem tot → calcul
+    setAwaiting(null);
+    savePickCtx({ awaiting: null });
+
+    try {
+      const { best, alternatives } = await pickBestContainer({ size: next.size, naviera: next.naviera });
+      if (!best) {
+        setMessages((m) => [...m, { from: "bot", reply_text: "No he encontrado un contenedor disponible con estos filtros." }]);
+        return true;
+      }
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "¡Claro! Aquí tienes el contenedor perfecto:" ,
+          render: () => <ContainerPickCard row={best} /> },
+      ]);
+
+      if (alternatives?.length) {
+        setMessages((m) => [
+          ...m,
+          { from: "bot", reply_text: "Si prefieres otra opción con menos movimientos, aquí tienes otra propuesta:",
+            render: () => <ContainerPickCard row={alternatives[0]} /> },
+        ]);
+      }
+    } catch (e) {
+      logUI("Pick/compute:ERROR", { error: e }, "error");
+      setMessages((m) => [...m, { from: "bot", reply_text: "No he podido calcular ahora mismo. Intenta de nuevo." }]);
+    }
+    return true;
+  }
+
+  // Pas 2: naviera (dacă a lipsit)
+  if (awaiting === "pick_load_ask_naviera") {
+    const nav = parseNavieraFromAnswer(t); // null = fără preferință
+    const next = { ...(ctx || {}), naviera: nav ?? null };
+    savePickCtx(next);
+
+    setAwaiting(null);
+    savePickCtx({ awaiting: null });
+
+    try {
+      const { best, alternatives } = await pickBestContainer({ size: next.size, naviera: next.naviera });
+      if (!best) {
+        setMessages((m) => [...m, { from: "bot", reply_text: "No he encontrado un contenedor disponible con estos filtros." }]);
+        return true;
+      }
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "¡Perfecto! Este es el contenedor óptimo:",
+          render: () => <ContainerPickCard row={best} /> },
+      ]);
+
+      if (alternatives?.length) {
+        setMessages((m) => [
+          ...m,
+          { from: "bot", reply_text: "También podrías considerar esta otra alternativa:",
+            render: () => <ContainerPickCard row={alternatives[0]} /> },
+        ]);
+      }
+    } catch (e) {
+      logUI("Pick/compute:ERROR", { error: e }, "error");
+      setMessages((m) => [...m, { from: "bot", reply_text: "No he podido calcular ahora mismo. Intenta de nuevo." }]);
     }
     return true;
   }
