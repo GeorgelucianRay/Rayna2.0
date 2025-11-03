@@ -8,6 +8,7 @@ export { default as handleShowAnnouncement } from "./handleShowAnnouncement.jsx"
 export { default as handleStatic } from "./handleStatic.jsx";
 export { default as handleDepotChat } from "./handleDepotChat.jsx";
 export { default as handleDepotList } from "./handleDepotList.jsx";
+export { startPickContainerForLoad, handleAwaitingPickForLoad } from "./handlePickContainerForLoad.jsx";
 
 export {
   handleWhoAmI,
