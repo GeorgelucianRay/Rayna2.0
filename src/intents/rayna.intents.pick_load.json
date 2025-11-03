@@ -1,14 +1,17 @@
-{
-  id: "pick_container_for_load",
-  type: "action",
-  action: "pick_container_for_load",
-  lang: "es",
-  examples: [
-    "Rayna dame un contenedor de 40 para cargar",
-    "Necesito un contenedor de {naviera} para cargar",
-    "Dame un contenedor vacío para cargar por favor",
-    "Quiero un contenedor de 20 para carga",
-    "Busca contenedor para cargar"
-  ],
-  slots: {}
-}
+[
+  {
+    "id": "pick_container_for_load",
+    "type": "action",
+    "action": "pick_container_for_load",
+    "lang": "es",
+    "examples": [
+      "Rayna dame un contenedor de 40 para cargar",
+      "Necesito un contenedor de Evergreen para cargar",
+      "Dame un contenedor vacío para cargar por favor",
+      "Quiero un contenedor de 20 para carga",
+      "Busca contenedor para cargar",
+      "Necesito un contenedor de Maersk para cargar",
+      "Rayna, quiero cargar, dame un contenedor"
+    ]
+  }
+]
