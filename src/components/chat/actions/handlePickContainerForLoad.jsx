@@ -1,7 +1,7 @@
-import React from "react"
-import { supabase } from "../../../supabaseClient"
-import styles from "../Chatbot.module.css"
-import { parseNavieraFromAnswer } from "./handleDepotList.jsx"
+import React from "react";
+import { supabase } from "../../../supabaseClient";
+import styles from "../Chatbot.module.css";
+import { parseNavieraFromAnswer } from "./handleDepotList.jsx";
 
 /* ---------- Debug helper (ErrorTray) ---------- */
 function logUI(title, data, level = "info") {
@@ -9,7 +9,7 @@ function logUI(title, data, level = "info") {
 }
 
 /* ---------- Route Map3D (ajustează dacă ruta ta e alta) ---------- */
-const MAP3D_ROUTE = "/map3d"; // ex: "/map3d" sau "/# /map3d"
+const MAP3D_ROUTE = "/mapa";
 
 /* ---------- Context local pentru fluxul "pick for load" ---------- */
 const CTX_KEY = "pick_load_ctx";
@@ -38,8 +38,8 @@ function parseSizeRich(text = "") {
   }
 
   // 40 alto / 40hc
-  if (/\b40\s*hc\b|\b40hc\b/.test(t)) return { base: "40", special: "hc" };
-  if (/\b40\s*(alto|high\s*cube)\b/.test(t)) return { base: "40", special: "hc" });
+if (/\b40\s*hc\b|\b40hc\b/.test(t)) return { base: "40", special: "hc" };
+if (/\b40\s*(alto|high\s*cube)\b/.test(t)) return { base: "40", special: "hc" }; // ✅
 
   // 40 bajo
   if (/\b40\s*(bajo|normal|estandar|estándar)\b/.test(t)) return { base: "40", special: "bajo" };
@@ -180,15 +180,18 @@ export async function handleAwaitingPickForLoad({
               </div>
             </div>
             <div className={styles.cardActions} style={{ marginTop: 10 }}>
-              <a
-                className={styles.actionBtn}
-                href={`${MAP3D_ROUTE}?focus=${posSlug}`}
-                data-focus={pos}
-                title="Ver en mapa 3D"
-              >
-                Ver mapa 3D
-              </a>
-            </div>
+  {(() => {
+    const hrefBase = (location.hash && location.hash.startsWith("#/"))
+      ? `/#${MAP3D_ROUTE}`   // pentru HashRouter
+      : MAP3D_ROUTE;         // pentru BrowserRouter
+    const href = `${hrefBase}?focus=${encodeURIComponent(pos)}`;
+    return (
+      <a className={styles.actionBtn} href={href}>
+        Ver mapa 3D
+      </a>
+    );
+  })()}
+</div>
           </div>
         ),
       },
