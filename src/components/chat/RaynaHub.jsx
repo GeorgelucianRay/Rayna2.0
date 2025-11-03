@@ -16,10 +16,7 @@ import { detectLanguage, normalizeLang } from "./nlu/lang";
 import { STR, pushBot } from "./nlu/i18n";
 import { getIntentIndex } from "./nlu/semantic";
 
-// intenții (ale tale existente)
 import ALL_INTENTS from "../../intents";
-
-// refactor intern (ale tale existente)
 import { makeQuickAprender, makeQuickReport } from "./quickActions";
 import { makeGeoHelpers } from "./geo";
 import { dispatchAction } from "./dispatchAction";
@@ -30,9 +27,9 @@ import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat
 // ✅ avatar din /public
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
-/* ──────────────────────────────────────────────────────────────
-   Error Bus minimalist (global) + tray local în componentă
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────
+   Error bus minim (FĂRĂ UI)
+   ───────────────────────────── */
 function ensureErrorBus() {
   if (!window.__raynaReportError) {
     window.__raynaReportError = (err, meta = {}) => {
@@ -42,85 +39,13 @@ function ensureErrorBus() {
         meta,
         ts: Date.now(),
       };
-      window.dispatchEvent(new CustomEvent("rayna-error", { detail: payload }));
-      // log și în consolă ca fallback
       // eslint-disable-next-line no-console
       console.error("🛑 Rayna error:", payload);
     };
   }
 }
-function safePreview(o) {
-  try {
-    return JSON.stringify(o, null, 2).slice(0, 800);
-  } catch {
-    return String(o);
-  }
-}
-function ErrorTray({ items = [], onClear }) {
-  if (!items.length) return null;
-  return (
-    <div
-      style={{
-        position: "fixed",
-        right: 12,
-        bottom: 12,
-        zIndex: 9999,
-        maxWidth: 360,
-      }}
-    >
-      <div
-        className={styles.card}
-        style={{
-          background: "#1b1b1b",
-          color: "#fff",
-          boxShadow: "0 10px 30px rgba(0,0,0,.35)",
-          border: "1px solid rgba(255,255,255,.08)",
-          maxHeight: 280,
-          overflow: "auto",
-        }}
-      >
-        <div className={styles.cardTitle} style={{ color: "#ff7676" }}>
-          Rayna • Error log ({items.length})
-        </div>
-        <div style={{ fontSize: 12, whiteSpace: "pre-wrap", lineHeight: 1.35 }}>
-          {items.slice(-6).map((e, i) => (
-            <div
-              key={i}
-              style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 6, marginTop: 6 }}
-            >
-              <div>
-                <strong>{new Date(e.ts).toLocaleTimeString()}</strong> — {e.message}
-              </div>
-              {e.meta?.userText ? (
-                <div style={{ opacity: 0.8 }}>msg: {e.meta.userText}</div>
-              ) : null}
-              {e.meta?.phase ? (
-                <div style={{ opacity: 0.8 }}>phase: {e.meta.phase}</div>
-              ) : null}
-              {e.stack ? (
-                <details style={{ marginTop: 4 }}>
-                  <summary>stack</summary>
-                  <pre style={{ whiteSpace: "pre-wrap" }}>{e.stack.slice(0, 800)}</pre>
-                </details>
-              ) : null}
-              {e.meta && (
-                <details style={{ marginTop: 4 }}>
-                  <summary>meta</summary>
-                  <pre style={{ whiteSpace: "pre-wrap" }}>{safePreview(e.meta)}</pre>
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className={styles.cardActions} style={{ marginTop: 8 }}>
-          <button className={styles.actionBtn} onClick={onClear}>Clear</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// ——— fallback i18n dacă lipsesc cheile în STR
+// ——— fallback i18n
 const FBGREET = (lang, name) => {
   const N = name ? `${name}. ` : "";
   if (lang === "ro") return `Salut, ${N}Cu ce te pot ajuta azi?`;
@@ -153,22 +78,19 @@ export default function RaynaHub() {
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // —— error tray state
-  const [errs, setErrs] = useState([]);
-
   // —— context parking
   const [parkingCtx, setParkingCtx] = useState(null);
 
   // —— intenții
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
 
-  // —— limbă curentă (memorăm ultima detecție)
+  // —— limbă curentă
   const langRef = useRef("es");
 
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
 
-  // ——— marker pentru “loading NLU” (o singură dată)
+  // ——— marker pentru “loading NLU”
   const nluInitRef = useRef(false);
 
   // —— geo helpers
@@ -180,13 +102,6 @@ export default function RaynaHub() {
   const quickAprender = makeQuickAprender({ supabase, styles, setMessages });
   const quickReport   = makeQuickReport({ setMessages, setAwaiting });
 
-  // —— ascultă error bus global
-  useEffect(() => {
-    const h = (ev) => setErrs((e) => [...e, ev.detail]);
-    window.addEventListener("rayna-error", h);
-    return () => window.removeEventListener("rayna-error", h);
-  }, []);
-
   // —— hook global pentru erori ne-prinse
   useEffect(() => {
     const onUR = (ev) => {
@@ -196,15 +111,15 @@ export default function RaynaHub() {
       try { window.__raynaReportError(err || msg, { phase: "window.onerror", src, line, col }); } catch {}
     };
     window.addEventListener("unhandledrejection", onUR);
-    const prevOnError = window.onerror;
+    const prev = window.onerror;
     window.onerror = onOE;
     return () => {
       window.removeEventListener("unhandledrejection", onUR);
-      window.onerror = prevOnError || null;
+      window.onerror = prev || null;
     };
   }, []);
 
-  // —— salut personalizat (în limba implicită)
+  // —— salut personalizat
   useEffect(() => {
     if (loading) return;
     if (messages.length > 0) return;
@@ -231,14 +146,14 @@ export default function RaynaHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile]);
 
-  // —— pre-încălzire index semantic (Universal Sentence Encoder)
+  // —— pre-încălzire index semantic
   useEffect(() => {
     if (!loading) {
       getIntentIndex(intentsData).catch(() => {});
     }
   }, [loading, intentsData]);
 
-  // —— dispecer acțiuni (rămâne ca la tine)
+  // —— dispecer acțiuni
   const runAction = (intent, slots, userText) =>
     dispatchAction({
       intent, slots, userText,
@@ -254,21 +169,21 @@ export default function RaynaHub() {
     if (!userTextLocal) return;
 
     try {
-      // 0) detectăm limba acestui mesaj și o memorăm
+      // 0) detectăm limba
       const detected = normalizeLang(detectLanguage(userTextLocal));
       langRef.current = detected || langRef.current || "es";
 
       setMessages((m) => [...m, { from: "user", text: userTextLocal }]);
       setText("");
 
-      // ——— Short-circuit Depot: dacă există un cod ISO (ex: HLBU2196392), merg direct pe Depot
+      // ——— Short-circuit Depot (cod container)
       const code = extractContainerCode(userTextLocal);
       if (code) {
         await handleDepotChat({ userText: userTextLocal, profile, setMessages });
         return;
       }
 
-      // 1) blocuri „awaiting”
+      // 1) awaiting blocks
       const wasHandled = await handleAwaiting({
         awaiting, setAwaiting,
         userText: userTextLocal, profile, role,
@@ -278,11 +193,11 @@ export default function RaynaHub() {
       });
       if (wasHandled) return;
 
-      // 2) detectare intent clasic (cu scurtare pentru NLU)
+      // 2) intent clasic
       const preNLU = shortenForNLU(userTextLocal);
       let det = detectIntent(preNLU, intentsData);
 
-      // 3) fallback semantic (intenții / KB) numai dacă n-am găsit nimic
+      // 3) fallback semantic
       if (!det?.intent?.type) {
         let addedNLULoading = false;
         if (!nluInitRef.current) {
@@ -323,7 +238,7 @@ export default function RaynaHub() {
         }
       }
 
-      // 4) dacă avem un intent → rutăm normal
+      // 4) rutare intent
       if (det?.intent?.type) {
         await routeIntent({
           det, intentsData,
@@ -335,15 +250,13 @@ export default function RaynaHub() {
         return;
       }
 
-      // 5) fallback final în limba curentă
+      // 5) fallback final
       const dont =
         (STR?.dontUnderstand && STR.dontUnderstand[langRef.current]) ||
         FBDONT(langRef.current);
       pushBot(setMessages, dont, { lang: langRef.current });
     } catch (err) {
-      try {
-        window.__raynaReportError(err, { phase: "send", userText: userTextLocal });
-      } catch {}
+      try { window.__raynaReportError(err, { phase: "send", userText: userTextLocal }); } catch {}
       setMessages((m) => [
         ...m,
         { from: "bot", reply_text: "Ups, algo ha fallado procesando tu mensaje. Intenta de nuevo." },
@@ -409,9 +322,6 @@ export default function RaynaHub() {
         />
         <button className={styles.sendBtn} onClick={send}>Enviar</button>
       </footer>
-
-      {/* ⭐ mic panou cu ultimele erori raportate global */}
-      <ErrorTray items={errs} onClear={() => setErrs([])} />
     </div>
   );
 }
