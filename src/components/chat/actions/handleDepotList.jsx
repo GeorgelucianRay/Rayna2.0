@@ -2,7 +2,7 @@
 import React from "react";
 import styles from "../Chatbot.module.css";
 import { supabase } from "../../../supabaseClient";
-import { parseDepotFilters } from "./depot/parseDepotFilters";
+import { parseDepotFilters, __normForDebug, PARSER_TAG } from "./depot/parseDepotFilters";
 
 /* ─────────────────────────────
    Logger vizibil în UI (ErrorTray)
@@ -364,9 +364,11 @@ export async function runDepotListFromCtx({ setMessages, setAwaiting }) {
    Handler principal (traseu acțiune)
    ───────────────────────────── */
 export default async function handleDepotList({ userText, setMessages, setAwaiting }) {
-  const parsed = parseDepotFilters(userText);
-  logUI("DepotList/handle:PARSED", parsed);
-
+  // log: versiunea parserului + text normalizat (să validăm că rulează v3)
+   try { window.__raynaLog?.("DepotList/handle:RAW", { raw: userText, norm: __normForDebug(userText), parser: PARSER_TAG }); } catch {}
+   const parsed = parseDepotFilters(userText);
+   logUI("DepotList/handle:PARSED", { ...parsed, parser: PARSER_TAG });
+  
   const { kind, estado, size, naviera, wantExcel } = parsed;
 
   if (kind === "single") {
