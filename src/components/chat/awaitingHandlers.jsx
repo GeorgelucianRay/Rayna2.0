@@ -56,16 +56,14 @@ export async function handleAwaiting({
   });
   if (gpsHandled) return true;
   
-    // 🟦 PICK FOR LOAD (flux nou)
-if (awaiting && awaiting.startsWith("pick_for_load_")) {
-  const handled = await handleAwaitingPickForLoad({
+    // 🟦 PICK FOR LOAD (flux nou) — lasă handlerul să decidă
+  const pickHandled = await handleAwaitingPickForLoad({
     awaiting,
     setAwaiting,
     userText,
     setMessages,
   });
-  return handled; // true dacă a consumat mesajul
-}
+  if (pickHandled) return true;
 
   /* ───────────────── REPORTARE PROBLEMĂ ───────────────── */
   if (awaiting === "report_error_text") {
