@@ -1,4 +1,6 @@
-// src/components/chat/actions/depot/parseDepotFilters.js
+// v3 – parser cu log în UI + regex-uri mai robuste
+export const PARSER_TAG = "parseDepotFilters@v3";
+
 function norm(s = "") {
   return String(s)
     .normalize("NFD")
@@ -7,48 +9,49 @@ function norm(s = "") {
     .trim();
 }
 
+// expun pentru debug din handleDepotList
+export const __normForDebug = norm;
+
 export function parseDepotFilters(userText = "") {
   const raw = String(userText || "");
-  const t = norm(raw); // ex.: “vacíos” -> “vacios”
+  const t = norm(raw); // ex. “vacíos” -> “vacios”
 
-  // 1) detect cod container -> nu e listă
+  // log în ErrorTray, ca să vezi exact ce ajunge aici
+  try { window.__raynaLog?.("PARSER/INPUT", { tag: PARSER_TAG, raw, norm: t }); } catch {}
+
+  // 1) cod ISO (4 litere + 7 cifre fără separatori)
   const compact = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   if (/[A-Z]{4}\d{7}/.test(compact)) {
-    return { kind: "single", estado: null, size: null, naviera: null, wantExcel: false };
+    const out = { kind: "single", estado: null, size: null, naviera: null, wantExcel: false };
+    try { window.__raynaLog?.("PARSER/OUT", out); } catch {}
+    return out;
   }
 
-  // 2) ESTADO (ordine contează)
+  // 2) ESTADO
   let estado = null;
-  // programado / programada / programados / programadas
-  if (/\bprogramad(?:o|a|os|as)\b/.test(t)) {
+  if (/\bprogramad\w*\b/.test(t)) {
     estado = "programado";
-  }
-  // roto / rota / rotos / rotas + “defect…”
-  else if (/\brot(?:o|a|os|as)\b|\bdefect\w*\b/.test(t)) {
+  } else if (/\brot\w*\b|\bdefect\w*\b/.test(t)) {
     estado = "roto";
-  }
-  // vacio / vacios / vacia / vacias + forme scurte (“vaci”) + sinonime de bază
-  else if (/\bvac(?:io|ios|ia|ias)?\b|\bvaci\b|\bempty\b|\bdesocupad\w*\b/.test(t)) {
+  } else if (/(^|\W)vaci(?:o|os|a|as)?\b|(^|\W)vaci\b|\bempty\b|\bdesocupad\w*\b/.test(t)) {
+    // prinde: vacio, vacios, vacia, vacias, "vaci", "empty"
     estado = "vacio";
-  }
-  // lleno / llenos / llena / llenas + “full”
-  else if (/\bllen(?:o|os|a|as)\b|\bfull\b/.test(t)) {
+  } else if (/\bllen\w*\b|\bfull\b/.test(t)) {
     estado = "lleno";
   }
 
-  // 3) SIZE: 40hc | 40 | 20 (acceptă “alto”, “high cube”)
+  // 3) SIZE
   let size = null;
   if (/\b40\s*hc\b|\b40hc\b|\b40\s*(alto|high\s*cube)\b/.test(t)) size = "40hc";
   else if (/\b40\b/.test(t)) size = "40";
   else if (/\b20\b/.test(t)) size = "20";
 
-  // 4) NAVIERA (din listă + fallback “de XYZ”)
+  // 4) NAVIERA (listă + “de <x>”)
   let naviera = null;
   const KNOWN = ["MAERSK","MSC","HAPAG","HMM","ONE","COSCO","EVERGREEN","CMA","YANG MING","ZIM","MESSINA"];
-  const tn = norm(raw).toUpperCase();
+  const tn = raw.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const k of KNOWN) {
-    const kNorm = norm(k).toUpperCase(); // “YANG MING” -> “YANG MING”
-    const rx = new RegExp(`\\b${kNorm.replace(/\s+/g, "\\s+")}\\b`, "i");
+    const rx = new RegExp(`\\b${k.replace(/\s+/g,"\\s+")}\\b`, "i");
     if (rx.test(tn)) { naviera = k; break; }
   }
   if (!naviera) {
@@ -59,5 +62,7 @@ export function parseDepotFilters(userText = "") {
   // 5) Excel?
   const wantExcel = /\bexcel\b|\bdescarg[ae]\b/.test(t);
 
-  return { kind: "list", estado, size, naviera, wantExcel };
+  const out = { kind: "list", estado, size, naviera, wantExcel };
+  try { window.__raynaLog?.("PARSER/OUT", out); } catch {}
+  return out;
 }
