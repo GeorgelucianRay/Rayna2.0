@@ -44,7 +44,7 @@ if (
   !actionKey &&
   /(?:^|\b)(?:dame|asigna|necesito|quiero)\b.*\bcontenedor(?:es)?\b.*\b(cargar|para cargar)\b/i.test(userText || "")
 ) {
-  return await handlePickContainerForLoad({ userText, setMessages, setAwaiting });
+  return await startPickContainerForLoad({ userText, setMessages, setAwaiting });
 }
 
   const table = {
