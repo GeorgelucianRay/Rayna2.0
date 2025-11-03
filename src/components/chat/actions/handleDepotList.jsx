@@ -174,3 +174,16 @@ export default async function handleDepotList({ userText, setMessages, setAwaiti
   saveCtx({ awaiting:"depot_ask_filtros" });
   setAwaiting("depot_ask_filtros");
 }
+
+export {
+  getCtx,
+  saveCtx,
+  clearDepotCtx,
+  qContenedores,
+  qProgramados,
+  qRotos,
+  TableList,
+  parseSizeFromAnswer,
+  parseNavieraFromAnswer,
+  runDepotListFromCtx,
+};
