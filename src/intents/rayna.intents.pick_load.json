@@ -1,0 +1,14 @@
+{
+  id: "pick_container_for_load",   // un identificator intern unic al intenției
+  type: "action",                  // îi spune Raynei că trebuie să declanșeze o acțiune concretă
+  action: "pick_container_for_load", // exact cheia din dispatchAction.js (maparea către handler)
+  lang: "es",                      // limba (spaniolă în acest caz)
+  examples: [                      // exemple de fraze prin care Rayna recunoaște această intenție
+    "Rayna dame un contenedor de 40 para cargar",
+    "Necesito un contenedor de {naviera} para cargar",
+    "Dame un contenedor vacío para cargar por favor",
+    "Quiero un contenedor de 20 para carga",
+    "Busca contenedor para cargar"
+  ],
+  slots: {}                        // loc pentru parametri dinamici (momentan nu folosești)
+}
