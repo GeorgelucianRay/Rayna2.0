@@ -3,15 +3,57 @@
     "id": "pick_container_for_load",
     "type": "action",
     "action": "pick_container_for_load",
-    "lang": "es",
+    "priority": 190,
+
+    "patterns_any": [
+      "dame un contenedor para cargar",
+      "dame un contenedor de 20 para cargar",
+      "dame un contenedor de 40 para cargar",
+      "dame un contenedor 40hc para cargar",
+      "dame un contenedor high cube para cargar",
+      "necesito un contenedor para cargar",
+      "necesito un contenedor de 20 para cargar",
+      "necesito un contenedor de 40 para cargar",
+      "necesito un contenedor 40hc para cargar",
+      "busca un contenedor para cargar",
+      "quiero un contenedor para cargar",
+      "contenedor para cargar",
+      "un contenedor para cargar",
+      "para cargar un contenedor",
+      "necesito un contenedor de maersk para cargar",
+      "necesito un contenedor de msc para cargar",
+      "necesito un contenedor de evergreen para cargar",
+      "dame un contenedor de maersk para cargar",
+      "dame un contenedor de evergreen para cargar",
+
+      "am nevoie de un container pentru încărcare",
+      "vreau un container pentru încărcare",
+      "dă-mi un container pentru încărcare",
+      "dă-mi un container de 20 pentru încărcare",
+      "dă-mi un container de 40 pentru încărcare",
+
+      "vull un contenidor per carregar",
+      "dona'm un contenidor per carregar",
+      "necessito un contenidor per carregar",
+      "contenidor per carregar",
+      "dona'm un contenidor de 40 per carregar",
+      "dona'm un contenidor de 20 per carregar"
+    ],
+
     "examples": [
-      "Rayna dame un contenedor de 40 para cargar",
+      "Rayna dame un contenedor de 40 para cargar por favor",
       "Necesito un contenedor de Evergreen para cargar",
-      "Dame un contenedor vacío para cargar por favor",
       "Quiero un contenedor de 20 para carga",
-      "Busca contenedor para cargar",
-      "Necesito un contenedor de Maersk para cargar",
-      "Rayna, quiero cargar, dame un contenedor"
-    ]
+      "Dă-mi un container de 40 pentru încărcare",
+      "Dona'm un contenidor de 40 per carregar"
+    ],
+
+    "response": {
+      "text": {
+        "es": "Perfecto, te ayudo a elegir el mejor para cargar. Te pregunto tamaño/naviera si hace falta…",
+        "ro": "Perfect, te ajut să alegi cel mai bun pentru încărcare. Îți cer dimensiune/navieră dacă e nevoie…",
+        "ca": "Perfecte, t’ajudo a triar el millor per carregar. Et demano mida/naviliera si cal…"
+      }
+    }
   }
 ]
