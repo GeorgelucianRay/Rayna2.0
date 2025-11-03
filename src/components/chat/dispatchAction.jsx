@@ -28,7 +28,7 @@ import {
   handleDepotList,
 } from "./actions";
 
-import handlePickContainerForLoad from "./actions/handlePickContainerForLoad.jsx";
+import { startPickContainerForLoad } from "./actions/handlePickContainerForLoad.jsx";
 
 export async function dispatchAction({
   intent, slots, userText,
@@ -107,6 +107,8 @@ if (
     // 🏗️ Depot
     depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
     depot_list:   () => handleDepotList({ userText, setMessages, setAwaiting }),
+    pick_container_for_load: () =>
+  startPickContainerForLoad({ setMessages, setAwaiting }),
   };
 
   try {
