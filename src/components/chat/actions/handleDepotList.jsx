@@ -364,9 +364,18 @@ export async function runDepotListFromCtx({ setMessages, setAwaiting }) {
    Handler principal (traseu acțiune)
    ───────────────────────────── */
 export default async function handleDepotList({ userText, setMessages, setAwaiting }) {
-  // log: versiunea parserului + text normalizat (să validăm că rulează v3)
-   try { window.__raynaLog?.("DepotList/handle:RAW", { raw: userText, norm: __normForDebug(userText), parser: PARSER_TAG }); } catch {}
-   const parsed = parseDepotFilters(userText);
+   const rawText = (userText && String(userText).trim()) || window.__raynaLastUserText || "";
+   if (!rawText) {
+     // protecție: anunță în UI și în debug că intentul a venit fără text
+     try { window.__raynaLog?.("DepotList/handle:EMPTY_USER_TEXT", {}); } catch {}
+     setMessages(m => [...m, { from:"bot", reply_text:"Necesito que me digas qué quieres listar (por ej.: «contenedores vacíos»)." }]);
+     return;
+   }
+ 
+   // log pentru verificare
+   try { window.__raynaLog?.("DepotList/handle:RAW", { raw: rawText, norm: __normForDebug(rawText), parser: PARSER_TAG }); } catch {}
+ 
+   const parsed = parseDepotFilters(rawText);
    logUI("DepotList/handle:PARSED", { ...parsed, parser: PARSER_TAG });
   
   const { kind, estado, size, naviera, wantExcel } = parsed;
