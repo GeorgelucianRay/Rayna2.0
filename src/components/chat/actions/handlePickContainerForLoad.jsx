@@ -279,3 +279,5 @@ export async function handleAwaitingPickForLoad({
 
   return false;
 }
+
+export default startPickContainerForLoad;
