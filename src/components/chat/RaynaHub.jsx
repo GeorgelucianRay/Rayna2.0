@@ -141,6 +141,8 @@ export default function RaynaHub() {
   const send = async () => {
     const userTextLocal = text.trim();
     if (!userTextLocal) return;
+    // memorează ultimul text pentru acțiuni care ajung fără parametru
+  window.__raynaLastUserText = userTextLocal;
 
     try {
       const detected = normalizeLang(detectLanguage(userTextLocal));
