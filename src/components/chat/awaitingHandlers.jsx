@@ -23,6 +23,7 @@ import {
 
 // 🔗 Wizard GPS (al tău existent)
 import { handleAwaitingGpsWizard } from "./ui/handleAwaiting.jsx";
+import { handleAwaitingPickForLoad } from "./actions/handlePickContainerForLoad.jsx";
 
 export async function handleAwaiting({
   awaiting,
@@ -54,6 +55,15 @@ export async function handleAwaiting({
     setParkingCtx,
   });
   if (gpsHandled) return true;
+  
+    // 🆕 Awaiting pentru “pick container for load”
+  const pickHandled = await handleAwaitingPickForLoad({
+    awaiting,
+    userText,
+    setMessages,
+    setAwaiting,
+  });
+  if (pickHandled) return true;
 
   /* ───────────────── REPORTARE PROBLEMĂ ───────────────── */
   if (awaiting === "report_error_text") {
