@@ -1,7 +1,7 @@
 import React from "react"
-import { supabase } from "../../../supabaseClient";
-import styles from "../Chatbot.module.css";
-import { parseNavieraFromAnswer } from "./handleDepotList.jsx";
+import { supabase } from "../../../supabaseClient"
+import styles from "../Chatbot.module.css"
+import { parseNavieraFromAnswer } from "./handleDepotList.jsx"
 
 /* ---------- Debug helper (ErrorTray) ---------- */
 function logUI(title, data, level = "info") {
