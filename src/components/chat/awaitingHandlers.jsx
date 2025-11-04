@@ -23,7 +23,7 @@ import {
 
 // 🔗 Wizard GPS (al tău existent)
 import { handleAwaitingGpsWizard } from "./ui/handleAwaiting.jsx";
-import { handleAwaitingPickForLoad } from "./actions/handlePickContainerForLoad.jsx";
+import { handleAwaitingPickForLoad, handlePickConfirm } from "./actions/handlePickContainerForLoad.jsx";
 
 export async function handleAwaiting({
   awaiting,
@@ -54,7 +54,28 @@ export async function handleAwaiting({
     parkingCtx,
     setParkingCtx,
   });
-  if (gpsHandled) return true;
+    if (gpsHandled) return true;
+
+  // ───────── PICK FOR LOAD: colectare filtre (size/naviera)
+  if (awaiting === "pick_load_filters" || awaiting === "pick_load_naviera") {
+    const handled = await handleAwaitingPickForLoad({
+      awaiting,
+      userText,
+      setMessages,
+      setAwaiting,
+    });
+    return handled; // true dacă a consumat mesajul
+  }
+
+  // ───────── PICK FOR LOAD: confirmare / „¿por qué?” / alternativă #2 / terminare
+  if (awaiting === "pick_load_confirm") {
+    const handled = handlePickConfirm({
+      userText,
+      setMessages,
+      setAwaiting,
+    });
+    return handled; // true dacă a consumat mesajul
+  }
   
     // 🟦 PICK FOR LOAD (flux nou) — lasă handlerul să decidă
   const pickHandled = await handleAwaitingPickForLoad({
