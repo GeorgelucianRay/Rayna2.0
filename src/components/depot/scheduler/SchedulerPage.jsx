@@ -10,7 +10,7 @@ import SchedulerToolbar from './SchedulerToolbar';
 import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
-// ⛔ Eliminat: ProgramarDesdeDepositoModal (nu mai deschidem modale de “programar”)
+import ProgramarDesdeDepositoModal from './ProgramarDesdeDepositoModal';
 import { useScheduler } from '../hooks/useScheduler';
 
 const TABS = ['programado', 'pendiente', 'completado']; // fără "todos"
@@ -33,22 +33,21 @@ export default function SchedulerPage() {
   const [selected, setSelected] = useState(null);
   const calRef = useRef(null);
 
-  // ── Calendar markers (rămânem cu evidențierea zilelor, dar fără a filtra lista) ──
+  // modal: Programar
+  const [programarOpen, setProgramarOpen] = useState(false);
+
+  // markere calendar (doar vizual)
   const [markers, setMarkers] = useState({});
 
-  // dacă rolul e mecanic și cumva ajunge pe “todos”, trecem pe “programado”
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
-  // Butonul “Calendario” doar face scroll la calendar
   const handleCalendarClick = () => {
-    if (calRef.current) {
-      calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    calRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Markere pentru luna curentă (fără a filtra lista)
+  // markere lunare
   useEffect(() => {
     const loadMonth = async () => {
       const y = date.getFullYear();
@@ -62,26 +61,18 @@ export default function SchedulerPage() {
         .gte('fecha', start)
         .lte('fecha', end);
 
-      if (error) {
-        console.error('Error loading month markers:', error);
-        setMarkers({});
-        return;
-      }
+      if (error) { console.error('Month markers:', error); setMarkers({}); return; }
       const map = {};
-      (data || []).forEach(r => {
-        const k = r.fecha; // 'YYYY-MM-DD'
-        if (!k) return;
-        map[k] = (map[k] || 0) + 1;
-      });
+      (data || []).forEach(r => { if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1; });
       setMarkers(map);
     };
     loadMonth();
   }, [date]);
 
-  // 🔥 LISTA VIZIBILĂ = TOT din `filtered` (fără filtre de calendar)
+  // lista = tot din filtered (fără filtre de zi)
   const visibleItems = useMemo(() => filtered || [], [filtered]);
 
-  // Export Excel — exact lista vizibilă (toate)
+  // export excel
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -123,6 +114,32 @@ export default function SchedulerPage() {
     XLSX.writeFile(wb, filename);
   };
 
+  // inserție programare din modal (identic cu varianta ta anterioară)
+  const onProgramarDesdeDeposito = async (_row, payload) => {
+    const insert = {
+      matricula_contenedor: (payload.matricula_contenedor || '').toUpperCase(),
+      naviera: payload.naviera || null,
+      tipo: payload.tipo || null,
+      posicion: payload.posicion || null,
+      empresa_descarga: payload.empresa_descarga || null,
+      fecha: payload.fecha || null,
+      hora: payload.hora || null,
+      matricula_camion: payload.matricula_camion || null,
+      estado: payload.estado || 'programado',
+    };
+    const { error } = await supabase.from('contenedores_programados').insert([insert]);
+    if (error) {
+      console.error(error);
+      alert(`Error al programar:\n${error.message || error}`);
+      return;
+    }
+    if (insert.fecha) {
+      setMarkers(prev => ({ ...prev, [insert.fecha]: (prev[insert.fecha] || 0) + 1 }));
+    }
+    setProgramarOpen(false);
+    alert('¡Programación guardada!');
+  };
+
   return (
     <div className={styles.schedulerRoot}>
       <div className={styles.pageWrap}>
@@ -132,24 +149,18 @@ export default function SchedulerPage() {
         <div className={styles.topBar}>
           <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
-
-          {/* 🔁 “Programar” -> “Calendario” */}
-          <button className={styles.newBtn} onClick={handleCalendarClick}>
-            Calendario
-          </button>
+          <button className={styles.newBtn} onClick={handleCalendarClick}>Calendario</button>
         </div>
 
         <SchedulerToolbar
-          tab={tab}
-          setTab={(t)=>{ setTab(t); }}
-          tabs={TABS}                // 🔹 (vezi nota de mai jos)
-          query={query}
-          setQuery={setQuery}
-          date={date}
-          setDate={setDate}
-          onCalendarClick={handleCalendarClick}  // 🔹 (vezi nota)
+          tabs={TABS}
+          tab={tab} setTab={setTab}
+          query={query} setQuery={setQuery}
+          date={date} setDate={setDate}
+          onCalendarClick={handleCalendarClick}
           onExportExcel={exportarExcelTab}
-          // ⛔ Eliminat: canProgramar / onProgramarClick
+          onProgramarClick={() => setProgramarOpen(true)}  // 👈 buton “Programar” lângă Excel
+          canProgramar={role === 'admin' || role === 'dispecer'}
         />
 
         <div className={styles.grid}>
@@ -166,8 +177,7 @@ export default function SchedulerPage() {
               date={date}
               setDate={setDate}
               mode={tab}         // 'programado' | 'pendiente' | 'completado'
-              markers={markers}  // { 'YYYY-MM-DD': count }
-              // ⛔ Eliminat filtrele de zi / multiselect — calendarul este pur vizual
+              markers={markers}
             />
           </div>
         </div>
@@ -181,6 +191,12 @@ export default function SchedulerPage() {
           onHecho={async (row)   => { await marcarHecho(row);       setSelected(null); }}
           onEditar={async (row, payload) => { await actualizarProgramado(row, payload); setSelected(null); }}
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, (pos || '').toUpperCase()); setSelected(null); }}
+        />
+
+        <ProgramarDesdeDepositoModal
+          open={programarOpen}
+          onClose={() => setProgramarOpen(false)}
+          onProgramar={onProgramarDesdeDeposito}
         />
       </div>
     </div>
