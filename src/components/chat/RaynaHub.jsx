@@ -20,6 +20,7 @@ import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
 import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.jsx";
 import ErrorTray from "./ui/ErrorTray.jsx"; // ⬅️ nou
+import { useNavigate, useLocation } from "react-router-dom";
 
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
 
@@ -73,6 +74,8 @@ export default function RaynaHub() {
 
   const { profile, loading } = useAuth();
   const role = profile?.role || "driver";
+  const navigate = useNavigate();
+const location = useLocation();
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -228,6 +231,25 @@ export default function RaynaHub() {
       setMessages((m) => [...m, { from: "bot", reply_text: "Ups, algo ha fallado procesando tu mensaje. Intenta de nuevo." }]);
     }
   };
+
+// Face disponibil window.__raynaOpenMap(pos) pentru cardul din chat.
+useEffect(() => {
+  window.__raynaOpenMap = (pos) => {
+    const query = `?focus=${encodeURIComponent(pos || "")}`;
+
+    // Dacă aplicația rulează cu HashRouter (#/mapa)
+    const isHash = !!(location?.hash && location.hash.startsWith("#/"));
+    if (isHash) {
+      window.location.hash = `#/mapa${query}`;
+      return;
+    }
+
+    // Dacă e BrowserRouter normal
+    navigate(`/mapa${query}`);
+  };
+
+  return () => { delete window.__raynaOpenMap; };
+}, [navigate, location]);
 
   return (
     <div className={styles.shell}>
