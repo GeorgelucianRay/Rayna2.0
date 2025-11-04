@@ -158,7 +158,7 @@ export async function handleAwaitingPickForLoad({
 async function _suggest(filters, setMessages, setAwaiting) {
   try {
     const suggestion = await pickBestContainer(filters);
-    saveCtx({ step: "suggested", lastSuggestion: suggestion || null });
+   saveCtx({ step: "suggested", lastSuggestion: suggestion || null });
 
     if (!suggestion) {
       setMessages((m) => [
@@ -175,6 +175,7 @@ async function _suggest(filters, setMessages, setAwaiting) {
     }
 
     const { row } = suggestion;
+    const ranked = suggestion.ranked || [];
     const pos = row.posicion ?? "—";
     const tipo = row.tipo ?? "—";
     const navieraLabel = row.naviera ?? "—";
@@ -206,11 +207,11 @@ async function _suggest(filters, setMessages, setAwaiting) {
           </div>
         ),
       },
-      { from: "bot", reply_text: "¿Quieres que pruebe otra combinación (tamaño/naviera) o te sirve este? (di «no» para terminar)" },
+      { from: "bot", reply_text: "¿Quieres que pruebe otra combinación (tamaño/naviera) o te sirve este? " },
     ]);
 
-    saveCtx({ lastSuggestion: suggestion, filters });
-    setAwaiting("pick_load_feedback");
+  saveCtx({ lastSuggestion: suggestion, ranked, filters });
+  setAwaiting("pick_load_confirm");
     logUI("PickLoad/SUGGESTED", { pos, code, tipo, naviera: navieraLabel });
   } catch (e) {
     logUI("PickLoad/ERROR", { error: e }, "error");
@@ -221,6 +222,73 @@ async function _suggest(filters, setMessages, setAwaiting) {
   }
   return true;
 }
+
+export function handlePickConfirm({ userText, setMessages, setAwaiting }) {
+  const t = (userText || "").toLowerCase();
+
+  // finalizează
+  if (/\b(no|gracias|listo|ya esta|ya está|vale asi)\b/.test(t)) {
+    setAwaiting(null);
+    setMessages(m => [...m, { from: "bot", reply_text: "¡Perfecto! Si necesitas algo más, dime 😊" }]);
+    return true;
+  }
+
+  // întrebarea „de unde știi / de ce e perfect?”
+  const askWhy = /\b(por que|por qué|de donde|de dónde|porque|why|motivo|razon|razón)\b/.test(t);
+  if (askWhy) {
+    const ctx = getCtx();
+    const ranked = ctx.ranked || [];
+    if (!ranked.length) {
+      setAwaiting(null);
+      setMessages(m => [...m, { from: "bot", reply_text: "He perdido el contexto de la selección. Pídeme otra vez el contenedor, por favor." }]);
+      return true;
+    }
+
+    const best = ranked[0];
+    const second = ranked[1];
+    const reasonBest = best.moves === 0
+      ? "porque encima no tiene ningún contenedor (0 movimientos)."
+      : `porque requiere el menor número de movimientos arriba (${best.moves}).`;
+
+    setMessages(m => [...m, { from: "bot", reply_text: `Lo elegí ${reasonBest}` }]);
+
+    if (second) {
+      const r2 = second.row, pos2 = r2.posicion ?? "—", code2 = r2.matricula_contenedor ?? "—";
+      setMessages(m => [...m, {
+        from: "bot",
+        reply_text: "Aquí tienes la segunda mejor opción 👇",
+        render: () => (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Alternativa #2</div>
+            <div style={{fontSize:14,lineHeight:1.5,marginTop:6}}>
+              <div><strong>Código:</strong> {code2}</div>
+              <div><strong>Posición:</strong> {pos2}</div>
+              <div><strong>Tipo:</strong> {r2.tipo || "—"}</div>
+              <div><strong>Naviera:</strong> {r2.naviera || "—"}</div>
+              <div><strong>Movimientos sobre él:</strong> {second.moves}</div>
+            </div>
+            <div className={styles.cardActions} style={{marginTop:10}}>
+              <button className={styles.actionBtn}
+                onClick={() => window.__raynaOpenMap ? window.__raynaOpenMap(pos2) : (window.location.href = buildMapHref(pos2))}>
+                Ver mapa 3D
+              </button>
+            </div>
+          </div>
+        )
+      }]);
+    }
+
+    // rămânem în confirm; poate cere altă combinație sau „no”
+    setAwaiting("pick_load_confirm");
+    return true;
+  }
+
+  // orice alt text aici = vrea altă combinație → revenim la filtre
+  setMessages(m => [...m, { from: "bot", reply_text: "Perfecto. Dime otra combinación (tamaño/naviera): por ejemplo «40 bajo MSC» o «20 OT Maersk»." }]);
+  setAwaiting("pick_load_filters");
+  return true;
+}
+
 
 function buildMapHref(pos) {
   const hrefBase = (location.hash && location.hash.startsWith("#/"))
@@ -297,12 +365,11 @@ async function pickBestContainer({ base, special, naviera }) {
   // 3) întâi cele libere deasupra
   const freeTop = candidates.filter(r => countAbove(String(r.posicion || "").toUpperCase()) === 0);
   if (freeTop.length) {
-    freeTop.sort((a, b) =>
-      levelRank(b.posicion) - levelRank(a.posicion) ||
-      new Date(a.created_at) - new Date(b.created_at)
-    );
-    return { row: freeTop[0] };
-  }
+     const ranked = freeTop
+       .map(r => ({ row: r, moves: 0, lvl: levelRank(r.posicion) }))
+       .sort((a, b) => b.lvl - a.lvl || new Date(a.row.created_at) - new Date(b.row.created_at));
+     return { row: ranked[0].row, ranked };
+   }
 
   // 4) fallback: minim mutări, apoi cât mai sus
   const withScore = candidates.map(r => ({
@@ -317,5 +384,6 @@ async function pickBestContainer({ base, special, naviera }) {
     new Date(a.row.created_at) - new Date(b.row.created_at)
   );
 
-  return { row: withScore[0].row };
+  const ranked = withScore.map(x => ({ row: x.row, moves: x.above, lvl: x.lvl }));
+   return { row: ranked[0].row, ranked };
 }
