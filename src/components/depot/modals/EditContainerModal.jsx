@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
 import styles from './AddContainerModal.module.css'; // 🔹 același CSS ca AddContainerModal
-import { useAuth } from '../../../../AuthContext';
+import { useAuth } from '../../../AuthContext';
 
 /* ===== Helper poziție ===== */
 function parsePos(s) {
