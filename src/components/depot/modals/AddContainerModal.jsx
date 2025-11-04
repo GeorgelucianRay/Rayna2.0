@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
 import styles from './AddContainerModal.module.css';
-import { useAuth } from '../../../../AuthContext';
+
 
 // ========== Helper pentru poziție ==========
 function parsePos(s) {
@@ -22,10 +22,7 @@ const composePos = ({ fila, num, nivel, pending }) =>
   pending ? 'PENDIENTE' : (fila && num && nivel ? `${fila}${num}${nivel}` : '');
 // ==========================================
 
-export default function AddContainerModal({ isOpen, onClose, onAdd }) {
-  const { profile } = useAuth();
-  const role = profile?.role || 'guest';
-  const isPrivileged = role === 'admin' || role === 'dispecer' || /dispatcher/i.test(role);
+
 
   // === Form fields ===
   const [matricula, setMatricula] = useState('');
