@@ -5,6 +5,9 @@ import Layout from '../Layout';
 import { supabase } from '../../supabaseClient';
 import * as XLSX from 'xlsx';
 import styles from './DepotPage.module.css';
+import AddContainerModal from './modals/AddContainerModal';
+import EditContainerModal from './modals/EditContainerModal';
+import SalidaContainerModal from './modals/SalidaContainerModal';
 import { useAuth } from '../../../AuthContext';
 
 function DepotPage() {
@@ -32,9 +35,7 @@ const PlusIcon = () => (
   </svg>
 );
 
-import AddContainerModal from './modals/AddContainerModal';
-import EditContainerModal from './modals/EditContainerModal';
-import SalidaContainerModal from './modals/SalidaContainerModal';
+
 
 function DepotPage() {
   const ITEMS_PER_PAGE = 25;
