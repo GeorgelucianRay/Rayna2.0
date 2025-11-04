@@ -5,6 +5,19 @@ import Layout from '../Layout';
 import { supabase } from '../../supabaseClient';
 import * as XLSX from 'xlsx';
 import styles from './DepotPage.module.css';
+import { useAuth } from '../../../AuthContext';
+
+function DepotPage() {
+  const { session, sessionReady } = useAuth();
+
+  if (!sessionReady) {
+    return <p style={{padding:16}}>Conectando…</p>;
+  }
+  if (!session) {
+    // poți folosi un navigate aici sau pur și simplu returnezi un link spre login
+    window.location.replace('/login'); 
+    return null;
+  }
 
 /* Iconos */
 const SearchIcon = () => (
