@@ -1,8 +1,10 @@
+// src/App.jsx
 import './index.css';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
-import StartupRedirect from './StartupRedirect';
+
 import RequireAuth from './RequireAuth';
-import RouteMemory from './RouteMemory';
+import RouteMemory from './RouteMemory';     // opțional dar util (ultima rută)
+import RootGate from './RootGate';           // splash + redirect imperativ pe "/"
 
 // Public
 import IniciarSesion from './components/IniciarSesion.jsx';
@@ -35,16 +37,18 @@ import Aprender from './pages/admin/Aprender';
 export default function App() {
   return (
     <>
+      {/* Memorizează ultima rută (doar când userul e logat) */}
       <RouteMemory />
+
       <Routes>
         {/* Public */}
-        <Route path="/" element={<StartupRedirect />} />
+        <Route path="/" element={<RootGate />} />
         <Route path="/login" element={<IniciarSesion />} />
         <Route path="/registro" element={<Registrar />} />
         <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
         <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-        {/* Private (tot ce e sub RequireAuth cere sesiune) */}
+        {/* Private: tot ce e sub RequireAuth cere sesiune */}
         <Route element={<RequireAuth />}>
           <Route path="/rayna-hub" element={<RaynaHub />} />
           <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
