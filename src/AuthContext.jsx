@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
   /** Ia sesiunea curentă și sincronizează user-ul. */
   const refreshSession = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    setSession(session);
+    setSession(session || null);
     setUser(session?.user ?? null);
     return session;
   }, []);
@@ -93,19 +93,19 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // ÎNLOCUIEȘTE cu acest SELECT relațional
-const { data: baseProfile, error: profErr } = await supabase
-  .from('profiles')
-  .select(`
-    id, role, nombre_completo, email,
-    cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad,
-    camion_id, remorca_id,
-    ultima_aparitie_feedback, avatar_url,
-    camioane:camion_id ( id, marca, matricula ),
-    remorci:remorca_id ( id, matricula, tipo )
-  `)
-  .eq('id', current.user.id)
-  .maybeSingle();
+      // SELECT relațional
+      const { data: baseProfile, error: profErr } = await supabase
+        .from('profiles')
+        .select(`
+          id, role, nombre_completo, email,
+          cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad,
+          camion_id, remorca_id,
+          ultima_aparitie_feedback, avatar_url,
+          camioane:camion_id ( id, marca, matricula ),
+          remorci:remorca_id ( id, matricula, tipo )
+        `)
+        .eq('id', current.user.id)
+        .maybeSingle();
 
       if (profErr) {
         console.warn('profiles select error:', profErr.message);
@@ -179,31 +179,41 @@ const { data: baseProfile, error: profErr } = await supabase
     }
   }, [refreshSession, feedbackSuppressed]);
 
+  // 🔧 Inițializare robustă a sesiunii (rehidratare + watchdog + listener)
   useEffect(() => {
     let intervalId;
 
+    // watchdog: evită „ecran alb” dacă ceva blochează rehidratarea
+    const watchdog = setTimeout(() => setSessionReady(true), 5000);
+
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setSessionReady(true);
+      // 1) Rehidratare sincronă din localStorage
+      const { data: { session: s } } = await supabase.auth.getSession();
+      setSession(s || null);
+      setUser(s?.user ?? null);
+      setSessionReady(true);                 // ✅ important
+      clearTimeout(watchdog);
 
-      await fetchAndProcessData();
-      setLoading(false);
+      // 2) Prima încărcare a datelor derivate (profil, alarme)
+      setLoading(true);
+      await fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
 
-      intervalId = setInterval(fetchAndProcessData, 300000);
+      // 3) Refresh periodic al datelor derivate (nu al autentificării)
+      intervalId = setInterval(fetchAndProcessData, 300000); // 5 min
     })();
 
+    // 4) Ascultă schimbările de auth (login/logout/refresh)
     const { data: authSub } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s);
+      setSession(s || null);
       setUser(s?.user ?? null);
-      setSessionReady(true);
+      setSessionReady(true);                 // ✅ întotdeauna true după eveniment
       setLoading(true);
-      fetchAndProcessData().finally(() => setLoading(false));
+      fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
     });
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      clearTimeout(watchdog);
       authSub.subscription.unsubscribe();
     };
   }, [fetchAndProcessData]);
@@ -250,34 +260,34 @@ const { data: baseProfile, error: profErr } = await supabase
   };
 
   // în AuthProvider, înlocuiește complet funcția asta:
-const handleFeedbackSubmit = async (feedbackText) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user || !feedbackText) return;
+  const handleFeedbackSubmit = async (feedbackText) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !feedbackText) return;
 
-  try {
-    const { error } = await supabase
-      .from('feedback_utilizatori')
-      .insert({
-        user_id: session.user.id,                 // cine a trimis
-        email: profile?.email ?? null,            // email-ul din profil (dacă există)
-        continut: feedbackText,                   // textul din modal
-        origen: 'modal',                          // sursa: modalul de feedback
-        categoria: 'sugerencia',                  // poți seta 'idea' / 'feedback' etc.
-        severidad: 'baja',                        // implicit scăzută pt. sugestii
-        contexto: { ruta: window.location?.pathname || null }  // meta util
-      });
+    try {
+      const { error } = await supabase
+        .from('feedback_utilizatori')
+        .insert({
+          user_id: session.user.id,                 // cine a trimis
+          email: profile?.email ?? null,            // email-ul din profil (dacă există)
+          continut: feedbackText,                   // textul din modal
+          origen: 'modal',                          // sursa: modalul de feedback
+          categoria: 'sugerencia',                  // poți seta 'idea' / 'feedback' etc.
+          severidad: 'baja',                        // implicit scăzută pt. sugestii
+          contexto: { ruta: window.location?.pathname || null }  // meta util
+        });
 
-    if (error) {
-      console.error('Insert feedback_utilizatori:', error);
-      alert(`De momento no se ha podido guardar el feedback-ul: ${error.message}`);
-      return;
+      if (error) {
+        console.error('Insert feedback_utilizatori:', error);
+        alert(`De momento no se ha podido guardar el feedback-ul: ${error.message}`);
+        return;
+      }
+    } finally {
+      // închide modalul oricum
+      await handleFeedbackClose();
+      alert('Muchas Gracias por tu contribución!');
     }
-  } finally {
-    // închide modalul oricum
-    await handleFeedbackClose();
-    alert('Muchas Gracias por tu contribución!');
-  }
-};
+  };
 
   const value = {
     session,
