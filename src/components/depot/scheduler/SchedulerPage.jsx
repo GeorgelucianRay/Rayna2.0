@@ -1,4 +1,3 @@
-// src/components/Depot/scheduler/SchedulerPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -11,8 +10,10 @@ import SchedulerToolbar from './SchedulerToolbar';
 import SchedulerList from './SchedulerList';
 import SchedulerDetailModal from './SchedulerDetailModal';
 import SchedulerCalendar from './SchedulerCalendar';
-import ProgramarDesdeDepositoModal from './ProgramarDesdeDepositoModal';
+// ⛔ Eliminat: ProgramarDesdeDepositoModal (nu mai deschidem modale de “programar”)
 import { useScheduler } from '../hooks/useScheduler';
+
+const TABS = ['programado', 'pendiente', 'completado']; // fără "todos"
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -32,36 +33,29 @@ export default function SchedulerPage() {
   const [selected, setSelected] = useState(null);
   const calRef = useRef(null);
 
-  // Modal: Programar desde En Depósito
-  const [programarOpen, setProgramarOpen] = useState(false);
-
-  // ── Calendar integration ─────────────────────────────────────────────────────
-  // mark days with programados in current month: { 'YYYY-MM-DD': count }
+  // ── Calendar markers (rămânem cu evidențierea zilelor, dar fără a filtra lista) ──
   const [markers, setMarkers] = useState({});
-  // single-day filter for Programado/Pendiente/Todos (string 'YYYY-MM-DD' or null)
-  const [dayFilter, setDayFilter] = useState(null);
-  // multi-select zile pentru Completado (set de 'YYYY-MM-DD')
-  const [selectedDates, setSelectedDates] = useState(new Set());
 
-  // dacă rolul e mecanic, ascunde "Todos"
+  // dacă rolul e mecanic și cumva ajunge pe “todos”, trecem pe “programado”
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
-  const handleProgramarClick = () => {
-    setProgramarOpen(true);
-    if (window.innerWidth <= 980 && calRef.current) {
+  // Butonul “Calendario” doar face scroll la calendar
+  const handleCalendarClick = () => {
+    if (calRef.current) {
       calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // Fetch programări pentru luna curentă (pt. markere)
+  // Markere pentru luna curentă (fără a filtra lista)
   useEffect(() => {
     const loadMonth = async () => {
       const y = date.getFullYear();
       const m = date.getMonth();
       const start = new Date(y, m, 1).toISOString().slice(0, 10);
       const end   = new Date(y, m + 1, 0).toISOString().slice(0, 10);
+
       const { data, error } = await supabase
         .from('contenedores_programados')
         .select('fecha')
@@ -84,61 +78,10 @@ export default function SchedulerPage() {
     loadMonth();
   }, [date]);
 
-  // Când schimbi tabul, curăț filtrele specifice
-  useEffect(() => {
-    if (tab === 'completado') {
-      setDayFilter(null); // folosește multi-select în completado
-    } else {
-      setSelectedDates(new Set());
-    }
-  }, [tab]);
+  // 🔥 LISTA VIZIBILĂ = TOT din `filtered` (fără filtre de calendar)
+  const visibleItems = useMemo(() => filtered || [], [filtered]);
 
-  // Lista vizibilă după filtrele de calendar
-  const visibleItems = useMemo(() => {
-    let list = filtered || [];
-    if (tab === 'completado') {
-      if (selectedDates.size > 0) {
-        list = list.filter(r => {
-          const d = r.fecha_salida ? new Date(r.fecha_salida).toISOString().slice(0,10) : '';
-          return selectedDates.has(d);
-        });
-      }
-      return list;
-    }
-    // programado / pendiente / todos → filtru single-day (dacă există)
-    if (dayFilter) {
-      list = list.filter(r => (r.fecha || '').slice(0,10) === dayFilter);
-    }
-    return list;
-  }, [filtered, tab, dayFilter, selectedDates]);
-
-  // Inserție contenedor programado/pendiente din En Depósito
-  const onProgramarDesdeDeposito = async (contenedorRow, payload) => {
-    const insert = {
-      matricula_contenedor: (contenedorRow.matricula_contenedor || '').toUpperCase(),
-      naviera: contenedorRow.naviera || null,
-      tipo: contenedorRow.tipo || null,
-      posicion: (payload.posicion || contenedorRow.posicion || null),
-      empresa_descarga: payload.empresa_descarga || null,
-      fecha: payload.fecha || null,
-      hora: payload.hora || null,
-      matricula_camion: payload.matricula_camion || null,
-      estado: payload.estado || 'programado',
-    };
-    const { error } = await supabase.from('contenedores_programados').insert([insert]);
-    if (error) {
-      console.error(error);
-      alert(`Error al programar:\n${error.message || error}`);
-      return;
-    }
-    alert('¡Programación guardada!');
-    // reîmprospătează markerele zilei respective
-    if (insert.fecha) {
-      setMarkers(prev => ({ ...prev, [insert.fecha]: (prev[insert.fecha] || 0) + 1 }));
-    }
-  };
-
-  // Export Excel — exact lista vizibilă după filtre
+  // Export Excel — exact lista vizibilă (toate)
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -175,7 +118,7 @@ export default function SchedulerPage() {
       tab === 'programado' ? 'programado.xlsx'
       : tab === 'pendiente' ? 'pendiente.xlsx'
       : tab === 'completado' ? 'completado.xlsx'
-      : 'programacion_todos.xlsx';
+      : 'programacion.xlsx';
 
     XLSX.writeFile(wb, filename);
   };
@@ -189,20 +132,24 @@ export default function SchedulerPage() {
         <div className={styles.topBar}>
           <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
-          {(role === 'dispecer' || role === 'admin') && (
-            <button className={styles.newBtn} onClick={handleProgramarClick}>
-              Programar
-            </button>
-          )}
+
+          {/* 🔁 “Programar” -> “Calendario” */}
+          <button className={styles.newBtn} onClick={handleCalendarClick}>
+            Calendario
+          </button>
         </div>
 
         <SchedulerToolbar
-          tab={tab} setTab={(t)=>{ setTab(t); setDayFilter(null); setSelectedDates(new Set()); }}
-          query={query} setQuery={setQuery}
-          date={date} setDate={setDate}
-          canProgramar={role === 'dispecer' || role === 'admin'}
-          onProgramarClick={handleProgramarClick}
+          tab={tab}
+          setTab={(t)=>{ setTab(t); }}
+          tabs={TABS}                // 🔹 (vezi nota de mai jos)
+          query={query}
+          setQuery={setQuery}
+          date={date}
+          setDate={setDate}
+          onCalendarClick={handleCalendarClick}  // 🔹 (vezi nota)
           onExportExcel={exportarExcelTab}
+          // ⛔ Eliminat: canProgramar / onProgramarClick
         />
 
         <div className={styles.grid}>
@@ -218,23 +165,9 @@ export default function SchedulerPage() {
             <SchedulerCalendar
               date={date}
               setDate={setDate}
-              mode={tab}                    // 'todos' | 'programado' | 'pendiente' | 'completado'
-              markers={markers}             // { 'YYYY-MM-DD': count }
-              selectedDates={selectedDates} // set pentru completado
-              onSelectDay={(dayStr) => {    // single-day (non-completado)
-                setDayFilter(dayStr);
-                if (tab !== 'programado' && tab !== 'pendiente' && tab !== 'todos') {
-                  setTab('programado');
-                }
-              }}
-              onToggleDate={(dayStr) => {   // multi-select pentru completado
-                setSelectedDates(prev => {
-                  const next = new Set(prev);
-                  if (next.has(dayStr)) next.delete(dayStr);
-                  else next.add(dayStr);
-                  return next;
-                });
-              }}
+              mode={tab}         // 'programado' | 'pendiente' | 'completado'
+              markers={markers}  // { 'YYYY-MM-DD': count }
+              // ⛔ Eliminat filtrele de zi / multiselect — calendarul este pur vizual
             />
           </div>
         </div>
@@ -248,15 +181,6 @@ export default function SchedulerPage() {
           onHecho={async (row)   => { await marcarHecho(row);       setSelected(null); }}
           onEditar={async (row, payload) => { await actualizarProgramado(row, payload); setSelected(null); }}
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, (pos || '').toUpperCase()); setSelected(null); }}
-        />
-
-        <ProgramarDesdeDepositoModal
-          open={programarOpen}
-          onClose={() => setProgramarOpen(false)}
-          onProgramar={async (row, payload) => {
-            await onProgramarDesdeDeposito(row, payload);
-            setProgramarOpen(false);
-          }}
         />
       </div>
     </div>
