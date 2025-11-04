@@ -13,7 +13,7 @@ import SchedulerCalendar from './SchedulerCalendar';
 import ProgramarDesdeDepositoModal from './ProgramarDesdeDepositoModal';
 import { useScheduler } from '../hooks/useScheduler';
 
-const TABS = ['programado', 'pendiente', 'completado']; // fără "todos"
+const TABS = ['programado', 'pendiente', 'completado'];
 
 export default function SchedulerPage() {
   const { profile } = useAuth();
@@ -33,21 +33,24 @@ export default function SchedulerPage() {
   const [selected, setSelected] = useState(null);
   const calRef = useRef(null);
 
-  // modal: Programar
+  // Modal: Programar
   const [programarOpen, setProgramarOpen] = useState(false);
 
-  // markere calendar (doar vizual)
+  // Markere calendar pentru luna curentă
   const [markers, setMarkers] = useState({});
 
+  // dacă e mecanic, forțăm vizualizarea “programado”
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
   const handleCalendarClick = () => {
-    calRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (calRef.current) {
+      calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
-  // markere lunare
+  // Fetch markere pentru luna selectată
   useEffect(() => {
     const loadMonth = async () => {
       const y = date.getFullYear();
@@ -61,18 +64,24 @@ export default function SchedulerPage() {
         .gte('fecha', start)
         .lte('fecha', end);
 
-      if (error) { console.error('Month markers:', error); setMarkers({}); return; }
+      if (error) {
+        console.error('Month markers:', error);
+        setMarkers({});
+        return;
+      }
       const map = {};
-      (data || []).forEach(r => { if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1; });
+      (data || []).forEach(r => {
+        if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1;
+      });
       setMarkers(map);
     };
     loadMonth();
   }, [date]);
 
-  // lista = tot din filtered (fără filtre de zi)
+  // Lista vizibilă (fără filtre de zi – cum ai cerut)
   const visibleItems = useMemo(() => filtered || [], [filtered]);
 
-  // export excel
+  // Export Excel (lista vizibilă)
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -114,7 +123,7 @@ export default function SchedulerPage() {
     XLSX.writeFile(wb, filename);
   };
 
-  // inserție programare din modal (identic cu varianta ta anterioară)
+  // Inserție din formularul “Programar”
   const onProgramarDesdeDeposito = async (_row, payload) => {
     const insert = {
       matricula_contenedor: (payload.matricula_contenedor || '').toUpperCase(),
@@ -141,18 +150,32 @@ export default function SchedulerPage() {
   };
 
   return (
+    <div className={styles.schedulerRoot}>
+      <div className={styles.pageWrap}>
+        <div className={styles.bg} />
+        <div className={styles.vignette} />
 
+        {/* Header */}
+        <div className={styles.topBar}>
+          <Link to="/depot" className={styles.backBtn}>Depósito</Link>
+          <h1 className={styles.title}>Programar Contenedor</h1>
+          <button className={styles.newBtn} onClick={handleCalendarClick}>
+            Calendario
+          </button>
+        </div>
+
+        {/* Toolbar (fără buton Calendario aici) */}
         <SchedulerToolbar
           tabs={TABS}
           tab={tab} setTab={setTab}
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
-          onCalendarClick={handleCalendarClick}
           onExportExcel={exportarExcelTab}
-          onProgramarClick={() => setProgramarOpen(true)}  // 👈 buton “Programar” lângă Excel
+          onProgramarClick={() => setProgramarOpen(true)}
           canProgramar={role === 'admin' || role === 'dispecer'}
         />
 
+        {/* === GRID principal === */}
         <div className={styles.grid}>
           <SchedulerList
             items={visibleItems}
@@ -172,6 +195,7 @@ export default function SchedulerPage() {
           </div>
         </div>
 
+        {/* Modal detaliu item */}
         <SchedulerDetailModal
           open={!!selected}
           row={selected}
@@ -183,6 +207,7 @@ export default function SchedulerPage() {
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, (pos || '').toUpperCase()); setSelected(null); }}
         />
 
+        {/* Modal Programar */}
         <ProgramarDesdeDepositoModal
           open={programarOpen}
           onClose={() => setProgramarOpen(false)}
