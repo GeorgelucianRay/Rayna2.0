@@ -1,119 +1,84 @@
-/* ===== iOS 26 scoped theme ===== */
-.ios {
-  /* tokens */
-  --accent: #3be476;
-  --text-strong:#eaf3ff;
-  --text-soft:#b7c7e6;
-  --glass: rgba(255,255,255,.06);
-  --glass-strong: rgba(255,255,255,.10);
-  --stroke: rgba(255,255,255,.18);
-  --stroke-2: rgba(255,255,255,.28);
-  --r-xl: 22px; --r-lg: 16px; --r-md: 12px;
-  --inset: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(0,0,0,.25);
-  --shadow: 0 16px 40px rgba(0,0,0,.28);
-  font-family: ui-rounded, SF Pro Rounded, SF Pro Text, -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  color: var(--text-strong);
-}
+// AddContainerModal.jsx (doar fragmentul interior, cum ai deja)
+import Modal from '../../ui/Modal';
+import styles from './AddContainerModal.module.css';
 
-/* titlu sheet */
-.title {
-  margin: 6px 6px 14px;
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: .2px;
-}
+export default function AddContainerModal(props) {
+  const {
+    isOpen, onClose, onSubmit,
+    newMatricula, setNewMatricula,
+    newNaviera, setNewNaviera,
+    newTipo, setNewTipo,
+    newPosicion, setNewPosicion,
+    newEstado, setNewEstado,
+    isBroken, setIsBroken,
+    newDetalles, setNewDetalles,
+    newMatriculaCamion, setNewMatriculaCamion,
+  } = props;
 
-/* formular */
-.form { display: grid; gap: 12px; }
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} ariaLabel="Añadir contenedor">
+      <div className={styles.ios}>
+        <h2 className={styles.title}>Añadir Contenedor</h2>
 
-/* label + control block */
-.block { display: grid; gap: 6px; }
+        <form className={styles.form} onSubmit={onSubmit}>
+          <div className={styles.block}>
+            <span className={styles.label}>Matrícula Contenedor</span>
+            <input className={styles.input} value={newMatricula} onChange={e=>setNewMatricula(e.target.value)} required />
+          </div>
 
-.label {
-  font-size: 14px;
-  color: var(--text-soft);
-}
+          <div className={styles.block}>
+            <span className={styles.label}>Naviera</span>
+            <input className={styles.input} value={newNaviera} onChange={e=>setNewNaviera(e.target.value)} />
+          </div>
 
-/* câmp standard */
-.input, .select, .area {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--stroke);
-  background: var(--glass);
-  color: var(--text-strong);
-  box-shadow: var(--inset);
-  outline: none;
-  appearance: none;
-}
+          <div className={styles.block}>
+            <span className={styles.label}>Tipo</span>
+            <select className={styles.select} value={newTipo} onChange={e=>setNewTipo(e.target.value)}>
+              <option>20</option><option>40</option><option>45</option>
+            </select>
+          </div>
 
-.select {
-  padding-right: 36px; /* loc pentru indicator */
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-soft) 50%),
-                    linear-gradient(135deg, var(--text-soft) 50%, transparent 50%),
-                    linear-gradient(to right, transparent, transparent);
-  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 10px) calc(50% - 2px), 100% 0;
-  background-size: 6px 6px, 6px 6px, 2.5em 2.5em;
-  background-repeat: no-repeat;
-}
+          <div className={styles.block}>
+            <span className={styles.label}>Posición</span>
+            <input className={styles.input} value={newPosicion} onChange={e=>setNewPosicion(e.target.value)} />
+          </div>
 
-/* focus iOS accent */
-.input:focus, .select:focus, .area:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 30%, transparent), var(--inset);
-}
+          <div className={styles.row}>
+            <label className={styles.label}>Defectuoso</label>
+            <label className={styles.switch}>
+              <input type="checkbox" checked={isBroken} onChange={e=>setIsBroken(e.target.checked)} />
+              <span className={styles.switchTrack}></span>
+              <span className={styles.switchThumb}></span>
+            </label>
 
-/* rând mixt */
-.row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 16px; }
+            {!isBroken && (
+              <>
+                <span className={styles.label}>Estado</span>
+                <select className={styles.select} value={newEstado} onChange={e=>setNewEstado(e.target.value)}>
+                  <option>Lleno</option><option>Vacío</option>
+                </select>
+              </>
+            )}
+          </div>
 
-/* switch (checkbox iOS) */
-.switch {
-  --w: 48px; --h: 28px;
-  position: relative; width: var(--w); height: var(--h);
-}
-.switch input { position: absolute; inset: 0; opacity: 0; }
-.switchTrack {
-  width: 100%; height: 100%;
-  background: rgba(255,255,255,.18);
-  border: 1px solid var(--stroke);
-  border-radius: 999px;
-  box-shadow: inset 0 -2px 6px rgba(0,0,0,.2);
-  transition: background .18s ease, border-color .18s ease;
-}
-.switchThumb {
-  position: absolute; top: 2px; left: 2px;
-  width: 24px; height: 24px; border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.06);
-  transition: transform .18s ease;
-}
-.switch input:checked ~ .switchTrack { background: color-mix(in oklab, var(--accent) 72%, #000 8%); border-color: color-mix(in oklab, var(--accent) 65%, #000 10%); }
-.switch input:checked ~ .switchThumb { transform: translateX(20px); }
+          {isBroken && (
+            <div className={styles.block}>
+              <span className={styles.label}>Detalles</span>
+              <textarea className={styles.area} rows={3} value={newDetalles} onChange={e=>setNewDetalles(e.target.value)} />
+            </div>
+          )}
 
-/* butoane */
-.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+          <div className={styles.block}>
+            <span className={styles.label}>Matrícula Camión (opcional)</span>
+            <input className={styles.input} value={newMatriculaCamion} onChange={e=>setNewMatriculaCamion(e.target.value)} />
+          </div>
 
-.btn {
-  padding: 12px 16px;
-  border-radius: 999px;
-  font-weight: 800;
-  letter-spacing: .2px;
-  cursor: pointer;
-  border: 1px solid var(--stroke);
-  box-shadow: var(--inset), 0 6px 16px rgba(0,0,0,.25);
-  background: var(--glass);
-  color: var(--text-strong);
-}
-
-.primary {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 96%, #fff 0%) 0%, color-mix(in oklab, var(--accent) 82%, #000 0%) 100%);
-  color: #071d11;
-  border: 1px solid rgba(255,255,255,.75);
-  box-shadow: 0 12px 26px color-mix(in oklab, var(--accent) 35%, black 0%), var(--inset);
-}
-.primary:active { transform: translateY(1px); opacity: .95; }
-
-/* responsive */
-@media (max-width: 720px) {
-  .row { grid-template-columns: 1fr; }
+          <div className={styles.actions}>
+            <button type="button" className={styles.btn} onClick={onClose}>Cancelar</button>
+            <button type="submit" className={`${styles.btn} ${styles.primary}`}>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  );
 }
