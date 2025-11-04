@@ -1,0 +1,57 @@
+/* Overlay pe tot ecranul – z-index mai mare decât orice header */
+.modalOverlay {
+  position: fixed;
+  inset: 0;                 /* top/right/bottom/left: 0 */
+  width: 100%;
+  height: 100dvh;           /* mai robust decât 100vh pe iOS */
+  z-index: 4000;            /* > header (pune header la 1000-1500) */
+  display: grid;
+  place-items: center;      /* centrează conținutul */
+  pointer-events: none;     /* overlay-ul în sine nu captează click-uri... */
+}
+
+/* butonul “fundal” primește click pentru a închide */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17,17,17,0.55);
+  backdrop-filter: saturate(140%) blur(2px);
+  pointer-events: auto;
+  border: 0;
+}
+
+/* Cutia modalului */
+.modalContent {
+  position: relative;
+  pointer-events: auto;     /* …dar conținutul primește click */
+  width: min(92vw, 520px);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0,0,0,0.35);
+  padding: 16px;
+  z-index: 1;               /* peste backdrop */
+}
+
+/* variantă mai lată (dacă vrei pentru edit) */
+.wide { width: min(96vw, 720px); }
+
+.closeBtn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #333;
+}
+
+/* iOS safe-area (notch) */
+@supports (padding: max(0px)) {
+  .modalContent {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
