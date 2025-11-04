@@ -10,19 +10,7 @@ import EditContainerModal from './modals/EditContainerModal';
 import SalidaContainerModal from './modals/SalidaContainerModal';
 import { useAuth } from '../../../AuthContext';
 
-function DepotPage() {
-  const { session, sessionReady } = useAuth();
-
-  if (!sessionReady) {
-    return <p style={{padding:16}}>Conectando…</p>;
-  }
-  if (!session) {
-    // poți folosi un navigate aici sau pur și simplu returnezi un link spre login
-    window.location.replace('/login'); 
-    return null;
-  }
-
-/* Iconos */
+/* Iconos (top-level) */
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="8"></circle>
@@ -35,11 +23,14 @@ const PlusIcon = () => (
   </svg>
 );
 
-
-
 function DepotPage() {
-  const ITEMS_PER_PAGE = 25;
+  // ✅ Gardă de autentificare (fără useEffect suplimentar)
+  const { session, sessionReady } = useAuth();
   const navigate = useNavigate();
+  const ITEMS_PER_PAGE = 25;
+
+  if (!sessionReady) return <p style={{ padding: 16 }}>Conectando…</p>;
+  if (!session) { window.location.replace('/login'); return null; }
 
   // Tabs: 'contenedores' | 'contenedores_rotos' | 'contenedores_salidos'
   const [activeTab, setActiveTab] = useState('contenedores');
@@ -69,17 +60,7 @@ function DepotPage() {
 
   const [isSalidaModalOpen, setIsSalidaModalOpen] = useState(false);
   const [salidaMatriculaCamion, setSalidaMatriculaCamion] = useState('');
-
   const [selectedContainer, setSelectedContainer] = useState(null);
-
-  // Sesión (redirect a login si no hay sesión)
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) navigate('/login');
-    };
-    checkSession();
-  }, [navigate]);
 
   // Fetch principal (lista vizibilă)
   useEffect(() => {
@@ -250,7 +231,7 @@ function DepotPage() {
 
     const {
       id,
-      __from, // 'contenedores' | 'programados' (în lista En Depósito)
+      __from,
       matricula_contenedor,
       naviera,
       tipo,
@@ -258,8 +239,8 @@ function DepotPage() {
       estado: estadoActual,
       detalles,
       empresa_descarga,
-      fecha, // (din programados)
-      hora,  // (din programados)
+      fecha,
+      hora,
     } = selectedContainer;
 
     try {
@@ -289,10 +270,10 @@ function DepotPage() {
         fecha: fecha || null,
         hora: hora || null,
 
-        desde_programados: __from === 'programados', // aici va fi false
+        desde_programados: __from === 'programados',
         fecha_programada: fecha || null,
         hora_programada: hora || null,
-        fecha_salida: new Date().toISOString(), // obligatoriu în schema ta
+        fecha_salida: new Date().toISOString(),
       };
 
       const { error: insertError } = await supabase
@@ -517,35 +498,35 @@ function DepotPage() {
         </div>
 
         {/* Toolbar */}
-<div className={styles.toolbar}>
-  <div className={styles.searchBar}>
-    <SearchIcon />
-    <input
-      type="text"
-      placeholder="Buscar por matrícula…"
-      value={searchTerm}
-      onChange={(e) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
-      }}
-    />
-  </div>
+        <div className={styles.toolbar}>
+          <div className={styles.searchBar}>
+            <SearchIcon />
+            <input
+              type="text"
+              placeholder="Buscar por matrícula…"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
 
-  {/* Buton Excel */}
-  <img
-    src="/excel_circle_green.png"
-    alt="Exportar Excel"
-    className={styles.excelButton}
-    onClick={handleExportExcel}
-  />
+          {/* Buton Excel */}
+          <img
+            src="/excel_circle_green.png"
+            alt="Exportar Excel"
+            className={styles.excelButton}
+            onClick={handleExportExcel}
+          />
 
-  {activeTab === 'contenedores' && (
-    <button className={styles.addButton} onClick={openAddModal}>
-      <PlusIcon />
-      Añadir contenedor
-    </button>
-  )}
-</div>
+          {activeTab === 'contenedores' && (
+            <button className={styles.addButton} onClick={openAddModal}>
+              <PlusIcon />
+              Añadir contenedor
+            </button>
+          )}
+        </div>
 
         {/* Lista */}
         {loading ? (
