@@ -141,16 +141,6 @@ export default function SchedulerPage() {
   };
 
   return (
-    <div className={styles.schedulerRoot}>
-      <div className={styles.pageWrap}>
-        <div className={styles.bg} />
-        <div className={styles.vignette} />
-
-        <div className={styles.topBar}>
-          <Link to="/depot" className={styles.backBtn}>Depósito</Link>
-          <h1 className={styles.title}>Programar Contenedor</h1>
-          <button className={styles.newBtn} onClick={handleCalendarClick}>Calendario</button>
-        </div>
 
         <SchedulerToolbar
           tabs={TABS}
