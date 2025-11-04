@@ -1,57 +1,65 @@
-/* Overlay pe tot ecranul – z-index mai mare decât orice header */
 .modalOverlay {
   position: fixed;
-  inset: 0;                 /* top/right/bottom/left: 0 */
+  inset: 0;
   width: 100%;
-  height: 100dvh;           /* mai robust decât 100vh pe iOS */
-  z-index: 4000;            /* > header (pune header la 1000-1500) */
+  height: 100dvh;
+  z-index: 4000;
   display: grid;
-  place-items: center;      /* centrează conținutul */
-  pointer-events: none;     /* overlay-ul în sine nu captează click-uri... */
+  place-items: center;
+  pointer-events: none;
 }
 
-/* butonul “fundal” primește click pentru a închide */
 .backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(17,17,17,0.55);
-  backdrop-filter: saturate(140%) blur(2px);
+  background: rgba(3,7,18,.55);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
   pointer-events: auto;
   border: 0;
 }
 
-/* Cutia modalului */
 .modalContent {
   position: relative;
-  pointer-events: auto;     /* …dar conținutul primește click */
+  pointer-events: auto;
   width: min(92vw, 520px);
   max-height: calc(100dvh - 48px);
   overflow: auto;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 22px 60px rgba(0,0,0,0.35);
+
+  /* iOS 26: dark glass sheet */
+  background: rgba(16, 18, 22, .78);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+
+  color: #eaf3ff;
+  color-scheme: dark;
+
   padding: 16px;
-  z-index: 1;               /* peste backdrop */
+  z-index: 1;
 }
 
-/* variantă mai lată (dacă vrei pentru edit) */
 .wide { width: min(96vw, 720px); }
 
 .closeBtn {
   position: absolute;
   top: 8px;
   right: 10px;
-  border: none;
-  background: transparent;
-  font-size: 28px;
+  width: 36px; height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+  color: #eaf3ff;
+  font-size: 22px;
   line-height: 1;
+  display: grid; place-items: center;
   cursor: pointer;
-  color: #333;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
 }
 
-/* iOS safe-area (notch) */
 @supports (padding: max(0px)) {
-  .modalContent {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
+  .modalContent { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 }
