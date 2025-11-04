@@ -1,10 +1,10 @@
+// src/components/depot/modals/AddContainerModal.jsx
 import React, { useState, useMemo } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
 import styles from './AddContainerModal.module.css';
 
-
-// ========== Helper pentru poziție ==========
+/* ========= Helperi pentru poziție ========= */
 function parsePos(s) {
   const t = String(s || '').trim().toUpperCase();
   if (!t) return null;
@@ -20,10 +20,9 @@ function parsePos(s) {
 }
 const composePos = ({ fila, num, nivel, pending }) =>
   pending ? 'PENDIENTE' : (fila && num && nivel ? `${fila}${num}${nivel}` : '');
-// ==========================================
+/* ========================================== */
 
-
-
+export default function AddContainerModal({ isOpen, onClose, onAdd }) {
   // === Form fields ===
   const [matricula, setMatricula] = useState('');
   const [naviera, setNaviera] = useState('');
@@ -83,10 +82,12 @@ const composePos = ({ fila, num, nivel, pending }) =>
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} ariaLabel="Añadir Contenedor" fillOnMobile>
+      {/* Header */}
       <div className={shell.slotHeader}>
         <h3 className={styles.title}>Añadir Contenedor</h3>
       </div>
 
+      {/* Content */}
       <div className={shell.slotContent}>
         <div className={styles.ios}>
           {/* --- Form Fields --- */}
@@ -98,6 +99,8 @@ const composePos = ({ fila, num, nivel, pending }) =>
                 value={matricula}
                 onChange={(e)=>setMatricula(e.target.value.toUpperCase())}
                 style={{ textTransform:'uppercase' }}
+                autoCapitalize="characters"
+                spellCheck={false}
               />
             </div>
             <div className={styles.block}>
@@ -221,6 +224,7 @@ const composePos = ({ fila, num, nivel, pending }) =>
         </div>
       </div>
 
+      {/* Footer */}
       <div className={shell.slotFooter}>
         <div className={styles.actions}>
           <button type="button" className={styles.btn} onClick={onClose}>Cancelar</button>
