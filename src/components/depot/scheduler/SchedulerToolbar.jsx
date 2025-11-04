@@ -11,7 +11,7 @@ export default function SchedulerToolbar({
   onExportExcel,
 }) {
   const labels = { todos: 'Todos', programado: 'Programado', pendiente: 'Pendiente', completado: 'Completado' };
-  const tabs = allowedTabs ?? ['todos','programado','pendiente','completado'];
+  const TABS = props.tabs || ['programado','pendiente','completado'];
 
   return (
     <div className={`${styles.card} ${styles.toolbar}`}>
