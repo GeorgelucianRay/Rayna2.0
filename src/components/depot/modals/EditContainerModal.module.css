@@ -91,3 +91,17 @@
 .primary:disabled{ opacity:.5; cursor:not-allowed; }
 
 @media (max-width:720px){ .grid2{ grid-template-columns:1fr; } }
+
+/* iOS anti-zoom (scoped în wrapperul .ios) */
+@media (max-width: 900px) {
+  .ios :where(input, select, textarea, button) {
+    font-size: 16px !important;   /* pragul anti-zoom */
+    line-height: 1.25;
+  }
+}
+
+/* mic ajutor pentru Safari */
+.ios {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
