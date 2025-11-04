@@ -1,0 +1,61 @@
+/* src/components/depot/scheduler/SchedulerToolbar.module.css */
+
+.toolbar{
+  display:grid;
+  grid-template-columns: 1fr auto auto;
+  gap:12px;
+  align-items:center;
+  margin:12px 0;
+}
+
+.tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+.tab{
+  padding:8px 12px; border-radius:16px;
+  background:#1113; color:#eaf3ff;
+  border:1px solid #ffffff33;
+  backdrop-filter: blur(8px);
+}
+.tab.active{
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012; font-weight:700; border-color:#ffffff88;
+}
+
+.filters{ display:flex; gap:8px; align-items:center; }
+.search{
+  min-width:220px; padding:10px 12px; border-radius:12px;
+  border:1px solid #ffffff33; background:#1116; color:#fff;
+  outline:none;
+}
+.search:focus{ border-color:#ffffff66; }
+
+.date{
+  padding:10px 12px; border-radius:12px;
+  border:1px solid #ffffff33; background:#1116; color:#fff;
+  outline:none;
+}
+.date:focus{ border-color:#ffffff66; }
+
+.actions{ display:flex; gap:8px; align-items:center; }
+
+.ghost{
+  padding:10px 14px; border-radius:20px; border:1px solid #ffffff55;
+  background:#1117; color:#fff; backdrop-filter: blur(8px);
+}
+.ghost:hover{ border-color:#ffffff88; }
+
+.primary{
+  padding:10px 14px; border-radius:20px;
+  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  border:1px solid #fff9;
+  color:#062012; font-weight:800;
+  box-shadow:0 8px 24px rgba(20,180,90,.35), inset 0 1px 0 rgba(255,255,255,.25);
+}
+
+@media (max-width: 900px){
+  .toolbar{
+    grid-template-columns: 1fr;
+  }
+  .filters{
+    flex-wrap: wrap;
+  }
+}
