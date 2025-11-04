@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
 import styles from './EditContainerModal.module.css';
-import { useAuth } from '../../../../AuthContext';
+import { useAuth } from '../../../AuthContext';
 
 /* ==== Validare / compunere poziție ==== */
 function parsePos(s) {
