@@ -309,25 +309,48 @@ async function pickBestContainer({ base, special, naviera }) {
     .eq("estado", "vacio");
 
   // tip/dimensiune
-  if (base === "45") {
-    q = q.ilike("tipo", "45%");
-  } else if (base === "20") {
-    if (special === "ot") q = q.ilike("tipo", "%20%OT%");
-    else q = q.ilike("tipo", "20%");
-  } else if (base === "40") {
-    if (special === "hc")       q = q.ilike("tipo", "%40%HC%");
-    else if (special === "ot")  q = q.ilike("tipo", "%40%OT%");
-    else if (special === "bajo") q = q.ilike("tipo", "40%").not.ilike("tipo", "%HC%").not.ilike("tipo", "%OT%");
-    else q = q.ilike("tipo", "40%");
+if (base === "45") {
+  q = q.ilike("tipo", "45%");
+} else if (base === "20") {
+  if (special === "ot") q = q.ilike("tipo", "%20%OT%");
+  else q = q.ilike("tipo", "20%");
+} else if (base === "40") {
+  if (special === "hc") {
+    // prinde 40HC, 40 Alto, High Cube
+    q = q.or("ilike.tipo.%40%HC%,ilike.tipo.%40%ALTO%,ilike.tipo.%HIGH%CUBE%");
+  } else if (special === "ot") {
+    q = q.ilike("tipo", "%40%OT%");
+  } else if (special === "bajo") {
+    q = q.ilike("tipo", "40%")
+         .not.ilike("tipo", "%HC%")
+         .not.ilike("tipo", "%ALTO%")
+         .not.ilike("tipo", "%OT%");
+  } else {
+    q = q.ilike("tipo", "40%");
   }
+}
 
-  // naviera (obligatoriu în flux)
-  if (naviera) q = q.ilike("naviera", `%${naviera}%`);
+// naviera (obligatoriu în flux)
+if (naviera) q = q.ilike("naviera", `%${naviera}%`);
 
-  const { data: candidates, error } = await q.order("created_at", { ascending: true });
-  if (error) throw error;
-  logUI("PickLoad/SQL_RESULT", { candidates: candidates?.length || 0, base, special, naviera });
-  if (!candidates?.length) return null;
+let { data: candidates, error } = await q.order("created_at", { ascending: true });
+if (error) throw error;
+
+// fallback: dacă special=hc și nu găsim nimic, relaxăm pe 40 generic
+if ((!candidates || !candidates.length) && base === "40" && special === "hc") {
+  const q2 = supabase
+    .from("contenedores")
+    .select("id,matricula_contenedor,naviera,tipo,posicion,estado,created_at")
+    .eq("estado", "vacio")
+    .ilike("tipo", "40%");
+  const { data: c2, error: e2 } =
+    await q2.ilike("naviera", `%${naviera || ""}%`).order("created_at", { ascending: true });
+  if (e2) throw e2;
+  candidates = c2 || [];
+}
+
+logUI("PickLoad/SQL_RESULT", { candidates: candidates?.length || 0, base, special, naviera });
+if (!candidates?.length) return null;
 
   // 2) toate pozițiile (pentru a număra ce e deasupra)
   const { data: all, error: e2 } = await supabase
