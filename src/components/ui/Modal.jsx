@@ -1,3 +1,4 @@
+// src/components/ui/Modal.jsx
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
@@ -10,12 +11,12 @@ export default function Modal({
   children,
   ariaLabel = 'Modal',
   wide = false,
+  fillOnMobile = true,     // ⬅️ nou: sheet full pe mobile
 }) {
   useEffect(() => {
     if (!isOpen) return;
-    // lock scroll pe body
     const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';   // ⬅️ blochează scrollul paginii
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
@@ -24,7 +25,11 @@ export default function Modal({
   return createPortal(
     <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={ariaLabel}>
       <div
-        className={`${styles.modalContent} ${wide ? styles.wide : ''}`}
+        className={[
+          styles.modalContent,
+          wide ? styles.wide : '',
+          fillOnMobile ? styles.fillMobile : '',
+        ].join(' ')}
         role="document"
       >
         <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">×</button>
