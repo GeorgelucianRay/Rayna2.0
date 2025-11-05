@@ -31,26 +31,29 @@ export default function SchedulerPage() {
   } = useScheduler();
 
   const [selected, setSelected] = useState(null);
+
+  // 👇 nou: controlăm vizibilitatea calendarului + când să arătăm lista
+  const [showCalendar, setShowCalendar] = useState(false); // ascuns la început
+  const [showList, setShowList] = useState(false);         // ascuns la început
+
   const calRef = useRef(null);
-
-  // Modal: Programar
   const [programarOpen, setProgramarOpen] = useState(false);
-
-  // Markere calendar pentru luna curentă
   const [markers, setMarkers] = useState({});
 
-  // dacă e mecanic, forțăm vizualizarea “programado”
+  // mecanic => forțează tab valid, dar lista rămâne ascunsă până apasă un tab
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
-  const handleCalendarClick = () => {
-    if (calRef.current) {
+  const handleCalendarToggle = () => {
+    const next = !showCalendar;
+    setShowCalendar(next);
+    if (next && calRef.current) {
       calRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // Fetch markere pentru luna selectată
+  // markere pentru luna curentă (vizual)
   useEffect(() => {
     const loadMonth = async () => {
       const y = date.getFullYear();
@@ -64,24 +67,17 @@ export default function SchedulerPage() {
         .gte('fecha', start)
         .lte('fecha', end);
 
-      if (error) {
-        console.error('Month markers:', error);
-        setMarkers({});
-        return;
-      }
+      if (error) { console.error('Month markers:', error); setMarkers({}); return; }
       const map = {};
-      (data || []).forEach(r => {
-        if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1;
-      });
+      (data || []).forEach(r => { if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1; });
       setMarkers(map);
     };
     loadMonth();
   }, [date]);
 
-  // Lista vizibilă (fără filtre de zi – cum ai cerut)
+  // lista vizibilă (logica existentă), dar o afișăm doar când showList = true
   const visibleItems = useMemo(() => filtered || [], [filtered]);
 
-  // Export Excel (lista vizibilă)
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -123,7 +119,6 @@ export default function SchedulerPage() {
     XLSX.writeFile(wb, filename);
   };
 
-  // Inserție din formularul “Programar”
   const onProgramarDesdeDeposito = async (_row, payload) => {
     const insert = {
       matricula_contenedor: (payload.matricula_contenedor || '').toUpperCase(),
@@ -159,15 +154,19 @@ export default function SchedulerPage() {
         <div className={styles.topBar}>
           <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
-          <button className={styles.newBtn} onClick={handleCalendarClick}>
+          <button
+            className={`${styles.headBtn} ${showCalendar ? styles.headBtnActive : ''}`}
+            onClick={handleCalendarToggle}
+          >
             Calendario
           </button>
         </div>
 
-        {/* Toolbar (fără buton Calendario aici) */}
+        {/* Toolbar (tabs + search + Excel + Programar) */}
         <SchedulerToolbar
           tabs={TABS}
-          tab={tab} setTab={setTab}
+          tab={tab}
+          setTab={(t) => { setTab(t); setShowList(true); }}   // 👈 arăt lista numai după ce a ales un tab
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
           onExportExcel={exportarExcelTab}
@@ -175,27 +174,32 @@ export default function SchedulerPage() {
           canProgramar={role === 'admin' || role === 'dispecer'}
         />
 
-        {/* === GRID principal === */}
+        {/* GRID principal */}
         <div className={styles.grid}>
-          <SchedulerList
-            items={visibleItems}
-            tab={tab}
-            loading={loading}
-            role={role}
-            onSelect={setSelected}
-          />
-
-          <div ref={calRef}>
-            <SchedulerCalendar
-              date={date}
-              setDate={setDate}
-              mode={tab}         // 'programado' | 'pendiente' | 'completado'
-              markers={markers}
+          {/* Lista – ascunsă până utilizatorul alege un tab */}
+          {showList && (
+            <SchedulerList
+              items={visibleItems}
+              tab={tab}
+              loading={loading}
+              role={role}
+              onSelect={setSelected}
             />
-          </div>
+          )}
+
+          {/* Calendar – toggle din butonul din header */}
+          {showCalendar && (
+            <div ref={calRef}>
+              <SchedulerCalendar
+                date={date}
+                setDate={setDate}
+                mode={tab}         // 'programado' | 'pendiente' | 'completado'
+                markers={markers}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Modal detaliu item */}
         <SchedulerDetailModal
           open={!!selected}
           row={selected}
@@ -207,7 +211,6 @@ export default function SchedulerPage() {
           onEditarPosicion={async (row, pos) => { await editarPosicion(row, (pos || '').toUpperCase()); setSelected(null); }}
         />
 
-        {/* Modal Programar */}
         <ProgramarDesdeDepositoModal
           open={programarOpen}
           onClose={() => setProgramarOpen(false)}
