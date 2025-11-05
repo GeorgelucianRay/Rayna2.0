@@ -32,7 +32,7 @@ export default function SchedulerPage() {
 
   const [selected, setSelected] = useState(null);
 
-  // 👇 nou: controlăm vizibilitatea calendarului + când să arătăm lista
+  // UI state
   const [showCalendar, setShowCalendar] = useState(false); // ascuns la început
   const [showList, setShowList] = useState(false);         // ascuns la început
 
@@ -40,7 +40,7 @@ export default function SchedulerPage() {
   const [programarOpen, setProgramarOpen] = useState(false);
   const [markers, setMarkers] = useState({});
 
-  // mecanic => forțează tab valid, dar lista rămâne ascunsă până apasă un tab
+  // safety pentru rolul mecanic (nu există "todos")
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
@@ -53,14 +53,13 @@ export default function SchedulerPage() {
     }
   };
 
-  // markere pentru luna curentă (vizual)
+  // markere lună curentă (doar vizual)
   useEffect(() => {
     const loadMonth = async () => {
       const y = date.getFullYear();
       const m = date.getMonth();
       const start = new Date(y, m, 1).toISOString().slice(0, 10);
       const end   = new Date(y, m + 1, 0).toISOString().slice(0, 10);
-
       const { data, error } = await supabase
         .from('contenedores_programados')
         .select('fecha')
@@ -75,9 +74,10 @@ export default function SchedulerPage() {
     loadMonth();
   }, [date]);
 
-  // lista vizibilă (logica existentă), dar o afișăm doar când showList = true
+  // lista vizibilă (după filtrele din hook)
   const visibleItems = useMemo(() => filtered || [], [filtered]);
 
+  // export excel pentru tabul curent
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -119,6 +119,7 @@ export default function SchedulerPage() {
     XLSX.writeFile(wb, filename);
   };
 
+  // inserția din modalul “Programar”
   const onProgramarDesdeDeposito = async (_row, payload) => {
     const insert = {
       matricula_contenedor: (payload.matricula_contenedor || '').toUpperCase(),
@@ -162,11 +163,11 @@ export default function SchedulerPage() {
           </button>
         </div>
 
-        {/* Toolbar (tabs + search + Excel + Programar) */}
+        {/* Toolbar */}
         <SchedulerToolbar
           tabs={TABS}
           tab={tab}
-          setTab={(t) => { setTab(t); setShowList(true); }}   // 👈 arăt lista numai după ce a ales un tab
+          setTab={(t) => { setTab(t); setShowList(true); }}
           query={query} setQuery={setQuery}
           date={date} setDate={setDate}
           onExportExcel={exportarExcelTab}
@@ -174,9 +175,8 @@ export default function SchedulerPage() {
           canProgramar={role === 'admin' || role === 'dispecer'}
         />
 
-        {/* GRID principal */}
+        {/* Grid principal */}
         <div className={styles.grid}>
-          {/* Lista – ascunsă până utilizatorul alege un tab */}
           {showList && (
             <SchedulerList
               items={visibleItems}
@@ -187,13 +187,12 @@ export default function SchedulerPage() {
             />
           )}
 
-          {/* Calendar – toggle din butonul din header */}
           {showCalendar && (
             <div ref={calRef}>
               <SchedulerCalendar
                 date={date}
                 setDate={setDate}
-                mode={tab}         // 'programado' | 'pendiente' | 'completado'
+                mode={tab}
                 markers={markers}
               />
             </div>
