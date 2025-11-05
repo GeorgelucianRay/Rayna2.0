@@ -1,65 +1,56 @@
-// src/components/depot/scheduler/SchedulerToolbar.jsx
 import React from 'react';
 import styles from './SchedulerToolbar.module.css';
 
 export default function SchedulerToolbar({
-  tabs = ['programado', 'pendiente', 'completado'],
+  tabs,
   tab, setTab,
   query, setQuery,
   date, setDate,
   onExportExcel,
   onProgramarClick,
-  canProgramar = false,
+  canProgramar,
 }) {
-  const handleMonthChange = (e) => {
-    const [y, m] = e.target.value.split('-').map(Number);
-    if (!Number.isFinite(y) || !Number.isFinite(m)) return;
-    setDate?.(new Date(y, m - 1, 1));
-  };
+  const monthLabel = date.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
 
   return (
     <div className={styles.toolbar}>
       {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map((t) => (
+        {tabs.map(t => (
           <button
             key={t}
             type="button"
             className={`${styles.tab} ${tab === t ? styles.active : ''}`}
-            onClick={() => setTab?.(t)}
+            onClick={() => setTab(t)}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Căutare + luna curentă */}
+      {/* Search + Month */}
       <div className={styles.filters}>
         <input
           className={styles.search}
-          placeholder="Buscar por matrícula, empresa..."
-          value={query || ''}
-          onChange={(e) => setQuery?.(e.target.value)}
+          placeholder="Buscar por matrícula, empresa…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           inputMode="search"
         />
-        <input
-          className={styles.date}
-          type="month"
-          value={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`}
-          onChange={handleMonthChange}
-          aria-label="Mes"
-        />
-      </div>
-
-      {/* Acțiuni */}
-      <div className={styles.actions}>
         <button
           type="button"
-          className={styles.iconBtn}
-          onClick={onExportExcel}
-          title="Exportar a Excel"
+          className={styles.month}
+          onClick={() => setDate(new Date())}
+          title="Saltar a este mes"
         >
-          <img src="/excel_circle_green.png" alt="Excel" className={styles.iconImg} />
+          {monthLabel}
+        </button>
+      </div>
+
+      {/* Actiuni */}
+      <div className={styles.actions}>
+        <button type="button" className={styles.excelBtn} onClick={onExportExcel} aria-label="Exportar a Excel">
+          <img src="/excel_circle_green.png" alt="" />
         </button>
         {canProgramar && (
           <button type="button" className={styles.primary} onClick={onProgramarClick}>
