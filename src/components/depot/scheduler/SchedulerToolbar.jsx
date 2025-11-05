@@ -16,11 +16,11 @@ export default function SchedulerToolbar({
     <div className={styles.toolbar}>
       {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map(t => (
+        {tabs.map((t) => (
           <button
             key={t}
             type="button"
-            className={`${styles.tab} ${tab === t ? styles.active : ''}`}
+            className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
             onClick={() => setTab(t)}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -47,11 +47,17 @@ export default function SchedulerToolbar({
         </button>
       </div>
 
-      {/* Actiuni */}
+      {/* Acciones */}
       <div className={styles.actions}>
-        <button type="button" className={styles.excelBtn} onClick={onExportExcel} aria-label="Exportar a Excel">
-          <img src="/excel_circle_green.png" alt="" />
+        <button
+          type="button"
+          className={styles.excelBtn}
+          onClick={onExportExcel}
+          aria-label="Exportar a Excel"
+        >
+          <img className={styles.excelImg} src="/excel_circle_green.png" alt="" />
         </button>
+
         {canProgramar && (
           <button type="button" className={styles.primary} onClick={onProgramarClick}>
             Programar
