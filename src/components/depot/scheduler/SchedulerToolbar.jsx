@@ -9,6 +9,9 @@ export default function SchedulerToolbar({
   onExportExcel,
   onProgramarClick,
   canProgramar,
+  // 👇 nou: controlăm calendarul din Toolbar
+  showCalendar,
+  onToggleCalendar,
 }) {
   const monthLabel = date.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
 
@@ -16,11 +19,11 @@ export default function SchedulerToolbar({
     <div className={styles.toolbar}>
       {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map((t) => (
+        {tabs.map(t => (
           <button
             key={t}
             type="button"
-            className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${tab === t ? styles.active : ''}`}
             onClick={() => setTab(t)}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -47,20 +50,37 @@ export default function SchedulerToolbar({
         </button>
       </div>
 
-      {/* Acciones */}
+      {/* Actions: Calendar (imagine rotundă) + Excel + Programar (imagine dreptunghi) */}
       <div className={styles.actions}>
         <button
           type="button"
-          className={styles.excelBtn}
+          className={`${styles.iconBtn} ${showCalendar ? styles.iconBtnActive : ''}`}
+          onClick={onToggleCalendar}
+          aria-label="Abrir calendario"
+          aria-pressed={showCalendar ? 'true' : 'false'}
+          title={showCalendar ? 'Ocultar calendario' : 'Abrir calendario'}
+        >
+          <img className={styles.iconImg} src="/Calendar.JPG" alt="Calendario" />
+        </button>
+
+        <button
+          type="button"
+          className={styles.iconBtn}
           onClick={onExportExcel}
           aria-label="Exportar a Excel"
+          title="Exportar a Excel"
         >
-          <img className={styles.excelImg} src="/excel_circle_green.png" alt="" />
+          <img className={styles.iconImg} src="/excel_circle_green.png" alt="Excel" />
         </button>
 
         {canProgramar && (
-          <button type="button" className={styles.primary} onClick={onProgramarClick}>
-            Programar
+          <button
+            type="button"
+            className={styles.programarBtn}
+            onClick={onProgramarClick}
+            title="Programar"
+          >
+            <img className={styles.programarImg} src="/Programar.JPG" alt="Programar" />
           </button>
         )}
       </div>
