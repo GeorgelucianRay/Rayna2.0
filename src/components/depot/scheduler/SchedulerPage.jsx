@@ -1,3 +1,4 @@
+// src/components/depot/scheduler/SchedulerPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -45,7 +46,7 @@ export default function SchedulerPage() {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
 
-  const handleCalendarToggle = () => {
+  const handleToggleCalendar = () => {
     const next = !showCalendar;
     setShowCalendar(next);
     if (next && calRef.current) {
@@ -151,19 +152,14 @@ export default function SchedulerPage() {
         <div className={styles.bg} />
         <div className={styles.vignette} />
 
-        {/* Header */}
+        {/* Header fără butonul de calendar */}
         <div className={styles.topBar}>
           <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
-          <button
-            className={`${styles.headBtn} ${showCalendar ? styles.headBtnActive : ''}`}
-            onClick={handleCalendarToggle}
-          >
-            Calendario
-          </button>
+          <span /> {/* placeholder pentru spațiere */}
         </div>
 
-        {/* Toolbar */}
+        {/* Toolbar (controlează calendarul) */}
         <SchedulerToolbar
           tabs={TABS}
           tab={tab}
@@ -173,6 +169,8 @@ export default function SchedulerPage() {
           onExportExcel={exportarExcelTab}
           onProgramarClick={() => setProgramarOpen(true)}
           canProgramar={role === 'admin' || role === 'dispecer'}
+          showCalendar={showCalendar}
+          onToggleCalendar={handleToggleCalendar}
         />
 
         {/* Grid principal */}
