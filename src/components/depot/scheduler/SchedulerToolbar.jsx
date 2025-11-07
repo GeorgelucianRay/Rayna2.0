@@ -50,40 +50,36 @@ export default function SchedulerToolbar({
         </button>
       </div>
 
-      {/* Actions: Calendar (imagine rotundă) + Excel + Programar (imagine dreptunghi) */}
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${showCalendar ? styles.iconBtnActive : ''}`}
-          onClick={onToggleCalendar}
-          aria-label="Abrir calendario"
-          aria-pressed={showCalendar ? 'true' : 'false'}
-          title={showCalendar ? 'Ocultar calendario' : 'Abrir calendario'}
-        >
-          <img className={styles.iconImg} src="/Calendar.JPG" alt="Calendario" />
-        </button>
+     <div className={styles.actions}>
+  <button
+    type="button"
+    className={styles.calendarBtn}
+    onClick={onToggleCalendar}
+    aria-label="Abrir calendario"
+  >
+    <img src="/Calendar.JPG" alt="Abrir calendario" />
+  </button>
 
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={onExportExcel}
-          aria-label="Exportar a Excel"
-          title="Exportar a Excel"
-        >
-          <img className={styles.iconImg} src="/excel_circle_green.png" alt="Excel" />
-        </button>
+  <button
+    type="button"
+    className={styles.excelBtn}
+    onClick={onExportExcel}
+    aria-label="Exportar a Excel"
+  >
+    <img src="/excel_circle_green.png" alt="Exportar Excel" />
+  </button>
 
-        {canProgramar && (
-          <button
-            type="button"
-            className={styles.programarBtn}
-            onClick={onProgramarClick}
-            title="Programar"
-          >
-            <img className={styles.programarImg} src="/Programar.JPG" alt="Programar" />
-          </button>
-        )}
-      </div>
+  {canProgramar && (
+    <button
+      type="button"
+      className={styles.programarBtn}
+      onClick={onProgramarClick}
+      aria-label="Programar contenedor"
+    >
+      <img src="/Programar.JPG" alt="Programar contenedor" />
+    </button>
+  )}
+</div>
     </div>
   );
 }
