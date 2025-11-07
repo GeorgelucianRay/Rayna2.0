@@ -113,6 +113,16 @@
 .headerTransparent { background-color: transparent; border-bottom: none; }
 .menuButtonHeader { background: transparent; border: none; padding: .25rem; color: #1f2937; cursor: pointer; }
 
+.menuButtonHeader {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hiddenBurger {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.9);
+}
+
 /* glas pe fundal când există imagine */
 .hasBackground .navMenu {
   background-color: rgba(17,24,39,.8);
