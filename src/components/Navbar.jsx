@@ -5,7 +5,6 @@ import { supabase } from '../supabaseClient';
 import styles from './Layout.module.css';
 import { MENU_BY_ROLE, HUB_ROUTE, HUB_IMG, getAccent } from '../navigation/menuConfig';
 
-/* icon set mic */
 const icons = {
   bell:   (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>),
   home:   (p) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 7v10a2 2 0 0 1-2 2h-5v-6H10v6H5a2 2 0 0 1-2-2V10l9-7z"/></svg>),
@@ -29,7 +28,6 @@ const Icon = ({ name, className }) => {
   return <C className={className} width="24" height="24" />;
 };
 
-/** props: open, onOpen, onClose (controlate de Layout) */
 const Navbar = ({ open, onOpen, onClose }) => {
   const { pathname } = useLocation();
   const { user, profile, alarms } = useAuth();
@@ -40,34 +38,34 @@ const Navbar = ({ open, onOpen, onClose }) => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (
     <>
-      {/* buton burger în header (mobil) */}
-      <header className={`${styles.header} ${styles.headerTransparent}`}>
-        <button onClick={onOpen} className={styles.menuButtonHeader} aria-label="Deschide meniul">
+      {/* Header fix: mereu deasupra oricărui overlay */}
+      <header className={`${styles.header} ${styles.headerTransparent}`} style={{ zIndex: 4000 }}>
+        <button type="button" onClick={onOpen} className={styles.menuButtonHeader} aria-label="Deschide meniul">
           <Icon name="menu" />
         </button>
       </header>
 
-      {/* NAV (se “deschide” prin clasa pe wrapper – vezi Layout.jsx) */}
+      {/* Meniu lateral controlat 100% de prop-ul `open` */}
       {role && (
         <>
-          <aside className={styles.navMenu}>
+          <aside className={`${styles.navMenu} ${open ? styles.navMenuOpen : ''}`}>
             <div className={styles.navHeader}>
               <Link to={HUB_ROUTE} className={styles.hubButton} onClick={onClose}>
                 <img src={HUB_IMG} alt="Rayna Hub" className={styles.hubLogo} draggable="false" />
               </Link>
               <div className={styles.headerIcons}>
                 {alarms?.length > 0 && (
-                  <button className={styles.notificationBell} onClick={onOpen}>
+                  <button type="button" className={styles.notificationBell} onClick={onOpen}>
                     <Icon name="bell" />
                     <span className={styles.notificationBadge}>{alarms.length}</span>
                   </button>
                 )}
-                <button onClick={onClose} className={styles.closeButtonMenu} aria-label="Închide meniul">
+                <button type="button" onClick={onClose} className={styles.closeButtonMenu} aria-label="Închide meniul">
                   <Icon name="close" />
                 </button>
               </div>
@@ -91,7 +89,6 @@ const Navbar = ({ open, onOpen, onClose }) => {
                 );
               })}
 
-              {/* Link vizibil DOAR pentru admin */}
               {role === "admin" && (
                 <Link to="/admin/aprender" onClick={onClose} className={styles.navLink}>
                   <Icon name="books" />
@@ -101,14 +98,14 @@ const Navbar = ({ open, onOpen, onClose }) => {
 
               <hr style={{ margin: '1rem 0', borderColor: 'rgba(255,255,255,0.2)' }} />
 
-              <button className={`${styles.navLink} ${styles.navLinkLogout}`} onClick={handleLogout}>
+              <button type="button" className={`${styles.navLink} ${styles.navLinkLogout}`} onClick={handleLogout}>
                 <Icon name="logout" />
                 <span>Cerrar Sesión</span>
               </button>
             </nav>
           </aside>
 
-          {/* overlay (vizibil când wrapper-ul are .menuOpen) */}
+          {/* Overlay doar când e deschis */}
           {open && <div className={styles.navMenuOverlay} onClick={onClose} />}
         </>
       )}
