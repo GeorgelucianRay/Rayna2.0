@@ -1,4 +1,3 @@
-// src/AuthContext.jsx
 import React, {
   createContext, useContext, useEffect, useState, useCallback, useRef,
 } from 'react';
@@ -172,7 +171,7 @@ export const AuthProvider = ({ children }) => {
   /* ============== Inițializare & listeners (rezistent la iOS) ============== */
   useEffect(() => {
     let intervalId;
-    let unsub = () => {};
+    let authSub = null;
     const watchdog = setTimeout(() => setSessionReady(true), 5000); // nu blocăm UI-ul dacă ceva întârzie
 
     (async () => {
@@ -189,14 +188,17 @@ export const AuthProvider = ({ children }) => {
       intervalId = setInterval(fetchAndProcessData, 300000); // 5 min
     })();
 
-    // 4) Ascultă toate evenimentele de auth (login/logout/token refresh)
-    unsub = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s || null); setUser(s?.user ?? null); setSessionReady(true);
+    // 4) Ascultă toate evenimentele de auth; nu facem "hard sign-out"
+    const sub = supabase.auth.onAuthStateChange((_evt, s) => {
+      setSession(s || null);
+      setUser(s?.user ?? null);
+      setSessionReady(true);
       setLoading(true);
       fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
-    }).data.subscription.unsubscribe;
+    });
+    authSub = sub?.data?.subscription ?? null;
 
-    // 5) iOS: reîmprospătare când aplicația revine în față
+    // 5) iOS & offline handlers
     const onVis = async () => {
       if (document.visibilityState === 'visible') {
         try { await supabase.auth.refreshSession(); } catch {}
@@ -206,7 +208,6 @@ export const AuthProvider = ({ children }) => {
     };
     document.addEventListener('visibilitychange', onVis);
 
-    // 6) când revine online
     const onOnline = async () => {
       try { await supabase.auth.refreshSession(); } catch {}
       setLoading(true);
@@ -216,8 +217,8 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
-      try { unsub(); } catch {}
       clearTimeout(watchdog);
+      try { authSub?.unsubscribe?.(); } catch {}
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('online', onOnline);
     };
