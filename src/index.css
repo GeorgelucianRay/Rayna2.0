@@ -1,36 +1,50 @@
-/* iOS full-height, dark background, fără highlight pe tap */
-html, body, #root{
-  height: 100%;
-  background: #0b0f16;             /* fundalul tău */
-  margin: 0;
-  color-scheme: dark;
-}
-#root{
-  min-height: 100svh;               /* iOS dinamic */
-  min-height: 100dvh;               /* fallback modern */
-}
-*{ -webkit-tap-highlight-color: transparent; }
-
-/* src/index.css - Stiluri globale de bază și font */
+/* =========================
+   GLOBAL ROOT / iOS SAFE
+   ========================= */
 html, body, #root {
-  height: 100%; /* Asigură că HTML, body și div-ul root ocupă toată înălțimea */
+  height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif; /* Aplică fontul Inter global */
+  background: transparent;          /* NU mai acoperim fundalurile din Layout */
+  color-scheme: dark;               /* UI dark pe iOS */
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* Stiluri utilitare globale (pentru App.jsx) */
+#root {
+  /* acoperă întreg viewport-ul real pe iOS/Safari */
+  min-height: 100svh;
+  /* fallback modern pentru browsere care nu știu svh */
+  min-height: 100dvh;
+}
+
+/* tap fără highlight albastru în iOS */
+* { 
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* evită artefacte albe la overscroll */
+html, body { overscroll-behavior: none; }
+
+/* =========================
+   UTILS (folosite în App.jsx)
+   ========================= */
 .container-center {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: 16px;
-  background-color: #f3f4f6; /* Gri deschis */
+  background: transparent;          /* nu mai apare „pata albă”; dacă vrei gri, pune #f3f4f6 */
 }
 
 .card {
   background-color: #fff;
+  color: #111;
   padding: 32px;
   border-radius: 12px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -38,18 +52,10 @@ html, body, #root {
   max-width: 384px;
   border: 1px solid #e5e7eb;
 }
-html, body {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-* {
-  box-sizing: border-box;
-}
 
 .text-center { text-align: center; }
 .text-blue-600 { color: #2563eb; }
-.text-red-600 { color: #dc2626; }
+.text-red-600  { color: #dc2626; }
 .text-gray-700 { color: #374151; }
 .text-gray-600 { color: #4b5563; }
 .font-bold { font-weight: 700; }
@@ -58,11 +64,14 @@ html, body {
 .mt-4 { margin-top: 16px; }
 .block { display: block; }
 .hover-underline:hover { text-decoration: underline; }
-/* --- Leaflet: dimensiuni & layering globale --- */
+
+/* =========================
+   LEAFLET – layering & stil
+   ========================= */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
 }
 
 /* asigură-te că controalele rămân peste tile-uri dar sub modalele tale */
@@ -73,11 +82,9 @@ html, body {
 .leaflet-marker-pane  { z-index: 400; }
 .leaflet-tooltip-pane { z-index: 450; }
 .leaflet-popup-pane   { z-index: 500; }
-
-/* controale zoom/attribution să fie vizibile peste hartă */
 .leaflet-top, .leaflet-bottom { z-index: 600; }
 
-/* opțional: „cyber glass” discret pe popup/tooltip (merge bine cu tema ta) */
+/* popup/tooltip „glass” */
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   backdrop-filter: blur(6px);
@@ -85,9 +92,10 @@ html, body {
   color: #e6f2ff;
   border: 1px solid rgba(138,243,255,0.25);
 }
-/* =============================================== */
-/* FIX PENTRU ZOOM AUTOMAT PE INPUT-URI ÎN iOS     */
-/* =============================================== */
+
+/* ===============================================
+   FIX: iOS zoom automat pe input-uri
+   =============================================== */
 input[type="text"],
 input[type="search"],
 input[type="email"],
