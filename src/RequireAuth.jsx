@@ -9,25 +9,23 @@ export default function RequireAuth() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState(null);
 
-  // helper: semnalizează sesiune stricată și curăță
-  const hardSignOut = async () => {
-    try { await supabase.auth.signOut(); } catch {}
-    try { localStorage.removeItem('rayna.auth'); } catch {}
+  const gotoLogin = () =>
     nav('/login', { replace: true, state: { from: loc.pathname } });
-  };
 
   useEffect(() => {
     let canceled = false;
-    let watchdog;
+    let unsubscribe = () => {};
 
     (async () => {
-      // 1) luăm sesiunea curentă
+      // 1) Citește sesiunea curentă (din cache local, rapid)
       const { data, error } = await supabase.auth.getSession();
       if (canceled) return;
 
       if (error) {
         console.warn('getSession error:', error);
-        hardSignOut();
+        setUser(null);
+        setChecking(false);
+        gotoLogin();
         return;
       }
 
@@ -35,37 +33,28 @@ export default function RequireAuth() {
         setUser(data.session.user);
         setChecking(false);
       } else {
-        // nu există sesiune → mergem la login
-        hardSignOut();
+        setUser(null);
+        setChecking(false);
+        gotoLogin();
         return;
       }
 
-      // 2) ascultăm schimbările (including TOKEN_REFRESHED)
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        // dacă s-a semnat out sau nu mai e sesiune → la login
-        if (!session || event === 'SIGNED_OUT') {
-          hardSignOut();
+      // 2) Ascultă evenimentele de auth; nu mai folosim “hard sign out” decât pe semne clare
+      const sub = supabase.auth.onAuthStateChange((event, session) => {
+        // NOTE: evenimente valide: SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          setUser(null);
+          gotoLogin();
           return;
         }
-        // sesiune validă → OK
+        // Orice alt eveniment cu sesiune validă -> rămânem în app
         setUser(session.user);
         setChecking(false);
       });
-
-      // 3) watchdog (dacă ceva rămâne “agățat” >8s, facem hard sign out)
-      watchdog = setTimeout(() => {
-        if (!user) hardSignOut();
-      }, 8000);
-
-      return () => {
-        sub?.subscription?.unsubscribe?.();
-      };
+      unsubscribe = () => sub.data.subscription.unsubscribe();
     })();
 
-    return () => {
-      canceled = true;
-      if (watchdog) clearTimeout(watchdog);
-    };
+    return () => { canceled = true; try { unsubscribe(); } catch {} };
   }, []); // eslint-disable-line
 
   if (checking) {
