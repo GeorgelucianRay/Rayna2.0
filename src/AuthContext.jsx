@@ -1,5 +1,7 @@
 // src/AuthContext.jsx
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, {
+  createContext, useContext, useEffect, useState, useCallback, useRef,
+} from 'react';
 import { supabase } from './supabaseClient';
 import FeedbackModal from './components/modales/FeedbackModal';
 
@@ -8,7 +10,7 @@ const MS_PER_DAY = 86400000;
 /* ================= Utils pentru alarme (nemodificate) ================= */
 const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
   const alarms = [];
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const plus30 = new Date(today); plus30.setDate(today.getDate() + 30);
 
   const pushDate = (iso, owner, doc) => {
@@ -40,7 +42,6 @@ const calculateExpirations = (profiles = [], camioane = [], remorci = []) => {
 const calculateMantenimientoAlarms = (camioane = [], mantenimientoAlerts = []) => {
   const alarms = [];
   const UMBRAL = 5000;
-
   mantenimientoAlerts.forEach(a => {
     const camion = camioane.find(c => c.id === a.camion_id);
     if (camion?.kilometros != null) {
@@ -55,7 +56,6 @@ const calculateMantenimientoAlarms = (camioane = [], mantenimientoAlerts = []) =
       }
     }
   });
-
   return alarms;
 };
 /* ======================================================================= */
@@ -63,37 +63,39 @@ const calculateMantenimientoAlarms = (camioane = [], mantenimientoAlerts = []) =
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [session, setSession] = useState(null);
-  const [sessionReady, setSessionReady] = useState(false);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [firstName, setFirstName] = useState(null);      // ← prenumele pentru salut
-  const [alarms, setAlarms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession]       = useState(null);
+  const [sessionReady, setSessionReady] = useState(false); // „hydrated”
+  const [user, setUser]             = useState(null);
+  const [profile, setProfile]       = useState(null);
+  const [firstName, setFirstName]   = useState(null);
+  const [alarms, setAlarms]         = useState([]);
+  const [loading, setLoading]       = useState(true);
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [feedbackSuppressed, setFeedbackSuppressed] = useState(false); // ← NU reafișăm în sesiunea curentă
+  const [feedbackSuppressed, setFeedbackSuppressed]   = useState(false);
 
-  /** Ia sesiunea curentă și sincronizează user-ul. */
+  // gard împotriva fetch-urilor simultane
+  const fetchLockRef = useRef(false);
+
+  /** Ia sesiunea curentă și sincronizează user-ul (fără logout agresiv). */
   const refreshSession = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setSession(session || null);
-    setUser(session?.user ?? null);
-    return session;
+    const { data: { session: s } } = await supabase.auth.getSession();
+    setSession(s || null);
+    setUser(s?.user ?? null);
+    return s;
   }, []);
 
-  /** Încarcă profilul COMPLET + calculează alarmele */
+  /** Încarcă profil + alarme (debounced prin fetchLockRef). */
   const fetchAndProcessData = useCallback(async () => {
-    const current = await refreshSession();
-    if (!current?.user) {
-      setProfile(null);
-      setFirstName(null);
-      setAlarms([]);
-      return;
-    }
-
+    if (fetchLockRef.current) return;
+    fetchLockRef.current = true;
     try {
-      // SELECT relațional
+      const current = await refreshSession();
+      if (!current?.user) {
+        setProfile(null); setFirstName(null); setAlarms([]);
+        return;
+      }
+
       const { data: baseProfile, error: profErr } = await supabase
         .from('profiles')
         .select(`
@@ -107,32 +109,21 @@ export const AuthProvider = ({ children }) => {
         .eq('id', current.user.id)
         .maybeSingle();
 
-      if (profErr) {
-        console.warn('profiles select error:', profErr.message);
-        setProfile(null);
-        setFirstName(null);
-        setAlarms([]);
-        return;
-      }
-      if (!baseProfile) {
-        setProfile(null);
-        setFirstName(null);
-        setAlarms([]);
+      if (profErr || !baseProfile) {
+        if (profErr) console.warn('profiles select error:', profErr.message);
+        setProfile(null); setFirstName(null); setAlarms([]);
         return;
       }
 
-      // prenumele
+      setProfile(baseProfile);
       const first = baseProfile.nombre_completo?.trim().split(' ')[0] || null;
       setFirstName(first);
 
-      // profilul complet
-      setProfile(baseProfile);
-
-      // feedback modal — doar dacă nu a fost suprimat în sesiunea curentă
-      if (baseProfile.ultima_aparitie_feedback !== undefined) {
+      // feedback (max o dată / 7 zile și nu reafișăm în sesiunea curentă dacă userul a închis)
+      if (baseProfile.ultima_aparitie_feedback !== undefined && !feedbackSuppressed) {
         const last = baseProfile.ultima_aparitie_feedback;
         const should = !last || ((Date.now() - new Date(last).getTime()) / MS_PER_DAY) > 7;
-        if (should && !feedbackSuppressed) setIsFeedbackModalOpen(true);
+        if (should) setIsFeedbackModalOpen(true);
       }
 
       // alarme
@@ -142,21 +133,18 @@ export const AuthProvider = ({ children }) => {
       let mantenimientoAlertsToProcess = [];
 
       if (['dispecer', 'admin'].includes(baseProfile.role)) {
-        const { data: p } = await supabase
-          .from('profiles')
+        const { data: p }   = await supabase.from('profiles')
           .select('id, role, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad');
+        const { data: cAll } = await supabase.from('camioane')
+          .select('id, matricula, fecha_itv, kilometros');
+        const { data: rAll } = await supabase.from('remorci')
+          .select('id, matricula, fecha_itv');
+        const { data: mAll } = await supabase.from('mantenimiento_alertas')
+          .select('*').eq('activa', true);
+
         profilesToProcess = p || [];
-
-        const { data: cAll } = await supabase.from('camioane').select('id, matricula, fecha_itv, kilometros');
         camioaneToProcess = cAll || [];
-
-        const { data: rAll } = await supabase.from('remorci').select('id, matricula, fecha_itv');
-        remorciToProcess = rAll || [];
-
-        const { data: mAll } = await supabase
-          .from('mantenimiento_alertas')
-          .select('*')
-          .eq('activa', true);
+        remorciToProcess  = rAll || [];
         mantenimientoAlertsToProcess = mAll || [];
       } else if (baseProfile.role === 'sofer') {
         profilesToProcess = [{
@@ -166,55 +154,72 @@ export const AuthProvider = ({ children }) => {
           cap_expirare: baseProfile.cap_expirare,
           carnet_caducidad: baseProfile.carnet_caducidad,
           tiene_adr: baseProfile.tiene_adr,
-          adr_caducidad: baseProfile.adr_caducidad
+          adr_caducidad: baseProfile.adr_caducidad,
         }];
       }
 
-      const expirationAlarms = calculateExpirations(profilesToProcess, camioaneToProcess, remorciToProcess);
+      const expirationAlarms    = calculateExpirations(profilesToProcess, camioaneToProcess, remorciToProcess);
       const mantenimientoAlarms = calculateMantenimientoAlarms(camioaneToProcess, mantenimientoAlertsToProcess);
       setAlarms([...expirationAlarms, ...mantenimientoAlarms].sort((a, b) => a.days - b.days));
     } catch (e) {
       console.error('Eroare la preluarea datelor:', e.message);
       setAlarms([]);
+    } finally {
+      fetchLockRef.current = false;
     }
   }, [refreshSession, feedbackSuppressed]);
 
-  // 🔧 Inițializare robustă a sesiunii (rehidratare + watchdog + listener)
+  /* ============== Inițializare & listeners (rezistent la iOS) ============== */
   useEffect(() => {
     let intervalId;
-
-    // watchdog: evită „ecran alb” dacă ceva blochează rehidratarea
-    const watchdog = setTimeout(() => setSessionReady(true), 5000);
+    let unsub = () => {};
+    const watchdog = setTimeout(() => setSessionReady(true), 5000); // nu blocăm UI-ul dacă ceva întârzie
 
     (async () => {
-      // 1) Rehidratare sincronă din localStorage
+      // 1) Hidratare din cache
       const { data: { session: s } } = await supabase.auth.getSession();
-      setSession(s || null);
-      setUser(s?.user ?? null);
-      setSessionReady(true);                 // ✅ important
-      clearTimeout(watchdog);
+      setSession(s || null); setUser(s?.user ?? null);
+      setSessionReady(true); clearTimeout(watchdog);
 
-      // 2) Prima încărcare a datelor derivate (profil, alarme)
+      // 2) Prima încărcare derivată
       setLoading(true);
       await fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
 
-      // 3) Refresh periodic al datelor derivate (nu al autentificării)
+      // 3) Refresh derivat periodic (nu auth)
       intervalId = setInterval(fetchAndProcessData, 300000); // 5 min
     })();
 
-    // 4) Ascultă schimbările de auth (login/logout/refresh)
-    const { data: authSub } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s || null);
-      setUser(s?.user ?? null);
-      setSessionReady(true);                 // ✅ întotdeauna true după eveniment
+    // 4) Ascultă toate evenimentele de auth (login/logout/token refresh)
+    unsub = supabase.auth.onAuthStateChange((_evt, s) => {
+      setSession(s || null); setUser(s?.user ?? null); setSessionReady(true);
       setLoading(true);
       fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
-    });
+    }).data.subscription.unsubscribe;
+
+    // 5) iOS: reîmprospătare când aplicația revine în față
+    const onVis = async () => {
+      if (document.visibilityState === 'visible') {
+        try { await supabase.auth.refreshSession(); } catch {}
+        setLoading(true);
+        fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    // 6) când revine online
+    const onOnline = async () => {
+      try { await supabase.auth.refreshSession(); } catch {}
+      setLoading(true);
+      fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
+    };
+    window.addEventListener('online', onOnline);
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      try { unsub(); } catch {}
       clearTimeout(watchdog);
-      authSub.subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('online', onOnline);
     };
   }, [fetchAndProcessData]);
 
@@ -226,14 +231,16 @@ export const AuthProvider = ({ children }) => {
         .update({ activa: false })
         .eq('camion_id', camionId)
         .eq('activa', true);
+
       const kmProximo = kmActual + 80000;
       await supabase.from('mantenimiento_alertas').insert({
         camion_id: camionId,
         matricula,
         km_mantenimiento: kmActual,
         km_proximo_mantenimiento: kmProximo,
-        activa: true
+        activa: true,
       });
+
       await fetchAndProcessData();
     } catch (error) {
       console.error('Eroare la crearea alertei de mentenanță:', error);
@@ -242,48 +249,40 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleFeedbackClose = async () => {
-    // închide imediat și nu mai reafișa în sesiunea curentă
     setIsFeedbackModalOpen(false);
     setFeedbackSuppressed(true);
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.user) {
         await supabase
           .from('profiles')
           .update({ ultima_aparitie_feedback: new Date().toISOString() })
-          .eq('id', session.user.id);
+          .eq('id', s.user.id);
       }
     } catch (e) {
       console.warn('Nu am putut salva timestamp-ul de feedback:', e.message);
     }
   };
 
-  // în AuthProvider, înlocuiește complet funcția asta:
   const handleFeedbackSubmit = async (feedbackText) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user || !feedbackText) return;
-
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.user || !feedbackText) return;
     try {
-      const { error } = await supabase
-        .from('feedback_utilizatori')
-        .insert({
-          user_id: session.user.id,                 // cine a trimis
-          email: profile?.email ?? null,            // email-ul din profil (dacă există)
-          continut: feedbackText,                   // textul din modal
-          origen: 'modal',                          // sursa: modalul de feedback
-          categoria: 'sugerencia',                  // poți seta 'idea' / 'feedback' etc.
-          severidad: 'baja',                        // implicit scăzută pt. sugestii
-          contexto: { ruta: window.location?.pathname || null }  // meta util
-        });
-
+      const { error } = await supabase.from('feedback_utilizatori').insert({
+        user_id: s.user.id,
+        email: profile?.email ?? null,
+        continut: feedbackText,
+        origen: 'modal',
+        categoria: 'sugerencia',
+        severidad: 'baja',
+        contexto: { ruta: window.location?.pathname || null },
+      });
       if (error) {
         console.error('Insert feedback_utilizatori:', error);
         alert(`De momento no se ha podido guardar el feedback-ul: ${error.message}`);
         return;
       }
     } finally {
-      // închide modalul oricum
       await handleFeedbackClose();
       alert('Muchas Gracias por tu contribución!');
     }
@@ -291,10 +290,10 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     session,
-    sessionReady,
+    sessionReady,           // ⬅ păstrăm API-ul tău existent
     user,
     profile,
-    firstName,               // ← disponibil pentru salut personalizat
+    firstName,
     alarms,
     loading,
     setLoading,
@@ -302,7 +301,7 @@ export const AuthProvider = ({ children }) => {
     addMantenimientoAlert,
     isFeedbackModalOpen,
     handleFeedbackSubmit,
-    handleFeedbackClose
+    handleFeedbackClose,
   };
 
   return (
