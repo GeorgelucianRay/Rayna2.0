@@ -43,12 +43,16 @@ const Navbar = ({ open, onOpen, onClose }) => {
 
   return (
     <>
-      {/* Header fix: mereu deasupra oricărui overlay */}
-      <header className={`${styles.header} ${styles.headerTransparent}`} style={{ zIndex: 4000 }}>
-        <button type="button" onClick={onOpen} className={styles.menuButtonHeader} aria-label="Deschide meniul">
-          <Icon name="menu" />
-        </button>
-      </header>
+      <header className={`${styles.header} ${styles.headerTransparent}`}>
+  <button
+    type="button"
+    onClick={onOpen}
+    className={`${styles.menuButtonHeader} ${open ? styles.hiddenBurger : ''}`}
+    aria-label="Deschide meniul"
+  >
+    <Icon name="menu" />
+  </button>
+</header>
 
       {/* Meniu lateral controlat 100% de prop-ul `open` */}
       {role && (
