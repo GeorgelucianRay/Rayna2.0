@@ -40,15 +40,16 @@ import DebugConsole from './components/debug/DebugConsole';
 import { useAuth } from './AuthContext';
 
 export default function App() {
+  // DebugConsole doar pentru admin, după ce e gata sesiunea
   const { profile, sessionReady } = useAuth();
   const isAdmin = (profile?.role || '').toLowerCase() === 'admin';
 
   return (
     <>
-      {/* Memorizează ultima rută (doar când userul e logat) */}
+      {/* memorizează ultima rută doar când există sesiune */}
       <RouteMemory />
 
-      {/* Prinde crash-uri React și arată detalii utile */}
+      {/* Prinde crash-uri React fără să faci redirecte dure */}
       <ErrorBoundary>
         <Routes>
           {/* Public */}
@@ -58,7 +59,7 @@ export default function App() {
           <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
           <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
 
-          {/* Private: tot ce e sub RequireAuth cere sesiune */}
+          {/* Private */}
           <Route element={<RequireAuth />}>
             <Route path="/rayna-hub" element={<RaynaHub />} />
             <Route path="/dispecer-homepage" element={<HomepageDispecer />} />
@@ -116,7 +117,7 @@ export default function App() {
         </Routes>
       </ErrorBoundary>
 
-      {/* Debug console globală – doar pentru admin și după ce sesiunea e gata */}
+      {/* Debug global (oglindă devtools) — vizibil doar pentru admin */}
       {sessionReady && isAdmin && <DebugConsole enabled />}
     </>
   );
