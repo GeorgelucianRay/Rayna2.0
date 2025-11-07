@@ -3,8 +3,8 @@ import './index.css';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 import RequireAuth from './RequireAuth';
-import RouteMemory from './RouteMemory';     // opțional dar util (ultima rută)
-import RootGate from './RootGate';           // splash + redirect imperativ pe "/"
+import RouteMemory from './RouteMemory';
+import RootGate from './RootGate';
 
 // Public
 import IniciarSesion from './components/IniciarSesion.jsx';
@@ -34,7 +34,15 @@ import Utilizatori from './pages/admin/Utilizatori.jsx';
 import AdminFeedback from './pages/admin/AdminFeedback.jsx';
 import Aprender from './pages/admin/Aprender';
 
+// 👇 ADĂUGĂ
+import { useAuth } from './AuthContext';
+import DebugConsole from './components/debug/DebugConsole';
+
 export default function App() {
+  // 👇 avem acces la rol din orice rută
+  const { profile, sessionReady } = useAuth();
+  const isAdmin = (profile?.role || '').toLowerCase() === 'admin';
+
   return (
     <>
       {/* Memorizează ultima rută (doar când userul e logat) */}
@@ -104,6 +112,10 @@ export default function App() {
           }
         />
       </Routes>
+
+      {/* 👇 DEBUG GLOBAL — stă în App, deci acoperă orice ecran.
+          Îl afișăm doar când profilul e încărcat și userul e admin. */}
+      {sessionReady && isAdmin && <DebugConsole enabled />}
     </>
   );
 }
