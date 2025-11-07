@@ -36,7 +36,9 @@ import Aprender from './pages/admin/Aprender';
 
 // 👇 ADĂUGĂ
 import { useAuth } from './AuthContext';
+import ErrorBoundary from './ErrorBoundary';
 import DebugConsole from './components/debug/DebugConsole';
+
 
 export default function App() {
   // 👇 avem acces la rol din orice rută
@@ -113,9 +115,9 @@ export default function App() {
         />
       </Routes>
 
-      {/* 👇 DEBUG GLOBAL — stă în App, deci acoperă orice ecran.
-          Îl afișăm doar când profilul e încărcat și userul e admin. */}
-      {sessionReady && isAdmin && <DebugConsole enabled />}
-    </>
-  );
+          </ErrorBoundary>
+
+    {sessionReady && isAdmin && <DebugConsole enabled />}
+  </>
+);
 }
