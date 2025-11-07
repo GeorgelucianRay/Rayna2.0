@@ -1,40 +1,49 @@
-// src/RootGate.jsx
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
 export default function RootGate() {
   const navigate = useNavigate();
-  const fired = useRef(false);
 
   useEffect(() => {
-    let cancel = false;
+    let cancelled = false;
 
     (async () => {
-      // citește sincronic din cache (nu lovește rețeaua)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancel) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
 
-      const last = localStorage.getItem('lastRoute');
-      const target = session ? (last || '/depot') : '/login';
+        const last = localStorage.getItem('lastRoute');
+        const target = session ? (last || '/depot') : '/login';
 
-      if (fired.current) return;
-      fired.current = true;
-
-      // NU mai folosim window.location.* aici
-      navigate(target, { replace: true });
+        // Un singur redirect controlat de router:
+        navigate(target, { replace: true });
+      } catch (e) {
+        // În caz de eroare, mergi la login (tot cu navigate)
+        if (!cancelled) navigate('/login', { replace: true });
+      }
     })();
 
-    return () => { cancel = true; };
+    return () => { cancelled = true; };
   }, [navigate]);
 
-  // ecran mic de splash cât timp facem redirectul
+  // Splash minimalist cât timp deciderea rulează
   return (
-    <div style={{display:'grid',placeItems:'center',minHeight:'100vh',background:'#0b0b0b',color:'#fff'}}>
-      <div>
-        <div style={{opacity:.8, marginBottom:8}}>Iniciando sesión…</div>
-        <small style={{opacity:.45}}>root-gate</small>
+    <div style={{
+      display:'flex',alignItems:'center',justifyContent:'center',
+      minHeight:'100vh',background:'#0b0b0b',color:'#fff',
+      fontFamily:'Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif'
+    }}>
+      <div style={{textAlign:'center'}}>
+        <div style={{
+          width:48,height:48,borderRadius:'50%',
+          border:'4px solid rgba(255,255,255,0.2)',
+          borderTopColor:'#e10600', margin:'0 auto 14px',
+          animation:'spin 1s linear infinite'
+        }} />
+        <div>Iniciando sesión…</div>
       </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
