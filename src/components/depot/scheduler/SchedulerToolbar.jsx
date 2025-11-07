@@ -76,7 +76,7 @@ export default function SchedulerToolbar({
       onClick={onProgramarClick}
       aria-label="Programar contenedor"
     >
-      <img src="/Programar.JPG" alt="Programar contenedor" />
+      <img src="/Programar.PNG" alt="Programar contenedor" />
     </button>
   )}
 </div>
