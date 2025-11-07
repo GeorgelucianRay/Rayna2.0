@@ -1,3 +1,16 @@
+/* iOS full-height, dark background, fără highlight pe tap */
+html, body, #root{
+  height: 100%;
+  background: #0b0f16;             /* fundalul tău */
+  margin: 0;
+  color-scheme: dark;
+}
+#root{
+  min-height: 100svh;               /* iOS dinamic */
+  min-height: 100dvh;               /* fallback modern */
+}
+*{ -webkit-tap-highlight-color: transparent; }
+
 /* src/index.css - Stiluri globale de bază și font */
 html, body, #root {
   height: 100%; /* Asigură că HTML, body și div-ul root ocupă toată înălțimea */
