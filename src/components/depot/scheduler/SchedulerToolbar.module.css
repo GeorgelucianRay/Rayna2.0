@@ -1,3 +1,5 @@
+/* ======== STRUCTURĂ DE BAZĂ ======== */
+
 .toolbar {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -6,140 +8,152 @@
   margin: 12px 0;
 }
 
-/* Tabs */
-.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+/* ======== TABURI ======== */
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .tab {
   padding: 8px 14px;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(17,17,17,.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(17, 17, 17, 0.35);
   color: #eaf3ff;
   font-weight: 700;
   backdrop-filter: blur(8px);
-  transition: all .2s ease;
-}
-.active {
-  background: linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
-  color: #062012;
-  border-color: rgba(255,255,255,.7);
+  transition: all 0.2s ease;
 }
 
-/* Search + month */
-.filters { display: flex; gap: 8px; align-items: center; }
+.active {
+  background: linear-gradient(180deg, rgba(59, 228, 118, 0.95), rgba(59, 228, 118, 0.82));
+  color: #062012;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+/* ======== CĂUTARE + FILTRU ======== */
+
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .search {
   min-width: 220px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(17,17,17,.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(17, 17, 17, 0.5);
   color: #fff;
   outline: none;
 }
-.search:focus { border-color: rgba(255,255,255,.6); }
+
+.search:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
 .month {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(17,17,17,.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(17, 17, 17, 0.5);
   color: #fff;
 }
+
+/* ======== GRUP DE BUTOANE (Calendar, Excel, Programar) ======== */
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   justify-content: flex-start;
 }
 
-/* ======== BUTOANE CU IMAGINI ======== */
-
-/* Calendar (rotund) */
-.calendarBtn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.calendarBtn img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.calendarBtn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
-}
-
-/* Excel (rotund) */
+/* --------- Calendar (rotund) --------- */
+.calendarBtn,
 .excelBtn {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   overflow: hidden;
   border: none;
-  padding: 0;
   background: none;
+  padding: 0;
+  cursor: pointer;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.calendarBtn img,
 .excelBtn img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
+
+.calendarBtn:hover,
 .excelBtn:hover {
   transform: scale(1.05);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
+/* --------- Programar (dreptunghi compact, aliniat perfect) --------- */
 .programarBtn {
-  width: 140px;                /* 🔹 mai îngust */
-  height: 66px;                /* 🔹 mai scund */
+  width: 110px;
+  height: 54px;
   border: none;
-  border-radius: 16px;
-  padding: 0;
-  background: none;
+  border-radius: 14px;
   overflow: hidden;
+  background: none;
+  padding: 0;
   cursor: pointer;
-  display: block;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .programarBtn img {
   width: 100%;
   height: 100%;
-  object-fit: cover;           /* imaginea se întinde perfect, fără distorsiuni */
-  object-position: center;     /* centrată vizual */
+  object-fit: contain;
+  object-position: center;
   display: block;
-  border-radius: 16px;
+  border-radius: 14px;
   user-select: none;
   -webkit-user-drag: none;
 }
 
 .programarBtn:hover {
   transform: scale(1.03);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
-/* 🔹 pe ecrane foarte mici */
-@media (max-width: 480px) {
+/* ======== RESPONSIVE ======== */
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+  }
+
+  .calendarBtn,
+  .excelBtn {
+    width: 42px;
+    height: 42px;
+  }
+
   .programarBtn {
-    width: 120px;
-    height: 56px;
-    border-radius: 14px;
+    width: 100px;
+    height: 48px;
+    border-radius: 12px;
   }
 }
