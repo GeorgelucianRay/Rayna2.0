@@ -121,9 +121,9 @@
 
 .programarBtn img {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
+  height: auto;               /* ✅ păstrează proporțiile originale */
+  object-fit: contain;        /* imaginea nu e decupată */
+  object-position: center;    /* centrată perfect */
   display: block;
   border-radius: 14px;
   user-select: none;
