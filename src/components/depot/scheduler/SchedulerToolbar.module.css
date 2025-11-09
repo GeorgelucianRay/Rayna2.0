@@ -105,35 +105,41 @@
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
 }
 
-/* Programar (dreptunghiular) */
 .programarBtn {
-  width: 120px;
-  height: 60px;
-  border-radius: 18px;
-  overflow: hidden;
+  width: 200px;                 /* dimensiune potrivită */
+  height: 90px;
   border: none;
-  background: none;
+  border-radius: 20px;          /* colțuri rotunjite */
   padding: 0;
+  background: none;
+  overflow: hidden;
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  display: block;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
 .programarBtn img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover;            /* umple perfect fără deformare */
+  object-position: center;      /* centrată imaginea */
   display: block;
-}
-.programarBtn:hover {
-  transform: scale(1.04);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  border-radius: 20px;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .toolbar { grid-template-columns: 1fr; }
-  .filters { flex-wrap: wrap; }
-  .programarBtn { height: 48px; }
+.programarBtn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+}
+
+/* versiune micșorată pentru mobile */
+@media (max-width: 480px) {
+  .programarBtn {
+    width: 160px;
+    height: 72px;
+    border-radius: 16px;
+  }
 }
