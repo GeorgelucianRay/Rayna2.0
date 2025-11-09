@@ -103,43 +103,49 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
-/* --------- Programar (dreptunghi compact, aliniat perfect) --------- */
-.programarBtn {
-  width: 110px;
-  height: 54px;
+/* --- Programar (dreptunghiular, crop centrat) --- */
+.programarBtn{
+  inline-size: 132px;              /* lățime fixă mică */
+  block-size: 58px;                /* înălțime fixă mică */
   border: none;
-  border-radius: 14px;
-  overflow: hidden;
-  background: none;
+  border-radius: 16px;
   padding: 0;
-  cursor: pointer;
+  background: none;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  transition: transform .2s ease, box-shadow .2s ease;
+  /* opțional: păstrează raportul dacă vrei să schimbi dimensiunile */
+  aspect-ratio: 16 / 7;            /* ajută la consistență pe toate device-urile */
 }
 
-.programarBtn img {
-  width: 100%;
-  height: auto;               /* ✅ păstrează proporțiile originale */
-  object-fit: contain;        /* imaginea nu e decupată */
-  object-position: center;    /* centrată perfect */
+/* 🧠 Cheia: crop-ul e centrat perfect pe ambele axe */
+.programarBtn img{
+  inline-size: 100%;
+  block-size: 100%;
   display: block;
-  border-radius: 14px;
+  object-fit: cover;                /* umple butonul fără distorsiuni */
+  object-position: 50% 50%;         /* EXACT pe centru -> taie egal sus/jos */
   user-select: none;
   -webkit-user-drag: none;
 }
 
-.programarBtn:hover {
+/* Dacă ai nevoie de un mic reglaj vertical (unele artwork-uri au „greutate” jos)
+   poți muta centrul cu 2–3%:
+   .programarBtn { --programarY: 52%; }
+   .programarBtn img { object-position: 50% var(--programarY, 50%); }
+*/
+
+.programarBtn:hover{
   transform: scale(1.03);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 26px rgba(0,0,0,.45);
 }
 
-/* ======== RESPONSIVE ======== */
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
+/* Mobile mic */
+@media (max-width: 480px){
+  .programarBtn{ inline-size: 120px; block-size: 54px; border-radius: 14px; }
+}
 
   .filters {
     flex-wrap: wrap;
