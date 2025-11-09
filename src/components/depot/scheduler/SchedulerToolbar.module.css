@@ -87,34 +87,32 @@
 }
 
 /* ======== Buton PROGRAMAR (dreptunghiular, crop centrat reglabil) ======== */
+/* === Programar (dreptunghiular) === */
 .programarBtn{
-  /* Dimensiuni compacte, stabile */
-  inline-size:132px;
-  block-size:58px;
-  border:none;
-  border-radius:16px;
-  padding:0;
-  background:none;
-  overflow:hidden;
-  display:grid;
-  place-items:center;
-  box-shadow:0 6px 18px rgba(0,0,0,.35);
-  transition:transform .2s ease, box-shadow .2s ease;
+  inline-size: 132px;
+  block-size: 58px;
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  background: none;
+  overflow: hidden;
+  display: inline-grid;      /* <- în loc de block/grid implicit */
+  place-items: stretch;      /* <- întinde imaginea pe container */
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  transition: transform .2s ease, box-shadow .2s ease;
 
-  /* ajută la consistență cross-device (nu afectează fix size-ul) */
-  aspect-ratio:16 / 7;
+  /* Punctul de focalizare vertical (reglează 60–75%) */
+  --prog-y: 68%;
 }
 
-/* Cheia centrării: cover + focus vertical reglabil prin variabila --y */
 .programarBtn img{
-  inline-size:100%;
-  block-size:100%;
-  display:block;
-  object-fit:cover;                   /* umple butonul fără distorsiuni */
-  object-position:50% var(--y, 50%);  /* focus vertical (47–53% uzual) */
-  user-select:none;
-  -webkit-user-drag:none;
-  image-rendering:auto;
+  inline-size: 100%;
+  block-size: 100%;
+  display: block;
+  object-fit: cover;                 /* umple fără distorsiuni */
+  object-position: 50% var(--prog-y);/* taie mai mult sus, păstrează jos */
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .programarBtn:hover{
   transform:scale(1.03);
