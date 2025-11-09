@@ -88,31 +88,46 @@
 
 /* ======== Buton PROGRAMAR (dreptunghiular, crop centrat reglabil) ======== */
 /* === Programar (dreptunghiular) === */
+/* === PROGRAMAR: stabil, fără tăiere jos === */
 .programarBtn{
   inline-size: 132px;
   block-size: 58px;
   border: none;
   border-radius: 16px;
   padding: 0;
-  background: none;
   overflow: hidden;
-  display: inline-grid;      /* <- în loc de block/grid implicit */
-  place-items: stretch;      /* <- întinde imaginea pe container */
+  cursor: pointer;
+  display: inline-block;
   box-shadow: 0 6px 18px rgba(0,0,0,.35);
   transition: transform .2s ease, box-shadow .2s ease;
 
-  /* Punctul de focalizare vertical (reglează 60–75%) */
-  --prog-y: 68%;
+  /* 🔑 folosim imaginea ca fundal, nu <img> */
+  background-image: url("/Programar.PNG");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;     /* centrat */
+  background-size: contain;         /* NU taie; totul rămâne vizibil */
+  background-color: transparent;
 }
 
-.programarBtn img{
-  inline-size: 100%;
-  block-size: 100%;
-  display: block;
-  object-fit: cover;                 /* umple fără distorsiuni */
-  object-position: 50% var(--prog-y);/* taie mai mult sus, păstrează jos */
-  user-select: none;
-  -webkit-user-drag: none;
+/* ascundem <img> din interiorul butonului ca să nu afecteze layout-ul */
+.programarBtn > img{
+  display: none !important;
+}
+
+.programarBtn:hover{
+  transform: scale(1.03);
+  box-shadow: 0 10px 26px rgba(0,0,0,.45);
+}
+
+/* Opțional: dacă vrei să acopere complet butonul (poate tăia puțin),
+   dar cu focus mai jos (să nu “taie din jos”), adaugi și clasa .programarCover */
+.programarCover{
+  background-size: cover;          /* acoperă complet */
+  background-position: 50% 68%;    /* împinge focusul puțin mai jos */
+}
+
+@media (max-width: 480px){
+  .programarBtn{ inline-size: 120px; block-size: 54px; border-radius: 14px; }
 }
 .programarBtn:hover{
   transform:scale(1.03);
