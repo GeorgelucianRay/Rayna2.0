@@ -146,20 +146,3 @@
 @media (max-width: 480px){
   .programarBtn{ inline-size: 120px; block-size: 54px; border-radius: 14px; }
 }
-
-  .filters {
-    flex-wrap: wrap;
-  }
-
-  .calendarBtn,
-  .excelBtn {
-    width: 42px;
-    height: 42px;
-  }
-
-  .programarBtn {
-    width: 100px;
-    height: 48px;
-    border-radius: 12px;
-  }
-}
