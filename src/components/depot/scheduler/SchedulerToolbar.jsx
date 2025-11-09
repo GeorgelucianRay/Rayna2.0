@@ -69,16 +69,17 @@ export default function SchedulerToolbar({
     <img src="/excel_circle_green.png" alt="Exportar Excel" />
   </button>
 
-  {canProgramar && (
-    <button
-      type="button"
-      className={styles.programarBtn}
-      onClick={onProgramarClick}
-      aria-label="Programar contenedor"
-    >
-      <img src="/Programar.PNG" alt="Programar contenedor" />
-    </button>
-  )}
+ {canProgramar && (
+  <button
+    type="button"
+    className={styles.programarBtn}
+    style={{ '--y': '52%' }}       // 👈 adaugă această linie
+    onClick={onProgramarClick}
+    aria-label="Programar contenedor"
+  >
+    <img src="/Programar.PNG" alt="Programar contenedor" />
+  </button>
+)}
 </div>
     </div>
   );
