@@ -1,5 +1,5 @@
 // src/components/chat/RaynaHub.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import styles from "./Chatbot.module.css";
 import { useAuth } from "../../AuthContext";
 import { detectIntent } from "../../nlu";
@@ -76,6 +76,25 @@ export default function RaynaHub() {
   const role = profile?.role || "driver";
   const navigate = useNavigate();
 const location = useLocation();
+
+const goHome = useCallback(() => {
+  // mapare rol -> homepage
+  const r = String(profile?.role || '').toLowerCase();
+  const target =
+    r === 'admin' || r === 'dispecer'
+      ? '/dispecer-homepage'
+      : '/sofer-homepage'; // mecanic / sofer / fallback
+
+  // dacă rulezi cu HashRouter (#/routa)
+  const isHash = !!(location?.hash && location.hash.startsWith('#/'));
+  if (isHash) {
+    window.location.hash = `#${target}`;
+    return;
+  }
+
+  // BrowserRouter normal
+  navigate(target, { replace: true });
+}, [profile?.role, navigate, location]);
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -260,7 +279,7 @@ useEffect(() => {
           <div className={styles.brand}>Rayna 2.0</div>
           <div className={styles.tagline}>Tu transportista virtual</div>
         </div>
-        <button className={styles.closeBtn} onClick={() => window.history.back()}>×</button>
+        <button className={styles.closeBtn} onClick={goHome} aria-label="Cerrar y volver al inicio">×</button>
       </header>
 
       <div className={styles.subHeaderBar}>
