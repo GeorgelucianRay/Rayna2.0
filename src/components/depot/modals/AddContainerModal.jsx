@@ -20,6 +20,7 @@ function parsePos(s) {
 }
 const composePos = ({ fila, num, nivel, pending }) =>
   pending ? 'PENDIENTE' : (fila && num && nivel ? `${fila}${num}${nivel}` : '');
+
 /* ========================================== */
 
 export default function AddContainerModal({ isOpen, onClose, onAdd }) {
@@ -59,11 +60,17 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
     return !!p || composed === 'PENDIENTE';
   }, [composed]);
 
+  const canSave = useMemo(() => {
+    const okMat = (matricula || '').trim().length >= 4;   // nu te blochez pe 11 caractere
+    return okMat && validPos;
+  }, [matricula, validPos]);
+
   // === Submit ===
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e?.preventDefault?.();
-    if (!validPos) {
-      alert('Posición inválida');
+
+    if (!canSave) {
+      alert('Completează corect: matrículă + posición.');
       return;
     }
 
@@ -71,17 +78,34 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
       matricula_contenedor: (matricula || '').toUpperCase(),
       naviera: naviera || null,
       tipo,
-      posicion: composed.toUpperCase(),
-      matricula_camion: matCamion || null,
+      posicion: (composed || '').toUpperCase(),
+      matricula_camion: (matCamion || '').toUpperCase() || null,
     };
 
-    // dacă e marcat ca roto, merge în tabela “contenedores_rotos”
     const data = isBroken
       ? { ...baseData, detalles: detalles || null }
       : { ...baseData, estado, detalles: null };
 
-    onAdd?.(data, isBroken);
-    onClose();
+    // 🔎 DEBUG vizibil în ErrorTray/console
+    try {
+      window.__raynaLog?.('AddContainerModal:onAdd -> payload', { data, isBroken }, 'info');
+
+      if (typeof onAdd !== 'function') {
+        window.__raynaLog?.('AddContainerModal:onAdd MISSING', null, 'error');
+        alert('Eroare internă: onAdd nu este definit în părinte.');
+        return;
+      }
+
+      // așteptăm handler-ul părinte (inserția efectivă)
+      await onAdd(data, isBroken);
+
+      // dacă nu a aruncat eroare, închidem modalul
+      onClose?.();
+    } catch (err) {
+      console.error('[AddContainerModal] onAdd failed:', err);
+      window.__raynaLog?.('AddContainerModal:onAdd ERROR', { message: err?.message, err }, 'error');
+      alert(`Nu s-a putut salva contenedorul:\n${err?.message || String(err)}`);
+    }
   };
 
   if (!isOpen) return null;
@@ -290,7 +314,7 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
             type="button"
             className={`${styles.btn} ${styles.primary}`}
             onClick={handleAdd}
-            disabled={!validPos}
+            disabled={!canSave}
           >
             Guardar
           </button>
