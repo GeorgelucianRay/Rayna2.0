@@ -9,7 +9,6 @@ export default function SchedulerToolbar({
   onExportExcel,
   onProgramarClick,
   canProgramar,
-  // 👇 nou: controlăm calendarul din Toolbar
   showCalendar,
   onToggleCalendar,
 }) {
@@ -17,7 +16,6 @@ export default function SchedulerToolbar({
 
   return (
     <div className={styles.toolbar}>
-      {/* Tabs */}
       <div className={styles.tabs}>
         {tabs.map(t => (
           <button
@@ -31,7 +29,6 @@ export default function SchedulerToolbar({
         ))}
       </div>
 
-      {/* Search + Month */}
       <div className={styles.filters}>
         <input
           className={styles.search}
@@ -50,37 +47,34 @@ export default function SchedulerToolbar({
         </button>
       </div>
 
-     <div className={styles.actions}>
-  <button
-    type="button"
-    className={styles.calendarBtn}
-    onClick={onToggleCalendar}
-    aria-label="Abrir calendario"
-  >
-    <img src="/Calendar.JPG" alt="Abrir calendario" />
-  </button>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.calendarBtn}
+          onClick={onToggleCalendar}
+          aria-label="Abrir calendario"
+        >
+          <img src="/Calendar.JPG" alt="Abrir calendario" />
+        </button>
 
-  <button
-    type="button"
-    className={styles.excelBtn}
-    onClick={onExportExcel}
-    aria-label="Exportar a Excel"
-  >
-    <img src="/excel_circle_green.png" alt="Exportar Excel" />
-  </button>
+        <button
+          type="button"
+          className={styles.excelBtn}
+          onClick={onExportExcel}
+          aria-label="Exportar a Excel"
+        >
+          <img src="/excel_circle_green.png" alt="Exportar Excel" />
+        </button>
 
- {canProgramar && (
-  <button
-    type="button"
-    className={styles.programarBtn}
-    style={{ '--y': '52%' }}       // 👈 adaugă această linie
-    onClick={onProgramarClick}
-    aria-label="Programar contenedor"
-  >
-    <img src="/Programar.PNG" alt="Programar contenedor" />
-  </button>
-)}
-</div>
+        {canProgramar && (
+          <button
+            type="button"
+            className={`${styles.programarBtn} ${styles.programarSkin}`}
+            onClick={onProgramarClick}
+            aria-label="Programar contenedor"
+          />
+        )}
+      </div>
     </div>
   );
 }
