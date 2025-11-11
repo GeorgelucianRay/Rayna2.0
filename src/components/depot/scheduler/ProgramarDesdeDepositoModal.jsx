@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import styles from './SchedulerStandalone.module.css';
+import styles from './ProgramarDesdeDepositoModal.module.css';
 import { supabase } from '../../../supabaseClient';
 
 export default function ProgramarDesdeDepositoModal({
