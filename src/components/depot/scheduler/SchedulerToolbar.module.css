@@ -1,277 +1,49 @@
-/* ======= SCHEDULER TOOLBAR – CSS COMPLET, CURAT, STABIL ======= */
+/* ===== LAYOUT ===== */
+.toolbar{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; margin:12px 0; }
 
-/* Structură de bază */
-.toolbar{
-  display:grid;
-  grid-template-columns: 1fr auto auto;
-  gap:12px;
-  align-items:center;
-  margin:12px 0;
-}
-
-/* ---------- Tab-uri ---------- */
+/* Tabs */
 .tabs{ display:flex; gap:8px; flex-wrap:wrap; }
-.tab{
-  padding:8px 14px;
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,.25);
-  background:rgba(17,17,17,.35);
-  color:#eaf3ff;
-  font-weight:700;
-  backdrop-filter:blur(8px);
-  transition:all .2s ease;
-}
-.active{
-  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
-  color:#062012;
-  border-color:rgba(255,255,255,.7);
-}
+.tab{ padding:8px 14px; border-radius:20px; border:1px solid rgba(255,255,255,.25);
+      background:rgba(17,17,17,.35); color:#eaf3ff; font-weight:700; backdrop-filter:blur(8px); transition:.2s; }
+.active{ background:linear-gradient(180deg,rgba(59,228,118,.95),rgba(59,228,118,.82)); color:#062012; border-color:rgba(255,255,255,.7); }
 
-/* ---------- Căutare + lună ---------- */
+/* Search + Month */
 .filters{ display:flex; gap:8px; align-items:center; }
-.search{
-  min-width:220px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.25);
-  background:rgba(17,17,17,.5);
-  color:#fff;
-  outline:none;
-}
+.search{ min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(17,17,17,.5); color:#fff; outline:none; }
 .search:focus{ border-color:rgba(255,255,255,.6); }
-.month{
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.25);
-  background:rgba(17,17,17,.5);
-  color:#fff;
-}
+.month{ padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(17,17,17,.5); color:#fff; }
 
-/* ---------- Grup acțiuni (Calendar, Excel, Programar) ---------- */
-.actions{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  justify-content:flex-start;
-  flex-wrap:nowrap;          /* nu permite ruperea pe rând nou */
-}
-.calendarBtn,.excelBtn,.programarBtn{ flex:0 0 auto; } /* nu “împinge” grid-ul */
+/* Actions */
+.actions{ display:flex; align-items:center; gap:12px; justify-content:flex-start; flex-wrap:nowrap; }
+.calendarBtn,.excelBtn,.programarBtn{ flex:0 0 auto; }
 
-/* ======== Butoane imagine: calendar + excel (rotunde) ======== */
+/* Icon round buttons */
 .calendarBtn,.excelBtn{
-  inline-size:48px;
-  block-size:48px;
-  border-radius:50%;
-  overflow:hidden;
-  border:none;
-  background:none;
-  padding:0;
-  cursor:pointer;
-  display:grid;
-  place-items:center;
-  box-shadow:0 4px 14px rgba(0,0,0,.3);
-  transition:transform .2s ease, box-shadow .2s ease;
+  inline-size:48px; block-size:48px; border-radius:50%; overflow:hidden; border:0; background:none; padding:0;
+  display:grid; place-items:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); transition:transform .2s, box-shadow .2s;
 }
-.calendarBtn img,.excelBtn img{
-  inline-size:100%;
-  block-size:100%;
-  object-fit:cover;
-  object-position:center;
-  display:block;
-  user-select:none;
-  -webkit-user-drag:none;
-}
-.calendarBtn:hover,.excelBtn:hover{
-  transform:scale(1.05);
-  box-shadow:0 8px 20px rgba(0,0,0,.45);
-}
+.calendarBtn img,.excelBtn img{ inline-size:100%; block-size:100%; object-fit:cover; display:block; user-select:none; -webkit-user-drag:none; }
+.calendarBtn:hover,.excelBtn:hover{ transform:scale(1.05); box-shadow:0 8px 20px rgba(0,0,0,.45); }
 
-/* ======== Buton PROGRAMAR (dreptunghiular, crop centrat reglabil) ======== */
-/* === Programar (dreptunghiular) === */
-/* === PROGRAMAR: stabil, fără tăiere jos === */
+/* ===== PROGRAMAR (folosește background, nu <img>) ===== */
 .programarBtn{
-  inline-size: 132px;
-  block-size: 58px;
-  border: none;
-  border-radius: 16px;
-  padding: 0;
-  overflow: hidden;
-  cursor: pointer;
-  display: inline-block;
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
-  transition: transform .2s ease, box-shadow .2s ease;
-
-  /* 🔑 folosim imaginea ca fundal, nu <img> */
-  background-image: url("/Programar.PNG");
-  background-repeat: no-repeat;
-  background-position: 50% 50%;     /* centrat */
-  background-size: contain;         /* NU taie; totul rămâne vizibil */
-  background-color: transparent;
+  inline-size:132px; block-size:58px; /* raport 16:7 */
+  border:0; border-radius:16px; padding:0; overflow:hidden; display:inline-block; cursor:pointer;
+  box-shadow:0 6px 18px rgba(0,0,0,.35); transition:transform .2s, box-shadow .2s; background-color:transparent;
 }
 
-/* ascundem <img> din interiorul butonului ca să nu afecteze layout-ul */
-.programarBtn > img{
-  display: none !important;
+/* PNG-ul tău existent: /Programar.PNG */
+.programarSkin{
+  background-image:url('/Programar.PNG');  /* <- numele tău vechi */
+  background-repeat:no-repeat;
+  background-size:cover;        /* umple fără margini */
+  background-position:50% 60%;  /* focus ușor mai jos ca să nu “taie” baza */
 }
 
-.programarBtn:hover{
-  transform: scale(1.03);
-  box-shadow: 0 10px 26px rgba(0,0,0,.45);
-}
+/* Nu există <img> în interior – evităm artefacte */
+.programarBtn > img{ display:none !important; }
 
-/* Opțional: dacă vrei să acopere complet butonul (poate tăia puțin),
-   dar cu focus mai jos (să nu “taie din jos”), adaugi și clasa .programarCover */
-.programarCover{
-  background-size: cover;          /* acoperă complet */
-  background-position: 50% 68%;    /* împinge focusul puțin mai jos */
-}
+.programarBtn:hover{ transform:scale(1.03); box-shadow:0 10px 26px rgba(0,0,0,.45); }
 
-@media (max-width: 480px){
-  .programarBtn{ inline-size: 120px; block-size: 54px; border-radius: 14px; }
-}
-.programarBtn:hover{
-  transform:scale(1.03);
-  box-shadow:0 10px 26px rgba(0,0,0,.45);
-}
-
-/* Variantă opțională: fără tăiere (contain) – adaugă clasa când vrei */
-.programarBtnContain img{
-  object-fit:contain;
-  object-position:center;
-  background:transparent; /* poți pune un fundal dacă dorești */
-}
-
-/* ---------- Responsive ---------- */
-@media (max-width:900px){
-  .toolbar{ grid-template-columns:1fr; }
-  .filters{ flex-wrap:wrap; }
-}
-@media (max-width:480px){
-  .programarBtn{ inline-size:120px; block-size:54px; border-radius:14px; }
-}
-
-/* ======== MODAL – stil complet, coerent cu tema ======== */
-:root{
-  --glass-bg:rgba(255,255,255,.10);
-  --glass-stroke:rgba(255,255,255,.25);
-  --glass-shadow:rgba(0,0,0,.35);
-  --ink:#f3f6fb;
-  --muted:rgba(243,246,251,.7);
-  --accent:#7dd3fc;
-  --accent-2:#a78bfa;
-  --danger:#f87171;
-  --ok:#34d399;
-  --speed:160ms;
-}
-
-.modalOverlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  z-index:3000;
-  padding:20px;
-  animation:fadeIn .25s ease;
-}
-
-.modal{
-  inline-size:100%;
-  max-inline-size:420px;
-  background:rgba(20,24,33,.92);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:18px;
-  box-shadow:0 10px 40px rgba(0,0,0,.35);
-  color:#f3f4f6;
-  display:flex;
-  flex-direction:column;
-  max-block-size:85vh;
-  overflow:hidden;
-  animation:slideUp .3s ease;
-}
-
-.modalHeader{
-  padding:14px 18px;
-  border-bottom:1px solid rgba(255,255,255,.1);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-weight:600;
-  font-size:1.1rem;
-}
-.modalTitle{ color:#fff; }
-.closeIcon{
-  background:rgba(255,255,255,.08);
-  border:none;
-  color:#fff;
-  font-size:1.2rem;
-  border-radius:50%;
-  inline-size:32px;
-  block-size:32px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  transition:background .2s ease;
-}
-.closeIcon:hover{ background:rgba(255,255,255,.18); }
-
-.modalBody{
-  padding:18px;
-  overflow-y:auto;
-  flex:1;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(255,255,255,.2) transparent;
-}
-.modalBody::-webkit-scrollbar{ width:6px; }
-.modalBody::-webkit-scrollbar-thumb{
-  background-color:rgba(255,255,255,.2);
-  border-radius:4px;
-}
-
-.inputGroup{ display:flex; flex-direction:column; margin-bottom:12px; }
-.inputGroup label{ font-size:.9rem; margin-bottom:4px; opacity:.8; }
-.inputGroup input,
-.inputGroup select{
-  padding:10px 12px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.05);
-  color:#fff;
-  font-size:.95rem;
-  outline:none;
-}
-.inputGrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-@media (max-width:480px){ .inputGrid{ grid-template-columns:1fr; } }
-
-.modalFooter{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  padding:14px 18px;
-  border-top:1px solid rgba(255,255,255,.1);
-}
-.actionGhost{
-  background:transparent;
-  color:#ddd;
-  border:1px solid rgba(255,255,255,.25);
-  border-radius:10px;
-  padding:8px 14px;
-  cursor:pointer;
-  transition:all .2s ease;
-}
-.actionGhost:hover{ background:rgba(255,255,255,.1); }
-.actionMini{
-  background:linear-gradient(90deg,#22c55e,#16a34a);
-  color:#fff; border:none; border-radius:10px;
-  padding:8px 14px; font-weight:600; cursor:pointer;
-  transition:transform .15s ease;
-}
-.actionMini:hover{ transform:scale(1.03); }
-
-/* Animații */
-@keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
-@keyframes slideUp{ from{ transform:translateY(30px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+@media (max-width:900px){ .toolbar{ grid-template-columns:1fr; } .filters{ flex-wrap:wrap; } }
+@media (max-width:480px){ .programarBtn{ inline-size:120px; block-size:54px; border-radius:14px; } }
