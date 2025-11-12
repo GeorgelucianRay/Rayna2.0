@@ -5,6 +5,7 @@ import Layout from '../Layout';
 import { supabase } from '../../supabaseClient';
 import * as XLSX from 'xlsx';
 import styles from './DepotPage.module.css';
+
 import AddContainerModal from './modals/AddContainerModal';
 import EditContainerModal from './modals/EditContainerModal';
 import SalidaContainerModal from './modals/SalidaContainerModal';
@@ -12,22 +13,25 @@ import { useAuth } from '../../AuthContext';
 
 /* Iconos inline */
 const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="8"></circle>
     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
 );
 const PlusIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+    <path fillRule="evenodd"
+          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+          clipRule="evenodd" />
   </svg>
 );
 
 export default function DepotPage() {
-  const { session, sessionReady } = useAuth(); // persist & auto-refresh prin AuthProvider
+  const { session, sessionReady } = useAuth();
   const navigate = useNavigate();
 
-  // 1) Gate simplu pe auth — FĂRĂ redirect până nu e gata contextul
+  // Gate pe auth (fără a rupe router-ul)
   if (!sessionReady) {
     return (
       <Layout backgroundClassName="depotBackground">
@@ -36,7 +40,6 @@ export default function DepotPage() {
     );
   }
   if (!session) {
-    // nu forțăm window.location; lăsăm Router să navigheze
     navigate('/login');
     return null;
   }
@@ -52,21 +55,11 @@ export default function DepotPage() {
 
   // modale
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newMatricula, setNewMatricula] = useState('');
-  const [newNaviera, setNewNaviera] = useState('');
-  const [newTipo, setNewTipo] = useState('20');
-  const [newPosicion, setNewPosicion] = useState('');
-  const [newEstado, setNewEstado] = useState('lleno');
-  const [newMatriculaCamion, setNewMatriculaCamion] = useState('');
-  const [isBroken, setIsBroken] = useState(false);
-  const [newDetalles, setNewDetalles] = useState('');
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editPosicion, setEditPosicion] = useState('');
-
   const [isSalidaModalOpen, setIsSalidaModalOpen] = useState(false);
-  const [salidaMatriculaCamion, setSalidaMatriculaCamion] = useState('');
 
+  const [editPosicion, setEditPosicion] = useState('');
+  const [salidaMatriculaCamion, setSalidaMatriculaCamion] = useState('');
   const [selectedContainer, setSelectedContainer] = useState(null);
 
   /* ------- Fetch listă ------- */
@@ -95,7 +88,8 @@ export default function DepotPage() {
         ];
 
         const filtered = searchTerm
-          ? combinedRaw.filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+          ? combinedRaw.filter(x =>
+              (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
           : combinedRaw;
 
         filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -104,6 +98,7 @@ export default function DepotPage() {
         const from = (currentPage - 1) * ITEMS_PER_PAGE;
         const to = Math.min(from + ITEMS_PER_PAGE, total);
         if (!alive) return;
+
         setContainers(filtered.slice(from, to));
         setTotalCount(total);
         setLoading(false);
@@ -137,7 +132,10 @@ export default function DepotPage() {
     return () => { alive = false; };
   }, [activeTab, currentPage, searchTerm]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)), [totalCount]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)),
+    [totalCount]
+  );
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -145,52 +143,81 @@ export default function DepotPage() {
     setSearchTerm('');
   };
 
-  /* ------- ADD ------- */
-  const openAddModal = () => {
-    setNewMatricula(''); setNewNaviera(''); setNewTipo('20'); setNewPosicion('');
-    setNewEstado('lleno'); setNewMatriculaCamion('');
-    setIsBroken(false); setNewDetalles('');
-    setIsAddModalOpen(true);
-  };
+  /* ------- ADD (folosește API-ul AddContainerModal: onAdd(data,isBroken)) ------- */
+  const openAddModal = () => setIsAddModalOpen(true);
 
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    const base = {
-      matricula_contenedor: newMatricula || null,
-      naviera: newNaviera || null,
-      tipo: newTipo || null,
-      posicion: newPosicion || null,
-      matricula_camion: newMatriculaCamion || null,
-    };
-
-    if (isBroken) {
-      const { error } = await supabase.from('contenedores_rotos').insert([{ ...base, detalles: newDetalles || null }]);
-      if (error) { console.error(error); alert('Error al añadir contenedor defectuoso.'); }
-      else setActiveTab('contenedores_rotos');
-    } else {
-      const { error } = await supabase.from('contenedores').insert([{ ...base, estado: newEstado || null }]);
-      if (error) { console.error(error); alert('Error al añadir contenedor.'); }
-      else setActiveTab('contenedores');
+  const handleAddFromModal = async (data, isBroken) => {
+    // data: { matricula_contenedor, naviera, tipo, posicion, matricula_camion, (estado|detalles) }
+    try {
+      if (isBroken) {
+        const { error } = await supabase
+          .from('contenedores_rotos')
+          .insert([{
+            matricula_contenedor: data.matricula_contenedor || null,
+            naviera: data.naviera || null,
+            tipo: data.tipo || null,
+            posicion: data.posicion || null,
+            matricula_camion: data.matricula_camion || null,
+            detalles: data.detalles || null
+          }]);
+        if (error) throw error;
+        setActiveTab('contenedores_rotos');
+      } else {
+        const { error } = await supabase
+          .from('contenedores')
+          .insert([{
+            matricula_contenedor: data.matricula_contenedor || null,
+            naviera: data.naviera || null,
+            tipo: data.tipo || null,
+            posicion: data.posicion || null,
+            matricula_camion: data.matricula_camion || null, // ✅ inclus
+            estado: data.estado || null
+          }]);
+        if (error) throw error;
+        setActiveTab('contenedores');
+      }
+      setIsAddModalOpen(false);
+      setCurrentPage(1);
+      setSearchTerm('');
+    } catch (err) {
+      console.error('[Depot:add] supabase error:', err);
+      alert(`Error al añadir contenedor:\n${err.message || err}`);
     }
-    setIsAddModalOpen(false);
-    setCurrentPage(1);
-    setSearchTerm('');
   };
 
   /* ------- EDIT ------- */
-  const openEditModal = (c) => { setSelectedContainer(c); setEditPosicion(c.posicion || ''); setIsEditModalOpen(true); };
+  const openEditModal = (c) => {
+    setSelectedContainer(c);
+    setEditPosicion(c.posicion || '');
+    setIsEditModalOpen(true);
+  };
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedContainer) return;
-    const table = selectedContainer.__from === 'programados' ? 'contenedores_programados' : activeTab;
-    const { error } = await supabase.from(table).update({ posicion: editPosicion || null }).eq('id', selectedContainer.id);
-    if (error) { console.error(error); alert(`Error al actualizar posición:\n${error.message || error}`); }
-    else setContainers(prev => prev.map(c => (c.id === selectedContainer.id ? { ...c, posicion: editPosicion || null } : c)));
+    const table = selectedContainer.__from === 'programados'
+      ? 'contenedores_programados'
+      : activeTab;
+    const { error } = await supabase
+      .from(table)
+      .update({ posicion: editPosicion || null })
+      .eq('id', selectedContainer.id);
+    if (error) {
+      console.error(error);
+      alert(`Error al actualizar posición:\n${error.message || error}`);
+    } else {
+      setContainers(prev =>
+        prev.map(c => (c.id === selectedContainer.id ? { ...c, posicion: editPosicion || null } : c))
+      );
+    }
     setIsEditModalOpen(false);
   };
 
   /* ------- SALIDA ------- */
-  const openSalidaModal = (c) => { setSelectedContainer(c); setSalidaMatriculaCamion(''); setIsSalidaModalOpen(true); };
+  const openSalidaModal = (c) => {
+    setSelectedContainer(c);
+    setSalidaMatriculaCamion('');
+    setIsSalidaModalOpen(true);
+  };
 
   const handleSalidaSubmit = async (e) => {
     e.preventDefault();
@@ -206,6 +233,7 @@ export default function DepotPage() {
         return;
       }
 
+      // curățăm eventuale programări ale aceleiași matricule
       await supabase.from('contenedores_programados').delete().eq('matricula_contenedor', matricula_contenedor);
 
       const salidaPayload = {
@@ -225,11 +253,26 @@ export default function DepotPage() {
         fecha_salida: new Date().toISOString(),
       };
 
-      const { error: insertError } = await supabase.from('contenedores_salidos').insert([salidaPayload]);
-      if (insertError) { console.error(insertError); alert(`Error al registrar la salida:\n${insertError.message || insertError}`); setIsSalidaModalOpen(false); return; }
+      const { error: insertError } = await supabase
+        .from('contenedores_salidos')
+        .insert([salidaPayload]);
+      if (insertError) {
+        console.error(insertError);
+        alert(`Error al registrar la salida:\n${insertError.message || insertError}`);
+        setIsSalidaModalOpen(false);
+        return;
+      }
 
-      const { error: deleteError } = await supabase.from(activeTab).delete().eq('id', id);
-      if (deleteError) { console.error(deleteError); alert(`Error al limpiar el contenedor de "${activeTab}":\n${deleteError.message || deleteError}`); setIsSalidaModalOpen(false); return; }
+      const { error: deleteError } = await supabase
+        .from(activeTab)
+        .delete()
+        .eq('id', id);
+      if (deleteError) {
+        console.error(deleteError);
+        alert(`Error al limpiar el contenedor de "${activeTab}":\n${deleteError.message || deleteError}`);
+        setIsSalidaModalOpen(false);
+        return;
+      }
 
       setContainers(prev => prev.filter(c => c.id !== id));
       setActiveTab('contenedores_salidos');
@@ -260,7 +303,9 @@ export default function DepotPage() {
     try {
       const [{ data: enDeposito }, { data: programados }] = await Promise.all([
         supabase.from('contenedores').select('*').order('created_at', { ascending: false }),
-        supabase.from('contenedores_programados').select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado').order('created_at', { ascending: false }),
+        supabase.from('contenedores_programados')
+          .select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado')
+          .order('created_at', { ascending: false }),
       ]);
 
       const combined = [
@@ -298,8 +343,15 @@ export default function DepotPage() {
 
   const handleExportExcelRotos = async () => {
     try {
-      const { data } = await supabase.from('contenedores_rotos').select('*').order('created_at', { ascending: false });
-      const filtered = searchTerm ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase())) : (data || []);
+      const { data } = await supabase
+        .from('contenedores_rotos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const filtered = searchTerm
+        ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+        : (data || []);
+
       const rows = filtered.map((x, idx) => ({
         '#': idx + 1,
         'Matrícula Contenedor': x.matricula_contenedor || '',
@@ -319,8 +371,15 @@ export default function DepotPage() {
 
   const handleExportExcelSalidos = async () => {
     try {
-      const { data } = await supabase.from('contenedores_salidos').select('*').order('created_at', { ascending: false });
-      const filtered = searchTerm ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase())) : (data || []);
+      const { data } = await supabase
+        .from('contenedores_salidos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const filtered = searchTerm
+        ? (data || []).filter(x => (x.matricula_contenedor || '').toLowerCase().includes(searchTerm.toLowerCase()))
+        : (data || []);
+
       const rows = filtered.map((x, idx) => ({
         '#': idx + 1,
         'Matrícula Contenedor': x.matricula_contenedor || '',
@@ -355,9 +414,24 @@ export default function DepotPage() {
       <div className={styles.pageWrap}>
         {/* Tabs */}
         <div className={styles.depotHeader}>
-          <button className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`} onClick={() => handleTabChange('contenedores')}>En Depósito</button>
-          <button className={`${styles.depotTabButton} ${activeTab === 'contenedores_rotos' ? styles.active : ''}`} onClick={() => handleTabChange('contenedores_rotos')}>Defectos</button>
-          <button className={`${styles.depotTabButton} ${activeTab === 'contenedores_salidos' ? styles.active : ''}`} onClick={() => handleTabChange('contenedores_salidos')}>Salidos</button>
+          <button
+            className={`${styles.depotTabButton} ${activeTab === 'contenedores' ? styles.active : ''}`}
+            onClick={() => handleTabChange('contenedores')}
+          >
+            En Depósito
+          </button>
+          <button
+            className={`${styles.depotTabButton} ${activeTab === 'contenedores_rotos' ? styles.active : ''}`}
+            onClick={() => handleTabChange('contenedores_rotos')}
+          >
+            Defectos
+          </button>
+          <button
+            className={`${styles.depotTabButton} ${activeTab === 'contenedores_salidos' ? styles.active : ''}`}
+            onClick={() => handleTabChange('contenedores_salidos')}
+          >
+            Salidos
+          </button>
         </div>
 
         {/* Accesos rápidos */}
@@ -378,7 +452,12 @@ export default function DepotPage() {
             />
           </div>
 
-          <img src="/excel_circle_green.png" alt="Exportar Excel" className={styles.excelButton} onClick={handleExportExcel} />
+          <img
+            src="/excel_circle_green.png"
+            alt="Exportar Excel"
+            className={styles.excelButton}
+            onClick={handleExportExcel}
+          />
 
           {activeTab === 'contenedores' && (
             <button className={styles.addButton} onClick={openAddModal}>
@@ -441,9 +520,23 @@ export default function DepotPage() {
 
             {/* Paginación */}
             <div className={styles.paginationContainer}>
-              <button className={styles.paginationButton} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Anterior</button>
-              <span className={styles.pageIndicator}>Página {currentPage} de {totalPages}</span>
-              <button className={styles.paginationButton} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}>Siguiente</button>
+              <button
+                className={styles.paginationButton}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </button>
+              <span className={styles.pageIndicator}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                className={styles.paginationButton}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Siguiente
+              </button>
             </div>
           </>
         )}
@@ -452,15 +545,7 @@ export default function DepotPage() {
         <AddContainerModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onSubmit={handleAddSubmit}
-          newMatricula={newMatricula} setNewMatricula={setNewMatricula}
-          newNaviera={newNaviera} setNewNaviera={setNewNaviera}
-          newTipo={newTipo} setNewTipo={setNewTipo}
-          newPosicion={newPosicion} setNewPosicion={setNewPosicion}
-          newEstado={newEstado} setNewEstado={setNewEstado}
-          isBroken={isBroken} setIsBroken={setIsBroken}
-          newDetalles={newDetalles} setNewDetalles={setNewDetalles}
-          newMatriculaCamion={newMatriculaCamion} setNewMatriculaCamion={setNewMatriculaCamion}
+          onAdd={handleAddFromModal}           // ✅ API corect
         />
 
         <EditContainerModal
