@@ -23,6 +23,45 @@ const PlusIcon = () => (
   </svg>
 );
 
+/* 🔹 Helper: ce sloturi ocupă un container, inclusiv 40'/45' (2 poziții) */
+function computeOccupiedSlots(posRaw, tipoRaw) {
+  const pos = String(posRaw || '').trim().toUpperCase();
+  const tipo = String(tipoRaw || '').trim();
+
+  if (!pos || pos === 'PENDIENTE') return [];
+
+  const m = /^([A-F])(10|[1-9])([A-E])$/.exec(pos);
+  if (!m) {
+    // format necunoscut → îl tratăm ca 1 singură poziție
+    return [pos];
+  }
+
+  const fila = m[1];
+  const num = Number(m[2]);
+  const nivel = m[3];
+  const isABC = ['A', 'B', 'C'].includes(fila);
+  const max = isABC ? 10 : 7;
+
+  const slots = [pos];
+
+  // doar 40/45 ocupă două locuri
+  if (tipo !== '40' && tipo !== '45') return slots;
+
+  let otherNum;
+  if (isABC) {
+    // ABC: A2A → ocupă A2A și A1A (spre stânga)
+    if (num === 1) otherNum = 2;
+    else otherNum = num - 1;
+  } else {
+    // DEF: D1A → ocupă D1A și D2A (spre dreapta)
+    if (num === max) otherNum = max - 1;
+    else otherNum = num + 1;
+  }
+
+  slots.push(`${fila}${otherNum}${nivel}`);
+  return Array.from(new Set(slots));
+}
+
 export default function DepotPage() {
   const { session, sessionReady } = useAuth();
   const navigate = useNavigate();
@@ -58,7 +97,10 @@ export default function DepotPage() {
   const refreshFlag = useRef(0);
   const bumpRefresh = () => { refreshFlag.current += 1; };
 
-  /* ------- Fetch ------- */
+  // 🔸 harta de sloturi ocupate, pentru mic-map
+  const [slotMap, setSlotMap] = useState({}); // ex: { 'A1A': { matricula_contenedor, tipo, __from, ... } }
+
+  /* ------- Fetch listă pentru tab & paginare ------- */
   const fetchData = useCallback(async () => {
     setLoading(true);
 
@@ -69,7 +111,7 @@ export default function DepotPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // 2) programados (se afișează în “En Depósito” ca vizibilitate de ansamblu)
+      // 2) programados
       const { data: programados, error: errB } = await supabase
         .from('contenedores_programados')
         .select('id, created_at, matricula_contenedor, naviera, tipo, posicion, empresa_descarga, fecha, hora, matricula_camion, estado')
@@ -83,7 +125,7 @@ export default function DepotPage() {
         ...(programados || []).map(x => ({ ...x, __from: 'programados' })),
       ];
 
-      // Căutare mai bogată (matrícula, naviera, posición, camión, empresa)
+      // căutare bogată
       const norm = (s) => String(s || '').toLowerCase();
       const q = norm(searchTerm);
       const filtered = q
@@ -107,7 +149,7 @@ export default function DepotPage() {
       return;
     }
 
-    // 'contenedores_rotos' | 'contenedores_salidos' (paginare server)
+    // 'contenedores_rotos' | 'contenedores_salidos'
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
@@ -148,11 +190,88 @@ export default function DepotPage() {
     setSearchTerm('');
   };
 
+  /* ------- Mic map – încărcăm toate sloturile ocupate ------- */
+  useEffect(() => {
+    let alive = true;
+    const loadSlots = async () => {
+      try {
+        const [{ data: dep }, { data: rot }, { data: prog }] = await Promise.all([
+          supabase.from('contenedores').select('matricula_contenedor, tipo, posicion'),
+          supabase.from('contenedores_rotos').select('matricula_contenedor, tipo, posicion'),
+          supabase.from('contenedores_programados').select('matricula_contenedor, tipo, posicion'),
+        ]);
+
+        const all = [
+          ...(dep || []).map(r => ({ ...r, __from: 'contenedores' })),
+          ...(rot || []).map(r => ({ ...r, __from: 'contenedores_rotos' })),
+          ...(prog || []).map(r => ({ ...r, __from: 'programados' })),
+        ];
+
+        const map = {};
+        all.forEach(r => {
+          const slots = computeOccupiedSlots(r.posicion, r.tipo);
+          slots.forEach(s => {
+            if (!s) return;
+            // nu suprascriem dacă există deja (primul câștigă)
+            if (!map[s]) map[s] = r;
+          });
+        });
+
+        if (!alive) return;
+        setSlotMap(map);
+      } catch (err) {
+        console.error('[loadSlots] error:', err);
+      }
+    };
+
+    loadSlots();
+    return () => { alive = false; };
+  }, [refreshFlag.current]);
+
   /* ------- ADD (onAdd din AddContainerModal) ------- */
   const openAddModal = () => setIsAddModalOpen(true);
 
   const handleAddFromModal = async (data, isBroken) => {
     try {
+      const posicion = data.posicion;
+      const tipo = data.tipo;
+
+      // 1) calculăm sloturile pe care vrea să le ocupe containerul
+      const slots = computeOccupiedSlots(posicion, tipo);
+
+      if (slots.length > 0 && posicion && posicion !== 'PENDIENTE') {
+        // 2) verificăm în toate tabelele dacă sunt ocupate
+        const [resCont, resRotos, resProg] = await Promise.all([
+          supabase
+            .from('contenedores')
+            .select('matricula_contenedor,posicion')
+            .in('posicion', slots),
+          supabase
+            .from('contenedores_rotos')
+            .select('matricula_contenedor,posicion')
+            .in('posicion', slots),
+          supabase
+            .from('contenedores_programados')
+            .select('matricula_contenedor,posicion')
+            .in('posicion', slots),
+        ]);
+
+        const ocupados = [
+          ...((resCont.data || [])),
+          ...((resRotos.data || [])),
+          ...((resProg.data || [])),
+        ];
+
+        if (ocupados.length > 0) {
+          const occ = ocupados[0];
+          const cid = (occ.matricula_contenedor || '').toUpperCase();
+          const posOcc = occ.posicion || '—';
+          alert(`Lo siento, en la posición deseada está ocupada por el contenedor "${cid}" (posición ${posOcc}).`);
+          return; // ❌ nu inserăm nimic
+        }
+      }
+
+      // 3) dacă nu e ocupat → inserăm normal
       if (isBroken) {
         const { data: inserted, error } = await supabase
           .from('contenedores_rotos')
@@ -161,12 +280,10 @@ export default function DepotPage() {
           .single();
         if (error) throw error;
 
-        // Optimistic update dacă tab-ul curent e “Defectos”
         if (activeTab === 'contenedores_rotos') {
           setContainers(prev => [{ ...inserted }, ...prev]);
           setTotalCount(c => c + 1);
         }
-        // mută pe tabul corect
         setActiveTab('contenedores_rotos');
       } else {
         const { data: inserted, error } = await supabase
@@ -176,10 +293,9 @@ export default function DepotPage() {
           .single();
         if (error) throw error;
 
-        // Optimistic update dacă suntem pe En Depósito
         if (activeTab === 'contenedores') {
           const newRow = { ...inserted, __from: 'contenedores' };
-          setContainers(prev => [newRow, ...prev].slice(0, ITEMS_PER_PAGE)); // păstrăm pagina curentă
+          setContainers(prev => [newRow, ...prev].slice(0, ITEMS_PER_PAGE));
           setTotalCount(c => c + 1);
         } else {
           setActiveTab('contenedores');
@@ -190,7 +306,7 @@ export default function DepotPage() {
       alert(`Error al añadir contenedor:\n${err.message || err}`);
     } finally {
       setIsAddModalOpen(false);
-      bumpRefresh();      // re-sync „adevărul” din DB
+      bumpRefresh();      // re-sync și pentru listă, și pentru mini-map
     }
   };
 
@@ -201,8 +317,10 @@ export default function DepotPage() {
     if (!selectedContainer) return;
     const table = selectedContainer.__from === 'programados' ? 'contenedores_programados' : activeTab;
     const { error } = await supabase.from(table).update({ posicion: editPosicion || null }).eq('id', selectedContainer.id);
-    if (error) { console.error(error); alert(`Error al actualizar posición:\n${error.message || error}`); }
-    else {
+    if (error) {
+      console.error(error);
+      alert(`Error al actualizar posición:\n${error.message || error}`);
+    } else {
       setContainers(prev => prev.map(c => (c.id === selectedContainer.id ? { ...c, posicion: editPosicion || null } : c)));
       bumpRefresh();
     }
@@ -428,6 +546,50 @@ export default function DepotPage() {
           )}
         </div>
 
+        {/* 🔍 Mini mapa de slots (A–F, nivel A) */}
+        {activeTab === 'contenedores' && (
+          <div style={{
+            margin: '8px 0 16px',
+            padding: '8px 10px',
+            borderRadius: '10px',
+            background: 'rgba(0,0,0,0.35)',
+            fontSize: '12px'
+          }}>
+            <div style={{ marginBottom: 4, opacity: 0.8 }}>
+              Mapa rápido (fila A–F, nivel A, ocupación actual)
+            </div>
+            {['A','B','C','D','E','F'].map((fila) => {
+              const max = ['A','B','C'].includes(fila) ? 10 : 7;
+              return (
+                <div key={fila} style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ width: 16, fontWeight: 600 }}>{fila}</span>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {Array.from({ length: max }, (_, i) => i + 1).map(num => {
+                      const key = `${fila}${num}A`;
+                      const occ = slotMap[key];
+                      return (
+                        <div
+                          key={key}
+                          title={occ ? `${key} · ${(occ.matricula_contenedor || '').toUpperCase()}` : key}
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 3,
+                            background: occ
+                              ? (occ.__from === 'contenedores_rotos' ? '#f97373' : '#22c55e')
+                              : 'transparent',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Lista */}
         {loading ? (
           <p className={styles.loadingText}>Cargando…</p>
@@ -461,7 +623,6 @@ export default function DepotPage() {
                     {c.estado && <p><strong>Estado:</strong> {c.estado}</p>}
                     {c.matricula_camion && <p><strong>Camión:</strong> {c.matricula_camion}</p>}
 
-                    {/* info de programados vizibilă și în tab En Depósito */}
                     {c.__from === 'programados' && (
                       <>
                         <p><span className={styles.badgeOrange}>Programado</span></p>
@@ -471,7 +632,6 @@ export default function DepotPage() {
                       </>
                     )}
 
-                    {/* Detalles pentru defecte/salidos */}
                     {c.detalles && <p><strong>Detalles:</strong> {c.detalles}</p>}
                     {activeTab === 'contenedores_salidos' && c.fecha_salida && (
                       <p><strong>Fecha de salida:</strong> {new Date(c.fecha_salida).toLocaleString()}</p>
@@ -494,7 +654,7 @@ export default function DepotPage() {
         <AddContainerModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onAdd={handleAddFromModal}   // 🔴 Asta este cheia
+          onAdd={handleAddFromModal}
         />
 
         <EditContainerModal
