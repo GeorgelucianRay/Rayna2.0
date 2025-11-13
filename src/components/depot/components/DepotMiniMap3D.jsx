@@ -1,29 +1,35 @@
-// src/components/depot/components/DepotMiniMap3D.jsx
 import React, { useState, useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-
-import { slotToWorld } from "../map/threeWorld/slotToWorld";
 import styles from "./DepotMiniMap3D.module.css";
 
-/* ---- helper: parse key "A10B" -> { lane:'A', index:10, tier:'B' } ---- */
-function parseSlotKey(key) {
-  const m = /^([A-F])(10|[1-9])([A-E])$/.exec(String(key || "").toUpperCase());
-  if (!m) return null;
-  return {
-    lane: m[1],
-    index: Number(m[2]),
-    tier: m[3],
-  };
+// mic helper: poziție simplă în mini-hartă (NU afectează Map3D real)
+function slotToMiniPos(lane, index, tier) {
+  const lanes = "ABCDEF";
+  const tiers = "ABCDE";
+
+  const laneIdx = Math.max(0, lanes.indexOf(lane.toUpperCase()));
+  const tierIdx = Math.max(0, tiers.indexOf(tier.toUpperCase()));
+
+  const STEP_X = 3.2;  // distanța între numere (1–10)
+  const STEP_Z = 3.2;  // distanța între rânduri (A–F)
+  const STEP_Y = 1.4;  // distanța între nivele (A–E)
+
+  const x = -(index - 1) * STEP_X;
+  const z = laneIdx * STEP_Z;
+  const y = 0.7 + tierIdx * STEP_Y; // puțin deasupra solului
+
+  return new THREE.Vector3(x, y, z);
 }
 
-/* ---- Scene cu toate sloturile A-F, nivele A-E ---- */
 function MiniMapScene({ slotMap }) {
   const lanes = ["A", "B", "C", "D", "E", "F"];
   const tiers = ["A", "B", "C", "D", "E"];
 
-  // pregătim o listă cu toate sloturile posibile + dacă sunt ocupate
+  const lastTapRef = useRef(0);
+
+  // pregătim toate sloturile posibile
   const slots = useMemo(() => {
     const out = [];
     lanes.forEach((lane) => {
@@ -46,70 +52,61 @@ function MiniMapScene({ slotMap }) {
     return out;
   }, [slotMap]);
 
-  const lastClickRef = useRef(0);
+  const showInfo = (slotKey, occ) => {
+    const cid = occ?.matricula_contenedor
+      ? String(occ.matricula_contenedor).toUpperCase()
+      : null;
+    const msg = cid
+      ? `Posición: ${slotKey}\nContenedor: ${cid}`
+      : `Posición: ${slotKey}\nLibre`;
+    alert(msg);
+  };
 
-  const handleSlotPointerDown = (slotKey, occ) => (e) => {
+  const handleTouchDown = (slotKey, occ) => (e) => {
+    if (e.pointerType !== "touch") return;
     const now = performance.now();
-    const delta = now - lastClickRef.current;
-    lastClickRef.current = now;
-
-    // dublu-click / dublu-tap ≈ 320ms
+    const delta = now - lastTapRef.current;
+    lastTapRef.current = now;
     if (delta < 320) {
-      e.stopPropagation();
-      const cid = occ?.matricula_contenedor
-        ? String(occ.matricula_contenedor).toUpperCase()
-        : null;
-      const msg = cid
-        ? `Posición: ${slotKey}\nContenedor: ${cid}`
-        : `Posición: ${slotKey}\nLibre`;
-      alert(msg);
+      // double-tap
+      showInfo(slotKey, occ);
     }
+    // NU oprim propagarea → OrbitControls continuă să funcționeze
+  };
+
+  const handleDoubleClick = (slotKey, occ) => (e) => {
+    e.stopPropagation(); // doar pentru evenimentul de dublu click
+    showInfo(slotKey, occ);
   };
 
   return (
     <>
-      {/* cer + lumini */}
+      {/* cer + lumini ca să nu fie întunecat */}
       <color attach="background" args={["#020617"]} />
       <hemisphereLight
         skyColor={new THREE.Color("#1f2937")}
         groundColor={new THREE.Color("#020617")}
-        intensity={0.8}
+        intensity={0.9}
       />
       <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 20, 10]} intensity={1.1} />
+      <directionalLight position={[15, 25, 10]} intensity={1.1} />
 
       {/* grid pe sol */}
       <gridHelper args={[80, 40, "#1f2937", "#111827"]} position={[0, 0, 0]} />
 
-      {/* camera orbită */}
       <OrbitControls
         makeDefault
         enableDamping
         dampingFactor={0.08}
         enablePan={false}
-        minDistance={15}
-        maxDistance={60}
+        minDistance={18}
+        maxDistance={70}
         maxPolarAngle={Math.PI / 2.1}
       />
 
-      {/* cuburi pentru fiecare slot */}
       {slots.map((slot) => {
         const { lane, index, tier, key, occupied, container } = slot;
-
-        const { position } = slotToWorld(
-          {
-            lane,
-            index,
-            tier,
-            sizeFt: 20, // 🔹 slot standard; nu desenăm containerul real aici
-          },
-          {
-            abcOffsetX: 0,
-            defOffsetX: 0,
-            abcToDefGap: -12,
-            abcNumbersReversed: false,
-          }
-        );
+        const position = slotToMiniPos(lane, index, tier);
 
         const color = occupied ? "#ef4444" : "#22c55e";
         const opacity = occupied ? 0.9 : 0.35;
@@ -118,10 +115,11 @@ function MiniMapScene({ slotMap }) {
           <mesh
             key={key}
             position={position}
-            onPointerDown={handleSlotPointerDown(key, container)}
+            onPointerDown={handleTouchDown(key, container)}  // dublu tap mobil
+            onDoubleClick={handleDoubleClick(key, container)} // dublu click desktop
           >
-            {/* cub ușor „întins” ca să semene cu un slot */}
-            <boxGeometry args={[5.6, 2, 2.6]} />
+            {/* un cub 20' generic; nu contează exact dimensiunea */}
+            <boxGeometry args={[3.0, 1.2, 1.8]} />
             <meshStandardMaterial
               color={color}
               transparent
@@ -134,13 +132,11 @@ function MiniMapScene({ slotMap }) {
   );
 }
 
-/* ---- Componentă principală: buton + popup cu Canvas ---- */
 export default function DepotMiniMap3D({ slotMap }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {/* butonul de deschidere – îl păstrăm (îl poți scoate mai târziu) */}
       <div className={styles.openBtnWrap}>
         <button
           type="button"
@@ -151,17 +147,16 @@ export default function DepotMiniMap3D({ slotMap }) {
         </button>
       </div>
 
-      {!open ? null : (
-        <div
-          className={styles.overlay}
-          onClick={() => setOpen(false)}
-        >
+      {open && (
+        <div className={styles.overlay} onClick={() => setOpen(false)}>
           <div
             className={styles.sheet}
             onClick={(e) => e.stopPropagation()}
           >
             <header className={styles.sheetHeader}>
-              <h3 className={styles.sheetTitle}>Mini-mapa 3D · A-F / niveles A-E</h3>
+              <h3 className={styles.sheetTitle}>
+                Mini-mapa 3D · A–F / niveles A–E
+              </h3>
               <button
                 type="button"
                 className={styles.closeBtn}
@@ -173,7 +168,7 @@ export default function DepotMiniMap3D({ slotMap }) {
 
             <div className={styles.canvasWrap}>
               <Canvas
-                camera={{ position: [25, 25, 25], fov: 45 }}
+                camera={{ position: [25, 30, 25], fov: 45 }}
                 style={{ width: "100%", height: "100%" }}
               >
                 <MiniMapScene slotMap={slotMap || {}} />
@@ -190,7 +185,7 @@ export default function DepotMiniMap3D({ slotMap }) {
                 Ocupado (contenedor)
               </div>
               <span className={styles.hint}>
-                Doble clic / tap pe un cub pentru a vedea poziția.
+                Doble clic / doble tap pe un cub pentru poziție.
               </span>
             </footer>
           </div>
