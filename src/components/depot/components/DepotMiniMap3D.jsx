@@ -2,89 +2,182 @@
 import React, { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import styles from "../DepotPage.module.css";
+import * as THREE from "three";
 
-// aceleași rânduri ca în minimap 2D
-const FILAS = ["A", "B", "C", "D", "E", "F"];
-const maxForFila = (f) => (["A", "B", "C"].includes(f) ? 10 : 7);
+import Modal from "../../ui/Modal";
+import shell from "../../ui/Modal.module.css";
+import { slotToWorld } from "../../threeWorld/slotToWorld";
 
-// mic helper coordonate grilă
-function getSlotPosition(fila, num) {
-  const filaIndex = FILAS.indexOf(fila); // 0..5
-  const x = filaIndex * 1.2;            // distanță între rânduri
-  const z = (num - 1) * 1.2;            // distanță între coloane
-  return [x, 0, z];
+/**
+ * Parsează un key de tip "A2A" -> { lane:'A', index:2, tier:'A' }
+ */
+function parseSlotKey(key) {
+  const m = /^([A-F])(10|[1-9])([A-E])$/.exec(String(key || "").toUpperCase());
+  if (!m) return null;
+  return {
+    lane: m[1],
+    index: Number(m[2]),
+    tier: m[3],
+  };
 }
 
-function SlotCube({ fila, num, slotMap }) {
-  const key = `${fila}${num}A`;
-  const occ = slotMap[key];
+/**
+ * Cub simplu care reprezintă un container în mini-map
+ */
+function MiniContainer({ slotKey, tipo }) {
+  const parsed = parseSlotKey(slotKey);
+  if (!parsed) return null;
 
-  const [color, height] = useMemo(() => {
-    if (!occ) return ["#1f2933", 0.18];             // liber
-    if (occ.__from === "contenedores_rotos") return ["#f97373", 0.35]; // roșu – defect
-    if (occ.__from === "programados") return ["#facc15", 0.32];        // galben – programat
-    return ["#22c55e", 0.32];                       // verde – în depozit
-  }, [occ]);
+  const sizeFt = tipo === "40" || tipo === "45" ? 40 : 20;
 
-  const [x, y, z] = getSlotPosition(fila, num);
+  const { position, rotationY, sizeMeters } = slotToWorld(
+    {
+      lane: parsed.lane,
+      index: parsed.index,
+      tier: parsed.tier,
+      sizeFt,
+    },
+    {
+      abcOffsetX: 0,
+      defOffsetX: 0,
+      abcToDefGap: -10,
+      abcNumbersReversed: false,
+    }
+  );
 
   return (
-    <mesh position={[x, y + height / 2, z]}>
-      {/* bază container-slot */}
-      <boxGeometry args={[1.0, height, 1.0]} />
-      <meshStandardMaterial color={color} metalness={0.2} roughness={0.4} />
+    <mesh position={position} rotation-y={rotationY}>
+      <boxGeometry
+        args={[
+          sizeMeters.len * 0.9, // puțin mai mic decât slotul
+          sizeMeters.ht * 0.9,
+          sizeMeters.wid * 0.9,
+        ]}
+      />
+      <meshStandardMaterial
+        color={sizeFt === 20 ? "#22c55e" : "#3b82f6"}
+        metalness={0.2}
+        roughness={0.4}
+      />
     </mesh>
   );
 }
 
+/**
+ * Ground simplu pentru referință
+ */
+function MiniGround() {
+  return (
+    <mesh rotation-x={-Math.PI / 2} receiveShadow>
+      <planeGeometry args={[80, 80]} />
+      <meshStandardMaterial color="#111827" roughness={0.9} />
+    </mesh>
+  );
+}
+
+/**
+ * Scena 3D propriu-zisă
+ */
 function MiniMapScene({ slotMap }) {
+  const items = useMemo(
+    () =>
+      Object.entries(slotMap || {}).map(([key, value]) => ({
+        key,
+        tipo: value?.tipo || "20",
+      })),
+    [slotMap]
+  );
+
   return (
     <>
-      {/* lumină */}
-      <ambientLight intensity={0.6} />
+      {/* 💡 LUMINI */}
+      <ambientLight intensity={0.55} />
       <directionalLight
-        position={[6, 10, 8]}
         intensity={0.9}
+        position={[12, 20, 10]}
         castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <hemisphereLight
+        intensity={0.35}
+        skyColor={"#e5e7eb"}
+        groundColor={"#020617"}
       />
 
-      {/* “platformă” */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[12, 14]} />
-        <meshStandardMaterial color="#020617" />
-      </mesh>
+      <MiniGround />
 
-      {/* grila de sloturi */}
-      {FILAS.map((fila) => {
-        const max = maxForFila(fila);
-        return Array.from({ length: max }, (_, i) => i + 1).map((num) => (
-          <SlotCube key={`${fila}${num}`} fila={fila} num={num} slotMap={slotMap} />
-        ));
-      })}
+      {items.map((it) => (
+        <MiniContainer key={it.key} slotKey={it.key} tipo={it.tipo} />
+      ))}
+
+      <OrbitControls
+        enablePan={false}
+        maxPolarAngle={Math.PI / 2.15}
+        minPolarAngle={0.4}
+      />
     </>
   );
 }
 
-export default function DepotMiniMap3D({ slotMap }) {
+/**
+ * Popup 3D MiniMap
+ */
+export default function DepotMiniMap3D({ slotMap, onClose }) {
   return (
-    <div className={styles.mini3dWrap}>
-      <div className={styles.mini3dHeader}>
-        Mapa 3D rápido (A–F · nivel A)
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      ariaLabel="Mapa rápida 3D del depósito"
+      fillOnMobile
+    >
+      {/* Header identic cu restul modalelor */}
+      <div className={shell.slotHeader}>
+        <h3 style={{ margin: 0 }}>Mapa rápida 3D</h3>
+        <button
+          type="button"
+          className={shell.closeIcon}
+          onClick={onClose}
+          aria-label="Cerrar mapa 3D"
+        >
+          ✕
+        </button>
       </div>
-      <Canvas
-        camera={{ position: [6, 8, 10], fov: 45 }}
-        shadows
-      >
-        <MiniMapScene slotMap={slotMap} />
-        <OrbitControls
-          enablePan={false}
-          maxPolarAngle={Math.PI / 2.1}
-          minPolarAngle={0.3}
-          minDistance={6}
-          maxDistance={18}
-        />
-      </Canvas>
-    </div>
+
+      {/* Content */}
+      <div className={shell.slotContent}>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "640px",
+            height: "360px",
+            borderRadius: "16px",
+            overflow: "hidden",
+            boxShadow: "0 18px 40px rgba(0,0,0,.55)",
+            background: "radial-gradient(circle at top, #111827 0, #020617 60%)",
+          }}
+        >
+          <Canvas
+            shadows
+            camera={{ position: [18, 20, 24], fov: 45, near: 0.1, far: 200 }}
+          >
+            {/* Ușor fog pentru profunzime */}
+            <fog attach="fog" args={["#020617", 20, 90]} />
+            <MiniMapScene slotMap={slotMap} />
+          </Canvas>
+        </div>
+
+        <p
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            opacity: 0.75,
+          }}
+        >
+          Verde = 20&apos;, Albastru = 40&apos;/45&apos;. Poziții ABC orizontal, DEF
+          vertical.
+        </p>
+      </div>
+    </Modal>
   );
 }
