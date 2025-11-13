@@ -1,372 +1,198 @@
 // src/components/depot/components/DepotMiniMap3D.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useMemo, useRef } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { slotToWorld } from "../map/threeWorld/slotToWorld.js";
 
-export default function DepotMiniMap3D({ slotMap }) {
-  const [open, setOpen] = useState(false);
-  const mountRef = useRef(null);
+import { slotToWorld } from "../map/threeWorld/slotToWorld";
+import styles from "./DepotMiniMap3D.module.css";
 
-  useEffect(() => {
-    if (!open || !mountRef.current) return;
+/* ---- helper: parse key "A10B" -> { lane:'A', index:10, tier:'B' } ---- */
+function parseSlotKey(key) {
+  const m = /^([A-F])(10|[1-9])([A-E])$/.exec(String(key || "").toUpperCase());
+  if (!m) return null;
+  return {
+    lane: m[1],
+    index: Number(m[2]),
+    tier: m[3],
+  };
+}
 
-    const mountEl = mountRef.current;
-    const width = mountEl.clientWidth || 600;
-    const height = mountEl.clientHeight || 400;
+/* ---- Scene cu toate sloturile A-F, nivele A-E ---- */
+function MiniMapScene({ slotMap }) {
+  const lanes = ["A", "B", "C", "D", "E", "F"];
+  const tiers = ["A", "B", "C", "D", "E"];
 
-    // --- SCENĂ + CAMERĂ + RENDERER ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b1120); // cer albastru foarte închis
-
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 200);
-    camera.position.set(16, 16, 24);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    mountEl.appendChild(renderer.domElement);
-
-    // --- ORBIT CONTROLS ---
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.target.set(0, 0.5, 0);
-    controls.minDistance = 10;
-    controls.maxDistance = 50;
-    controls.maxPolarAngle = Math.PI / 2; // nu lăsăm camera sub sol
-    controls.update();
-
-    // --- LUMINI ---
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1f2933, 0.9);
-    scene.add(hemiLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(12, 20, 10);
-    scene.add(dirLight);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.25);
-    scene.add(ambient);
-
-    // --- GROUND / PLATFORMĂ ---
-    const groundGeo = new THREE.PlaneGeometry(40, 40);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x020617,
-      roughness: 0.95,
-      metalness: 0.05,
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0;
-    scene.add(ground);
-
-    const grid = new THREE.GridHelper(40, 20, 0x4b5563, 0x1f2937);
-    grid.position.y = 0.01;
-    scene.add(grid);
-
-    // --- CUBURI SLOTURI ---
-    const cubesGroup = new THREE.Group();
-    scene.add(cubesGroup);
-
-    const matFreeBase = new THREE.MeshStandardMaterial({
-      color: 0x22c55e,
-      transparent: true,
-      opacity: 0.35,
-      roughness: 0.7,
-      metalness: 0.1,
-    });
-
-    const matOccBase = new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      transparent: true,
-      opacity: 0.95,
-      roughness: 0.5,
-      metalness: 0.2,
-    });
-
-    const boxGeo = new THREE.BoxGeometry(5.5, 2.8, 2.6); // aproximativ 20'
-
-    const lanes = ["A", "B", "C", "D", "E", "F"];
-
+  // pregătim o listă cu toate sloturile posibile + dacă sunt ocupate
+  const slots = useMemo(() => {
+    const out = [];
     lanes.forEach((lane) => {
-      const isABC = ["A", "B", "C"].includes(lane);
-      const max = isABC ? 10 : 7;
-
-      for (let index = 1; index <= max; index += 1) {
-        const slotKey = `${lane}${index}A`;
-        const occupiedInfo = slotMap?.[slotKey] || null;
-
-        let world;
-        try {
-          world = slotToWorld(
-            { lane, index, tier: "A", sizeFt: 20 },
-            {
-              abcOffsetX: 0,
-              defOffsetX: 0,
-              abcToDefGap: -6,
-              abcNumbersReversed: false,
-            }
-          );
-        } catch {
-          continue;
-        }
-
-        const mesh = new THREE.Mesh(
-          boxGeo,
-          (occupiedInfo ? matOccBase : matFreeBase).clone()
-        );
-        mesh.position.copy(world.position);
-        mesh.rotation.y = world.rotationY;
-        mesh.userData.slotKey = slotKey;
-        mesh.userData.container = occupiedInfo || null;
-        cubesGroup.add(mesh);
-      }
-    });
-
-    // --- ANIMAȚIE ---
-    let frameId;
-    const clock = new THREE.Clock();
-
-    const animate = () => {
-      frameId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
-      // ușor breathing pentru efect
-      cubesGroup.position.y = 0.05 * Math.sin(t * 0.8);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    // --- PICKING: dublu click & double tap ---
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-
-    const pickAtClientCoords = (clientX, clientY) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      const x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((clientY - rect.top) / rect.height) * 2 + 1;
-      pointer.set(x, y);
-
-      raycaster.setFromCamera(pointer, camera);
-      const intersects = raycaster.intersectObjects(
-        cubesGroup.children,
-        false
-      );
-      if (intersects.length === 0) return;
-
-      const obj = intersects[0].object;
-      const { slotKey, container } = obj.userData || {};
-      if (!slotKey) return;
-
-      if (container) {
-        const cid = (container.matricula_contenedor || "").toUpperCase();
-        alert(`Posición: ${slotKey}\nContenedor: ${cid || "desconocido"}`);
-      } else {
-        alert(`Posición libre: ${slotKey}`);
-      }
-    };
-
-    const handleDblClick = (event) => {
-      event.preventDefault();
-      pickAtClientCoords(event.clientX, event.clientY);
-    };
-
-    let lastTap = 0;
-    const handleTouchEnd = (event) => {
-      const now = performance.now();
-      const delta = now - lastTap;
-      lastTap = now;
-
-      if (delta > 300) return; // nu e double tap
-
-      const touch = event.changedTouches[0];
-      if (!touch) return;
-      pickAtClientCoords(touch.clientX, touch.clientY);
-    };
-
-    renderer.domElement.addEventListener("dblclick", handleDblClick);
-    renderer.domElement.addEventListener("touchend", handleTouchEnd);
-
-    // --- RESIZE ---
-    const handleResize = () => {
-      if (!mountRef.current) return;
-      const w = mountRef.current.clientWidth || width;
-      const h = mountRef.current.clientHeight || height;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener("resize", handleResize);
-
-    // --- CLEANUP ---
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("dblclick", handleDblClick);
-      renderer.domElement.removeEventListener("touchend", handleTouchEnd);
-
-      if (mountEl.contains(renderer.domElement)) {
-        mountEl.removeChild(renderer.domElement);
-      }
-
-      scene.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.geometry?.dispose();
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach((m) => m.dispose && m.dispose());
-          } else {
-            obj.material?.dispose();
-          }
+      const max = ["A", "B", "C"].includes(lane) ? 10 : 7;
+      tiers.forEach((tier) => {
+        for (let index = 1; index <= max; index++) {
+          const key = `${lane}${index}${tier}`;
+          const occ = slotMap[key] || null;
+          out.push({
+            key,
+            lane,
+            index,
+            tier,
+            occupied: !!occ,
+            container: occ,
+          });
         }
       });
-      controls.dispose();
-      renderer.dispose();
-    };
-  }, [open, slotMap]);
+    });
+    return out;
+  }, [slotMap]);
+
+  const lastClickRef = useRef(0);
+
+  const handleSlotPointerDown = (slotKey, occ) => (e) => {
+    const now = performance.now();
+    const delta = now - lastClickRef.current;
+    lastClickRef.current = now;
+
+    // dublu-click / dublu-tap ≈ 320ms
+    if (delta < 320) {
+      e.stopPropagation();
+      const cid = occ?.matricula_contenedor
+        ? String(occ.matricula_contenedor).toUpperCase()
+        : null;
+      const msg = cid
+        ? `Posición: ${slotKey}\nContenedor: ${cid}`
+        : `Posición: ${slotKey}\nLibre`;
+      alert(msg);
+    }
+  };
 
   return (
     <>
-      {/* butonul – îl poți muta mai sus sau șterge când vrei */}
-      <div style={{ margin: "8px 0 4px" }}>
+      {/* cer + lumini */}
+      <color attach="background" args={["#020617"]} />
+      <hemisphereLight
+        skyColor={new THREE.Color("#1f2937")}
+        groundColor={new THREE.Color("#020617")}
+        intensity={0.8}
+      />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[10, 20, 10]} intensity={1.1} />
+
+      {/* grid pe sol */}
+      <gridHelper args={[80, 40, "#1f2937", "#111827"]} position={[0, 0, 0]} />
+
+      {/* camera orbită */}
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.08}
+        enablePan={false}
+        minDistance={15}
+        maxDistance={60}
+        maxPolarAngle={Math.PI / 2.1}
+      />
+
+      {/* cuburi pentru fiecare slot */}
+      {slots.map((slot) => {
+        const { lane, index, tier, key, occupied, container } = slot;
+
+        const { position } = slotToWorld(
+          {
+            lane,
+            index,
+            tier,
+            sizeFt: 20, // 🔹 slot standard; nu desenăm containerul real aici
+          },
+          {
+            abcOffsetX: 0,
+            defOffsetX: 0,
+            abcToDefGap: -12,
+            abcNumbersReversed: false,
+          }
+        );
+
+        const color = occupied ? "#ef4444" : "#22c55e";
+        const opacity = occupied ? 0.9 : 0.35;
+
+        return (
+          <mesh
+            key={key}
+            position={position}
+            onPointerDown={handleSlotPointerDown(key, container)}
+          >
+            {/* cub ușor „întins” ca să semene cu un slot */}
+            <boxGeometry args={[5.6, 2, 2.6]} />
+            <meshStandardMaterial
+              color={color}
+              transparent
+              opacity={opacity}
+            />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+/* ---- Componentă principală: buton + popup cu Canvas ---- */
+export default function DepotMiniMap3D({ slotMap }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* butonul de deschidere – îl păstrăm (îl poți scoate mai târziu) */}
+      <div className={styles.openBtnWrap}>
         <button
           type="button"
+          className={styles.openBtn}
           onClick={() => setOpen(true)}
-          style={{
-            padding: "6px 10px",
-            borderRadius: 999,
-            border: "1px solid rgba(148,163,184,0.7)",
-            background: "rgba(15,23,42,0.85)",
-            color: "#e5e7eb",
-            fontSize: 12,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            cursor: "pointer",
-          }}
         >
-          <span>🧊 Ver mini-mapa 3D de slots</span>
+          Mini-mapa 3D
         </button>
       </div>
 
-      {open && (
+      {!open ? null : (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            zIndex: 3000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
+          className={styles.overlay}
           onClick={() => setOpen(false)}
         >
           <div
-            style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: 900,
-              height: "70vh",
-              maxHeight: 620,
-              borderRadius: 16,
-              overflow: "hidden",
-              border: "1px solid rgba(148,163,184,0.6)",
-              background:
-                "radial-gradient(circle at top, #1e293b 0, #020617 55%, #000 100%)",
-              boxShadow: "0 18px 60px rgba(0,0,0,0.65)",
-            }}
+            className={styles.sheet}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* header */}
-            <div
-              style={{
-                position: "absolute",
-                insetInline: 0,
-                top: 0,
-                padding: "8px 12px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                zIndex: 10,
-                background:
-                  "linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(15,23,42,0))",
-              }}
-            >
-              <div style={{ fontSize: 13, color: "#e5e7eb" }}>
-                Mini-mapa 3D · A-F / nivel A
-              </div>
+            <header className={styles.sheetHeader}>
+              <h3 className={styles.sheetTitle}>Mini-mapa 3D · A-F / niveles A-E</h3>
               <button
                 type="button"
+                className={styles.closeBtn}
                 onClick={() => setOpen(false)}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "999px",
-                  border: "1px solid rgba(148,163,184,0.7)",
-                  background: "rgba(15,23,42,0.9)",
-                  color: "#e5e7eb",
-                  fontSize: 16,
-                  lineHeight: 1,
-                  cursor: "pointer",
-                }}
               >
                 ✕
               </button>
+            </header>
+
+            <div className={styles.canvasWrap}>
+              <Canvas
+                camera={{ position: [25, 25, 25], fov: 45 }}
+                style={{ width: "100%", height: "100%" }}
+              >
+                <MiniMapScene slotMap={slotMap || {}} />
+              </Canvas>
             </div>
 
-            {/* legendă */}
-            <div
-              style={{
-                position: "absolute",
-                left: 12,
-                bottom: 10,
-                zIndex: 10,
-                padding: "6px 10px",
-                borderRadius: 999,
-                background: "rgba(15,23,42,0.88)",
-                border: "1px solid rgba(148,163,184,0.7)",
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                fontSize: 11,
-                color: "#cbd5f5",
-              }}
-            >
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 3,
-                  background: "#22c55e",
-                  opacity: 0.6,
-                }}
-              />{" "}
-              Libre
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 3,
-                  background: "#ef4444",
-                  opacity: 0.95,
-                  marginLeft: 8,
-                }}
-              />{" "}
-              Ocupado (contenedor)
-            </div>
-
-            {/* canvas */}
-            <div
-              ref={mountRef}
-              style={{
-                width: "100%",
-                height: "100%",
-              }}
-            />
+            <footer className={styles.legend}>
+              <div className={styles.legendItem}>
+                <span className={`${styles.dot} ${styles.dotFree}`} />
+                Libre
+              </div>
+              <div className={styles.legendItem}>
+                <span className={`${styles.dot} ${styles.dotBusy}`} />
+                Ocupado (contenedor)
+              </div>
+              <span className={styles.hint}>
+                Doble clic / tap pe un cub pentru a vedea poziția.
+              </span>
+            </footer>
           </div>
         </div>
       )}
