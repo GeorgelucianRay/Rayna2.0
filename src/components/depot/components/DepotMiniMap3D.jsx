@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 import Modal from "../../ui/Modal";
 import shell from "../../ui/Modal.module.css";
-import { slotToWorld } from "../../threeWorld/slotToWorld";
+import { slotToWorld } from "../map/threeWorld/slotToWorld.js";
 
 /**
  * Parsează un key de tip "A2A" -> { lane:'A', index:2, tier:'A' }
