@@ -1,5 +1,5 @@
 // src/components/depot/modals/AddContainerModal.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
 import styles from './AddContainerModal.module.css';
@@ -61,16 +61,41 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
   }, [composed]);
 
   const canSave = useMemo(() => {
-    const okMat = (matricula || '').trim().length >= 4;   // nu te blochez pe 11 caractere
+    const okMat = (matricula || '').trim().length >= 4;
     return okMat && validPos;
   }, [matricula, validPos]);
+
+  // 🔄 Reset form – totul la valori inițiale
+  const resetForm = () => {
+    setMatricula('');
+    setNaviera('');
+    setTipo('20');
+    setEstado('Lleno');
+    setDetalles('');
+    setMatCamion('');
+    setIsBroken(false);
+
+    setPending(false);
+    setFila('A');
+    setNum(1);
+    setNivel('A');
+    setFreeInput('');
+    setMode('picker');
+  };
+
+  // Când modalul se închide => curățăm form-ul
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
 
   // === Submit ===
   const handleAdd = async (e) => {
     e?.preventDefault?.();
 
     if (!canSave) {
-      alert('Completează corect: matrículă + posición.');
+      alert('Completează corect: matrícula + posición.');
       return;
     }
 
@@ -86,7 +111,6 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
       ? { ...baseData, detalles: detalles || null }
       : { ...baseData, estado, detalles: null };
 
-    // 🔎 DEBUG vizibil în ErrorTray/console
     try {
       window.__raynaLog?.('AddContainerModal:onAdd -> payload', { data, isBroken }, 'info');
 
@@ -96,11 +120,11 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
         return;
       }
 
-      // așteptăm handler-ul părinte (inserția efectivă)
-      await onAdd(data, isBroken);
+      await onAdd(data, isBroken);   // insert în Supabase (în DepotPage)
 
-      // dacă nu a aruncat eroare, închidem modalul
-      onClose?.();
+      // ✅ dacă totul a mers bine:
+      resetForm();                   // curățăm câmpurile
+      onClose?.();                   // închidem modalul
     } catch (err) {
       console.error('[AddContainerModal] onAdd failed:', err);
       window.__raynaLog?.('AddContainerModal:onAdd ERROR', { message: err?.message, err }, 'error');
@@ -237,9 +261,7 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
                         onChange={(e) => setNum(Number(e.target.value))}
                       >
                         {numerosDisponibles.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
+                          <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
                     </div>
@@ -251,9 +273,7 @@ export default function AddContainerModal({ isOpen, onClose, onAdd }) {
                         onChange={(e) => setNivel(e.target.value)}
                       >
                         {niveles.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
+                          <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
                     </div>
