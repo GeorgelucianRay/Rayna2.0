@@ -1,7 +1,8 @@
+// src/components/depot/modals/EditContainerModal.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../../ui/Modal';
 import shell from '../../ui/Modal.module.css';
-import styles from './AddContainerModal.module.css'; // 🔹 același CSS ca AddContainerModal
+import styles from './AddContainerModal.module.css'; // folosim același CSS
 import { useAuth } from '../../../AuthContext';
 
 /* ===== Helper poziție ===== */
@@ -19,7 +20,7 @@ function parsePos(s) {
   return { fila, num, nivel };
 }
 const composePos = ({ fila, num, nivel, pending }) =>
-  pending ? 'PENDIENTE' : (fila && num && nivel ? `${fila}${num}${nivel}` : '');
+  pending ? 'PENDIENTE' : `${fila}${num}${nivel}`;
 /* ========================================== */
 
 export default function EditContainerModal({
@@ -29,6 +30,7 @@ export default function EditContainerModal({
   editPosicion,
   setEditPosicion,
   selectedContainer,
+  validatePosition // 🔥 NOU
 }) {
   const { profile } = useAuth();
   const role = profile?.role || 'guest';
@@ -53,42 +55,42 @@ export default function EditContainerModal({
   const [freeInput, setFreeInput] = useState('');
   const [mode, setMode] = useState('picker');
 
-  const filas = ['A', 'B', 'C', 'D', 'E', 'F'];
-  const niveles = ['A', 'B', 'C', 'D', 'E'];
+  const filas = ['A','B','C','D','E','F'];
+  const niveles = ['A','B','C','D','E'];
+
   const numerosDisponibles = useMemo(() => {
-    const max = ['A', 'B', 'C'].includes(fila) ? 10 : 7;
+    const max = ['A','B','C'].includes(fila) ? 10 : 7;
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [fila]);
 
   const composed = useMemo(() => {
     if (mode === 'manual') return (freeInput || '').toUpperCase();
     return composePos({ fila, num, nivel, pending });
-  }, [mode, freeInput, fila, num, nivel, pending]);
+  }, [fila, num, nivel, pending, mode, freeInput]);
 
   const validPos = useMemo(() => {
     const p = parsePos(composed);
-    return !!p || composed === 'PENDIENTE';
+    return p || composed === 'PENDIENTE';
   }, [composed]);
 
-  /* === Initialize when opening === */
+  /* === initialize on open === */
   useEffect(() => {
     if (!isOpen || !selectedContainer) return;
+
     setMatricula(selectedContainer.matricula_contenedor || '');
     setNaviera(selectedContainer.naviera || '');
     setTipo(String(selectedContainer.tipo || '20'));
     setEstado(selectedContainer.estado || 'Lleno');
     setDetalles(selectedContainer.detalles || '');
     setMatCamion(selectedContainer.matricula_camion || '');
-    setIsBroken(selectedContainer.detalles ? true : false);
+    setIsBroken(!!selectedContainer.detalles);
 
     const parsed = parsePos(editPosicion || selectedContainer.posicion || '');
     if (parsed?.pending) {
       setPending(true);
-      setFila('A');
-      setNum(1);
-      setNivel('A');
-      setFreeInput('PENDIENTE');
       setMode('picker');
+      setFreeInput('PENDIENTE');
+      setFila('A'); setNum(1); setNivel('A');
     } else if (parsed) {
       setPending(false);
       setFila(parsed.fila);
@@ -97,26 +99,43 @@ export default function EditContainerModal({
       setFreeInput(composePos(parsed));
       setMode('picker');
     } else {
-      const raw = String(editPosicion || selectedContainer.posicion || '').toUpperCase();
+      const raw = (editPosicion || selectedContainer.posicion || '').toUpperCase();
       setPending(raw === 'PENDIENTE');
       setFreeInput(raw);
       setMode('manual');
     }
+
   }, [isOpen, selectedContainer, editPosicion]);
 
-  /* === Submit === */
-  const handleSave = (e) => {
+  /* === SAVE === */
+  const handleSave = async (e) => {
     e.preventDefault();
+
     if (!validPos) {
       alert('Posición inválida');
       return;
     }
 
+    const newPos = composed.toUpperCase();
+    const oldPos = (selectedContainer.posicion || '').toUpperCase();
+    const tipoContainer = selectedContainer.tipo || '20';
+    const matriculaContainer = (selectedContainer.matricula_contenedor || '').toUpperCase();
+
+    // 🔥 verificare coliziuni (dacă s-a schimbat poziția)
+    if (newPos !== oldPos && validatePosition) {
+      const res = await validatePosition(newPos, tipoContainer, matriculaContainer);
+      if (!res.ok) {
+        const { matricula_contenedor, posicion } = res.conflict;
+        alert(`Lo siento, la posición está ocupada por ${matricula_contenedor} (${posicion})`);
+        return; // NU închidem modalul
+      }
+    }
+
     const patch = {
-      posicion: composed.toUpperCase(),
-      matricula_contenedor: (matricula || '').toUpperCase(),
+      posicion: newPos,
+      matricula_contenedor: matricula.toUpperCase(),
       naviera: naviera || null,
-      tipo,
+      tipo: tipo,
       matricula_camion: matCamion || null,
     };
 
@@ -128,7 +147,7 @@ export default function EditContainerModal({
       patch.detalles = null;
     }
 
-    setEditPosicion(patch.posicion);
+    setEditPosicion(newPos);
     onSubmit(e, patch);
   };
 
@@ -136,36 +155,36 @@ export default function EditContainerModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} ariaLabel="Editar Contenedor" fillOnMobile>
-      {/* Header */}
+      {/* HEADER */}
       <div className={shell.slotHeader}>
         <h3 className={styles.title}>Editar Contenedor</h3>
         <p className={styles.subtitle}>
-          {selectedContainer?.matricula_contenedor || '—'}
+          {(selectedContainer.matricula_contenedor || '').toUpperCase()}
         </p>
       </div>
 
-      {/* Content */}
+      {/* BODY */}
       <div className={shell.slotContent}>
         <div className={styles.ios}>
-          {/* === Câmpuri doar pt admin/dispecer === */}
+
+          {/* === Admin / Dispecer pot edita TOT === */}
           {isPrivileged && (
             <>
               <div className={styles.grid2}>
                 <div className={styles.block}>
                   <span className={styles.label}>Matrícula</span>
-                  <input
-                    className={styles.input}
+                  <input className={styles.input}
                     value={matricula}
-                    onChange={(e) => setMatricula(e.target.value.toUpperCase())}
+                    onChange={(e)=> setMatricula(e.target.value.toUpperCase())}
                     style={{ textTransform: 'uppercase' }}
                   />
                 </div>
+
                 <div className={styles.block}>
                   <span className={styles.label}>Naviera</span>
-                  <input
-                    className={styles.input}
+                  <input className={styles.input}
                     value={naviera}
-                    onChange={(e) => setNaviera(e.target.value)}
+                    onChange={(e)=> setNaviera(e.target.value)}
                   />
                 </div>
               </div>
@@ -173,24 +192,21 @@ export default function EditContainerModal({
               <div className={styles.grid2}>
                 <div className={styles.block}>
                   <span className={styles.label}>Tipo</span>
-                  <select
-                    className={styles.select}
+                  <select className={styles.select}
                     value={tipo}
-                    onChange={(e) => setTipo(e.target.value)}
-                  >
+                    onChange={(e)=> setTipo(e.target.value)}>
                     <option>20</option>
                     <option>40</option>
                     <option>45</option>
                   </select>
                 </div>
+
                 {!isBroken && (
                   <div className={styles.block}>
                     <span className={styles.label}>Estado</span>
-                    <select
-                      className={styles.select}
+                    <select className={styles.select}
                       value={estado}
-                      onChange={(e) => setEstado(e.target.value)}
-                    >
+                      onChange={(e)=> setEstado(e.target.value)}>
                       <option>Lleno</option>
                       <option>Vacío</option>
                     </select>
@@ -198,14 +214,13 @@ export default function EditContainerModal({
                 )}
               </div>
 
-              {/* === Marcar como roto === */}
               <label className={styles.switchRow}>
                 <span className={styles.label}>Marcar como roto</span>
                 <label className={styles.switch}>
                   <input
                     type="checkbox"
                     checked={isBroken}
-                    onChange={(e) => setIsBroken(e.target.checked)}
+                    onChange={(e)=> setIsBroken(e.target.checked)}
                   />
                   <span className={styles.switchTrack}></span>
                   <span className={styles.switchThumb}></span>
@@ -214,33 +229,36 @@ export default function EditContainerModal({
             </>
           )}
 
-          {/* === Selector de posición === */}
+          {/* === MECANICUL poate edita doar poziția === */}
+          {isMechanic && (
+            <div className={styles.blockInfo}>
+              <p>Modo mecánico: solo puedes cambiar la posición.</p>
+            </div>
+          )}
+
+          {/* === SELECTOR POZIȚIE === */}
           <div className={styles.segment}>
-            <button
-              type="button"
+            <button type="button"
               className={`${styles.segmentBtn} ${mode === 'picker' ? styles.active : ''}`}
-              onClick={() => setMode('picker')}
-            >
+              onClick={()=> setMode('picker')}>
               Selector
             </button>
-            <button
-              type="button"
+
+            <button type="button"
               className={`${styles.segmentBtn} ${mode === 'manual' ? styles.active : ''}`}
-              onClick={() => setMode('manual')}
-            >
+              onClick={()=> setMode('manual')}>
               Manual
             </button>
           </div>
 
+          {/* PICKER */}
           {mode === 'picker' ? (
             <>
               <label className={styles.switchRow}>
                 <span className={styles.label}>Pendiente</span>
                 <label className={styles.switch}>
-                  <input
-                    type="checkbox"
-                    checked={pending}
-                    onChange={(e) => setPending(e.target.checked)}
+                  <input type="checkbox" checked={pending}
+                    onChange={(e)=> setPending(e.target.checked)}
                   />
                   <span className={styles.switchTrack}></span>
                   <span className={styles.switchThumb}></span>
@@ -252,13 +270,10 @@ export default function EditContainerModal({
                   <div className={styles.block}>
                     <span className={styles.label}>Fila</span>
                     <div className={styles.pills}>
-                      {filas.map((f) => (
-                        <button
-                          key={f}
-                          type="button"
+                      {filas.map((f)=>(
+                        <button key={f} type="button"
                           className={`${styles.pill} ${fila === f ? styles.pillActive : ''}`}
-                          onClick={() => setFila(f)}
-                        >
+                          onClick={()=> setFila(f)}>
                           {f}
                         </button>
                       ))}
@@ -268,29 +283,20 @@ export default function EditContainerModal({
                   <div className={styles.grid2}>
                     <div className={styles.block}>
                       <span className={styles.label}>Número</span>
-                      <select
-                        className={styles.select}
-                        value={num}
-                        onChange={(e) => setNum(Number(e.target.value))}
-                      >
-                        {numerosDisponibles.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
+                      <select className={styles.select} value={num}
+                        onChange={(e)=> setNum(Number(e.target.value))}>
+                        {numerosDisponibles.map((n)=>(
+                          <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
                     </div>
+
                     <div className={styles.block}>
                       <span className={styles.label}>Nivel</span>
-                      <select
-                        className={styles.select}
-                        value={nivel}
-                        onChange={(e) => setNivel(e.target.value)}
-                      >
-                        {niveles.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
+                      <select className={styles.select} value={nivel}
+                        onChange={(e)=> setNivel(e.target.value)}>
+                        {niveles.map((n)=>(
+                          <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
                     </div>
@@ -303,68 +309,58 @@ export default function EditContainerModal({
               </div>
             </>
           ) : (
+            /* MANUAL */
             <div className={styles.block}>
               <span className={styles.label}>Posición (manual)</span>
-              <input
-                className={styles.input}
+              <input className={styles.input}
                 value={freeInput}
-                onChange={(e) => setFreeInput(e.target.value.toUpperCase())}
+                onChange={(e)=> setFreeInput(e.target.value.toUpperCase())}
+                style={{ textTransform:'uppercase' }}
                 placeholder="Ej: A1A o PENDIENTE"
-                style={{ textTransform: 'uppercase' }}
               />
             </div>
           )}
 
-          {/* === Detalles doar dacă e roto === */}
           {isBroken && (
             <div className={styles.block}>
-              <span className={styles.label}>Detalles (defecto)</span>
-              <textarea
-                className={styles.area}
+              <span className={styles.label}>Detalles</span>
+              <textarea className={styles.area}
                 rows={3}
                 value={detalles}
-                onChange={(e) => setDetalles(e.target.value)}
-                placeholder="Ej. Daño en puerta o golpe lateral"
+                onChange={(e)=> setDetalles(e.target.value)}
               />
             </div>
           )}
 
           {isPrivileged && (
             <div className={styles.block}>
-              <span className={styles.label}>Matrícula Camión (opcional)</span>
-              <input
-                className={styles.input}
+              <span className={styles.label}>Matrícula Camión</span>
+              <input className={styles.input}
                 value={matCamion}
-                onChange={(e) => setMatCamion(e.target.value.toUpperCase())}
-                style={{ textTransform: 'uppercase' }}
+                onChange={(e)=> setMatCamion(e.target.value.toUpperCase())}
+                style={{ textTransform:'uppercase' }}
               />
             </div>
           )}
 
-          {isMechanic && (
-            <div className={styles.blockInfo}>
-              <p>Modo mecánico: solo puedes cambiar la posición.</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Footer */}
+      {/* FOOTER */}
       <div className={shell.slotFooter}>
         <div className={styles.actions}>
-          <button type="button" className={styles.btn} onClick={onClose}>
-            Cancelar
-          </button>
+          <button className={styles.btn} onClick={onClose}>Cancelar</button>
+
           <button
-            type="button"
             className={`${styles.btn} ${styles.primary}`}
-            onClick={handleSave}
             disabled={!validPos}
+            onClick={handleSave}
           >
             Guardar
           </button>
         </div>
       </div>
+
     </Modal>
   );
 }
