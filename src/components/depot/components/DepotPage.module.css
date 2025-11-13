@@ -1,0 +1,24 @@
+/* ===== MiniMap 3D ===== */
+.mini3dWrap {
+  margin: 8px 0 16px;
+  padding: 8px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top, rgba(15,23,42,.95), rgba(15,23,42,.8));
+  box-shadow: 0 12px 30px rgba(0,0,0,.6);
+  border: 1px solid rgba(148,163,184,.45);
+  height: 260px;              /* înălțimea canvas-ului */
+  overflow: hidden;
+}
+
+.mini3dHeader {
+  font-size: 12px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: rgba(226,232,240,.85);
+  margin-bottom: 6px;
+}
+.mini3dWrap canvas {
+  width: 100% !important;
+  height: calc(100% - 18px) !important;
+  border-radius: 12px;
+}
