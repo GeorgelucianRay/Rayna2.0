@@ -1,6 +1,7 @@
 // src/components/depot/components/DepotMiniMap3D.jsx
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { slotToWorld } from "../map/threeWorld/slotToWorld.js";
 
 export default function DepotMiniMap3D({ slotMap }) {
@@ -16,10 +17,10 @@ export default function DepotMiniMap3D({ slotMap }) {
 
     // --- SCENĂ + CAMERĂ + RENDERER ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111827); // cer întunecat albastru
+    scene.background = new THREE.Color(0x0b1120); // cer albastru foarte închis
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 200);
-    camera.position.set(16, 18, 22);
+    camera.position.set(16, 16, 24);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -27,13 +28,22 @@ export default function DepotMiniMap3D({ slotMap }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mountEl.appendChild(renderer.domElement);
 
-    // --- LUMINI (cer + direcțională) ---
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x202030, 0.9);
+    // --- ORBIT CONTROLS ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0.5, 0);
+    controls.minDistance = 10;
+    controls.maxDistance = 50;
+    controls.maxPolarAngle = Math.PI / 2; // nu lăsăm camera sub sol
+    controls.update();
+
+    // --- LUMINI ---
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1f2933, 0.9);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-    dirLight.position.set(10, 18, 8);
-    dirLight.castShadow = false;
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(12, 20, 10);
     scene.add(dirLight);
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.25);
@@ -42,42 +52,40 @@ export default function DepotMiniMap3D({ slotMap }) {
     // --- GROUND / PLATFORMĂ ---
     const groundGeo = new THREE.PlaneGeometry(40, 40);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0b1120,
-      roughness: 0.9,
-      metalness: 0.1,
+      color: 0x020617,
+      roughness: 0.95,
+      metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
     scene.add(ground);
 
-    // Mic grid discret
-    const grid = new THREE.GridHelper(40, 20, 0x4b5563, 0x1f2933);
+    const grid = new THREE.GridHelper(40, 20, 0x4b5563, 0x1f2937);
     grid.position.y = 0.01;
     scene.add(grid);
 
-    // --- GRUP DE CUBURI SLOTURI ---
+    // --- CUBURI SLOTURI ---
     const cubesGroup = new THREE.Group();
     scene.add(cubesGroup);
 
-    // Materiale reutilizabile
-    const matFree = new THREE.MeshStandardMaterial({
-      color: 0x22c55e,        // verde
+    const matFreeBase = new THREE.MeshStandardMaterial({
+      color: 0x22c55e,
       transparent: true,
       opacity: 0.35,
       roughness: 0.7,
       metalness: 0.1,
     });
 
-    const matOccupied = new THREE.MeshStandardMaterial({
-      color: 0xef4444,        // roșu
+    const matOccBase = new THREE.MeshStandardMaterial({
+      color: 0xef4444,
       transparent: true,
       opacity: 0.95,
       roughness: 0.5,
       metalness: 0.2,
     });
 
-    const boxGeo = new THREE.BoxGeometry(5.5, 2.8, 2.6); // aproximativ container 20'
+    const boxGeo = new THREE.BoxGeometry(5.5, 2.8, 2.6); // aproximativ 20'
 
     const lanes = ["A", "B", "C", "D", "E", "F"];
 
@@ -89,7 +97,6 @@ export default function DepotMiniMap3D({ slotMap }) {
         const slotKey = `${lane}${index}A`;
         const occupiedInfo = slotMap?.[slotKey] || null;
 
-        // folosim slotToWorld pentru poziție
         let world;
         try {
           world = slotToWorld(
@@ -101,17 +108,14 @@ export default function DepotMiniMap3D({ slotMap }) {
               abcNumbersReversed: false,
             }
           );
-        } catch (err) {
-          // dacă ceva e invalid, sărim slotul
-          // console.warn("slotToWorld error", slotKey, err);
+        } catch {
           continue;
         }
 
         const mesh = new THREE.Mesh(
           boxGeo,
-          occupiedInfo ? matOccupied.clone() : matFree.clone()
+          (occupiedInfo ? matOccBase : matFreeBase).clone()
         );
-
         mesh.position.copy(world.position);
         mesh.rotation.y = world.rotationY;
         mesh.userData.slotKey = slotKey;
@@ -127,46 +131,64 @@ export default function DepotMiniMap3D({ slotMap }) {
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
-
-      // ușoară rotație pentru efect 3D mai clar
-      cubesGroup.rotation.y = Math.sin(t * 0.25) * 0.2;
-
+      // ușor breathing pentru efect
+      cubesGroup.position.y = 0.05 * Math.sin(t * 0.8);
+      controls.update();
       renderer.render(scene, camera);
     };
     animate();
 
-    // --- CLICK PICKING ---
+    // --- PICKING: dublu click & double tap ---
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
 
-    const handlePointerDown = (event) => {
+    const pickAtClientCoords = (clientX, clientY) => {
       const rect = renderer.domElement.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((clientY - rect.top) / rect.height) * 2 + 1;
       pointer.set(x, y);
 
       raycaster.setFromCamera(pointer, camera);
-      const intersects = raycaster.intersectObjects(cubesGroup.children, false);
+      const intersects = raycaster.intersectObjects(
+        cubesGroup.children,
+        false
+      );
+      if (intersects.length === 0) return;
 
-      if (intersects.length > 0) {
-        const obj = intersects[0].object;
-        const { slotKey, container } = obj.userData;
-        if (!slotKey) return;
+      const obj = intersects[0].object;
+      const { slotKey, container } = obj.userData || {};
+      if (!slotKey) return;
 
-        if (container) {
-          const cid = (container.matricula_contenedor || "").toUpperCase();
-          alert(
-            `Posición: ${slotKey}\nContenedor: ${cid || "desconocido"}`
-          );
-        } else {
-          alert(`Posición libre: ${slotKey}`);
-        }
+      if (container) {
+        const cid = (container.matricula_contenedor || "").toUpperCase();
+        alert(`Posición: ${slotKey}\nContenedor: ${cid || "desconocido"}`);
+      } else {
+        alert(`Posición libre: ${slotKey}`);
       }
     };
 
-    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    const handleDblClick = (event) => {
+      event.preventDefault();
+      pickAtClientCoords(event.clientX, event.clientY);
+    };
 
-    // --- HANDLE RESIZE ---
+    let lastTap = 0;
+    const handleTouchEnd = (event) => {
+      const now = performance.now();
+      const delta = now - lastTap;
+      lastTap = now;
+
+      if (delta > 300) return; // nu e double tap
+
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      pickAtClientCoords(touch.clientX, touch.clientY);
+    };
+
+    renderer.domElement.addEventListener("dblclick", handleDblClick);
+    renderer.domElement.addEventListener("touchend", handleTouchEnd);
+
+    // --- RESIZE ---
     const handleResize = () => {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth || width;
@@ -175,18 +197,18 @@ export default function DepotMiniMap3D({ slotMap }) {
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
-
     window.addEventListener("resize", handleResize);
 
     // --- CLEANUP ---
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener(
-        "pointerdown",
-        handlePointerDown
-      );
-      mountEl.removeChild(renderer.domElement);
+      renderer.domElement.removeEventListener("dblclick", handleDblClick);
+      renderer.domElement.removeEventListener("touchend", handleTouchEnd);
+
+      if (mountEl.contains(renderer.domElement)) {
+        mountEl.removeChild(renderer.domElement);
+      }
 
       scene.traverse((obj) => {
         if (obj.isMesh) {
@@ -198,16 +220,14 @@ export default function DepotMiniMap3D({ slotMap }) {
           }
         }
       });
+      controls.dispose();
       renderer.dispose();
     };
   }, [open, slotMap]);
 
-  // ─────────────────────────────────────────────
-  // UI: buton + popup modal
-  // ─────────────────────────────────────────────
   return (
     <>
-      {/* mic buton sub toolbar */}
+      {/* butonul – îl poți muta mai sus sau șterge când vrei */}
       <div style={{ margin: "8px 0 4px" }}>
         <button
           type="button"
@@ -229,7 +249,6 @@ export default function DepotMiniMap3D({ slotMap }) {
         </button>
       </div>
 
-      {/* Modal 3D */}
       {open && (
         <div
           style={{
@@ -340,7 +359,7 @@ export default function DepotMiniMap3D({ slotMap }) {
               Ocupado (contenedor)
             </div>
 
-            {/* container canvas */}
+            {/* canvas */}
             <div
               ref={mountRef}
               style={{
