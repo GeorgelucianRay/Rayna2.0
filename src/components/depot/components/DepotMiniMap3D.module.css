@@ -1,0 +1,127 @@
+/* src/components/depot/components/DepotMiniMap3D.module.css */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2600;
+  padding: 16px;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  background: radial-gradient(circle at top, #020617 0%, #020617 45%, #020617 100%);
+  border-radius: 22px;
+  border: 1px solid rgba(148,163,184,.4);
+  box-shadow: 0 24px 80px rgba(0,0,0,.75);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheetHeader {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(148,163,184,.35);
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.closeBtn {
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(148,163,184,.5);
+  background: rgba(15,23,42,.7);
+  color: #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeBtn:hover {
+  background: rgba(15,23,42,.95);
+}
+
+.canvasWrap {
+  flex: 1;
+  min-height: 260px;
+}
+
+.legend {
+  padding: 8px 14px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid rgba(148,163,184,.35);
+  font-size: 11px;
+  color: rgba(226,232,240,.9);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.dotFree {
+  background: #22c55e;
+}
+
+.dotBusy {
+  background: #ef4444;
+}
+
+.hint {
+  margin-left: auto;
+  opacity: .75;
+}
+
+/* butonul de deschidere în DepotPage */
+.openBtnWrap {
+  margin: 8px 0 6px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.openBtn {
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: 1px solid rgba(148,163,184,.55);
+  background: rgba(15,23,42,.85);
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.openBtn:hover {
+  background: rgba(15,23,42,1);
+}
+
+@media (max-width: 480px) {
+  .sheet {
+    max-width: 100%;
+    border-radius: 18px;
+  }
+}
