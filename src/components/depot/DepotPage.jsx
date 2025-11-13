@@ -36,6 +36,7 @@ export default function DepotPage() {
   // ► State orchestration
   const [activeTab, setActiveTab] = useState("contenedores");
   const [search, setSearch] = useState("");
+  const [showMiniMap, setShowMiniMap] = useState(false); // 👈 popup 3D
 
   // ► Custom hooks that handle logic
   const {
@@ -50,7 +51,7 @@ export default function DepotPage() {
     openEditModal,
     openSalidaModal,
     modalState,
-    closeModals
+    closeModals,
   } = useDepotData(activeTab, search);
 
   const slotMap = useDepotSlots(refresh);
@@ -80,6 +81,15 @@ export default function DepotPage() {
           >
             🗺️ Ver Mapa
           </button>
+
+          {activeTab === "contenedores" && (
+            <button
+              className={`${styles.actionButton}`}
+              onClick={() => setShowMiniMap(true)}
+            >
+              🧭 Mapa rápido 3D
+            </button>
+          )}
         </div>
 
         {/* SEARCH + EXCEL + ADD */}
@@ -89,10 +99,6 @@ export default function DepotPage() {
           setSearch={setSearch}
           onAddClick={openAddModal}
         />
-
-        {activeTab === 'contenedores' && (
-  <DepotMiniMap3D slotMap={slotMap} />
-)}
 
         {/* LISTA */}
         <DepotCards
@@ -130,6 +136,14 @@ export default function DepotPage() {
           onClose={closeModals}
           onSubmit={handleSalida}
         />
+
+        {/* 🔍 POPUP 3D MINI MAP */}
+        {showMiniMap && (
+          <DepotMiniMap3D
+            slotMap={slotMap}
+            onClose={() => setShowMiniMap(false)}
+          />
+        )}
       </div>
     </Layout>
   );
