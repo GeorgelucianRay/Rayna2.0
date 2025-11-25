@@ -16,12 +16,16 @@ function getMonday(d) {
 /**
  * Construiește structura săptămânii (Lu–Do) din currentDate & zilePontaj
  *  - mondayOverride: dacă vrei să forțezi o luni anume (Date), altfel ia luni din currentDate
+ *
+ * NOTE:
+ *  - zilePontaj = array-ul pe lună din CalculadoraNomina (1 index = ziua)
+ *  - currentDate = ziua selectată (Día X) din lună
  */
 export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
   const monday = mondayOverride ? new Date(mondayOverride) : getMonday(currentDate);
   const days = [];
   let kmInitMonday = 0;
-  let kmFinalFriday = 0;
+  let kmFinalWeek = 0;
   let kmWeekTotal = 0;
 
   // Lu–Do (7 zile)
@@ -42,7 +46,7 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
     // Primul km din săptămână (prima zi cu valoare)
     if (!kmInitMonday && km_i) kmInitMonday = km_i;
     // Ultimul km din săptămână (se actualizează mereu când găsim km_final)
-    if (km_f) kmFinalFriday = km_f;
+    if (km_f) kmFinalWeek = km_f;
 
     kmWeekTotal += km_d;
 
@@ -61,16 +65,17 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
       km_final: km_f,
       km_dia: km_d,
       contenedores: Number(zi.contenedores || 0),
+      camion_matricula: zi.camion_matricula || null,
       observaciones: '', // plasă pentru viitor – rămâne gol în PDF/UI
     });
   }
 
   return {
     monday,
-    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6), // acum Duminică
+    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6), // Duminică
     days,
     kmInitMonday,
-    kmFinalFriday,
+    kmFinalFriday: kmFinalWeek,
     kmWeekTotal: Math.max(0, kmWeekTotal),
   };
 }
@@ -88,14 +93,21 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
       '—',
     [profile]
   );
-  const camion = useMemo(
-    () =>
+
+  // Camión săptămânal:
+  //  1) prima matriculă non-goală din zile
+  //  2) altfel profil camion / matricula
+  const camionSemana = useMemo(() => {
+    const d = weekData.days || [];
+    const fromDays = d.find((day) => day.camion_matricula)?.camion_matricula;
+    return (
+      fromDays ||
       profile?.camioane?.matricula ||
       profile?.matricula ||
       profile?.camion ||
-      '—',
-    [profile]
-  );
+      '—'
+    );
+  }, [weekData, profile]);
 
   const rangoSemana = useMemo(() => {
     const fmt = (d) =>
@@ -115,9 +127,10 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
         const W = doc.internal.pageSize.getWidth();
-        const H = doc.internal.pageSize.getHeight();
         const M = 12;
         let y = M;
+
+        const days = weekData.days || [];
 
         // Titlu sus: HOJA DE GASTOS SEMANA
         doc.setFont('helvetica', 'bold');
@@ -125,7 +138,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         doc.text('HOJA DE GASTOS SEMANA', W / 2, y, { align: 'center' });
         y += 8;
 
-        // Linie cu data / info săptămână în dreapta
+        // Linie cu info săptămână în dreapta
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Semana: ${rangoSemana}`, W - M, y, { align: 'right' });
@@ -155,7 +168,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
 
         y += rowAlt;
 
-        // Rânduri pentru LUNES–DOMINGO
+        // Rânduri pentru LUNES–DOMINGO (structură ca în foaia ta)
         const labels = [
           'LUNES',
           'MARTES',
@@ -165,8 +178,6 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
           'SÁBADO',
           'DOMINGO',
         ];
-
-        const days = weekData.days || [];
 
         doc.setFont('helvetica', 'normal');
 
@@ -194,7 +205,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
           if (d.pro) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
           x += colAncho;
 
-          // OTROS – folosim festivo ca exemplu, altfel gol
+          // OTROS – folosim festivo ca exemplu (poți ajusta ulterior)
           doc.rect(x, y, colAncho, rowAlt, 'S');
           if (d.festivo) {
             doc.text(String(d.festivo), x + colAncho / 2, y + 4, { align: 'center' });
@@ -223,7 +234,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         doc.setFont('helvetica', 'bold');
         doc.text('VEHÍCULO:', M, y);
         doc.setFont('helvetica', 'normal');
-        doc.text(String(camion || '—'), M + 30, y);
+        doc.text(String(camionSemana || '—'), M + 30, y);
         y += 8;
 
         // OBSERVACIONES
@@ -272,7 +283,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         alert('No se pudo generar el PDF.');
       }
     },
-    [chofer, camion, rangoSemana, weekData]
+    [chofer, camionSemana, rangoSemana, weekData]
   );
 
   return (
@@ -298,14 +309,14 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
             <span>Chofer:</span> {chofer}
           </div>
           <div>
-            <span>Camión:</span> {camion}
+            <span>Camión:</span> {camionSemana}
           </div>
           <div>
             <span>Semana:</span> {rangoSemana}
           </div>
         </div>
 
-        {/* Tabel intern (poate rămâne tehnic, pdf-ul e ca foaia de hârtie) */}
+        {/* Tabel intern (vizual, tehnic – pdf-ul este ca foaia de hârtie) */}
         <div className={styles.tableWrap}>
           <div className={`${styles.row} ${styles.header}`}>
             <div className={styles.cDia}>Día</div>
