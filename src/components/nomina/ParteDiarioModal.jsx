@@ -173,6 +173,21 @@ export default function ParteDiarioModal({
           </div>
 
           <div className={styles.modalBody}>
+            {/* Camión (matrícula pe zi) */}
+            <div className={styles.parteDiarioSection}>
+              <h4>Camión</h4>
+              <div className={styles.inputGroup}>
+                <label>Matrícula vehículo</label>
+                <input
+                  type="text"
+                  name="camion_matricula"
+                  value={data?.camion_matricula ?? ''}
+                  onChange={(e) => onDataChange('camion_matricula', e.target.value)}
+                  placeholder="Ej.: 1234-KLM"
+                />
+              </div>
+            </div>
+
             {/* Dietas */}
             <div className={styles.parteDiarioSection}>
               <h4>Dietas</h4>
