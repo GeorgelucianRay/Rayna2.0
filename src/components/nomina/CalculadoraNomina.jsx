@@ -1,8 +1,13 @@
 // src/components/nomina/CalculadoraNomina.jsx
 // VERSIÓN COMPLETA REPARADA + PARTE SEMANAL (SAFE) + SALVARE INSTANT ÎN PARTE DIARIO
-
 import React, {
-  useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense,
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  lazy,
+  Suspense,
 } from 'react';
 import Layout from '../Layout';
 import styles from './Nominas.module.css';
@@ -25,19 +30,22 @@ function getMonday(d) {
   x.setHours(0, 0, 0, 0);
   return x;
 }
+
 function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
   const monday = mondayOverride ? new Date(mondayOverride) : getMonday(currentDate);
   const days = [];
-  let kmInitMonday = 0;
-  let kmFinalFriday = 0;
+  let kmInitMonday = 0;   // primul km de plecare al săptămânii
+  let kmFinalFriday = 0;  // ultimul km de sosire al săptămânii (de fapt duminică)
   let kmWeekTotal = 0;
 
-  for (let i = 0; i < 5; i++) { // Luni→Vineri
+  // Luni → Duminică
+  for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
 
-    const sameMonth = (d.getFullYear() === currentDate.getFullYear()) &&
-                      (d.getMonth() === currentDate.getMonth());
+    const sameMonth =
+      d.getFullYear() === currentDate.getFullYear() &&
+      d.getMonth() === currentDate.getMonth();
     const idx = sameMonth ? d.getDate() - 1 : null;
     const zi = idx != null && zilePontaj[idx] ? zilePontaj[idx] : {};
 
@@ -45,16 +53,24 @@ function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
     const km_f = Number(zi?.km_final || 0);
     const km_d = Math.max(0, km_f - km_i);
 
-    if (i === 0) kmInitMonday = km_i || 0;
-    if (i === 4) kmFinalFriday = km_f || 0;
+    // Primul km din săptămână (prima zi care are ceva introdus)
+    if (!kmInitMonday && km_i) kmInitMonday = km_i;
+
+    // Ultimul km din săptămână (se actualizează când găsim un km_final > 0)
+    if (km_f) kmFinalFriday = km_f;
+
     kmWeekTotal += km_d;
 
     days.push({
       date: d,
-      label: d.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'short' }),
-      des: !!(zi?.desayuno),
-      cen: !!(zi?.cena),
-      pro: !!(zi?.procena),
+      label: d.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'short',
+      }),
+      des: !!zi?.desayuno,
+      cen: !!zi?.cena,
+      pro: !!zi?.procena,
       festivo: Number(zi?.suma_festivo || 0),
       km_iniciar: km_i,
       km_final: km_f,
@@ -65,7 +81,7 @@ function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
 
   return {
     monday,
-    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4),
+    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6), // acum DUMINICĂ
     days,
     kmInitMonday,
     kmFinalFriday,
@@ -77,42 +93,68 @@ function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
 
+  // permisiune: doar admin/dispecer pot vedea & edita configurarea de contract
+  const role = String(profile?.role || '').toLowerCase();
+  const canEditNominaConfig = ['admin', 'dispecer', 'dispatcher'].includes(role);
+
   const monthNames = useMemo(
-    () => ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
+    () => [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ],
     []
   );
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const defaultConfig = useMemo(() => ({
-    salario_base: 1050,
-    antiguedad: 0,
-    precio_dia_trabajado: 20,
-    precio_desayuno: 10,
-    precio_cena: 15,
-    precio_procena: 5,
-    precio_km: 0.05,
-    precio_contenedor: 6,
-  }), []);
+  const defaultConfig = useMemo(
+    () => ({
+      salario_base: 1050,
+      antiguedad: 0,
+      precio_dia_trabajado: 20,
+      precio_desayuno: 10,
+      precio_cena: 15,
+      precio_procena: 5,
+      precio_km: 0.05,
+      precio_contenedor: 6,
+    }),
+    []
+  );
 
   // Plantilla de día
-  const DAY_TEMPLATE = useMemo(() => ({
-    desayuno: false,
-    cena: false,
-    procena: false,
-    km_iniciar: '',
-    km_final: '',
-    contenedores: 0,
-    suma_festivo: 0,
-    curse: [],
-  }), []);
+  const DAY_TEMPLATE = useMemo(
+    () => ({
+      desayuno: false,
+      cena: false,
+      procena: false,
+      km_iniciar: '',
+      km_final: '',
+      contenedores: 0,
+      suma_festivo: 0,
+      curse: [],
+    }),
+    []
+  );
 
-  const makePontajForMonth = useCallback((date) => {
-    const y = date.getFullYear();
-    const m = date.getMonth();
-    const days = new Date(y, m + 1, 0).getDate();
-    return Array.from({ length: days }, () => ({ ...DAY_TEMPLATE }));
-  }, [DAY_TEMPLATE]);
+  const makePontajForMonth = useCallback(
+    (date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      const days = new Date(y, m + 1, 0).getDate();
+      return Array.from({ length: days }, () => ({ ...DAY_TEMPLATE }));
+    },
+    [DAY_TEMPLATE]
+  );
 
   const [config, setConfig] = useState(defaultConfig);
   const [zilePontaj, setZilePontaj] = useState(makePontajForMonth(currentDate));
@@ -137,7 +179,9 @@ export default function CalculadoraNomina() {
   const [weeklyData, setWeeklyData] = useState(null);
 
   // selector pentru SimpleSummaryModal
-  const [selectedSummaryDay, setSelectedSummaryDay] = useState(new Date().getDate());
+  const [selectedSummaryDay, setSelectedSummaryDay] = useState(
+    new Date().getDate()
+  );
 
   // Cargar CONFIG
   useEffect(() => {
@@ -152,12 +196,16 @@ export default function CalculadoraNomina() {
         setConfig({
           salario_base: data.salario_base ?? defaultConfig.salario_base,
           antiguedad: data.antiguedad ?? defaultConfig.antiguedad,
-          precio_dia_trabajado: data.precio_dia_trabajado ?? defaultConfig.precio_dia_trabajado,
-          precio_desayuno: data.precio_desayuno ?? defaultConfig.precio_desayuno,
+          precio_dia_trabajado:
+            data.precio_dia_trabajado ?? defaultConfig.precio_dia_trabajado,
+          precio_desayuno:
+            data.precio_desayuno ?? defaultConfig.precio_desayuno,
           precio_cena: data.precio_cena ?? defaultConfig.precio_cena,
-          precio_procena: data.precio_procena ?? defaultConfig.precio_procena,
+          precio_procena:
+            data.precio_procena ?? defaultConfig.precio_procena,
           precio_km: data.precio_km ?? defaultConfig.precio_km,
-          precio_contenedor: data.precio_contenedor ?? defaultConfig.precio_contenedor,
+          precio_contenedor:
+            data.precio_contenedor ?? defaultConfig.precio_contenedor,
         });
       }
     };
@@ -181,7 +229,7 @@ export default function CalculadoraNomina() {
 
       if (data && !error) {
         const newPontaj = makePontajForMonth(currentDate);
-        data.forEach(item => {
+        data.forEach((item) => {
           if (item.day >= 1 && item.day <= newPontaj.length) {
             newPontaj[item.day - 1] = { ...DAY_TEMPLATE, ...item };
           }
@@ -207,31 +255,34 @@ export default function CalculadoraNomina() {
   }, []);
 
   // Persistare în DB
-  const savePontajDay = useCallback(async (dayIndex, dayData) => {
-    if (!profile?.id || dayIndex == null) return;
-    const payload = {
-      user_id: profile.id,
-      year: currentDate.getFullYear(),
-      month: currentDate.getMonth() + 1,
-      day: dayIndex + 1,
-      desayuno: !!dayData.desayuno,
-      cena: !!dayData.cena,
-      procena: !!dayData.procena,
-      km_iniciar: dayData.km_iniciar ?? null,
-      km_final: dayData.km_final ?? null,
-      contenedores: dayData.contenedores ?? 0,
-      suma_festivo: dayData.suma_festivo ?? 0,
-      curse: Array.isArray(dayData.curse) ? dayData.curse : [],
-    };
+  const savePontajDay = useCallback(
+    async (dayIndex, dayData) => {
+      if (!profile?.id || dayIndex == null) return;
+      const payload = {
+        user_id: profile.id,
+        year: currentDate.getFullYear(),
+        month: currentDate.getMonth() + 1,
+        day: dayIndex + 1,
+        desayuno: !!dayData.desayuno,
+        cena: !!dayData.cena,
+        procena: !!dayData.procena,
+        km_iniciar: dayData.km_iniciar ?? null,
+        km_final: dayData.km_final ?? null,
+        contenedores: dayData.contenedores ?? 0,
+        suma_festivo: dayData.suma_festivo ?? 0,
+        curse: Array.isArray(dayData.curse) ? dayData.curse : [],
+      };
 
-    const { error } = await supabase
-      .from('pontaj_diario')
-      .upsert(payload, { onConflict: 'user_id,year,month,day' });
+      const { error } = await supabase
+        .from('pontaj_diario')
+        .upsert(payload, { onConflict: 'user_id,year,month,day' });
 
-    if (error) {
-      console.error('savePontajDay error:', error);
-    }
-  }, [profile?.id, currentDate]);
+      if (error) {
+        console.error('savePontajDay error:', error);
+      }
+    },
+    [profile?.id, currentDate]
+  );
 
   // Închidere modal (păstrăm și salvarea la închidere ca fallback)
   const closeParte = useCallback(() => {
@@ -243,66 +294,97 @@ export default function CalculadoraNomina() {
   }, [selectedDayIndex, zilePontaj, savePontajDay]);
 
   // Deschidere sumar simplu (ticket zi)
-  const openSummary = useCallback((dayIndex) => {
-    if (dayIndex < 0 || dayIndex >= zilePontaj.length) return;
-    const data = {
-      ...zilePontaj[dayIndex],
-      day: dayIndex + 1,
-      monthName: monthNames[currentDate.getMonth()],
-      year: currentDate.getFullYear(),
-      chofer: profile?.nombre_completo || profile?.full_name || profile?.username || 'Nombre no disponible',
-      camion: profile?.camioane?.matricula || profile?.matricula || '—',
-    };
-    setSummaryModalData(data);
-  }, [zilePontaj, monthNames, currentDate, profile]);
+  const openSummary = useCallback(
+    (dayIndex) => {
+      if (dayIndex < 0 || dayIndex >= zilePontaj.length) return;
+      const data = {
+        ...zilePontaj[dayIndex],
+        day: dayIndex + 1,
+        monthName: monthNames[currentDate.getMonth()],
+        year: currentDate.getFullYear(),
+        chofer:
+          profile?.nombre_completo ||
+          profile?.full_name ||
+          profile?.username ||
+          'Nombre no disponible',
+        camion: profile?.camioane?.matricula || profile?.matricula || '—',
+      };
+      setSummaryModalData(data);
+    },
+    [zilePontaj, monthNames, currentDate, profile]
+  );
 
   const closeSummary = useCallback(() => setSummaryModalData(null), []);
 
   // Normalizare numerică + SALVARE INSTANT
-  const numericFields = useMemo(() => new Set(['km_iniciar', 'km_final', 'contenedores', 'suma_festivo']), []);
-  const handleDayDataChange = useCallback((name, value) => {
-    if (selectedDayIndex === null) return;
-    const v = numericFields.has(name) && value !== '' ? Number(value) : value;
+  const numericFields = useMemo(
+    () => new Set(['km_iniciar', 'km_final', 'contenedores', 'suma_festivo']),
+    []
+  );
 
-    setZilePontaj(prev => {
-      const arr = [...prev];
-      const newDayData = { ...arr[selectedDayIndex], [name]: v };
-      arr[selectedDayIndex] = newDayData;
-      // SALVARE INSTANT
-      savePontajDay(selectedDayIndex, newDayData);
-      return arr;
-    });
-  }, [numericFields, selectedDayIndex, savePontajDay]);
+  const handleDayDataChange = useCallback(
+    (name, value) => {
+      if (selectedDayIndex === null) return;
+      const v = numericFields.has(name) && value !== '' ? Number(value) : value;
 
-  const handleToggleChange = useCallback((field) => {
-    if (selectedDayIndex === null) return;
-    setZilePontaj(prev => {
-      const arr = [...prev];
-      const cur = !!arr[selectedDayIndex]?.[field];
-      const newDayData = { ...arr[selectedDayIndex], [field]: !cur };
-      arr[selectedDayIndex] = newDayData;
-      // SALVARE INSTANT
-      savePontajDay(selectedDayIndex, newDayData);
-      return arr;
-    });
-  }, [selectedDayIndex, savePontajDay]);
+      setZilePontaj((prev) => {
+        const arr = [...prev];
+        const newDayData = { ...arr[selectedDayIndex], [name]: v };
+        arr[selectedDayIndex] = newDayData;
+        // SALVARE INSTANT
+        savePontajDay(selectedDayIndex, newDayData);
+        return arr;
+      });
+    },
+    [numericFields, selectedDayIndex, savePontajDay]
+  );
 
-  const updateCurse = useCallback((newCurse) => {
-    if (selectedDayIndex === null) return;
-    setZilePontaj(prev => {
-      const arr = [...prev];
-      const newDayData = { ...arr[selectedDayIndex], curse: newCurse };
-      arr[selectedDayIndex] = newDayData;
-      // SALVARE INSTANT
-      savePontajDay(selectedDayIndex, newDayData);
-      return arr;
-    });
-  }, [selectedDayIndex, savePontajDay]);
+  const handleToggleChange = useCallback(
+    (field) => {
+      if (selectedDayIndex === null) return;
+      setZilePontaj((prev) => {
+        const arr = [...prev];
+        const cur = !!arr[selectedDayIndex]?.[field];
+        const newDayData = { ...arr[selectedDayIndex], [field]: !cur };
+        arr[selectedDayIndex] = newDayData;
+        // SALVARE INSTANT
+        savePontajDay(selectedDayIndex, newDayData);
+        return arr;
+      });
+    },
+    [selectedDayIndex, savePontajDay]
+  );
 
-  const goPrevMonth = useCallback(() =>
-    setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)), []);
-  const goNextMonth = useCallback(() =>
-    setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)), []);
+  const updateCurse = useCallback(
+    (newCurse) => {
+      if (selectedDayIndex === null) return;
+      setZilePontaj((prev) => {
+        const arr = [...prev];
+        const newDayData = { ...arr[selectedDayIndex], curse: newCurse };
+        arr[selectedDayIndex] = newDayData;
+        // SALVARE INSTANT
+        savePontajDay(selectedDayIndex, newDayData);
+        return arr;
+      });
+    },
+    [selectedDayIndex, savePontajDay]
+  );
+
+  const goPrevMonth = useCallback(
+    () =>
+      setCurrentDate(
+        (d) => new Date(d.getFullYear(), d.getMonth() - 1, 1)
+      ),
+    []
+  );
+
+  const goNextMonth = useCallback(
+    () =>
+      setCurrentDate(
+        (d) => new Date(d.getFullYear(), d.getMonth() + 1, 1)
+      ),
+    []
+  );
 
   const [result, setResult] = useState(null);
 
@@ -310,14 +392,23 @@ export default function CalculadoraNomina() {
   const calc = useCallback(() => {
     if (!zilePontaj?.length) {
       return {
-        base: 0, antiguedad: 0, workedDays: 0,
-        desayunos: 0, cenas: 0, procenas: 0,
-        km: 0, contenedores: 0, festivo: 0,
-        extras: 0, total: 0, breakdown: {}
+        base: 0,
+        antiguedad: 0,
+        workedDays: 0,
+        desayunos: 0,
+        cenas: 0,
+        procenas: 0,
+        km: 0,
+        contenedores: 0,
+        festivo: 0,
+        extras: 0,
+        total: 0,
+        breakdown: {},
       };
     }
 
-    const toNum = (v) => (v === '' || v == null ? 0 : Number(v) || 0);
+    const toNum = (v) =>
+      v === '' || v == null ? 0 : Number(v) || 0;
 
     let workedDays = 0;
     let desayunos = 0;
@@ -327,7 +418,7 @@ export default function CalculadoraNomina() {
     let contTotal = 0;
     let festivoTotal = 0;
 
-    zilePontaj.forEach(d => {
+    zilePontaj.forEach((d) => {
       const kmi = toNum(d.km_iniciar);
       const kmf = toNum(d.km_final);
       const km = Math.max(0, kmf - kmi);
@@ -336,7 +427,9 @@ export default function CalculadoraNomina() {
         km > 0 ||
         toNum(d.contenedores) > 0 ||
         (Array.isArray(d.curse) && d.curse.length > 0) ||
-        !!d.desayuno || !!d.cena || !!d.procena;
+        !!d.desayuno ||
+        !!d.cena ||
+        !!d.procena;
 
       if (diaTrabajado) workedDays += 1;
       if (d.desayuno) desayunos += 1;
@@ -350,40 +443,65 @@ export default function CalculadoraNomina() {
 
     const base = toNum(config.salario_base);
     const antig = toNum(config.antiguedad);
-    const diaPay = workedDays * toNum(config.precio_dia_trabajado);
+    const diaPay =
+      workedDays * toNum(config.precio_dia_trabajado);
     const desPay = desayunos * toNum(config.precio_desayuno);
     const cenPay = cenas * toNum(config.precio_cena);
     const proPay = procenas * toNum(config.precio_procena);
     const kmPay = kmTotal * toNum(config.precio_km);
-    const contPay = contTotal * toNum(config.precio_contenedor);
+    const contPay =
+      contTotal * toNum(config.precio_contenedor);
     const festPay = festivoTotal; // suma directă
 
-    const total = base + antig + diaPay + desPay + cenPay + proPay + kmPay + contPay + festPay;
+    const total =
+      base +
+      antig +
+      diaPay +
+      desPay +
+      cenPay +
+      proPay +
+      kmPay +
+      contPay +
+      festPay;
 
     return {
       base,
       antiguedad: antig,
       workedDays,
-      desayunos, cenas, procenas,
+      desayunos,
+      cenas,
+      procenas,
       km: kmTotal,
       contenedores: contTotal,
       festivo: festivoTotal,
-      extras: diaPay + desPay + cenPay + proPay + kmPay + contPay + festPay,
+      extras:
+        diaPay +
+        desPay +
+        cenPay +
+        proPay +
+        kmPay +
+        contPay +
+        festPay,
       total,
       breakdown: {
         'Días trabajados': diaPay,
-        'Desayunos': desPay,
-        'Cenas': cenPay,
+        Desayunos: desPay,
+        Cenas: cenPay,
         'Pro-cenas': proPay,
-        'Kilómetros': kmPay,
-        'Contenedores': contPay,
-        'Festivos': festPay,
-      }
+        Kilómetros: kmPay,
+        Contenedores: contPay,
+        Festivos: festPay,
+      },
     };
   }, [zilePontaj, config]);
 
   const daysInMonth = useMemo(
-    () => new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(),
+    () =>
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate(),
     [currentDate]
   );
 
@@ -405,23 +523,32 @@ export default function CalculadoraNomina() {
         {/* COLUMNA 1 */}
         <div className={styles.column}>
           {/* Toolbar centrada */}
-          <div className={styles.toolbar + ' ' + styles.toolbarCenter}>
-            <button
-              className={styles.iconBtn}
-              onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
-              aria-label="Configurar contrato"
-              aria-pressed={showConfig}
-              title="Configurar contrato"
-            >
-              <span className={styles.emoji}>⚙️</span>
-            </button>
+          <div
+            className={
+              styles.toolbar + ' ' + styles.toolbarCenter
+            }
+          >
+            {canEditNominaConfig && (
+              <button
+                className={styles.iconBtn}
+                onClick={() => {
+                  setShowConfig((v) => !v);
+                  flashHint('Configurar contrato');
+                }}
+                aria-label="Configurar contrato"
+                aria-pressed={showConfig}
+                title="Configurar contrato"
+              >
+                <span className={styles.emoji}>⚙️</span>
+              </button>
+            )}
 
             <button
               className={styles.iconBtn}
               onClick={() => {
                 const r = calc();
                 setResult(r);
-                setShowResult(v => !v);
+                setShowResult((v) => !v);
                 flashHint('Calcular nómina');
               }}
               aria-label="Calcular nómina"
@@ -446,10 +573,12 @@ export default function CalculadoraNomina() {
           {hint && <div className={styles.hint}>{hint}</div>}
 
           {/* Resultado ARRIBA */}
-          {showResult && result && <NominaResultCard result={result} />}
+          {showResult && result && (
+            <NominaResultCard result={result} />
+          )}
 
-          {/* Configuración (toggle) */}
-          {showConfig && (
+          {/* Configuración (solo admin/dispecer) */}
+          {canEditNominaConfig && showConfig && (
             <NominaConfigCard
               config={config}
               onChange={setConfig}
@@ -464,10 +593,16 @@ export default function CalculadoraNomina() {
           <div className={styles.card}>
             <div className={styles.calendarHeader}>
               <button onClick={goPrevMonth}>&lt;</button>
-              <h3>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+              <h3>
+                {monthNames[currentDate.getMonth()]}{' '}
+                {currentDate.getFullYear()}
+              </h3>
               <button onClick={goNextMonth}>&gt;</button>
             </div>
-            <p className={styles.calendarHint}>Haz clic en un día para añadir / editar el parte diario.</p>
+            <p className={styles.calendarHint}>
+              Haz clic en un día para añadir / editar el parte
+              diario.
+            </p>
 
             <NominaCalendar
               date={currentDate}
@@ -479,9 +614,16 @@ export default function CalculadoraNomina() {
               <select
                 className={styles.summarySelector}
                 value={selectedSummaryDay}
-                onChange={(e) => setSelectedSummaryDay(Number(e.target.value))}
+                onChange={(e) =>
+                  setSelectedSummaryDay(
+                    Number(e.target.value)
+                  )
+                }
               >
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
+                {Array.from(
+                  { length: daysInMonth },
+                  (_, i) => i + 1
+                ).map((day) => (
                   <option key={day} value={day}>
                     Día {day}
                   </option>
@@ -489,7 +631,9 @@ export default function CalculadoraNomina() {
               </select>
               <button
                 className={styles.summaryButton}
-                onClick={() => openSummary(selectedSummaryDay - 1)}
+                onClick={() =>
+                  openSummary(selectedSummaryDay - 1)
+                }
               >
                 Ver Parte Diario
               </button>
@@ -501,16 +645,29 @@ export default function CalculadoraNomina() {
       <ParteDiarioModal
         isOpen={isParteOpen}
         onClose={closeParte}
-        data={selectedDayIndex !== null ? zilePontaj[selectedDayIndex] : {}}
+        data={
+          selectedDayIndex !== null
+            ? zilePontaj[selectedDayIndex]
+            : {}
+        }
         onDataChange={handleDayDataChange}
         onToggleChange={handleToggleChange}
         onCurseChange={updateCurse}
-        day={selectedDayIndex !== null ? selectedDayIndex + 1 : ''}
+        day={
+          selectedDayIndex !== null
+            ? selectedDayIndex + 1
+            : ''
+        }
         monthName={monthNames[currentDate.getMonth()]}
         year={currentDate.getFullYear()}
       />
 
-      {summaryModalData && <SimpleSummaryModal data={summaryModalData} onClose={closeSummary} />}
+      {summaryModalData && (
+        <SimpleSummaryModal
+          data={summaryModalData}
+          onClose={closeSummary}
+        />
+      )}
 
       {/* Modal Parte semanal — L A Z Y */}
       <Suspense fallback={null}>
