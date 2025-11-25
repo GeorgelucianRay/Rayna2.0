@@ -505,17 +505,23 @@ export default function CalculadoraNomina() {
     [currentDate]
   );
 
-  // Deschide „Parte semanal”
-  const openParteSemanal = useCallback(() => {
-    try {
-      const wd = buildWeekData(currentDate, zilePontaj);
-      setWeeklyData(wd);
-      setIsWeeklyOpen(true);
-      flashHint('Parte semanal');
-    } catch (e) {
-      console.error('Parte semanal error:', e);
-    }
-  }, [currentDate, zilePontaj, flashHint]);
+ // Deschide „Parte semanal” pentru săptămâna care conține ziua selectată în dropdown
+const openParteSemanal = useCallback(() => {
+  try {
+    const baseDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      selectedSummaryDay || 1   // dacă nu e selectat nimic, ia ziua 1
+    );
+
+    const wd = buildWeekData(baseDate, zilePontaj);
+    setWeeklyData(wd);
+    setIsWeeklyOpen(true);
+    flashHint('Parte semanal');
+  } catch (e) {
+    console.error('Parte semanal error:', e);
+  }
+}, [currentDate, selectedSummaryDay, zilePontaj, flashHint]);
 
   return (
     <Layout>
