@@ -1,13 +1,12 @@
 // src/components/nomina/CalculadoraNomina.jsx
-// VERSIÓN COMPLETA REPARADA + PARTE SEMANAL (SAFE) + SALVARE INSTANT ÎN PARTE DIARIO
+// Nómina + Parte Diario + Parte Semanal (L–D) + salvare instant în pontaj_diario
+
 import React, {
   useMemo,
   useState,
   useEffect,
   useCallback,
   useRef,
-  lazy,
-  Suspense,
 } from 'react';
 import Layout from '../Layout';
 import styles from './Nominas.module.css';
@@ -16,86 +15,25 @@ import NominaCalendar from './NominaCalendar';
 import ParteDiarioModal from './ParteDiarioModal';
 import NominaResultCard from './NominaResultCard';
 import SimpleSummaryModal from './SimpleSummaryModal';
+import WeeklySummaryModal, { buildWeekData } from './WeeklySummaryModal';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
-
-// Lazy import pentru a evita white-screen dacă fișierul lipsește/are erori
-const WeeklySummaryModal = lazy(() => import('./WeeklySummaryModal'));
-
-/* ======================== Helper săptămână (local) ======================== */
-function getMonday(d) {
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = (x.getDay() + 6) % 7; // Luni=0
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
-  const monday = mondayOverride ? new Date(mondayOverride) : getMonday(currentDate);
-  const days = [];
-  let kmInitMonday = 0;   // primul km de plecare al săptămânii
-  let kmFinalFriday = 0;  // ultimul km de sosire al săptămânii (de fapt duminică)
-  let kmWeekTotal = 0;
-
-  // Luni → Duminică
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-
-    const sameMonth =
-      d.getFullYear() === currentDate.getFullYear() &&
-      d.getMonth() === currentDate.getMonth();
-    const idx = sameMonth ? d.getDate() - 1 : null;
-    const zi = idx != null && zilePontaj[idx] ? zilePontaj[idx] : {};
-
-    const km_i = Number(zi?.km_iniciar || 0);
-    const km_f = Number(zi?.km_final || 0);
-    const km_d = Math.max(0, km_f - km_i);
-
-    // Primul km din săptămână (prima zi care are ceva introdus)
-    if (!kmInitMonday && km_i) kmInitMonday = km_i;
-
-    // Ultimul km din săptămână (se actualizează când găsim un km_final > 0)
-    if (km_f) kmFinalFriday = km_f;
-
-    kmWeekTotal += km_d;
-
-    days.push({
-      date: d,
-      label: d.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'short',
-      }),
-      des: !!zi?.desayuno,
-      cen: !!zi?.cena,
-      pro: !!zi?.procena,
-      festivo: Number(zi?.suma_festivo || 0),
-      km_iniciar: km_i,
-      km_final: km_f,
-      km_dia: km_d,
-      contenedores: Number(zi?.contenedores || 0),
-    });
-  }
-
-  return {
-    monday,
-    friday: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6), // acum DUMINICĂ
-    days,
-    kmInitMonday,
-    kmFinalFriday,
-    kmWeekTotal: Math.max(0, kmWeekTotal),
-  };
-}
-/* ======================================================================== */
 
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
 
-  // permisiune: doar admin/dispecer pot vedea & edita configurarea de contract
-  const role = String(profile?.role || '').toLowerCase();
-  const canEditNominaConfig = ['admin', 'dispecer', 'dispatcher'].includes(role);
+  // Rol & permisiuni – doar admin/dispecer/dispatcher văd configurația de contract
+  const role = useMemo(
+    () => String(profile?.role || '').toLowerCase(),
+    [profile?.role]
+  );
+  const canEditConfig = useMemo(
+    () =>
+      role === 'admin' ||
+      role === 'dispecer' ||
+      role === 'dispatcher',
+    [role]
+  );
 
   const monthNames = useMemo(
     () => [
@@ -131,7 +69,7 @@ export default function CalculadoraNomina() {
     []
   );
 
-  // Plantilla de día
+  // Plantilla de zi – match cu tabelul pontaj_diario + camion_matricula
   const DAY_TEMPLATE = useMemo(
     () => ({
       desayuno: false,
@@ -142,6 +80,7 @@ export default function CalculadoraNomina() {
       contenedores: 0,
       suma_festivo: 0,
       curse: [],
+      camion_matricula: '', // 🚛 matricula camion pe zi
     }),
     []
   );
@@ -157,7 +96,9 @@ export default function CalculadoraNomina() {
   );
 
   const [config, setConfig] = useState(defaultConfig);
-  const [zilePontaj, setZilePontaj] = useState(makePontajForMonth(currentDate));
+  const [zilePontaj, setZilePontaj] = useState(
+    makePontajForMonth(currentDate)
+  );
 
   // UI: toggles + hint
   const [showConfig, setShowConfig] = useState(false);
@@ -174,16 +115,16 @@ export default function CalculadoraNomina() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [summaryModalData, setSummaryModalData] = useState(null);
 
-  // Parte semanal (modal + datos)
+  // Parte semanal (modal + data)
   const [isWeeklyOpen, setIsWeeklyOpen] = useState(false);
   const [weeklyData, setWeeklyData] = useState(null);
 
-  // selector pentru SimpleSummaryModal
+  // selector pentru SimpleSummaryModal (parte diario simplu)
   const [selectedSummaryDay, setSelectedSummaryDay] = useState(
     new Date().getDate()
   );
 
-  // Cargar CONFIG
+  // Cargar CONFIG (în prezent per-user, dar doar admin/dispecer o pot modifica din UI)
   useEffect(() => {
     const loadConfig = async () => {
       if (!profile?.id) return;
@@ -192,12 +133,14 @@ export default function CalculadoraNomina() {
         .select('*')
         .eq('user_id', profile.id)
         .single();
+
       if (data && !error) {
         setConfig({
           salario_base: data.salario_base ?? defaultConfig.salario_base,
           antiguedad: data.antiguedad ?? defaultConfig.antiguedad,
           precio_dia_trabajado:
-            data.precio_dia_trabajado ?? defaultConfig.precio_dia_trabajado,
+            data.precio_dia_trabajado ??
+            defaultConfig.precio_dia_trabajado,
           precio_desayuno:
             data.precio_desayuno ?? defaultConfig.precio_desayuno,
           precio_cena: data.precio_cena ?? defaultConfig.precio_cena,
@@ -212,7 +155,7 @@ export default function CalculadoraNomina() {
     loadConfig();
   }, [profile?.id, defaultConfig]);
 
-  // Cargar PONTAJE del mes visible
+  // Cargar PONTAJE del mes visible (pontaj_diario – 1 rând / zi)
   useEffect(() => {
     const loadPontaj = async () => {
       if (!profile?.id) return;
@@ -242,7 +185,7 @@ export default function CalculadoraNomina() {
     loadPontaj();
   }, [currentDate, profile?.id, makePontajForMonth, DAY_TEMPLATE]);
 
-  // Sincronizează când se schimbă luna
+  // Când schimb luna, resetăm selecțiile
   useEffect(() => {
     setSelectedSummaryDay(1);
     setIsParteOpen(false);
@@ -254,7 +197,7 @@ export default function CalculadoraNomina() {
     setIsParteOpen(true);
   }, []);
 
-  // Persistare în DB
+  // Persistare în DB pentru o zi
   const savePontajDay = useCallback(
     async (dayIndex, dayData) => {
       if (!profile?.id || dayIndex == null) return;
@@ -271,6 +214,7 @@ export default function CalculadoraNomina() {
         contenedores: dayData.contenedores ?? 0,
         suma_festivo: dayData.suma_festivo ?? 0,
         curse: Array.isArray(dayData.curse) ? dayData.curse : [],
+        camion_matricula: dayData.camion_matricula ?? null, // 🔗 noul câmp
       };
 
       const { error } = await supabase
@@ -284,7 +228,7 @@ export default function CalculadoraNomina() {
     [profile?.id, currentDate]
   );
 
-  // Închidere modal (păstrăm și salvarea la închidere ca fallback)
+  // Închidere modal parte diario (salvare ca fallback)
   const closeParte = useCallback(() => {
     if (selectedDayIndex !== null) {
       savePontajDay(selectedDayIndex, zilePontaj[selectedDayIndex]);
@@ -297,8 +241,9 @@ export default function CalculadoraNomina() {
   const openSummary = useCallback(
     (dayIndex) => {
       if (dayIndex < 0 || dayIndex >= zilePontaj.length) return;
+      const zi = zilePontaj[dayIndex];
       const data = {
-        ...zilePontaj[dayIndex],
+        ...zi,
         day: dayIndex + 1,
         monthName: monthNames[currentDate.getMonth()],
         year: currentDate.getFullYear(),
@@ -307,7 +252,12 @@ export default function CalculadoraNomina() {
           profile?.full_name ||
           profile?.username ||
           'Nombre no disponible',
-        camion: profile?.camioane?.matricula || profile?.matricula || '—',
+        camion:
+          zi?.camion_matricula || // 🆕 mai întâi matricula zilei
+          profile?.camioane?.matricula ||
+          profile?.matricula ||
+          profile?.camion ||
+          '—',
       };
       setSummaryModalData(data);
     },
@@ -325,13 +275,14 @@ export default function CalculadoraNomina() {
   const handleDayDataChange = useCallback(
     (name, value) => {
       if (selectedDayIndex === null) return;
-      const v = numericFields.has(name) && value !== '' ? Number(value) : value;
+      const v =
+        numericFields.has(name) && value !== '' ? Number(value) : value;
 
       setZilePontaj((prev) => {
         const arr = [...prev];
         const newDayData = { ...arr[selectedDayIndex], [name]: v };
         arr[selectedDayIndex] = newDayData;
-        // SALVARE INSTANT
+        // salvare instant
         savePontajDay(selectedDayIndex, newDayData);
         return arr;
       });
@@ -347,7 +298,7 @@ export default function CalculadoraNomina() {
         const cur = !!arr[selectedDayIndex]?.[field];
         const newDayData = { ...arr[selectedDayIndex], [field]: !cur };
         arr[selectedDayIndex] = newDayData;
-        // SALVARE INSTANT
+        // salvare instant
         savePontajDay(selectedDayIndex, newDayData);
         return arr;
       });
@@ -362,7 +313,7 @@ export default function CalculadoraNomina() {
         const arr = [...prev];
         const newDayData = { ...arr[selectedDayIndex], curse: newCurse };
         arr[selectedDayIndex] = newDayData;
-        // SALVARE INSTANT
+        // salvare instant
         savePontajDay(selectedDayIndex, newDayData);
         return arr;
       });
@@ -377,7 +328,6 @@ export default function CalculadoraNomina() {
       ),
     []
   );
-
   const goNextMonth = useCallback(
     () =>
       setCurrentDate(
@@ -388,7 +338,7 @@ export default function CalculadoraNomina() {
 
   const [result, setResult] = useState(null);
 
-  // Cálculo robusto
+  // Cálculo nómina
   const calc = useCallback(() => {
     if (!zilePontaj?.length) {
       return {
@@ -449,9 +399,8 @@ export default function CalculadoraNomina() {
     const cenPay = cenas * toNum(config.precio_cena);
     const proPay = procenas * toNum(config.precio_procena);
     const kmPay = kmTotal * toNum(config.precio_km);
-    const contPay =
-      contTotal * toNum(config.precio_contenedor);
-    const festPay = festivoTotal; // suma directă
+    const contPay = contTotal * toNum(config.precio_contenedor);
+    const festPay = festivoTotal;
 
     const total =
       base +
@@ -505,36 +454,37 @@ export default function CalculadoraNomina() {
     [currentDate]
   );
 
- // Deschide „Parte semanal” pentru săptămâna care conține ziua selectată în dropdown
-const openParteSemanal = useCallback(() => {
-  try {
-    const baseDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      selectedSummaryDay || 1   // dacă nu e selectat nimic, ia ziua 1
-    );
+  // Deschide „Parte semanal” pentru săptămâna care conține ziua din dropdown
+  const openParteSemanal = useCallback(() => {
+    try {
+      const baseDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        selectedSummaryDay || 1
+      );
 
-    const wd = buildWeekData(baseDate, zilePontaj);
-    setWeeklyData(wd);
-    setIsWeeklyOpen(true);
-    flashHint('Parte semanal');
-  } catch (e) {
-    console.error('Parte semanal error:', e);
-  }
-}, [currentDate, selectedSummaryDay, zilePontaj, flashHint]);
+      const wd = buildWeekData(baseDate, zilePontaj);
+      setWeeklyData(wd);
+      setIsWeeklyOpen(true);
+      flashHint('Parte semanal');
+    } catch (e) {
+      console.error('Parte semanal error:', e);
+    }
+  }, [currentDate, selectedSummaryDay, zilePontaj, flashHint]);
 
   return (
     <Layout>
       <div className={styles.mainContainer}>
         {/* COLUMNA 1 */}
         <div className={styles.column}>
-          {/* Toolbar centrada */}
+          {/* Toolbar */}
           <div
             className={
               styles.toolbar + ' ' + styles.toolbarCenter
             }
           >
-            {canEditNominaConfig && (
+            {/* Configuración contrato – DOAR pentru admin/dispecer */}
+            {canEditConfig && (
               <button
                 className={styles.iconBtn}
                 onClick={() => {
@@ -564,7 +514,7 @@ const openParteSemanal = useCallback(() => {
               <span className={styles.emoji}>🧮</span>
             </button>
 
-            {/* Parte semanal */}
+            {/* Parte semanal – folosește ziua selectată la „Día X” */}
             <button
               className={styles.iconBtn}
               onClick={openParteSemanal}
@@ -578,13 +528,13 @@ const openParteSemanal = useCallback(() => {
 
           {hint && <div className={styles.hint}>{hint}</div>}
 
-          {/* Resultado ARRIBA */}
+          {/* Rezultat sus */}
           {showResult && result && (
             <NominaResultCard result={result} />
           )}
 
-          {/* Configuración (solo admin/dispecer) */}
-          {canEditNominaConfig && showConfig && (
+          {/* Configuración (doar pentru cei cu drepturi) */}
+          {canEditConfig && showConfig && (
             <NominaConfigCard
               config={config}
               onChange={setConfig}
@@ -616,6 +566,7 @@ const openParteSemanal = useCallback(() => {
               onPickDay={openParte}
             />
 
+            {/* Selector parte diario (ticket simplu) */}
             <div className={styles.summarySelectorBar}>
               <select
                 className={styles.summarySelector}
@@ -648,6 +599,7 @@ const openParteSemanal = useCallback(() => {
         </div>
       </div>
 
+      {/* Modal parte diario detaliat */}
       <ParteDiarioModal
         isOpen={isParteOpen}
         onClose={closeParte}
@@ -668,6 +620,7 @@ const openParteSemanal = useCallback(() => {
         year={currentDate.getFullYear()}
       />
 
+      {/* Modal parte diario simplu (ticket) */}
       {summaryModalData && (
         <SimpleSummaryModal
           data={summaryModalData}
@@ -675,16 +628,14 @@ const openParteSemanal = useCallback(() => {
         />
       )}
 
-      {/* Modal Parte semanal — L A Z Y */}
-      <Suspense fallback={null}>
-        {isWeeklyOpen && weeklyData && (
-          <WeeklySummaryModal
-            isOpen={isWeeklyOpen}
-            onClose={() => setIsWeeklyOpen(false)}
-            weekData={weeklyData}
-          />
-        )}
-      </Suspense>
+      {/* Modal Parte semanal */}
+      {isWeeklyOpen && weeklyData && (
+        <WeeklySummaryModal
+          isOpen={isWeeklyOpen}
+          onClose={() => setIsWeeklyOpen(false)}
+          weekData={weeklyData}
+        />
+      )}
     </Layout>
   );
 }
