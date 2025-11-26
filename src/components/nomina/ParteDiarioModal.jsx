@@ -1,6 +1,7 @@
 // src/components/nomina/ParteDiarioModal.jsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../AuthContext';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
@@ -55,13 +56,31 @@ export default function ParteDiarioModal({
   isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange,
   day, monthName, year
 }) {
+  const { profile } = useAuth();
+
+  const defaultCamion =
+    profile?.camioane?.matricula ||
+    profile?.matricula ||
+    profile?.camion ||
+    '';
+
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
   const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
 
-  // Cargar coordenadas (una vez por apertura)
+  // Când se deschide modalul și ziua NU are camion, setăm camionul implicit din profil
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!defaultCamion) return;
+    if (!data || data.camion_matricula) return;
+
+    onDataChange('camion_matricula', defaultCamion);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, defaultCamion]);
+
+  // Cargar coordonate
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -89,12 +108,12 @@ export default function ParteDiarioModal({
     ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
     : 0;
 
-  // Cálculo KM automático por nombre
+  // Cálculo KM auto
   const autoKmFor = (startName, endName) => {
     const a = coordsIndex[startName];
     const b = coordsIndex[endName];
     if (!a || !b) return null;
-    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 decimal
+    return Math.round(haversineDistance(a, b) * 10) / 10;
   };
 
   const handleCursaChange = (index, field, value) => {
@@ -137,7 +156,7 @@ export default function ParteDiarioModal({
             const distance = haversineDistance({ lat: latitude, lon: longitude }, { lat, lon });
             return { name: loc.nombre, distance };
           })
-          .filter(v => v && v.distance <= 1.0) // 1 km
+          .filter(v => v && v.distance <= 1.0)
           .sort((a, b) => a.distance - b.distance);
 
         setGpsResults(near);
@@ -163,6 +182,8 @@ export default function ParteDiarioModal({
     setActiveGpsSearch(null);
   };
 
+  const camionValue = data?.camion_matricula || defaultCamion || '';
+
   return (
     <>
       <div className={styles.modalOverlay} onClick={onClose}>
@@ -181,7 +202,7 @@ export default function ParteDiarioModal({
                 <input
                   type="text"
                   name="camion_matricula"
-                  value={data?.camion_matricula ?? ''}
+                  value={camionValue}
                   onChange={(e) => onDataChange('camion_matricula', e.target.value)}
                   placeholder="Ej.: 1234-KLM"
                 />
@@ -214,7 +235,7 @@ export default function ParteDiarioModal({
               <p className={styles.kmPreview}>Kilómetros del día: <b>{kmShow}</b></p>
             </div>
 
-            {/* Carreras — APILADAS */}
+            {/* Carreras */}
             <div className={styles.parteDiarioSection}>
               <h4>Carreras del día (jornal)</h4>
               <div className={styles.curseList}>
@@ -272,7 +293,7 @@ export default function ParteDiarioModal({
               <button className={styles.addCursaButton} onClick={addCursa}>+ Añadir carrera</button>
             </div>
 
-            {/* Actividades especiales */}
+            {/* Actividades speciale */}
             <div className={styles.parteDiarioSection}>
               <h4>Actividades especiales</h4>
               <div className={styles.inputGrid}>
