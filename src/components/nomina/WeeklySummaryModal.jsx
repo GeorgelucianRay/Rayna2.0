@@ -15,11 +15,10 @@ function getMonday(d) {
 
 /**
  * Construiește structura săptămânii (Lu–Do) din currentDate & zilePontaj
- *  - mondayOverride: dacă vrei să forțezi o luni anume (Date), altfel ia luni din currentDate
+ *  - currentDate = ziua selectată în „Día X”
+ *  - zilePontaj = array pentru luna curentă (index 0 = ziua 1)
  *
- * NOTE:
- *  - zilePontaj = array-ul pe lună din CalculadoraNomina (1 index = ziua)
- *  - currentDate = ziua selectată (Día X) din lună
+ * Notă: zilele care ies în afara lunii au datele goale (nu avem pontaj pentru luna următoare/anterior).
  */
 export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
   const monday = mondayOverride ? new Date(mondayOverride) : getMonday(currentDate);
@@ -28,7 +27,7 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
   let kmFinalWeek = 0;
   let kmWeekTotal = 0;
 
-  // Lu–Do (7 zile)
+  // Luni–Duminică (7 zile)
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -36,16 +35,15 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
     const sameMonth =
       d.getFullYear() === currentDate.getFullYear() &&
       d.getMonth() === currentDate.getMonth();
-    const idx = sameMonth ? d.getDate() - 1 : null; // index în luna curentă
+
+    const idx = sameMonth ? d.getDate() - 1 : null;
     const zi = idx != null && zilePontaj[idx] ? zilePontaj[idx] : {};
 
     const km_i = Number(zi.km_iniciar || 0);
     const km_f = Number(zi.km_final || 0);
     const km_d = Math.max(0, km_f - km_i);
 
-    // Primul km din săptămână (prima zi cu valoare)
     if (!kmInitMonday && km_i) kmInitMonday = km_i;
-    // Ultimul km din săptămână (se actualizează mereu când găsim km_final)
     if (km_f) kmFinalWeek = km_f;
 
     kmWeekTotal += km_d;
@@ -66,7 +64,7 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
       km_dia: km_d,
       contenedores: Number(zi.contenedores || 0),
       camion_matricula: zi.camion_matricula || null,
-      observaciones: '', // plasă pentru viitor – rămâne gol în PDF/UI
+      observaciones: '',
     });
   }
 
@@ -77,6 +75,32 @@ export function buildWeekData(currentDate, zilePontaj, mondayOverride = null) {
     kmInitMonday,
     kmFinalFriday: kmFinalWeek,
     kmWeekTotal: Math.max(0, kmWeekTotal),
+  };
+}
+
+// **SEGMENTARE**: închidem partea săptămânală când se schimbă camionul
+function cutDaysByTruck(days) {
+  if (!days || !days.length) return { effectiveDays: [], cutIndex: 0 };
+
+  const baseTruck = days.find(d => d.camion_matricula)?.camion_matricula;
+  if (!baseTruck) {
+    // niciun camion setat – nu tăiem nimic
+    return { effectiveDays: days, cutIndex: days.length };
+  }
+
+  let cutIndex = days.length;
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    if (d.camion_matricula && d.camion_matricula !== baseTruck) {
+      cutIndex = i; // ne oprim înainte de primul camion diferit
+      break;
+    }
+  }
+
+  return {
+    effectiveDays: days.slice(0, cutIndex),
+    cutIndex,
+    baseTruck,
   };
 }
 
@@ -94,12 +118,14 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
     [profile]
   );
 
-  // Camión săptămânal:
-  //  1) prima matriculă non-goală din zile
-  //  2) altfel profil camion / matricula
+  const { effectiveDays, cutIndex, baseTruck } = useMemo(
+    () => cutDaysByTruck(weekData.days || []),
+    [weekData]
+  );
+
+  // Camión afişat: camion săptămână (din zile) sau, dacă nu există, din profil
   const camionSemana = useMemo(() => {
-    const d = weekData.days || [];
-    const fromDays = d.find((day) => day.camion_matricula)?.camion_matricula;
+    const fromDays = baseTruck || effectiveDays.find(d => d.camion_matricula)?.camion_matricula;
     return (
       fromDays ||
       profile?.camioane?.matricula ||
@@ -107,7 +133,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
       profile?.camion ||
       '—'
     );
-  }, [weekData, profile]);
+  }, [baseTruck, effectiveDays, profile]);
 
   const rangoSemana = useMemo(() => {
     const fmt = (d) =>
@@ -119,7 +145,38 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
     return `${fmt(weekData.monday)} — ${fmt(weekData.friday)}`;
   }, [weekData]);
 
-  // PDF – HOJA DE GASTOS SEMANA (Lunes–Domingo, Desayuno/Cena/Pernocta/Otros)
+  // Recalculăm KMs doar pe zilele „valabile” (până la schimbarea camionului)
+  const kmStats = useMemo(() => {
+    if (!effectiveDays.length) {
+      return {
+        kmIni: weekData.kmInitMonday || 0,
+        kmFin: weekData.kmFinalFriday || 0,
+        kmTotal: weekData.kmWeekTotal || 0,
+      };
+    }
+
+    let kmIni = 0;
+    let kmFin = 0;
+    let total = 0;
+
+    effectiveDays.forEach((d) => {
+      const kmi = Number(d.km_iniciar || 0);
+      const kmf = Number(d.km_final || 0);
+      const kmd = Math.max(0, kmf - kmi);
+
+      if (!kmIni && kmi) kmIni = kmi;
+      if (kmf) kmFin = kmf;
+      total += kmd;
+    });
+
+    return {
+      kmIni,
+      kmFin,
+      kmTotal: total,
+    };
+  }, [effectiveDays, weekData]);
+
+  // PDF – HOJA DE GASTOS SEMANA (Lunes–Domingo, se taie când se schimbă camionul)
   const handleGeneratePDF = useCallback(
     async () => {
       try {
@@ -130,21 +187,21 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         const M = 12;
         let y = M;
 
-        const days = weekData.days || [];
+        const allDays = weekData.days || [];
 
-        // Titlu sus: HOJA DE GASTOS SEMANA
+        // Titlu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         doc.text('HOJA DE GASTOS SEMANA', W / 2, y, { align: 'center' });
         y += 8;
 
-        // Linie cu info săptămână în dreapta
+        // Info săptămână
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Semana: ${rangoSemana}`, W - M, y, { align: 'right' });
         y += 8;
 
-        // Tabel Lunes–Domingo cu DESAYUNO / CENA / PERNOCTA / OTROS
+        // Tabel L–D
         const colDia = 40;
         const colAncho = (W - M * 2 - colDia) / 4;
         const rowAlt = 7;
@@ -168,7 +225,6 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
 
         y += rowAlt;
 
-        // Rânduri pentru LUNES–DOMINGO (structură ca în foaia ta)
         const labels = [
           'LUNES',
           'MARTES',
@@ -182,32 +238,38 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         doc.setFont('helvetica', 'normal');
 
         labels.forEach((label, idx) => {
-          const d = days[idx] || {};
-          x = M;
+          // dacă idx >= cutIndex => săptămâna se consideră „închisă” (schimbare camion) => rând gol
+          const d = idx < cutIndex ? allDays[idx] || {} : {};
 
-          // Celulă nume zi
+          x = M;
           doc.rect(x, y, colDia, rowAlt, 'S');
           doc.text(label, x + 2, y + 4);
           x += colDia;
 
           // DESAYUNO
           doc.rect(x, y, colAncho, rowAlt, 'S');
-          if (d.des) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          if (d.des && idx < cutIndex) {
+            doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          }
           x += colAncho;
 
           // CENA
           doc.rect(x, y, colAncho, rowAlt, 'S');
-          if (d.cen) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          if (d.cen && idx < cutIndex) {
+            doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          }
           x += colAncho;
 
-          // PERNOCTA – folosim procena (pro)
+          // PERNOCTA
           doc.rect(x, y, colAncho, rowAlt, 'S');
-          if (d.pro) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          if (d.pro && idx < cutIndex) {
+            doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+          }
           x += colAncho;
 
-          // OTROS – folosim festivo ca exemplu (poți ajusta ulterior)
+          // OTROS (folosim festivo ca exemplu)
           doc.rect(x, y, colAncho, rowAlt, 'S');
-          if (d.festivo) {
+          if (d.festivo && idx < cutIndex) {
             doc.text(String(d.festivo), x + colAncho / 2, y + 4, { align: 'center' });
           }
 
@@ -216,15 +278,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
 
         y += 6;
 
-        // Secțiunea de jos cu KMs și observații – ca în formular
-        const kmIni = weekData.kmInitMonday || 0;
-        const kmFin = weekData.kmFinalFriday || 0;
-        const kmTotal =
-          kmFin && kmIni
-            ? Math.max(0, kmFin - kmIni)
-            : weekData.kmWeekTotal || 0;
-
-        // CONDUCTOR / VEHÍCULO
+        // Secțiune jos: conductor, vehículo, observații, kms
         doc.setFont('helvetica', 'bold');
         doc.text('CONDUCTOR:', M, y);
         doc.setFont('helvetica', 'normal');
@@ -245,7 +299,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         doc.rect(M, y, W - 2 * M, 12, 'S');
         y += 18;
 
-        // Linie KMS INICIALES / FINALES / TOTAL
+        // KMS
         const line = (label, val) => {
           doc.setFont('helvetica', 'bold');
           doc.text(label, M, y);
@@ -254,13 +308,13 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
           y += 6;
         };
 
-        line('KMS INICIALES SEMANA', kmIni);
-        line('KMS FINALIZACIÓN SEMANA', kmFin);
-        line('TOTAL', kmTotal);
+        line('KMS INICIALES SEMANA', kmStats.kmIni);
+        line('KMS FINALIZACIÓN SEMANA', kmStats.kmFin);
+        line('TOTAL', kmStats.kmTotal);
 
         y += 4;
 
-        // Alte câmpuri (goale) – CARGAS/DESCARGAS, EXTRAS etc.
+        // Câmpuri extra goale
         const extraLine = (label) => {
           doc.setFont('helvetica', 'bold');
           doc.text(label, M, y);
@@ -283,7 +337,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
         alert('No se pudo generar el PDF.');
       }
     },
-    [chofer, camionSemana, rangoSemana, weekData]
+    [chofer, camionSemana, rangoSemana, weekData, cutIndex, kmStats]
   );
 
   return (
@@ -314,9 +368,15 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
           <div>
             <span>Semana:</span> {rangoSemana}
           </div>
+          <div className={styles.weekHint}>
+            {/* hint mic: săptămâna se ia din "Día X" */}
+            <small>
+              La semana se calcula a partir del <b>Día</b> seleccionado en la pantalla anterior.
+            </small>
+          </div>
         </div>
 
-        {/* Tabel intern (vizual, tehnic – pdf-ul este ca foaia de hârtie) */}
+        {/* Tabel intern (vizual) */}
         <div className={styles.tableWrap}>
           <div className={`${styles.row} ${styles.header}`}>
             <div className={styles.cDia}>Día</div>
@@ -331,35 +391,40 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekData }) {
             <div className={styles.cObs}>Obs.</div>
           </div>
 
-          {weekData.days.map((d, i) => (
-            <div key={i} className={styles.row}>
-              <div className={styles.cDia}>{d.label}</div>
-              <div className={styles.cTiny}>{d.des ? 'X' : ''}</div>
-              <div className={styles.cTiny}>{d.cen ? 'X' : ''}</div>
-              <div className={styles.cTiny}>{d.pro ? 'X' : ''}</div>
-              <div className={styles.cSm}>{d.festivo || ''}</div>
-              <div className={styles.cSm}>{d.km_iniciar || ''}</div>
-              <div className={styles.cSm}>{d.km_final || ''}</div>
-              <div className={styles.cSm}>{d.km_dia || ''}</div>
-              <div className={styles.cXs}>{d.contenedores || ''}</div>
-              <div className={styles.cObs}></div>
-            </div>
-          ))}
+          {weekData.days.map((d, i) => {
+            const isCutOff = i >= cutIndex && cutIndex !== 0;
+            const row = isCutOff ? {} : d;
+
+            return (
+              <div key={i} className={styles.row}>
+                <div className={styles.cDia}>{row.label || d.label}</div>
+                <div className={styles.cTiny}>{row.des ? 'X' : ''}</div>
+                <div className={styles.cTiny}>{row.cen ? 'X' : ''}</div>
+                <div className={styles.cTiny}>{row.pro ? 'X' : ''}</div>
+                <div className={styles.cSm}>{row.festivo || ''}</div>
+                <div className={styles.cSm}>{row.km_iniciar || ''}</div>
+                <div className={styles.cSm}>{row.km_final || ''}</div>
+                <div className={styles.cSm}>{row.km_dia || ''}</div>
+                <div className={styles.cXs}>{row.contenedores || ''}</div>
+                <div className={styles.cObs}></div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Rezumat */}
         <div className={styles.stats}>
           <div>
             KM inicial semana:{' '}
-            <b>{weekData.kmInitMonday || 0}</b>
+            <b>{kmStats.kmIni || 0}</b>
           </div>
           <div>
             KM final semana:{' '}
-            <b>{weekData.kmFinalFriday || 0}</b>
+            <b>{kmStats.kmFin || 0}</b>
           </div>
           <div>
             KM totales semana:{' '}
-            <b className={styles.km}>{weekData.kmWeekTotal}</b>
+            <b className={styles.km}>{kmStats.kmTotal}</b>
           </div>
         </div>
 
