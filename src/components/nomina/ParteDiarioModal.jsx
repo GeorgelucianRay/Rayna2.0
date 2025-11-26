@@ -1,7 +1,6 @@
 // src/components/nomina/ParteDiarioModal.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useAuth } from '../../AuthContext';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
@@ -56,31 +55,19 @@ export default function ParteDiarioModal({
   isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange,
   day, monthName, year
 }) {
-  const { profile } = useAuth();
-
-  const defaultCamion =
-    profile?.camioane?.matricula ||
-    profile?.matricula ||
-    profile?.camion ||
-    '';
-
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
   const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
 
-  // Când se deschide modalul și ziua NU are camion, setăm camionul implicit din profil
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!defaultCamion) return;
-    if (!data || data.camion_matricula) return;
+  // lista camioane (pentru select)
+  const [trucks, setTrucks] = useState([]);
 
-    onDataChange('camion_matricula', defaultCamion);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, defaultCamion]);
+  // camion principal (zi) – poate fi null, atunci se folosește camionul default din profil (în altă parte)
+  const mainCamion = data?.camion_matricula || '';
 
-  // Cargar coordonate
+  // Cargar coordenadas (una vez por apertura)
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -98,36 +85,67 @@ export default function ParteDiarioModal({
     })();
   }, [isOpen]);
 
+  // Cargar camioane
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const { data: trucksData, error } = await supabase
+          .from('camioane')
+          .select('id, matricula')
+          .order('matricula', { ascending: true });
+        if (!error && trucksData) {
+          setTrucks(trucksData);
+        }
+      } catch (e) {
+        console.error('Error loading trucks:', e);
+      }
+    })();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const onNum = (e) => onDataChange(e.target.name, e.target.value === '' ? '' : Number(e.target.value));
+  const onNum = (e) =>
+    onDataChange(
+      e.target.name,
+      e.target.value === '' ? '' : Number(e.target.value)
+    );
 
   const kmIniciar = data?.km_iniciar ?? '';
   const kmFinal = data?.km_final ?? '';
-  const kmShow = (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0
-    ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
-    : 0;
+  const kmShow =
+    (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0
+      ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
+      : 0;
 
-  // Cálculo KM auto
+  // Cálculo KM automático por nombre
   const autoKmFor = (startName, endName) => {
     const a = coordsIndex[startName];
     const b = coordsIndex[endName];
     if (!a || !b) return null;
-    return Math.round(haversineDistance(a, b) * 10) / 10;
+    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 decimal
   };
 
   const handleCursaChange = (index, field, value) => {
     const newCurse = [...(data.curse || [])];
-    const prev = newCurse[index] || { start: '', end: '' };
+    const prev = newCurse[index] || { start: '', end: '', camion_matricula: mainCamion || '' };
     const updated = { ...prev, [field]: value };
+
     const km_auto = autoKmFor(updated.start, updated.end);
     if (km_auto != null) updated.km_auto = km_auto;
+
     newCurse[index] = updated;
     onCurseChange(newCurse);
   };
 
-  const addCursa = () => onCurseChange([...(data.curse || []), { start: '', end: '' }]);
-  const removeCursa = (index) => onCurseChange((data.curse || []).filter((_, i) => i !== index));
+  const addCursa = () =>
+    onCurseChange([
+      ...(data.curse || []),
+      { start: '', end: '', camion_matricula: mainCamion || '' },
+    ]);
+
+  const removeCursa = (index) =>
+    onCurseChange((data.curse || []).filter((_, i) => i !== index));
 
   const openGpsSelection = (index, field) => {
     setActiveGpsSearch({ index, field });
@@ -140,36 +158,42 @@ export default function ParteDiarioModal({
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-      const { latitude, longitude } = coords;
-      try {
-        const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
-        const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
-        let all = [];
-        res.forEach(r => { if (r.data) all = all.concat(r.data); });
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude, longitude } = coords;
+        try {
+          const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
+          const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
+          let all = [];
+          res.forEach(r => { if (r.data) all = all.concat(r.data); });
 
-        const near = all
-          .map(loc => {
-            if (!loc.coordenadas) return null;
-            const [lat, lon] = loc.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
-            if (isNaN(lat) || isNaN(lon)) return null;
-            const distance = haversineDistance({ lat: latitude, lon: longitude }, { lat, lon });
-            return { name: loc.nombre, distance };
-          })
-          .filter(v => v && v.distance <= 1.0)
-          .sort((a, b) => a.distance - b.distance);
+          const near = all
+            .map(loc => {
+              if (!loc.coordenadas) return null;
+              const [lat, lon] = loc.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
+              if (isNaN(lat) || isNaN(lon)) return null;
+              const distance = haversineDistance(
+                { lat: latitude, lon: longitude },
+                { lat, lon }
+              );
+              return { name: loc.nombre, distance };
+            })
+            .filter(v => v && v.distance <= 1.0) // 1 km
+            .sort((a, b) => a.distance - b.distance);
 
-        setGpsResults(near);
-      } catch (e) {
-        console.error(e);
-        alert('Se produjo un error al buscar ubicaciones.');
-      } finally {
+          setGpsResults(near);
+        } catch (e) {
+          console.error(e);
+          alert('Se produjo un error al buscar ubicaciones.');
+        } finally {
+          setGpsLoading(false);
+        }
+      },
+      (err) => {
+        alert(`Error de GPS: ${err.message}`);
         setGpsLoading(false);
       }
-    }, (err) => {
-      alert(`Error de GPS: ${err.message}`);
-      setGpsLoading(false);
-    });
+    );
   };
 
   const handleGpsLocationSelect = (name) => {
@@ -182,30 +206,51 @@ export default function ParteDiarioModal({
     setActiveGpsSearch(null);
   };
 
-  const camionValue = data?.camion_matricula || defaultCamion || '';
+  // când șoferul alege camionul principal pentru zi
+  const handleMainCamionChange = (e) => {
+    const matricula = e.target.value || null;
+    onDataChange('camion_matricula', matricula);
+  };
+
+  const curse = useMemo(
+    () => data.curse || [],
+    [data.curse]
+  );
 
   return (
     <>
       <div className={styles.modalOverlay} onClick={onClose}>
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.modalHeader}>
-            <h3 className={styles.modalTitle}>Parte diario — {day} {monthName} {year}</h3>
-            <button className={styles.closeIcon} onClick={onClose}><CloseIcon /></button>
+            <h3 className={styles.modalTitle}>
+              Parte diario — {day} {monthName} {year}
+            </h3>
+            <button className={styles.closeIcon} onClick={onClose}>
+              <CloseIcon />
+            </button>
           </div>
 
           <div className={styles.modalBody}>
-            {/* Camión (matrícula pe zi) */}
+            {/* Camión principal del día */}
             <div className={styles.parteDiarioSection}>
-              <h4>Camión</h4>
+              <h4>Vehículo</h4>
               <div className={styles.inputGroup}>
-                <label>Matrícula vehículo</label>
-                <input
-                  type="text"
-                  name="camion_matricula"
-                  value={camionValue}
-                  onChange={(e) => onDataChange('camion_matricula', e.target.value)}
-                  placeholder="Ej.: 1234-KLM"
-                />
+                <label>Camión del día</label>
+                <select
+                  className={styles.select}
+                  value={mainCamion || ''}
+                  onChange={handleMainCamionChange}
+                >
+                  <option value="">(Por defecto)</option>
+                  {trucks.map((t) => (
+                    <option key={t.id} value={t.matricula}>
+                      {t.matricula}
+                    </option>
+                  ))}
+                </select>
+                <p className={styles.smallHint}>
+                  Si en algunas carreras usas otro camión, puedes cambiarlo a nivel de carrera.
+                </p>
               </div>
             </div>
 
@@ -213,9 +258,30 @@ export default function ParteDiarioModal({
             <div className={styles.parteDiarioSection}>
               <h4>Dietas</h4>
               <div className={styles.checkboxGroupModal}>
-                <label><input type="checkbox" checked={!!data?.desayuno} onChange={() => onToggleChange('desayuno')} /> Desayuno</label>
-                <label><input type="checkbox" checked={!!data?.cena} onChange={() => onToggleChange('cena')} /> Cena</label>
-                <label><input type="checkbox" checked={!!data?.procena} onChange={() => onToggleChange('procena')} /> Pro-cena</label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!data?.desayuno}
+                    onChange={() => onToggleChange('desayuno')}
+                  />{' '}
+                  Desayuno
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!data?.cena}
+                    onChange={() => onToggleChange('cena')}
+                  />{' '}
+                  Cena
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!data?.procena}
+                    onChange={() => onToggleChange('procena')}
+                  />{' '}
+                  Pro-cena
+                </label>
               </div>
             </div>
 
@@ -225,22 +291,36 @@ export default function ParteDiarioModal({
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>KM inicio</label>
-                  <input type="number" name="km_iniciar" value={kmIniciar} onChange={onNum}/>
+                  <input
+                    type="number"
+                    name="km_iniciar"
+                    value={kmIniciar}
+                    onChange={onNum}
+                  />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>KM fin</label>
-                  <input type="number" name="km_final" value={kmFinal} onChange={onNum}/>
+                  <input
+                    type="number"
+                    name="km_final"
+                    value={kmFinal}
+                    onChange={onNum}
+                  />
                 </div>
               </div>
-              <p className={styles.kmPreview}>Kilómetros del día: <b>{kmShow}</b></p>
+              <p className={styles.kmPreview}>
+                Kilómetros del día: <b>{kmShow}</b>
+              </p>
             </div>
 
-            {/* Carreras */}
+            {/* Carreras — APILADAS + Camión per cursa */}
             <div className={styles.parteDiarioSection}>
               <h4>Carreras del día (jornal)</h4>
               <div className={styles.curseList}>
-                {(data.curse || []).map((cursa, index) => {
+                {curse.map((cursa, index) => {
                   const kmAuto = autoKmFor(cursa.start, cursa.end);
+                  const cursaCamion = cursa.camion_matricula || mainCamion || '';
+
                   return (
                     <div key={index} className={styles.cursaItem}>
                       <div className={styles.cursaInputs}>
@@ -249,12 +329,21 @@ export default function ParteDiarioModal({
                           <div className={styles.inputWithButton}>
                             <SearchableInput
                               value={cursa.start || ''}
-                              onChange={(val) => handleCursaChange(index, 'start', val)}
-                              onLocationSelect={(name) => handleCursaChange(index, 'start', name)}
+                              onChange={(val) =>
+                                handleCursaChange(index, 'start', val)
+                              }
+                              onLocationSelect={(name) =>
+                                handleCursaChange(index, 'start', name)
+                              }
                               placeholder="Ej.: Parking"
                               closeOnSelect
                             />
-                            <button onClick={() => openGpsSelection(index, 'start')}><GpsFixedIcon /></button>
+                            <button
+                              type="button"
+                              onClick={() => openGpsSelection(index, 'start')}
+                            >
+                              <GpsFixedIcon />
+                            </button>
                           </div>
                         </div>
 
@@ -263,18 +352,54 @@ export default function ParteDiarioModal({
                           <div className={styles.inputWithButton}>
                             <SearchableInput
                               value={cursa.end || ''}
-                              onChange={(val) => handleCursaChange(index, 'end', val)}
-                              onLocationSelect={(name) => handleCursaChange(index, 'end', name)}
+                              onChange={(val) =>
+                                handleCursaChange(index, 'end', val)
+                              }
+                              onLocationSelect={(name) =>
+                                handleCursaChange(index, 'end', name)
+                              }
                               placeholder="Ej.: TCB"
                               closeOnSelect
                             />
-                            <button onClick={() => openGpsSelection(index, 'end')}><GpsFixedIcon /></button>
+                            <button
+                              type="button"
+                              onClick={() => openGpsSelection(index, 'end')}
+                            >
+                              <GpsFixedIcon />
+                            </button>
                           </div>
                         </div>
 
                         <div className={styles.inputGroup}>
+                          <label>Camión</label>
+                          <select
+                            className={styles.select}
+                            value={cursaCamion}
+                            onChange={(e) =>
+                              handleCursaChange(
+                                index,
+                                'camion_matricula',
+                                e.target.value || null
+                              )
+                            }
+                          >
+                            <option value="">
+                              (Principal del día)
+                            </option>
+                            {trucks.map((t) => (
+                              <option key={t.id} value={t.matricula}>
+                                {t.matricula}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className={styles.inputGroup}>
                           <label>KM aprox.</label>
-                          <input disabled value={kmAuto != null ? kmAuto : '—'} />
+                          <input
+                            disabled
+                            value={kmAuto != null ? kmAuto : '—'}
+                          />
                         </div>
                       </div>
 
@@ -282,6 +407,7 @@ export default function ParteDiarioModal({
                         className={styles.removeCursaButton}
                         onClick={() => removeCursa(index)}
                         title="Eliminar carrera"
+                        type="button"
                       >
                         <TrashIcon />
                       </button>
@@ -290,27 +416,49 @@ export default function ParteDiarioModal({
                 })}
               </div>
 
-              <button className={styles.addCursaButton} onClick={addCursa}>+ Añadir carrera</button>
+              <button
+                className={styles.addCursaButton}
+                onClick={addCursa}
+                type="button"
+              >
+                + Añadir carrera
+              </button>
             </div>
 
-            {/* Actividades speciale */}
+            {/* Actividades especiales */}
             <div className={styles.parteDiarioSection}>
               <h4>Actividades especiales</h4>
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>Contenedores barridos</label>
-                  <input type="number" name="contenedores" value={data?.contenedores ?? ''} onChange={onNum}/>
+                  <input
+                    type="number"
+                    name="contenedores"
+                    value={data?.contenedores ?? ''}
+                    onChange={onNum}
+                  />
                 </div>
                 <div className={styles.inputGroup}>
                   <label>Plus festivo (€)</label>
-                  <input type="number" name="suma_festivo" value={data?.suma_festivo ?? ''} onChange={onNum}/>
+                  <input
+                    type="number"
+                    name="suma_festivo"
+                    value={data?.suma_festivo ?? ''}
+                    onChange={onNum}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           <div className={styles.modalFooter}>
-            <button className={styles.actionMini} type="button" onClick={onClose}>Cerrar</button>
+            <button
+              className={styles.actionMini}
+              type="button"
+              onClick={onClose}
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
