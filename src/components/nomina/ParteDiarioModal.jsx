@@ -4,30 +4,58 @@ import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
-// --- Iconos ---
+// -------- ICONOS ----------
 const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
-);
-const GpsFixedIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="22" y1="12" x2="18" y2="12" /><line x1="6" y1="12" x2="2" y2="12" /></svg>
-);
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" x2="6" y1="6" y2="18"/>
+    <line x1="6" x2="18" y1="6" y2="18"/>
+  </svg>
 );
 
-// Distancia haversine (km)
+const GpsFixedIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <line x1="12" y1="2" x2="12" y2="6" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+    <line x1="22" y1="12" x2="18" y2="12" />
+    <line x1="6" y1="12" x2="2" y2="12" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4
+              a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
+
+// ---------- DISTANȚĂ ----------
 function haversineDistance(a, b) {
   const toRad = (x) => x * Math.PI / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
   const s = Math.sin;
-  const term = s(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s(dLon/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(term), Math.sqrt(1 - term));
-  return R * c;
+
+  const term = s(dLat/2)**2 +
+               Math.cos(toRad(a.lat)) *
+               Math.cos(toRad(b.lat)) *
+               s(dLon/2)**2;
+
+  return 2 * R * Math.atan2(Math.sqrt(term), Math.sqrt(1 - term));
 }
 
-// Modal selección GPS
+
+// ======================= MODAL GPS =============================
 const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
   <div className={styles.modalOverlay} onClick={onClose}>
     <div className={styles.modal} style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
@@ -35,15 +63,18 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
         <h3 className={styles.modalTitle}>Selecciona una ubicación</h3>
         <button className={styles.closeIcon} onClick={onClose}><CloseIcon /></button>
       </div>
+
       <div className={styles.gpsResultsList}>
         {isLoading && <p>Buscando ubicaciones cercanas…</p>}
         {!isLoading && locations.length === 0 && (
-          <p>No se han encontrado ubicaciones registradas en un radio de 1&nbsp;km.</p>
+          <p>No se han encontrado ubicaciones cercanas.</p>
         )}
-        {locations.map((loc, index) => (
-          <div key={index} className={styles.gpsResultItem} onClick={() => onSelect(loc.name)}>
+
+        {locations.map((loc, idx) => (
+          <div key={idx} className={styles.gpsResultItem}
+               onClick={() => onSelect(loc.name)}>
             <strong>{loc.name}</strong>
-            <span>~ {Math.round(loc.distance * 1000)}&nbsp;m</span>
+            <span>~ {Math.round(loc.distance * 1000)} m</span>
           </div>
         ))}
       </div>
@@ -51,176 +82,149 @@ const GpsSelectionModal = ({ locations, onSelect, onClose, isLoading }) => (
   </div>
 );
 
+
+// ====================================================================
+//                      PARTE DIARIO MODAL
+// ====================================================================
+
 export default function ParteDiarioModal({
-  isOpen, onClose, data, onDataChange, onToggleChange, onCurseChange,
-  day, monthName, year
+  isOpen,
+  onClose,
+  data,
+  onDataChange,
+  onToggleChange,
+  onCurseChange,
+  day,
+  monthName,
+  year
 }) {
+
+  const safeData = data || {};
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [activeGpsSearch, setActiveGpsSearch] = useState(null); // { index, field }
-  const [coordsIndex, setCoordsIndex] = useState({}); // { nombre: {lat, lon} }
-
-  // lista camioane (pentru select)
+  const [activeGpsSearch, setActiveGpsSearch] = useState(null);
+  const [coordsIndex, setCoordsIndex] = useState({});
   const [trucks, setTrucks] = useState([]);
 
-  // camion principal (zi) – poate fi null, atunci se folosește camionul default din profil (în altă parte)
-  const mainCamion = data?.camion_matricula || '';
+  const mainCamion = safeData.camion_matricula || '';
 
-  // Cargar coordenadas (una vez por apertura)
+  // ---------------- LOAD COORDINATE -----------------
   useEffect(() => {
     if (!isOpen) return;
+
     (async () => {
+      const tables = [
+        'gps_clientes',
+        'gps_parkings',
+        'gps_servicios',
+        'gps_terminale'
+      ];
+
       try {
-        const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
-        const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
+        const res = await Promise.all(
+          tables.map(t => supabase.from(t).select('nombre, coordenadas'))
+        );
+
         const idx = {};
-        res.forEach(({ data }) => (data || []).forEach(row => {
-          if (!row?.coordenadas || !row?.nombre) return;
-          const [lat, lon] = row.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
-          if (!isNaN(lat) && !isNaN(lon)) idx[row.nombre] = { lat, lon };
-        }));
+        res.forEach(({ data }) => {
+          (data || []).forEach(row => {
+            if (!row.coordenadas) return;
+            const [lat, lon] = row.coordenadas
+              .replace(/[()]/g, '')
+              .split(',')
+              .map(n => parseFloat(n.trim()));
+
+            if (!isNaN(lat) && !isNaN(lon)) {
+              idx[row.nombre] = { lat, lon };
+            }
+          });
+        });
+
         setCoordsIndex(idx);
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error('coord load error', e);
+      }
     })();
   }, [isOpen]);
 
-  // Cargar camioane
+  // ------------- LOAD TRUCKS -----------------
   useEffect(() => {
     if (!isOpen) return;
+
     (async () => {
       try {
-        const { data: trucksData, error } = await supabase
+        const { data } = await supabase
           .from('camioane')
           .select('id, matricula')
           .order('matricula', { ascending: true });
-        if (!error && trucksData) {
-          setTrucks(trucksData);
-        }
+
+        setTrucks(data || []);
       } catch (e) {
-        console.error('Error loading trucks:', e);
+        console.error('truck load error', e);
       }
     })();
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const onNum = (e) =>
-    onDataChange(
-      e.target.name,
-      e.target.value === '' ? '' : Number(e.target.value)
-    );
+  const kmIniciar = safeData.km_iniciar ?? '';
+  const kmFinal   = safeData.km_final ?? '';
+  const kmShow = Math.max(0, Number(kmFinal) - Number(kmIniciar));
 
-  const kmIniciar = data?.km_iniciar ?? '';
-  const kmFinal = data?.km_final ?? '';
-  const kmShow =
-    (Number(kmFinal || 0) - Number(kmIniciar || 0)) > 0
-      ? (Number(kmFinal || 0) - Number(kmIniciar || 0))
-      : 0;
+  const autoKmFor = (start, end) => {
+    const A = coordsIndex[start];
+    const B = coordsIndex[end];
+    if (!A || !B) return null;
+    return Math.round(haversineDistance(A, B) * 10) / 10;
+  };
 
-  // Cálculo KM automático por nombre
-  const autoKmFor = (startName, endName) => {
-    const a = coordsIndex[startName];
-    const b = coordsIndex[endName];
-    if (!a || !b) return null;
-    return Math.round(haversineDistance(a, b) * 10) / 10; // 1 decimal
+  const curse = useMemo(
+    () => Array.isArray(safeData.curse) ? safeData.curse : [],
+    [safeData.curse]
+  );
+
+  const onNum = (e) => {
+    const name = e.target.name;
+    const val = e.target.value === '' ? '' : Number(e.target.value);
+    onDataChange(name, val);
   };
 
   const handleCursaChange = (index, field, value) => {
-    const newCurse = [...(data.curse || [])];
-    const prev = newCurse[index] || { start: '', end: '', camion_matricula: mainCamion || '' };
+    const newCurse = [...curse];
+    const prev = newCurse[index] || {
+      start: '',
+      end: '',
+      camion_matricula: mainCamion || ''
+    };
+
     const updated = { ...prev, [field]: value };
 
-    const km_auto = autoKmFor(updated.start, updated.end);
-    if (km_auto != null) updated.km_auto = km_auto;
+    const kmAuto = autoKmFor(updated.start, updated.end);
+    if (kmAuto != null) updated.km_auto = kmAuto;
 
     newCurse[index] = updated;
     onCurseChange(newCurse);
   };
 
-  const addCursa = () =>
+  const addCursa = () => {
     onCurseChange([
-      ...(data.curse || []),
-      { start: '', end: '', camion_matricula: mainCamion || '' },
+      ...curse,
+      { start: '', end: '', camion_matricula: mainCamion || '' }
     ]);
-
-  const removeCursa = (index) =>
-    onCurseChange((data.curse || []).filter((_, i) => i !== index));
-
-  const openGpsSelection = (index, field) => {
-    setActiveGpsSearch({ index, field });
-    setIsGpsModalOpen(true);
-    setGpsLoading(true);
-
-    if (!navigator.geolocation) {
-      alert('La geolocalización no está soportada por este navegador.');
-      setGpsLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const { latitude, longitude } = coords;
-        try {
-          const tables = ['gps_clientes', 'gps_parkings', 'gps_servicios', 'gps_terminale'];
-          const res = await Promise.all(tables.map(t => supabase.from(t).select('nombre, coordenadas')));
-          let all = [];
-          res.forEach(r => { if (r.data) all = all.concat(r.data); });
-
-          const near = all
-            .map(loc => {
-              if (!loc.coordenadas) return null;
-              const [lat, lon] = loc.coordenadas.slice(1, -1).split(',').map(s => parseFloat(s.trim()));
-              if (isNaN(lat) || isNaN(lon)) return null;
-              const distance = haversineDistance(
-                { lat: latitude, lon: longitude },
-                { lat, lon }
-              );
-              return { name: loc.nombre, distance };
-            })
-            .filter(v => v && v.distance <= 1.0) // 1 km
-            .sort((a, b) => a.distance - b.distance);
-
-          setGpsResults(near);
-        } catch (e) {
-          console.error(e);
-          alert('Se produjo un error al buscar ubicaciones.');
-        } finally {
-          setGpsLoading(false);
-        }
-      },
-      (err) => {
-        alert(`Error de GPS: ${err.message}`);
-        setGpsLoading(false);
-      }
-    );
   };
 
-  const handleGpsLocationSelect = (name) => {
-    if (activeGpsSearch) {
-      const { index, field } = activeGpsSearch;
-      handleCursaChange(index, field, name);
-    }
-    setIsGpsModalOpen(false);
-    setGpsResults([]);
-    setActiveGpsSearch(null);
+  const removeCursa = (index) => {
+    onCurseChange(curse.filter((_, i) => i !== index));
   };
 
-  // când șoferul alege camionul principal pentru zi
-  const handleMainCamionChange = (e) => {
-    const matricula = e.target.value || null;
-    onDataChange('camion_matricula', matricula);
-  };
-
-  const curse = useMemo(
-    () => data.curse || [],
-    [data.curse]
-  );
 
   return (
     <>
       <div className={styles.modalOverlay} onClick={onClose}>
-        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modal} onClick={e => e.stopPropagation()}>
+
+          {/* HEADER */}
           <div className={styles.modalHeader}>
             <h3 className={styles.modalTitle}>
               Parte diario — {day} {monthName} {year}
@@ -230,64 +234,72 @@ export default function ParteDiarioModal({
             </button>
           </div>
 
+
+          {/* BODY */}
           <div className={styles.modalBody}>
-            {/* Camión principal del día */}
+
+            {/* -------- VEHICULO -------- */}
             <div className={styles.parteDiarioSection}>
               <h4>Vehículo</h4>
               <div className={styles.inputGroup}>
                 <label>Camión del día</label>
+
                 <select
                   className={styles.select}
-                  value={mainCamion || ''}
-                  onChange={handleMainCamionChange}
+                  value={mainCamion}
+                  onChange={(e) => onDataChange('camion_matricula', e.target.value)}
                 >
                   <option value="">(Por defecto)</option>
-                  {trucks.map((t) => (
+                  {trucks.map(t => (
                     <option key={t.id} value={t.matricula}>
                       {t.matricula}
                     </option>
                   ))}
                 </select>
+
                 <p className={styles.smallHint}>
-                  Si en algunas carreras usas otro camión, puedes cambiarlo a nivel de carrera.
+                  Puedes cambiar el camión por carrera si ese día trabajaste con más de uno.
                 </p>
               </div>
             </div>
 
-            {/* Dietas */}
+
+            {/* --------- DIETAS ----------- */}
             <div className={styles.parteDiarioSection}>
               <h4>Dietas</h4>
+
               <div className={styles.checkboxGroupModal}>
                 <label>
                   <input
                     type="checkbox"
-                    checked={!!data?.desayuno}
+                    checked={!!safeData.desayuno}
                     onChange={() => onToggleChange('desayuno')}
-                  />{' '}
-                  Desayuno
+                  /> Desayuno
                 </label>
+
                 <label>
                   <input
                     type="checkbox"
-                    checked={!!data?.cena}
-                    onChange={() => onToggleChange('cena')}
-                  />{' '}
-                  Cena
+                    checked={!!safeData.cena}
+                    onChange={() => onToggleChange('cена')}
+                  /> Cena
                 </label>
+
                 <label>
                   <input
                     type="checkbox"
-                    checked={!!data?.procena}
+                    checked={!!safeData.procena}
                     onChange={() => onToggleChange('procena')}
-                  />{' '}
-                  Pro-cena
+                  /> Pro-cena
                 </label>
               </div>
             </div>
 
-            {/* Kilómetros diarios del vehículo */}
+
+            {/* --------- KILOMETROS ----------- */}
             <div className={styles.parteDiarioSection}>
               <h4>Kilómetros</h4>
+
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>KM inicio</label>
@@ -298,6 +310,7 @@ export default function ParteDiarioModal({
                     onChange={onNum}
                   />
                 </div>
+
                 <div className={styles.inputGroup}>
                   <label>KM fin</label>
                   <input
@@ -308,85 +321,83 @@ export default function ParteDiarioModal({
                   />
                 </div>
               </div>
+
               <p className={styles.kmPreview}>
-                Kilómetros del día: <b>{kmShow}</b>
+                KM del día: <b>{kmShow}</b>
               </p>
             </div>
 
-            {/* Carreras — APILADAS + Camión per cursa */}
+
+            {/* --------- CARRERAS ----------- */}
             <div className={styles.parteDiarioSection}>
-              <h4>Carreras del día (jornal)</h4>
+              <h4>Carreras del día</h4>
+
               <div className={styles.curseList}>
-                {curse.map((cursa, index) => {
+                {curse.map((cursa, i) => {
                   const kmAuto = autoKmFor(cursa.start, cursa.end);
                   const cursaCamion = cursa.camion_matricula || mainCamion || '';
 
                   return (
-                    <div key={index} className={styles.cursaItem}>
+                    <div key={i} className={styles.cursaItem}>
                       <div className={styles.cursaInputs}>
+
+                        {/* SALIDA */}
                         <div className={styles.inputGroup}>
                           <label>Salida</label>
                           <div className={styles.inputWithButton}>
+
                             <SearchableInput
                               value={cursa.start || ''}
-                              onChange={(val) =>
-                                handleCursaChange(index, 'start', val)
-                              }
-                              onLocationSelect={(name) =>
-                                handleCursaChange(index, 'start', name)
-                              }
+                              onChange={(v) => handleCursaChange(i, 'start', v)}
+                              onLocationSelect={(name) => handleCursaChange(i, 'start', name)}
                               placeholder="Ej.: Parking"
                               closeOnSelect
                             />
-                            <button
-                              type="button"
-                              onClick={() => openGpsSelection(index, 'start')}
-                            >
+
+                            <button type="button"
+                                    onClick={() => setActiveGpsSearch({ index: i, field: 'start' }) ||
+                                      setIsGpsModalOpen(true)}>
                               <GpsFixedIcon />
                             </button>
+
                           </div>
                         </div>
 
+                        {/* LLEGADA */}
                         <div className={styles.inputGroup}>
                           <label>Llegada</label>
                           <div className={styles.inputWithButton}>
+
                             <SearchableInput
                               value={cursa.end || ''}
-                              onChange={(val) =>
-                                handleCursaChange(index, 'end', val)
-                              }
-                              onLocationSelect={(name) =>
-                                handleCursaChange(index, 'end', name)
-                              }
+                              onChange={(v) => handleCursaChange(i, 'end', v)}
+                              onLocationSelect={(name) => handleCursaChange(i, 'end', name)}
                               placeholder="Ej.: TCB"
                               closeOnSelect
                             />
-                            <button
-                              type="button"
-                              onClick={() => openGpsSelection(index, 'end')}
-                            >
+
+                            <button type="button"
+                                    onClick={() => setActiveGpsSearch({ index: i, field: 'end' }) ||
+                                      setIsGpsModalOpen(true)}>
                               <GpsFixedIcon />
                             </button>
+
                           </div>
                         </div>
 
+                        {/* CAMION CURSA */}
                         <div className={styles.inputGroup}>
                           <label>Camión</label>
+
                           <select
                             className={styles.select}
                             value={cursaCamion}
                             onChange={(e) =>
-                              handleCursaChange(
-                                index,
-                                'camion_matricula',
-                                e.target.value || null
-                              )
+                              handleCursaChange(i, 'camion_matricula', e.target.value || null)
                             }
                           >
-                            <option value="">
-                              (Principal del día)
-                            </option>
-                            {trucks.map((t) => (
+                            <option value="">(Día)</option>
+                            {trucks.map(t => (
                               <option key={t.id} value={t.matricula}>
                                 {t.matricula}
                               </option>
@@ -394,83 +405,84 @@ export default function ParteDiarioModal({
                           </select>
                         </div>
 
+                        {/* KM AUTO */}
                         <div className={styles.inputGroup}>
                           <label>KM aprox.</label>
-                          <input
-                            disabled
-                            value={kmAuto != null ? kmAuto : '—'}
-                          />
+                          <input disabled value={kmAuto ?? '—'} />
                         </div>
+
                       </div>
 
-                      <button
-                        className={styles.removeCursaButton}
-                        onClick={() => removeCursa(index)}
-                        title="Eliminar carrera"
-                        type="button"
-                      >
+                      <button className={styles.removeCursaButton}
+                              onClick={() => removeCursa(i)}>
                         <TrashIcon />
                       </button>
+
                     </div>
                   );
                 })}
               </div>
 
-              <button
-                className={styles.addCursaButton}
-                onClick={addCursa}
-                type="button"
-              >
+              <button className={styles.addCursaButton} onClick={addCursa}>
                 + Añadir carrera
               </button>
             </div>
 
-            {/* Actividades especiales */}
+
+            {/* --------- ACTIVIDADES ----------- */}
             <div className={styles.parteDiarioSection}>
               <h4>Actividades especiales</h4>
+
               <div className={styles.inputGrid}>
                 <div className={styles.inputGroup}>
                   <label>Contenedores barridos</label>
                   <input
                     type="number"
                     name="contenedores"
-                    value={data?.contenedores ?? ''}
+                    value={safeData.contenedores ?? ''}
                     onChange={onNum}
                   />
                 </div>
+
                 <div className={styles.inputGroup}>
                   <label>Plus festivo (€)</label>
                   <input
                     type="number"
                     name="suma_festivo"
-                    value={data?.suma_festivo ?? ''}
+                    value={safeData.suma_festivo ?? ''}
                     onChange={onNum}
                   />
                 </div>
               </div>
             </div>
+
           </div>
 
+
+          {/* FOOTER */}
           <div className={styles.modalFooter}>
-            <button
-              className={styles.actionMini}
-              type="button"
-              onClick={onClose}
-            >
+            <button className={styles.actionMini} type="button" onClick={onClose}>
               Cerrar
             </button>
           </div>
+
         </div>
       </div>
 
       {isGpsModalOpen && (
         <GpsSelectionModal
           locations={gpsResults}
-          onSelect={handleGpsLocationSelect}
+          onSelect={(locName) => {
+            if (activeGpsSearch) {
+              handleCursaChange(activeGpsSearch.index, activeGpsSearch.field, locName);
+            }
+            setIsGpsModalOpen(false);
+          }}
           onClose={() => setIsGpsModalOpen(false)}
           isLoading={gpsLoading}
         />
       )}
+
     </>
   );
 }
