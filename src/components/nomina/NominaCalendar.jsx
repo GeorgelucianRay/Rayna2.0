@@ -2,14 +2,18 @@
 import React, { useMemo } from 'react';
 import styles from './Nominas.module.css';
 
-// Día del calendario
 const CalendarDay = ({ day, data, onPick, isPlaceholder }) => {
-  const hasData = !isPlaceholder && data && (
-    data.desayuno || data.cena || data.procena ||
-    (Number(data.km_final) > 0) ||
-    (Number(data.contenedores) > 0) ||
-    (data.curse && data.curse.length > 0)
-  );
+  const safeData = data || {};
+  const hasData =
+    !isPlaceholder &&
+    (
+      safeData.desayuno ||
+      safeData.cena ||
+      safeData.procena ||
+      Number(safeData.km_final) > 0 ||
+      Number(safeData.contenedores) > 0 ||
+      (Array.isArray(safeData.curse) && safeData.curse.length > 0)
+    );
 
   const cls = [
     styles.calendarDay,
@@ -18,41 +22,65 @@ const CalendarDay = ({ day, data, onPick, isPlaceholder }) => {
   ].join(' ');
 
   return (
-    <div className={cls} onClick={!isPlaceholder ? onPick : undefined}>
-      <span className={styles.dayNumber}>{day}</span>
+    <div
+      className={cls}
+      onClick={!isPlaceholder ? onPick : undefined}
+    >
+      <span className={styles.dayNumber}>{day || ''}</span>
     </div>
   );
 };
 
-// Calendario principal
+
 export default function NominaCalendar({ date, zilePontaj, onPickDay }) {
   const cells = useMemo(() => {
     const y = date.getFullYear();
     const m = date.getMonth();
+
     const first = new Date(y, m, 1).getDay();
     const daysIn = new Date(y, m + 1, 0).getDate();
+
     const start = first === 0 ? 6 : first - 1;
 
     const arr = [];
+
+    // placeholders la început
     for (let i = 0; i < start; i++) {
-      arr.push(<CalendarDay key={`ph-s-${i}`} isPlaceholder />);
+      arr.push(
+        <CalendarDay
+          key={`ph-s-${i}`}
+          isPlaceholder={true}
+          day=""
+          data={{}}
+        />
+      );
     }
 
+    // zilele reale
     for (let d = 1; d <= daysIn; d++) {
       arr.push(
         <CalendarDay
           key={d}
           day={d}
-          data={zilePontaj[d - 1]}
+          data={zilePontaj[d - 1] || {}}
           onPick={() => onPickDay(d - 1)}
           isPlaceholder={false}
         />
       );
     }
 
+    // placeholders la final
     while (arr.length % 7 !== 0) {
-      arr.push(<CalendarDay key={`ph-e-${arr.length}`} isPlaceholder />);
+      arr.push(
+        <CalendarDay
+          key={`ph-e-${arr.length}`}
+          isPlaceholder={true}
+          day=""
+          data={{}}
+        />
+      );
     }
+
     return arr;
   }, [date, zilePontaj, onPickDay]);
 
@@ -67,6 +95,7 @@ export default function NominaCalendar({ date, zilePontaj, onPickDay }) {
         <div>Sá</div>
         <div>Do</div>
       </div>
+
       <div className={styles.calendarGrid}>{cells}</div>
     </>
   );
