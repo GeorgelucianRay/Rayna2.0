@@ -123,6 +123,8 @@ function buildWeeksForMonth(currentDate, zilePontaj) {
 
 export default function CalculadoraNomina() {
   const { profile } = useAuth();
+  const role = profile?.role;
+  const canConfigure = role === 'admin' || role === 'dispecer';
 
   const monthNames = useMemo(
     () => [
@@ -472,15 +474,17 @@ export default function CalculadoraNomina() {
         <div className={styles.column}>
           {/* Toolbar centrada */}
           <div className={styles.toolbar + ' ' + styles.toolbarCenter}>
-            <button
-              className={styles.iconBtn}
-              onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
-              aria-label="Configurar contrato"
-              aria-pressed={showConfig}
-              title="Configurar contrato"
-            >
-              <span className={styles.emoji}>⚙️</span>
-            </button>
+            {canConfigure && (
+              <button
+                className={styles.iconBtn}
+                onClick={() => { setShowConfig(v => !v); flashHint('Configurar contrato'); }}
+                aria-label="Configurar contrato"
+                aria-pressed={showConfig}
+                title="Configurar contrato"
+              >
+                <span className={styles.emoji}>⚙️</span>
+              </button>
+            )}
 
             <button
               className={styles.iconBtn}
@@ -515,7 +519,7 @@ export default function CalculadoraNomina() {
           {showResult && result && <NominaResultCard result={result} />}
 
           {/* Configuración (toggle) */}
-          {showConfig && (
+          {canConfigure && showConfig && (
             <NominaConfigCard
               config={config}
               onChange={setConfig}
