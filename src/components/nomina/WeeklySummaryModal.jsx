@@ -18,7 +18,7 @@ export default function WeeklySummaryModal({
     setIndex(initialIndex);
   }, [initialIndex, isOpen]);
 
-  // 2. SAFE VARIABLES (Pregătim date "false" sau goale ca să nu crape hook-urile useMemo de mai jos)
+  // 2. VARIABILE SAFE (Pregătim date "false" sau goale ca să nu crape hook-urile useMemo de mai jos)
   // Dacă weeks e null, folosim un array gol.
   const safeWeeks = weeks || [];
   // Dacă weekData nu există, folosim un obiect gol cu o listă goală de days
@@ -116,8 +116,7 @@ export default function WeeklySummaryModal({
 
       const days = weekData.days;
 
-      // ... (Restul codului PDF rămâne neschimbat, e logică internă) ...
-      
+      // Header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.text('HOJA DE GASTOS SEMANA', W / 2, y, { align: 'center' });
@@ -202,8 +201,8 @@ export default function WeeklySummaryModal({
     }
   }, [camionSemana, weekData, kmStats, rangoSemana]);
 
-  // 4. RETURN-UL CONDIȚIONAT (Abia acum putem ieși din funcție)
-  // Dacă nu e deschis sau nu avem date, nu randăm nimic, DAR hook-urile de mai sus au rulat deja.
+  // 4. RETURN-UL CONDIȚIONAT
+  // Acum, după ce toate hook-urile au fost declarate, putem returna null dacă nu avem date.
   if (!isOpen || !weeks || !weeks.length) return null;
 
   // 5. RENDER UI
