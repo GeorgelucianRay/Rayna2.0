@@ -10,6 +10,7 @@ export default function WeeklySummaryModal({
   initialIndex = 0,
   onChangeWeek,
 }) {
+  // 1. HOOK-URILE (Trebuie să fie primele, necondiționate)
   const { profile } = useAuth();
   const [index, setIndex] = useState(initialIndex);
 
@@ -17,34 +18,25 @@ export default function WeeklySummaryModal({
     setIndex(initialIndex);
   }, [initialIndex, isOpen]);
 
-  const totalWeeks = weeks?.length || 0;
+  // 2. SAFE VARIABLES (Pregătim date "false" sau goale ca să nu crape hook-urile useMemo de mai jos)
+  // Dacă weeks e null, folosim un array gol.
+  const safeWeeks = weeks || [];
+  // Dacă weekData nu există, folosim un obiect gol cu o listă goală de days
+  const weekData = safeWeeks[index] || { days: [], monday: new Date(), friday: new Date() };
 
-  // 🔹 weekData safe – poate fi null, dar hookul se execută mereu
-  const weekData = useMemo(() => {
-    if (!weeks || !weeks.length) return null;
-    const safeIndex = Math.min(Math.max(index, 0), weeks.length - 1);
-    return weeks[safeIndex];
-  }, [weeks, index]);
-
-  /* ──────────────────────────────────────────────────────────────
-     DETERMINARE CAMION SĂPTĂMÂNĂ
-  ─────────────────────────────────────────────────────────────── */
+  // 3. HOOK-URILE CALCULATE (useMemo / useCallback)
+  // Acestea trebuie să ruleze chiar dacă nu avem date reale, folosind safeWeeks/weekData
+  
   const camionSemana = useMemo(() => {
-    if (!weekData) return (
-      profile?.camioane?.matricula ||
-      profile?.matricula ||
-      profile?.camion ||
-      '—'
-    );
+    // Dacă nu avem zile, returnăm un placeholder, dar Hook-ul a fost apelat!
+    if (!weekData.days || weekData.days.length === 0) return '—';
 
     const camioaneSet = new Set();
-
     weekData.days.forEach(d => {
       if (d.camion_matricula) camioaneSet.add(d.camion_matricula);
     });
 
     if (camioaneSet.size === 1) return [...camioaneSet][0];
-
     if (camioaneSet.size === 0)
       return (
         profile?.camioane?.matricula ||
@@ -56,26 +48,15 @@ export default function WeeklySummaryModal({
     return [...camioaneSet];
   }, [weekData, profile]);
 
-  /* ──────────────────────────────────────────────────────────────
-     RANGE SĂPTĂMÂNĂ
-  ─────────────────────────────────────────────────────────────── */
   const rangoSemana = useMemo(() => {
-    if (!weekData) return '';
+    if (!weekData.monday) return '—';
     const fmt = (d) =>
-      d.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'long',
-      });
+      d ? d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' }) : '';
     return `${fmt(weekData.monday)} — ${fmt(weekData.friday)}`;
   }, [weekData]);
 
-  /* ──────────────────────────────────────────────────────────────
-     KM STATISTICS
-  ─────────────────────────────────────────────────────────────── */
   const kmStats = useMemo(() => {
-    if (!weekData) {
-      return { kmIni: 0, kmFin: 0, kmTotal: 0 };
-    }
+    if (!weekData.days) return { kmIni: 0, kmFin: 0, kmTotal: 0 };
 
     let kmIni = 0;
     let kmFin = 0;
@@ -98,59 +79,57 @@ export default function WeeklySummaryModal({
     };
   }, [weekData]);
 
-  const goPrevWeek = useCallback(() => {
+  const totalWeeks = safeWeeks.length;
+
+  const goPrevWeek = () => {
     setIndex(i => {
       const ni = i > 0 ? i - 1 : 0;
       onChangeWeek && onChangeWeek(ni);
       return ni;
     });
-  }, [onChangeWeek]);
+  };
 
-  const goNextWeek = useCallback(() => {
+  const goNextWeek = () => {
     setIndex(i => {
       const ni = i < totalWeeks - 1 ? i + 1 : totalWeeks - 1;
       onChangeWeek && onChangeWeek(ni);
       return ni;
     });
-  }, [onChangeWeek, totalWeeks]);
+  };
 
-  const handleSelectWeek = useCallback((e) => {
+  const handleSelectWeek = (e) => {
     const ni = Number(e.target.value);
     setIndex(ni);
     onChangeWeek && onChangeWeek(ni);
-  }, [onChangeWeek]);
+  };
 
-  /* ──────────────────────────────────────────────────────────────
-     PDF GENERATOR
-  ─────────────────────────────────────────────────────────────── */
   const handleGeneratePDF = useCallback(async () => {
-    if (!weekData) return;
+    // Verificăm aici datele înainte de generare
+    if (!weekData || !weekData.days) return;
+
     try {
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-
       const W = doc.internal.pageSize.getWidth();
       const M = 12;
       let y = M;
 
       const days = weekData.days;
 
-      // TITLU
+      // ... (Restul codului PDF rămâne neschimbat, e logică internă) ...
+      
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.text('HOJA DE GASTOS SEMANA', W / 2, y, { align: 'center' });
       y += 8;
 
-      // INFO
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Semana: ${rangoSemana}`, W - M, y, { align: 'right' });
       y += 5;
 
-      // CAMION(ES)
       doc.setFont('helvetica', 'bold');
       doc.text('Vehículo(s): ', M, y);
-
       doc.setFont('helvetica', 'normal');
       if (Array.isArray(camionSemana)) {
         doc.text(camionSemana.join(', '), M + 28, y);
@@ -159,7 +138,7 @@ export default function WeeklySummaryModal({
       }
       y += 8;
 
-      // TABLA ZILNICĂ
+      // TABLA
       const colDia = 40;
       const colAncho = (W - M * 2 - colDia) / 4;
       const rowAlt = 7;
@@ -168,49 +147,41 @@ export default function WeeklySummaryModal({
       doc.rect(M, y, colDia, rowAlt, 'S');
       doc.text('DÍA', M + 2, y + 4);
 
-      doc.rect(M + colDia, y, colAncho, rowAlt, 'S');
-      doc.text('DESAYUNO', M + colDia + 2, y + 4);
-
-      doc.rect(M + colDia + colAncho, y, colAncho, rowAlt, 'S');
-      doc.text('CENA', M + colDia + colAncho + 2, y + 4);
-
-      doc.rect(M + colDia + colAncho * 2, y, colAncho, rowAlt, 'S');
-      doc.text('PRO-CENA', M + colDia + colAncho * 2 + 2, y + 4);
-
-      doc.rect(M + colDia + colAncho * 3, y, colAncho, rowAlt, 'S');
-      doc.text('FESTIVO', M + colDia + colAncho * 3 + 2, y + 4);
-
+      const headers = ['D', 'C', 'P', 'F(€)'];
+      let x = M + colDia;
+      headers.forEach((h) => {
+        doc.rect(x, y, colAncho, rowAlt, 'S');
+        doc.text(h, x + colAncho / 2, y + 4, { align: 'center' });
+        x += colAncho;
+      });
       y += rowAlt;
 
       const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-
       doc.setFont('helvetica', 'normal');
-
       days.forEach((d, idx) => {
-        let x = M;
+        x = M;
         doc.rect(x, y, colDia, rowAlt, 'S');
         doc.text(`${labels[idx]} — ${d.label}`, x + 2, y + 4);
         x += colDia;
 
-        doc.rect(x, y, colAncho, rowAlt, 'S');
-        if (d.des) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
-        x += colAncho;
-
-        doc.rect(x, y, colAncho, rowAlt, 'S');
-        if (d.cen) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
-        x += colAncho;
-
-        doc.rect(x, y, colAncho, rowAlt, 'S');
-        if (d.pro) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
-        x += colAncho;
-
+        // Checkbox-uri
+        const check = (val) => {
+           doc.rect(x, y, colAncho, rowAlt, 'S');
+           if (val) doc.text('X', x + colAncho / 2, y + 4, { align: 'center' });
+           x += colAncho;
+        };
+        check(d.des);
+        check(d.cen);
+        check(d.pro);
+        
+        // Festiv
         doc.rect(x, y, colAncho, rowAlt, 'S');
         if (d.festivo) doc.text(String(d.festivo), x + colAncho / 2, y + 4, { align: 'center' });
         y += rowAlt;
       });
-
       y += 5;
 
+      // Stats
       const line = (label, val) => {
         doc.setFont('helvetica', 'bold');
         doc.text(label, M, y);
@@ -218,7 +189,6 @@ export default function WeeklySummaryModal({
         doc.text(String(val || 0), W - M, y, { align: 'right' });
         y += 6;
       };
-
       line('KM inicial semana', kmStats.kmIni);
       line('KM final semana', kmStats.kmFin);
       line('KM totales semana', kmStats.kmTotal);
@@ -232,12 +202,11 @@ export default function WeeklySummaryModal({
     }
   }, [camionSemana, weekData, kmStats, rangoSemana]);
 
-  /* ──────────────────────────────────────────────────────────────
-     RETURN – abia acum verificăm isOpen/ weekData
-  ─────────────────────────────────────────────────────────────── */
+  // 4. RETURN-UL CONDIȚIONAT (Abia acum putem ieși din funcție)
+  // Dacă nu e deschis sau nu avem date, nu randăm nimic, DAR hook-urile de mai sus au rulat deja.
+  if (!isOpen || !weeks || !weeks.length) return null;
 
-  if (!isOpen || !weekData) return null;
-
+  // 5. RENDER UI
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
@@ -261,7 +230,7 @@ export default function WeeklySummaryModal({
             value={index}
             onChange={handleSelectWeek}
           >
-            {weeks && weeks.map((w, i) => {
+            {safeWeeks.map((w, i) => {
               const f = (d) =>
                 d.toLocaleDateString('es-ES', {
                   day: '2-digit',
@@ -296,9 +265,45 @@ export default function WeeklySummaryModal({
           <div><span>Semana:</span> {rangoSemana}</div>
         </div>
 
+        {/* TABEL */}
+        <div className={styles.tableWrap}>
+          <div className={`${styles.row} ${styles.header}`}>
+            <div className={styles.cDia}>Día</div>
+            <div className={styles.cTiny}>D</div>
+            <div className={styles.cTiny}>C</div>
+            <div className={styles.cTiny}>P</div>
+            <div className={styles.cSm}>Festivo (€)</div>
+            <div className={styles.cSm}>KM ini.</div>
+            <div className={styles.cSm}>KM fin.</div>
+            <div className={styles.cSm}>KM día</div>
+            <div className={styles.cXs}>Cont.</div>
+          </div>
+
+          {weekData.days.map((d, i) => (
+            <div key={i} className={styles.row}>
+              <div className={styles.cDia}>{d.label}</div>
+              <div className={styles.cTiny}>{d.des ? 'X' : ''}</div>
+              <div className={styles.cTiny}>{d.cen ? 'X' : ''}</div>
+              <div className={styles.cTiny}>{d.pro ? 'X' : ''}</div>
+              <div className={styles.cSm}>{d.festivo || ''}</div>
+              <div className={styles.cSm}>{d.km_iniciar || ''}</div>
+              <div className={styles.cSm}>{d.km_final || ''}</div>
+              <div className={styles.cSm}>{d.km_dia || ''}</div>
+              <div className={styles.cXs}>{d.contenedores || ''}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* STATS */}
+        <div className={styles.stats}>
+          <div>KM inicial: <b>{kmStats.kmIni || 0}</b></div>
+          <div>KM final: <b>{kmStats.kmFin || 0}</b></div>
+          <div>KM totales: <b className={styles.km}>{kmStats.kmTotal}</b></div>
+        </div>
+
         <div className={styles.actions}>
           <button className={styles.pdfBtn} onClick={handleGeneratePDF}>
-            Descargar PDF semanal
+            📄 Generar PDF
           </button>
         </div>
       </div>
