@@ -4,11 +4,11 @@ import { useAuth } from '../../AuthContext';
 import styles from './SummaryModal.module.css';
 
 export default function SimpleSummaryModal({ data, onClose }) {
-  // 🔹 HOOK-URILE TREBUIE APELEATE PRIMA DATĂ, FĂRĂ IF ÎNAINTE
+  // 🔹 HOOK-URILE PRIMA DATĂ, FĂRĂ IF ÎNAINTE
   const { profile } = useAuth() || {};
   const profileSafe = profile || {};
 
-  // abia ACUM putem să returnăm null condițional
+  // 🔹 ABIA DUPĂ HOOK-URI POȚI FACE RETURN CONDIȚIONAL
   if (!data) return null;
 
   const chofer = useMemo(() => {
@@ -35,17 +35,15 @@ export default function SimpleSummaryModal({ data, onClose }) {
   const kmLlegada = Number(data?.km_final   ?? 0) || 0;
   const kmTotal   = Math.max(0, kmLlegada - kmSalida);
 
-  // Importăm jsPDF DOAR la click (dinamic)
   const handleGeneratePDF = useCallback(async () => {
     try {
       const { default: jsPDF } = await import('jspdf');
-
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const W = doc.internal.pageSize.getWidth();
       const M = 14;
       let y = M;
 
-      // ==== HEADER ====
+      // HEADER
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
       doc.text('PARTE DIARIO', M, y);
@@ -74,7 +72,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
         `${data?.day ?? '—'} ${data?.monthName ?? ''} ${data?.year ?? ''}`
       );
 
-      // ==== ITINERARIO ====
+      // ITINERARIO
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.setTextColor(34, 197, 94);
@@ -98,7 +96,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
       });
       y += 4;
 
-      // ==== KM ====
+      // KM
       const kmRow = (label, value) => {
         const h = 10;
         doc.setDrawColor(90, 90, 90);
@@ -138,7 +136,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </button>
         </div>
 
-        {/* META INFO */}
         <div className={styles.metaGrid}>
           <div className={styles.metaPanel}>
             <span className={styles.metaLabel}>CHOFER:</span>
@@ -160,7 +157,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </div>
         </div>
 
-        {/* ITINERARIO */}
         <div className={styles.itinBlock}>
           <div className={styles.itinTitle}>ITINERARIO</div>
           <div className={styles.itinList}>
@@ -180,7 +176,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </div>
         </div>
 
-        {/* KM */}
         <div className={styles.kmGroup}>
           <div className={styles.kmRow}>
             <span className={styles.kmLabel}>KM. SALIDA</span>
@@ -196,7 +191,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
           </div>
         </div>
 
-        {/* ACTIONS */}
         <div className={styles.actions}>
           <button className={styles.pdfBtn} onClick={handleGeneratePDF}>
             📄 Generar PDF
