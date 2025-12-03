@@ -4,12 +4,9 @@ import { useAuth } from '../../AuthContext';
 import styles from './SummaryModal.module.css';
 
 export default function SimpleSummaryModal({ data, onClose }) {
-  // 🔹 HOOK-URILE PRIMA DATĂ, FĂRĂ IF ÎNAINTE
+  // HOOK-urile trebuie chemate DIRECT, nu în try/catch și fără return înainte
   const { profile } = useAuth() || {};
   const profileSafe = profile || {};
-
-  // 🔹 ABIA DUPĂ HOOK-URI POȚI FACE RETURN CONDIȚIONAL
-  if (!data) return null;
 
   const chofer = useMemo(() => {
     return (
@@ -22,19 +19,18 @@ export default function SimpleSummaryModal({ data, onClose }) {
 
   const camion = useMemo(() => {
     return (
-      data.camion ||                      // dacă l-ai pus în data din CalculadoraNomina
-      data.camion_matricula ||
       profileSafe?.camioane?.matricula ||
       profileSafe?.matricula ||
       profileSafe?.camion ||
       '—'
     );
-  }, [data, profileSafe]);
+  }, [profileSafe]);
 
   const kmSalida  = Number(data?.km_iniciar ?? 0) || 0;
   const kmLlegada = Number(data?.km_final   ?? 0) || 0;
   const kmTotal   = Math.max(0, kmLlegada - kmSalida);
 
+  // Importăm jsPDF DOAR la click (fără import static în top!)
   const handleGeneratePDF = useCallback(async () => {
     try {
       const { default: jsPDF } = await import('jspdf');
@@ -43,7 +39,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
       const M = 14;
       let y = M;
 
-      // HEADER
+      // Header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
       doc.text('PARTE DIARIO', M, y);
@@ -72,7 +68,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
         `${data?.day ?? '—'} ${data?.monthName ?? ''} ${data?.year ?? ''}`
       );
 
-      // ITINERARIO
+      // Itinerario
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.setTextColor(34, 197, 94);
@@ -82,7 +78,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
-
       const lines =
         Array.isArray(data?.curse) && data.curse.length
           ? data.curse.map(
@@ -96,7 +91,6 @@ export default function SimpleSummaryModal({ data, onClose }) {
       });
       y += 4;
 
-      // KM
       const kmRow = (label, value) => {
         const h = 10;
         doc.setDrawColor(90, 90, 90);
@@ -109,19 +103,26 @@ export default function SimpleSummaryModal({ data, onClose }) {
         y += h + 6;
       };
 
-      kmRow('KM. SALIDA',  kmSalida);
+      kmRow('KM. SALIDA', kmSalida);
       kmRow('KM. LLEGADA', kmLlegada);
-      kmRow('KM TOTAL',    kmTotal);
+      kmRow('KM TOTAL', kmTotal);
 
       const mName = String(data?.monthName ?? '').replace(/\s+/g, '_');
-      const fileName = `parte-diario_${data?.year ?? ''}-${mName}-${data?.day ?? ''}.pdf`;
-      doc.save(fileName);
+      doc.save(
+        `parte-diario_${data?.year ?? ''}-${mName}-${data?.day ?? ''}.pdf`
+      );
     } catch (err) {
       console.error('PDF error:', err);
       alert('No se pudo generar el PDF.');
     }
   }, [chofer, camion, kmSalida, kmLlegada, kmTotal, data]);
 
+  // ✔ Abia ACUM, după hook-uri, verificăm dacă avem date
+  if (!data) {
+    return null;
+  }
+
+  // Markup-ul pentru modal
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
