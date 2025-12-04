@@ -3,49 +3,42 @@ import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import styles from './WeeklySummaryModal.module.css';
 
-export default function WeeklySummaryModal({
+export function WeeklySummaryModal({
   isOpen,
   onClose,
   weeks,
   initialIndex = 0,
   onChangeWeek,
 }) {
-  /*
-   * Keep hook calls at top-level so that their order remains consistent between
-   * renders. Even if the modal is closed or has no data, we call the hooks (with
-   * safe default data) to preserve the call order.
-   */
+  // Obținem profilul utilizatorului (chiar dacă nu există săptămână)
   const { profile } = useAuth() || {};
 
-  // Select the week to display (either initial index or updated via navigation)
+  // Starea indexului săptămânii curente
   const [weekIndex, setWeekIndex] = useState(initialIndex);
   const weekData = weeks?.[weekIndex] || null;
 
-  // If modal just opened or weeks changed, reset to initial index
+  // Resetează indexul la schimbarea săptămânilor sau la deschidere
   useEffect(() => {
     setWeekIndex(initialIndex);
   }, [initialIndex, weeks]);
 
-  if (!isOpen || !weekData) return null;
+  // Derivăm valorile de afișat din profil și săptămâna selectată
+  const chofer = useMemo(() => (
+    profile?.nombre_completo ||
+    profile?.full_name ||
+    profile?.username ||
+    '—'
+  ), [profile]);
 
-  const chofer = useMemo(
-    () =>
-      profile?.nombre_completo ||
-      profile?.full_name ||
-      profile?.username ||
-      '—',
-    [profile]
-  );
-  const camion = useMemo(
-    () =>
-      profile?.camioane?.matricula ||
-      profile?.matricula ||
-      profile?.camion ||
-      '—',
-    [profile]
-  );
+  const camion = useMemo(() => (
+    profile?.camioane?.matricula ||
+    profile?.matricula ||
+    profile?.camion ||
+    '—'
+  ), [profile]);
 
   const rangoSemana = useMemo(() => {
+    if (!weekData) return '';
     const fmt = (d) =>
       d.toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -55,8 +48,9 @@ export default function WeeklySummaryModal({
     return `${fmt(weekData.monday)} — ${fmt(weekData.friday)}`;
   }, [weekData]);
 
-  // Generate PDF for weekly summary
+  // Export în PDF – se execută doar dacă există date pentru săptămână
   const handleGeneratePDF = useCallback(async () => {
+    if (!weekData) return;
     try {
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -64,7 +58,7 @@ export default function WeeklySummaryModal({
       const M = 14;
       let y = M;
 
-      // Title
+      // Titlu
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
       doc.text('PARTE SEMANAL', M, y);
@@ -73,28 +67,25 @@ export default function WeeklySummaryModal({
       doc.roundedRect(M - 2, y - 8, W - 2 * (M - 2), 12, 2.5, 2.5, 'S');
       y += 14;
 
-      // Meta information
+      // Informații meta
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
-      doc.text(`Chofer: ${chofer}`, M, y);
-      y += 6;
-      doc.text(`Camión: ${camion}`, M, y);
-      y += 6;
-      doc.text(`Semana: ${rangoSemana}`, M, y);
-      y += 10;
+      doc.text(`Chofer: ${chofer}`, M, y); y += 6;
+      doc.text(`Camión: ${camion}`, M, y); y += 6;
+      doc.text(`Semana: ${rangoSemana}`, M, y); y += 10;
 
-      // Table columns (for Lu–Vi days)
+      // Coloanele tabelului
       const cols = [
-        { key: 'dia',       label: 'Día',        w: 28 },
-        { key: 'D',         label: 'D',          w: 10 },
-        { key: 'C',         label: 'C',          w: 10 },
-        { key: 'P',         label: 'P',          w: 10 },
-        { key: 'festivo',   label: 'Festivo (€)',w: 22 },
-        { key: 'km_i',      label: 'KM ini.',    w: 22 },
-        { key: 'km_f',      label: 'KM fin.',    w: 22 },
-        { key: 'km_d',      label: 'KM día',     w: 20 },
-        { key: 'conts',     label: 'Cont.',      w: 16 },
-        { key: 'obs',       label: 'Obs.',       w: 24 },
+        { key: 'dia',     label: 'Día',        w: 28 },
+        { key: 'D',       label: 'D',          w: 10 },
+        { key: 'C',       label: 'C',          w: 10 },
+        { key: 'P',       label: 'P',          w: 10 },
+        { key: 'festivo', label: 'Festivo (€)',w: 22 },
+        { key: 'km_i',    label: 'KM ini.',    w: 22 },
+        { key: 'km_f',    label: 'KM fin.',    w: 22 },
+        { key: 'km_d',    label: 'KM día',     w: 20 },
+        { key: 'conts',   label: 'Cont.',      w: 16 },
+        { key: 'obs',     label: 'Obs.',       w: 24 },
       ];
       const headerH = 8;
       let x = M;
@@ -108,7 +99,7 @@ export default function WeeklySummaryModal({
       });
       y += headerH;
 
-      // Rows for each day (Monday–Friday)
+      // Rândurile pentru fiecare zi (luni–vineri)
       const rowH = 8;
       weekData.days.forEach((d) => {
         x = M;
@@ -130,7 +121,6 @@ export default function WeeklySummaryModal({
         cols.forEach(c => {
           doc.roundedRect(x, y, c.w, rowH, 1.2, 1.2, 'S');
           const txt = String(vals[c.key] ?? '');
-          // Alignment: left for 'dia' and 'obs', center for others
           if (c.key === 'dia' || c.key === 'obs') {
             doc.text(txt, x + 1.6, y + 5.3);
           } else {
@@ -141,14 +131,12 @@ export default function WeeklySummaryModal({
         y += rowH;
       });
 
-      // Summary at bottom
+      // Rezumat la final
       y += 4;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text(`KM inicial (Lunes): ${weekData.kmInitMonday}`, M, y);
-      y += 6;
-      doc.text(`KM final (Viernes): ${weekData.kmFinalFriday}`, M, y);
-      y += 6;
+      doc.text(`KM inicial (Lunes): ${weekData.kmInitMonday}`, M, y); y += 6;
+      doc.text(`KM final (Viernes): ${weekData.kmFinalFriday}`, M, y); y += 6;
       doc.text(`KM totales semana: ${weekData.kmWeekTotal}`, M, y);
 
       doc.save(`parte-semanal_${weekData.monday.toISOString().slice(0,10)}.pdf`);
@@ -158,6 +146,10 @@ export default function WeeklySummaryModal({
     }
   }, [chofer, camion, rangoSemana, weekData]);
 
+  // Dacă modalul nu e deschis sau nu există date, nu rendăm nimic
+  if (!isOpen || !weekData) return null;
+
+  // UI pentru modal
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
@@ -173,7 +165,7 @@ export default function WeeklySummaryModal({
           <div><span>Semana:</span> {rangoSemana}</div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabel */}
         <div className={styles.tableWrap}>
           <div className={`${styles.row} ${styles.header}`}>
             <div className={styles.cDia}>Día</div>
@@ -204,7 +196,7 @@ export default function WeeklySummaryModal({
           ))}
         </div>
 
-        {/* Resumen */}
+        {/* Statistici */}
         <div className={styles.stats}>
           <div>KM inicial (Lunes): <b>{weekData.kmInitMonday}</b></div>
           <div>KM final (Viernes): <b>{weekData.kmFinalFriday}</b></div>
