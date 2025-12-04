@@ -3,7 +3,7 @@ import React, { useMemo, useCallback } from 'react';
 import { useAuth } from '../../AuthContext';
 import styles from './SummaryModal.module.css';
 
-export function SimpleSummaryModal({ data, onClose }) {
+export default function SimpleSummaryModal({ data, onClose }) {
   // Accesăm profilul utilizatorului (chiar dacă data e nulă)
   const { profile } = useAuth() || {};
   const profileSafe = profile || {};
