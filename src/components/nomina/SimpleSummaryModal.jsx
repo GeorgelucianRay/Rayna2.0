@@ -3,43 +3,34 @@ import React, { useMemo, useCallback } from 'react';
 import { useAuth } from '../../AuthContext';
 import styles from './SummaryModal.module.css';
 
-export default function SimpleSummaryModal({ data, onClose }) {
-  // dacă modalul e deschis fără data, nu randăm
-  if (!data) return null;
+export function SimpleSummaryModal({ data, onClose }) {
+  // Accesăm profilul utilizatorului (chiar dacă data e nulă)
+  const { profile } = useAuth() || {};
+  const profileSafe = profile || {};
 
-  // profile poate fi încărcat async — protejăm accesul
-  let profileSafe;
-  try {
-    const { profile } = useAuth() || {};
-    profileSafe = profile || {};
-  } catch {
-    profileSafe = {};
-  }
+  // Derivăm nume șofer și camión
+  const chofer = useMemo(() => (
+    profileSafe?.nombre_completo ||
+    profileSafe?.full_name ||
+    profileSafe?.username ||
+    '—'
+  ), [profileSafe]);
 
-  const chofer = useMemo(() => {
-    return (
-      profileSafe?.nombre_completo ||
-      profileSafe?.full_name ||
-      profileSafe?.username ||
-      '—'
-    );
-  }, [profileSafe]);
+  const camion = useMemo(() => (
+    profileSafe?.camioane?.matricula ||
+    profileSafe?.matricula ||
+    profileSafe?.camion ||
+    '—'
+  ), [profileSafe]);
 
-  const camion = useMemo(() => {
-    return (
-      profileSafe?.camioane?.matricula ||
-      profileSafe?.matricula ||
-      profileSafe?.camion ||
-      '—'
-    );
-  }, [profileSafe]);
-
+  // Calculăm kilometraj total
   const kmSalida  = Number(data?.km_iniciar ?? 0) || 0;
   const kmLlegada = Number(data?.km_final   ?? 0) || 0;
   const kmTotal   = Math.max(0, kmLlegada - kmSalida);
 
-  // Importăm jsPDF doar când se apasă butonul (evită erori la import)
+  // Generăm PDF doar dacă există date
   const handleGeneratePDF = useCallback(async () => {
+    if (!data) return;
     try {
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -47,23 +38,22 @@ export default function SimpleSummaryModal({ data, onClose }) {
       const M = 14;
       let y = M;
 
-      // Header
-      doc.setFont('helvetica','bold'); doc.setFontSize(20);
+      // Antet
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
       doc.text('PARTE DIARIO', M, y);
-      doc.setDrawColor(34,197,94); doc.setLineWidth(0.6);
-      doc.roundedRect(M-2, y-8, W-2*(M-2), 12, 2.5, 2.5, 'S');
+      doc.setDrawColor(34, 197, 94);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(M - 2, y - 8, W - 2 * (M - 2), 12, 2.5, 2.5, 'S');
       y += 14;
 
       // Meta
       doc.setFont('helvetica','normal'); doc.setFontSize(12);
-      doc.text(`Chofer: ${chofer}`, M, y);
-      y += 6;
-      doc.text(`Camión: ${camion}`, M, y);
-      y += 6;
-      doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, M, y);
-      y += 10;
+      doc.text(`Chofer: ${chofer}`, M, y); y += 6;
+      doc.text(`Camión: ${camion}`, M, y); y += 6;
+      doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, M, y); y += 10;
 
-      // Table columns
+      // Coloanele tabelului
       const cols = [
         { key: 'concepto', label: 'Concepto', w: 64 },
         { key: 'cantidad', label: 'Cantidad', w: 26 },
@@ -82,36 +72,21 @@ export default function SimpleSummaryModal({ data, onClose }) {
       });
       y += headerH;
 
-      // Rows (conceptos)
+      // Funcție pentru a adăuga rânduri
       const rowH = 8;
       const addRow = (label, val) => {
         x = M;
-        const cells = [
-          String(label),
-          String(typeof val === 'number' ? eur.format(val) : val || '—'),
-        ];
-        const [concepto, totalStr] = cells;
-        // cantidad și precio sunt extrase din textul `label` dacă există paranteze
-        const match = concepto.match(/^(.*) x (\d+) @ ([\d,.]+)$/);
-        let cantidad = '', precio = '';
-        let conceptoStr = concepto;
-        if (match) {
-          conceptoStr = match[1];
-          cantidad = match[2];
-          precio = match[3] + '€';
-        }
         const vals = {
-          concepto: conceptoStr,
-          cantidad,
-          precio,
-          total: totalStr
+          concepto: label,
+          cantidad: '',
+          precio: '',
+          total: val != null ? `${val}€` : '—',
         };
-
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
         cols.forEach(c => {
           doc.roundedRect(x, y, c.w, rowH, 1.2, 1.2, 'S');
           const txt = String(vals[c.key] ?? '');
-          // aliniere: stânga pentru 'concepto', centru pt restul
           if (c.key === 'concepto') {
             doc.text(txt, x + 1.6, y + 5.3);
           } else {
@@ -122,28 +97,32 @@ export default function SimpleSummaryModal({ data, onClose }) {
         y += rowH;
       };
 
-      // Adaugă toate conceptele relevante
-      addRow('Salario base', data?.salario_base);
-      addRow('Antigüedad', data?.antiguedad);
-      addRow('Vacaciones', data?.vacaciones);
-      addRow('Festivos', data?.festivos);
-      addRow('Km recorridos', data?.km_total);
-      addRow('Dietas (desayuno)', data?.dietas_desayuno);
-      addRow('Dietas (cena)', data?.dietas_cena);
-      addRow('Dietas (pro-cena)', data?.dietas_procena);
-      addRow('Contenedores', data?.contenedores);
+      // Adăugăm rândurile principale
+      addRow('KM salida', kmSalida);
+      addRow('KM llegada', kmLlegada);
+      addRow('KM totales', kmTotal);
 
-      // Suma totală
+      // Total brut (dacă există)
       doc.setFont('helvetica', 'bold');
-      doc.text(`Total bruto: ${data?.totalBruto != null ? eur.format(data.totalBruto) : '—'}`, M, y + 6);
+      doc.text(
+        `Total bruto: ${
+          data?.totalBruto != null ? `${data.totalBruto}€` : '—'
+        }`,
+        M,
+        y + 6
+      );
 
       doc.save(`parte-diario_${new Date().toISOString().slice(0,10)}.pdf`);
     } catch (err) {
       console.error('PDF diario error:', err);
       alert('No se pudo generar el PDF.');
     }
-  }, [chofer, camion, data]);
+  }, [chofer, camion, data, kmSalida, kmLlegada, kmTotal]);
 
+  // Dacă nu există date, returnăm null (după apelul hook‑urilor)
+  if (!data) return null;
+
+  // UI pentru modal
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
@@ -166,7 +145,7 @@ export default function SimpleSummaryModal({ data, onClose }) {
           <div><span>KM totales:</span> {kmTotal}</div>
         </div>
 
-        {/* Estadísticas */}
+        {/* Statistici */}
         <div className={styles.stats}>
           <div>Días trabajados: <b>{data?.workedDays ?? '—'}</b></div>
           <div>Desayunos: <b>{data?.desayunos ?? '—'}</b></div>
