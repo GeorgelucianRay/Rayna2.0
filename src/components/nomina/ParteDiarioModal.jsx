@@ -1,4 +1,3 @@
-// src/components/nomina/ParteDiarioModal.jsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
 import styles from './Nominas.module.css';
@@ -166,8 +165,7 @@ export default function ParteDiarioModal({
     })();
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
+  // ⚠️ TOATE HOOK-URILE trebuie declarate înainte de orice return
   const kmIniciar = safeData.km_iniciar ?? '';
   const kmFinal   = safeData.km_final ?? '';
   const kmShow = Math.max(0, Number(kmFinal) - Number(kmIniciar));
@@ -179,10 +177,14 @@ export default function ParteDiarioModal({
     return Math.round(haversineDistance(A, B) * 10) / 10;
   };
 
+  // useMemo este acum declarat ÎNAINTE de return
   const curse = useMemo(
-    () => Array.isArray(safeData.curse) ? safeData.curse : [],
+    () => (Array.isArray(safeData.curse) ? safeData.curse : []),
     [safeData.curse]
   );
+
+  // Abia acum putem face early-return
+  if (!isOpen) return null;
 
   const onNum = (e) => {
     const name = e.target.name;
@@ -281,7 +283,7 @@ export default function ParteDiarioModal({
                   <input
                     type="checkbox"
                     checked={!!safeData.cena}
-                    onChange={() => onToggleChange('cена')}
+                    onChange={() => onToggleChange('cena')}
                   /> Cena
                 </label>
 
@@ -354,9 +356,13 @@ export default function ParteDiarioModal({
                               closeOnSelect
                             />
 
-                            <button type="button"
-                                    onClick={() => setActiveGpsSearch({ index: i, field: 'start' }) ||
-                                      setIsGpsModalOpen(true)}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveGpsSearch({ index: i, field: 'start' });
+                                setIsGpsModalOpen(true);
+                              }}
+                            >
                               <GpsFixedIcon />
                             </button>
 
@@ -376,9 +382,13 @@ export default function ParteDiarioModal({
                               closeOnSelect
                             />
 
-                            <button type="button"
-                                    onClick={() => setActiveGpsSearch({ index: i, field: 'end' }) ||
-                                      setIsGpsModalOpen(true)}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveGpsSearch({ index: i, field: 'end' });
+                                setIsGpsModalOpen(true);
+                              }}
+                            >
                               <GpsFixedIcon />
                             </button>
 
