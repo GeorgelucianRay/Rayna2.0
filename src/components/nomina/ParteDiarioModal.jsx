@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../AuthContext';
 import styles from './Nominas.module.css';
 import SearchableInput from './SearchableInput';
 
@@ -97,16 +98,29 @@ export default function ParteDiarioModal({
   monthName,
   year
 }) {
+  if (!isOpen) return null;
 
   const safeData = data || {};
+
+  // camion implicit din profil (camionul tău de zi cu zi)
+  const { profile } = useAuth() || {};
+  const defaultCamion =
+    profile?.camioane?.matricula ||
+    profile?.matricula ||
+    profile?.camion ||
+    '';
+
+  // valoarea reală folosită pentru zi:
+  //  - dacă în pontaj există camion_matricula, îl folosim
+  //  - altfel folosim camionul implicit din profil
+  const mainCamion = safeData.camion_matricula || defaultCamion || '';
+
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [gpsResults, setGpsResults] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [activeGpsSearch, setActiveGpsSearch] = useState(null);
   const [coordsIndex, setCoordsIndex] = useState({});
   const [trucks, setTrucks] = useState([]);
-
-  const mainCamion = safeData.camion_matricula || '';
 
   // ---------------- LOAD COORDINATE -----------------
   useEffect(() => {
@@ -165,7 +179,6 @@ export default function ParteDiarioModal({
     })();
   }, [isOpen]);
 
-  // ⚠️ TOATE HOOK-URILE trebuie declarate înainte de orice return
   const kmIniciar = safeData.km_iniciar ?? '';
   const kmFinal   = safeData.km_final ?? '';
   const kmShow = Math.max(0, Number(kmFinal) - Number(kmIniciar));
@@ -177,14 +190,10 @@ export default function ParteDiarioModal({
     return Math.round(haversineDistance(A, B) * 10) / 10;
   };
 
-  // useMemo este acum declarat ÎNAINTE de return
   const curse = useMemo(
-    () => (Array.isArray(safeData.curse) ? safeData.curse : []),
+    () => Array.isArray(safeData.curse) ? safeData.curse : [],
     [safeData.curse]
   );
-
-  // Abia acum putem face early-return
-  if (!isOpen) return null;
 
   const onNum = (e) => {
     const name = e.target.name;
@@ -246,21 +255,26 @@ export default function ParteDiarioModal({
               <div className={styles.inputGroup}>
                 <label>Camión del día</label>
 
-                <select
+                {/* Input + datalist pentru a căuta după matriculă */}
+                <input
+                  list="camiones-list"
                   className={styles.select}
                   value={mainCamion}
-                  onChange={(e) => onDataChange('camion_matricula', e.target.value)}
-                >
-                  <option value="">(Por defecto)</option>
+                  onChange={(e) =>
+                    onDataChange('camion_matricula', e.target.value || null)
+                  }
+                  placeholder={defaultCamion ? `Por defecto: ${defaultCamion}` : 'Matricula'}
+                />
+                <datalist id="camiones-list">
                   {trucks.map(t => (
-                    <option key={t.id} value={t.matricula}>
-                      {t.matricula}
-                    </option>
+                    <option key={t.id} value={t.matricula} />
                   ))}
-                </select>
+                </datalist>
 
                 <p className={styles.smallHint}>
-                  Puedes cambiar el camión por carrera si ese día trabajaste con más de uno.
+                  Por defecto se usa tu camión habitual
+                  {defaultCamion ? ` (${defaultCamion})` : ''}.  
+                  Puedes escribir la matrícula para buscar otro camión.
                 </p>
               </div>
             </div>
@@ -358,10 +372,8 @@ export default function ParteDiarioModal({
 
                             <button
                               type="button"
-                              onClick={() => {
-                                setActiveGpsSearch({ index: i, field: 'start' });
-                                setIsGpsModalOpen(true);
-                              }}
+                              onClick={() => setActiveGpsSearch({ index: i, field: 'start' }) ||
+                                setIsGpsModalOpen(true)}
                             >
                               <GpsFixedIcon />
                             </button>
@@ -384,10 +396,8 @@ export default function ParteDiarioModal({
 
                             <button
                               type="button"
-                              onClick={() => {
-                                setActiveGpsSearch({ index: i, field: 'end' });
-                                setIsGpsModalOpen(true);
-                              }}
+                              onClick={() => setActiveGpsSearch({ index: i, field: 'end' }) ||
+                                setIsGpsModalOpen(true)}
                             >
                               <GpsFixedIcon />
                             </button>
@@ -406,7 +416,7 @@ export default function ParteDiarioModal({
                               handleCursaChange(i, 'camion_matricula', e.target.value || null)
                             }
                           >
-                            <option value="">(Día)</option>
+                            <option value="">{mainCamion || '(Del día)'}</option>
                             {trucks.map(t => (
                               <option key={t.id} value={t.matricula}>
                                 {t.matricula}
