@@ -8,38 +8,10 @@ import RootGate from './RootGate';
 import PublicReset from './PublicReset';
 
 // Public
-<Route
-  path="/login"
-  element={
-    <PublicReset>
-      <IniciarSesion />
-    </PublicReset>
-  }
-/>
-<Route
-  path="/registro"
-  element={
-    <PublicReset>
-      <Registrar />
-    </PublicReset>
-  }
-/>
-<Route
-  path="/restaurar-contrasena"
-  element={
-    <PublicReset>
-      <RestaurarContrasena />
-    </PublicReset>
-  }
-/>
-<Route
-  path="/actualizar-contrasena"
-  element={
-    <PublicReset>
-      <ActualizarContrasena />
-    </PublicReset>
-  }
-/>
+import IniciarSesion from './components/IniciarSesion.jsx';
+import Registrar from './components/Registrar.jsx';
+import RestaurarContrasena from './components/RestaurarContrasena.jsx';
+import ActualizarContrasena from './components/ActualizarContrasena.jsx';
 
 // Private pages
 import RaynaHub from './components/chat/RaynaHub.jsx';
@@ -69,24 +41,50 @@ import DebugConsole from './components/debug/DebugConsole';
 import { useAuth } from './AuthContext';
 
 export default function App() {
-  // DebugConsole doar pentru admin, după ce e gata sesiunea
   const { profile, sessionReady } = useAuth();
   const isAdmin = (profile?.role || '').toLowerCase() === 'admin';
 
   return (
     <>
-      {/* memorizează ultima rută doar când există sesiune */}
       <RouteMemory />
 
-      {/* Prinde crash-uri React fără să faci redirecte dure */}
       <ErrorBoundary>
         <Routes>
           {/* Public */}
           <Route path="/" element={<RootGate />} />
-          <Route path="/login" element={<IniciarSesion />} />
-          <Route path="/registro" element={<Registrar />} />
-          <Route path="/restaurar-contrasena" element={<RestaurarContrasena />} />
-          <Route path="/actualizar-contrasena" element={<ActualizarContrasena />} />
+
+          <Route
+            path="/login"
+            element={
+              <PublicReset>
+                <IniciarSesion />
+              </PublicReset>
+            }
+          />
+          <Route
+            path="/registro"
+            element={
+              <PublicReset>
+                <Registrar />
+              </PublicReset>
+            }
+          />
+          <Route
+            path="/restaurar-contrasena"
+            element={
+              <PublicReset>
+                <RestaurarContrasena />
+              </PublicReset>
+            }
+          />
+          <Route
+            path="/actualizar-contrasena"
+            element={
+              <PublicReset>
+                <ActualizarContrasena />
+              </PublicReset>
+            }
+          />
 
           {/* Private */}
           <Route element={<RequireAuth />}>
@@ -138,7 +136,9 @@ export default function App() {
                 <div className="card text-center">
                   <h1 className="text-red-600 font-bold text-2xl">404 - Página no encontrada</h1>
                   <p className="text-gray-600 mb-4">La página que buscas no existe.</p>
-                  <Link to="/login" className="text-blue-600 hover-underline">Volver a Iniciar Sesión</Link>
+                  <Link to="/login" className="text-blue-600 hover-underline">
+                    Volver a Iniciar Sesión
+                  </Link>
                 </div>
               </div>
             }
@@ -146,7 +146,6 @@ export default function App() {
         </Routes>
       </ErrorBoundary>
 
-      {/* Debug global (oglindă devtools) — vizibil doar pentru admin */}
       {sessionReady && isAdmin && <DebugConsole enabled />}
     </>
   );
