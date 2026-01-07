@@ -62,21 +62,21 @@ const calculateMantenimientoAlarms = (camioane = [], mantenimientoAlerts = []) =
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [session, setSession]       = useState(null);
+  const [session, setSession] = useState(null);
   const [sessionReady, setSessionReady] = useState(false); // „hydrated”
-  const [user, setUser]             = useState(null);
-  const [profile, setProfile]       = useState(null);
-  const [firstName, setFirstName]   = useState(null);
-  const [alarms, setAlarms]         = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [firstName, setFirstName] = useState(null);
+  const [alarms, setAlarms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [feedbackSuppressed, setFeedbackSuppressed]   = useState(false);
+  const [feedbackSuppressed, setFeedbackSuppressed] = useState(false);
 
   // gard împotriva fetch-urilor simultane
   const fetchLockRef = useRef(false);
 
-  /** Ia sesiunea curentă și sincronizează user-ul (fără logout agresiv). */
+  /** Ia sesiunea curentă și sincronizează user-ul. */
   const refreshSession = useCallback(async () => {
     const { data: { session: s } } = await supabase.auth.getSession();
     setSession(s || null);
@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }) => {
       let mantenimientoAlertsToProcess = [];
 
       if (['dispecer', 'admin'].includes(baseProfile.role)) {
-        const { data: p }   = await supabase.from('profiles')
+        const { data: p } = await supabase.from('profiles')
           .select('id, role, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad');
         const { data: cAll } = await supabase.from('camioane')
           .select('id, matricula, fecha_itv, kilometros');
@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }) => {
 
         profilesToProcess = p || [];
         camioaneToProcess = cAll || [];
-        remorciToProcess  = rAll || [];
+        remorciToProcess = rAll || [];
         mantenimientoAlertsToProcess = mAll || [];
       } else if (baseProfile.role === 'sofer') {
         profilesToProcess = [{
@@ -157,7 +157,7 @@ export const AuthProvider = ({ children }) => {
         }];
       }
 
-      const expirationAlarms    = calculateExpirations(profilesToProcess, camioaneToProcess, remorciToProcess);
+      const expirationAlarms = calculateExpirations(profilesToProcess, camioaneToProcess, remorciToProcess);
       const mantenimientoAlarms = calculateMantenimientoAlarms(camioaneToProcess, mantenimientoAlertsToProcess);
       setAlarms([...expirationAlarms, ...mantenimientoAlarms].sort((a, b) => a.days - b.days));
     } catch (e) {
@@ -172,7 +172,27 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let intervalId;
     let authSub = null;
-    const watchdog = setTimeout(() => setSessionReady(true), 5000); // nu blocăm UI-ul dacă ceva întârzie
+    const watchdog = setTimeout(() => setSessionReady(true), 5000);
+
+    // 🔑 Cleanup dupa reload daca am facut hardLogout (iOS-safe)
+    (async () => {
+      let pending = false;
+      try { pending = sessionStorage.getItem('rayna_logout_pending') === '1'; } catch {}
+
+      if (!pending) return;
+
+      try { sessionStorage.removeItem('rayna_logout_pending'); } catch {}
+
+      try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+
+      try {
+        for (const k of Object.keys(localStorage)) {
+          if (k.startsWith('sb-') || k.toLowerCase().includes('supabase')) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch {}
+    })();
 
     (async () => {
       // 1) Hidratare din cache
@@ -185,23 +205,22 @@ export const AuthProvider = ({ children }) => {
       await fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
 
       // 3) Refresh derivat periodic (nu auth)
-      intervalId = setInterval(fetchAndProcessData, 300000); // 5 min
+      intervalId = setInterval(fetchAndProcessData, 300000);
     })();
 
-    // 4) Ascultă toate evenimentele de auth; curățăm instant la SIGNED_OUT
+    // 4) evenimente auth
     const sub = supabase.auth.onAuthStateChange((evt, s) => {
       setSession(s || null);
       setUser(s?.user ?? null);
       setSessionReady(true);
 
-      // SIGNED_OUT / fără user: curățăm instant și NU mai pornim fetch-uri
       if (evt === 'SIGNED_OUT' || !s?.user) {
         fetchLockRef.current = false;
         setProfile(null);
         setFirstName(null);
         setAlarms([]);
         setIsFeedbackModalOpen(false);
-        setFeedbackSuppressed(true); // 🔑 important
+        setFeedbackSuppressed(true);
         setLoading(false);
         return;
       }
@@ -248,8 +267,11 @@ export const AuthProvider = ({ children }) => {
   }, [fetchAndProcessData]);
 
   /* -------------------- Actions expuse în context -------------------- */
-  const hardLogout = async () => {
-    // 1) Curățăm UI instant (ca să nu rămână overlay-uri)
+  const hardLogout = () => {
+    // marcam logout pending ca sa facem cleanup dupa reload (iOS-safe)
+    try { sessionStorage.setItem('rayna_logout_pending', '1'); } catch {}
+
+    // curatam UI instant (fara await / fara promisiuni)
     fetchLockRef.current = false;
     setSession(null);
     setUser(null);
@@ -260,27 +282,8 @@ export const AuthProvider = ({ children }) => {
     setIsFeedbackModalOpen(false);
     setFeedbackSuppressed(true);
 
-    // 2) Încercăm signOut local, dar nu blocăm (iOS poate agăța)
-    const withTimeout = (p, ms = 800) =>
-      Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
-
-    try {
-      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 800);
-    } catch (e) {
-      console.warn('signOut(local) failed/timeout:', e?.message || e);
-    }
-
-    // 3) Curățare storage (doar cheile supabase) — important pe iOS
-    try {
-      for (const k of Object.keys(localStorage)) {
-        if (k.startsWith('sb-') || k.toLowerCase().includes('supabase')) {
-          localStorage.removeItem(k);
-        }
-      }
-    } catch {}
-
-    // 4) Hard reload (mai stabil pe iOS decât replace)
-    window.location.href = '/login?logout=1';
+    // redirect IMEDIAT (sincron)
+    window.location.href = '/login';
   };
 
   const addMantenimientoAlert = async (camionId, matricula, kmActual) => {
