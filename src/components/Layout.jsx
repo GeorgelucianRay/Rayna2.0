@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './Layout.module.css';
 import Navbar from './Navbar';
 import UpdatePrompt from './UpdatePrompt';
@@ -26,6 +26,10 @@ const backgroundMap = {
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  useEffect(() => {
+  // Închide meniul la orice schimbare de rută (ex: logout -> /login)
+  setOpen(false);
+}, [pathname]);
 
   const matchingPath = Object.keys(backgroundMap)
     .sort((a,b) => b.length - a.length)
