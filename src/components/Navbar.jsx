@@ -36,7 +36,6 @@ const Navbar = ({ open, onOpen, onClose }) => {
   const role = profile?.role;
   const items = role ? (MENU_BY_ROLE[role] || []) : [];
 
-  const { setProfile } = useAuth();
 
 const handleLogout = async () => {
   onClose?.();        // închide meniul instant
