@@ -188,15 +188,30 @@ export const AuthProvider = ({ children }) => {
       intervalId = setInterval(fetchAndProcessData, 300000); // 5 min
     })();
 
-    // 4) Ascultă toate evenimentele de auth; nu facem "hard sign-out"
-    const sub = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s || null);
-      setUser(s?.user ?? null);
-      setSessionReady(true);
-      setLoading(true);
-      fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
-    });
-    authSub = sub?.data?.subscription ?? null;
+    // 4) Ascultă toate evenimentele de auth; curățăm instant la SIGNED_OUT
+const sub = supabase.auth.onAuthStateChange((evt, s) => {
+  // update rapid session/user
+  setSession(s || null);
+  setUser(s?.user ?? null);
+  setSessionReady(true);
+
+  // IMPORTANT: logout / fără user -> curățăm UI imediat (fără să depindem de fetchLock)
+  if (evt === 'SIGNED_OUT' || !s?.user) {
+    fetchLockRef.current = false;   // eliberează lock-ul dacă era blocat
+    setProfile(null);
+    setFirstName(null);
+    setAlarms([]);
+    setLoading(false);
+    setIsFeedbackModalOpen(false);
+    setFeedbackSuppressed(false);   // opțional (poți șterge linia dacă nu vrei)
+    return;
+  }
+
+  // altfel încărcăm normal profil/alarme
+  setLoading(true);
+  fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
+});
+authSub = sub?.data?.subscription ?? null;
 
     // 5) iOS & offline handlers
     const onVis = async () => {
