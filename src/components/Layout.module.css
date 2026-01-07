@@ -89,15 +89,22 @@
 .layoutWrapper:not(.hasBackground) .pageContentWrapper { background-color: #f3f4f6; }
 .hasBackground .pageContentWrapper { background-color: transparent; }
 
+/* ✅ FIX iOS: pointer-events */
 .navMenuOverlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.5);
   z-index: 1999;
-  opacity: 0; visibility: hidden;
-  transition: opacity .3s ease-in-out;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none; /* 🔑 când e ascuns, NU blochează tap/click */
+  transition: opacity .3s ease-in-out, visibility .3s ease-in-out;
 }
-.menuOpen .navMenuOverlay { opacity: 1; visibility: visible; }
+.menuOpen .navMenuOverlay {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto; /* 🔑 blochează doar când e deschis */
+}
 
 /* header (dreapta, pe mobil) */
 .header {
