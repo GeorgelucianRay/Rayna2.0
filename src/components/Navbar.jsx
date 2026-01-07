@@ -30,7 +30,7 @@ const Icon = ({ name, className }) => {
 
 const Navbar = ({ open, onOpen, onClose }) => {
   const { pathname } = useLocation();
-  const { user, profile, alarms, setProfile } = useAuth();
+  const { user, profile, alarms, hardLogout } = useAuth();
   const navigate = useNavigate();
 
   const role = profile?.role;
@@ -38,12 +38,8 @@ const Navbar = ({ open, onOpen, onClose }) => {
 
 
 const handleLogout = () => {
-  onClose?.();               // închide meniul
-  setProfile?.(null);        // cade UI instant (opțional, dar ok)
-  navigate('/login', { replace: true }); // ✅ trimite imediat la login
-
-  // apoi logout "fire & forget" (nu blochează UI-ul)
-  supabase.auth.signOut({ scope: 'local' }).catch(console.error);
+  onClose?.();
+  hardLogout();
 };
 
   return (
