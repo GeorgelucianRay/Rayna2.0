@@ -5,12 +5,41 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import RequireAuth from './RequireAuth';
 import RouteMemory from './RouteMemory';
 import RootGate from './RootGate';
+import PublicReset from './PublicReset';
 
 // Public
-import IniciarSesion from './components/IniciarSesion.jsx';
-import Registrar from './components/Registrar.jsx';
-import RestaurarContrasena from './components/RestaurarContrasena.jsx';
-import ActualizarContrasena from './components/ActualizarContrasena.jsx';
+<Route
+  path="/login"
+  element={
+    <PublicReset>
+      <IniciarSesion />
+    </PublicReset>
+  }
+/>
+<Route
+  path="/registro"
+  element={
+    <PublicReset>
+      <Registrar />
+    </PublicReset>
+  }
+/>
+<Route
+  path="/restaurar-contrasena"
+  element={
+    <PublicReset>
+      <RestaurarContrasena />
+    </PublicReset>
+  }
+/>
+<Route
+  path="/actualizar-contrasena"
+  element={
+    <PublicReset>
+      <ActualizarContrasena />
+    </PublicReset>
+  }
+/>
 
 // Private pages
 import RaynaHub from './components/chat/RaynaHub.jsx';
