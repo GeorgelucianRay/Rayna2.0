@@ -189,32 +189,35 @@ export const AuthProvider = ({ children }) => {
     })();
 
     // 4) Ascultă toate evenimentele de auth; curățăm instant la SIGNED_OUT
-const sub = supabase.auth.onAuthStateChange((evt, s) => {
-  // update rapid session/user
-  setSession(s || null);
-  setUser(s?.user ?? null);
-  setSessionReady(true);
+    const sub = supabase.auth.onAuthStateChange((evt, s) => {
+      setSession(s || null);
+      setUser(s?.user ?? null);
+      setSessionReady(true);
 
-  // IMPORTANT: logout / fără user -> curățăm UI imediat (fără să depindem de fetchLock)
-  if (evt === 'SIGNED_OUT' || !s?.user) {
-    fetchLockRef.current = false;   // eliberează lock-ul dacă era blocat
-    setProfile(null);
-    setFirstName(null);
-    setAlarms([]);
-    setLoading(false);
-    setIsFeedbackModalOpen(false);
-    setFeedbackSuppressed(false);   // opțional (poți șterge linia dacă nu vrei)
-    return;
-  }
+      // SIGNED_OUT / fără user: curățăm instant și NU mai pornim fetch-uri
+      if (evt === 'SIGNED_OUT' || !s?.user) {
+        fetchLockRef.current = false;
+        setProfile(null);
+        setFirstName(null);
+        setAlarms([]);
+        setIsFeedbackModalOpen(false);
+        setFeedbackSuppressed(true); // 🔑 important
+        setLoading(false);
+        return;
+      }
 
-  // altfel încărcăm normal profil/alarme
-  setLoading(true);
-  fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
-});
-authSub = sub?.data?.subscription ?? null;
+      setLoading(true);
+      fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
+    });
+    authSub = sub?.data?.subscription ?? null;
 
-    // 5) iOS & offline handlers
+    // 5) iOS & offline handlers (NU pornesc nimic pe /login sau fără user)
     const onVis = async () => {
+      if (window.location?.pathname === '/login') return;
+
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.user) return;
+
       if (document.visibilityState === 'visible') {
         try { await supabase.auth.refreshSession(); } catch {}
         setLoading(true);
@@ -224,6 +227,11 @@ authSub = sub?.data?.subscription ?? null;
     document.addEventListener('visibilitychange', onVis);
 
     const onOnline = async () => {
+      if (window.location?.pathname === '/login') return;
+
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.user) return;
+
       try { await supabase.auth.refreshSession(); } catch {}
       setLoading(true);
       fetchAndProcessData().catch(() => {}).finally(() => setLoading(false));
@@ -240,40 +248,41 @@ authSub = sub?.data?.subscription ?? null;
   }, [fetchAndProcessData]);
 
   /* -------------------- Actions expuse în context -------------------- */
-const hardLogout = async () => {
-  // 1) Curățăm UI instant (ca să nu rămână overlay-uri)
-  fetchLockRef.current = false;
-  setSession(null);
-  setUser(null);
-  setProfile(null);
-  setFirstName(null);
-  setAlarms([]);
-  setLoading(false);
-  setIsFeedbackModalOpen(false);
-  setFeedbackSuppressed(true);
+  const hardLogout = async () => {
+    // 1) Curățăm UI instant (ca să nu rămână overlay-uri)
+    fetchLockRef.current = false;
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setFirstName(null);
+    setAlarms([]);
+    setLoading(false);
+    setIsFeedbackModalOpen(false);
+    setFeedbackSuppressed(true);
 
-  // 2) Încercăm signOut local, dar nu blocăm (iOS poate agăța)
-  const withTimeout = (p, ms = 800) =>
-    Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    // 2) Încercăm signOut local, dar nu blocăm (iOS poate agăța)
+    const withTimeout = (p, ms = 800) =>
+      Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
-  try {
-    await withTimeout(supabase.auth.signOut({ scope: 'local' }), 800);
-  } catch (e) {
-    console.warn('signOut(local) failed/timeout:', e?.message || e);
-  }
-
-  // 3) Curățare storage (doar cheile supabase) — important pe iOS
-  try {
-    for (const k of Object.keys(localStorage)) {
-      if (k.startsWith('sb-') || k.toLowerCase().includes('supabase')) {
-        localStorage.removeItem(k);
-      }
+    try {
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 800);
+    } catch (e) {
+      console.warn('signOut(local) failed/timeout:', e?.message || e);
     }
-  } catch {}
 
-  // 4) Hard redirect (taie orice overlay agățat)
-  window.location.replace('/login');
-};
+    // 3) Curățare storage (doar cheile supabase) — important pe iOS
+    try {
+      for (const k of Object.keys(localStorage)) {
+        if (k.startsWith('sb-') || k.toLowerCase().includes('supabase')) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch {}
+
+    // 4) Hard reload (mai stabil pe iOS decât replace)
+    window.location.href = '/login?logout=1';
+  };
+
   const addMantenimientoAlert = async (camionId, matricula, kmActual) => {
     if (!camionId || !matricula || !kmActual) return;
     try {
@@ -340,7 +349,7 @@ const hardLogout = async () => {
 
   const value = {
     session,
-    sessionReady,           // ⬅ păstrăm API-ul tău existent
+    sessionReady,
     user,
     profile,
     firstName,
