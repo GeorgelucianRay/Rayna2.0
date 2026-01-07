@@ -30,16 +30,23 @@ const Icon = ({ name, className }) => {
 
 const Navbar = ({ open, onOpen, onClose }) => {
   const { pathname } = useLocation();
-  const { user, profile, alarms } = useAuth();
+  const { user, profile, alarms, setProfile } = useAuth();
   const navigate = useNavigate();
 
   const role = profile?.role;
   const items = role ? (MENU_BY_ROLE[role] || []) : [];
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login', { replace: true });
-  };
+  const { setProfile } = useAuth();
+
+const handleLogout = async () => {
+  onClose?.();        // închide meniul instant
+  setProfile?.(null); // cade role-ul imediat (UI refresh)
+
+  const { error } = await supabase.auth.signOut();
+  if (error) console.error('signOut:', error.message);
+
+  navigate('/login', { replace: true });
+};
 
   return (
     <>
