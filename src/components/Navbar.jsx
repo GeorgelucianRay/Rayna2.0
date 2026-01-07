@@ -37,14 +37,13 @@ const Navbar = ({ open, onOpen, onClose }) => {
   const items = role ? (MENU_BY_ROLE[role] || []) : [];
 
 
-const handleLogout = async () => {
-  onClose?.();        // închide meniul instant
-  setProfile?.(null); // cade role-ul imediat (UI refresh)
+const handleLogout = () => {
+  onClose?.();               // închide meniul
+  setProfile?.(null);        // cade UI instant (opțional, dar ok)
+  navigate('/login', { replace: true }); // ✅ trimite imediat la login
 
-  const { error } = await supabase.auth.signOut();
-  if (error) console.error('signOut:', error.message);
-
-  navigate('/login', { replace: true });
+  // apoi logout "fire & forget" (nu blochează UI-ul)
+  supabase.auth.signOut({ scope: 'local' }).catch(console.error);
 };
 
   return (
