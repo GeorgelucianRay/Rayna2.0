@@ -240,6 +240,40 @@ authSub = sub?.data?.subscription ?? null;
   }, [fetchAndProcessData]);
 
   /* -------------------- Actions expuse în context -------------------- */
+const hardLogout = async () => {
+  // 1) Curățăm UI instant (ca să nu rămână overlay-uri)
+  fetchLockRef.current = false;
+  setSession(null);
+  setUser(null);
+  setProfile(null);
+  setFirstName(null);
+  setAlarms([]);
+  setLoading(false);
+  setIsFeedbackModalOpen(false);
+  setFeedbackSuppressed(true);
+
+  // 2) Încercăm signOut local, dar nu blocăm (iOS poate agăța)
+  const withTimeout = (p, ms = 800) =>
+    Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+  try {
+    await withTimeout(supabase.auth.signOut({ scope: 'local' }), 800);
+  } catch (e) {
+    console.warn('signOut(local) failed/timeout:', e?.message || e);
+  }
+
+  // 3) Curățare storage (doar cheile supabase) — important pe iOS
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('sb-') || k.toLowerCase().includes('supabase')) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
+
+  // 4) Hard redirect (taie orice overlay agățat)
+  window.location.replace('/login');
+};
   const addMantenimientoAlert = async (camionId, matricula, kmActual) => {
     if (!camionId || !matricula || !kmActual) return;
     try {
@@ -314,6 +348,7 @@ authSub = sub?.data?.subscription ?? null;
     loading,
     setLoading,
     setProfile,
+    hardLogout,
     addMantenimientoAlert,
     isFeedbackModalOpen,
     handleFeedbackSubmit,
