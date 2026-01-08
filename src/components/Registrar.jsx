@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import './iniciarsesion.css';
@@ -6,14 +6,27 @@ import './iniciarsesion.css';
 function Registrar() {
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [email, setEmail] = useState('');
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [showPass1, setShowPass1] = useState(false);
+  const [showPass2, setShowPass2] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
 
+  const passwordsMismatch = useMemo(() => {
+    if (!password || !confirmPassword) return false; // nu arătăm până nu scrie în ambele
+    return password !== confirmPassword;
+  }, [password, confirmPassword]);
+
   const handleRegister = async (event) => {
     event.preventDefault();
+
+    setError(null);
+    setMessage('');
 
     if (!nombreCompleto.trim()) {
       setError('El nombre completo es obligatorio');
@@ -26,51 +39,53 @@ function Registrar() {
     }
 
     setLoading(true);
-    setError(null);
-    setMessage('');
 
     try {
-      // 1️⃣ Crear usuario en Auth
+      // 1) Crear usuario
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
-
       if (signUpError) throw signUpError;
 
       const userId = data?.user?.id;
-      if (!userId) {
-        throw new Error('No se pudo obtener el ID del usuario.');
-      }
+      if (!userId) throw new Error('No se pudo obtener el ID del usuario.');
 
-      // 2️⃣ Crear profilul imediat
+      // 2) Crear perfil
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           email,
           nombre_completo: nombreCompleto.trim(),
-          role: 'sofer', // 🔁 poți schimba: 'user', 'sofer', etc.
+          role: 'sofer', // schimbă dacă vrei alt rol default
         });
 
       if (profileError) throw profileError;
 
-      // 3️⃣ Mesaj succes
-      setMessage(
-        '¡Registro exitoso! Por favor, revisa tu correo para confirmar tu cuenta.'
-      );
+      setMessage('¡Registro exitoso! Por favor, revisa tu correo para confirmar tu cuenta.');
 
-      // Reset form
+      // reset
       setNombreCompleto('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setShowPass1(false);
+      setShowPass2(false);
     } catch (err) {
       setError(err.message || 'No se pudo completar el registro.');
     } finally {
       setLoading(false);
     }
   };
+
+  const disableSubmit =
+    loading ||
+    !nombreCompleto.trim() ||
+    !email.trim() ||
+    !password ||
+    !confirmPassword ||
+    passwordsMismatch;
 
   return (
     <div className="login-container">
@@ -85,11 +100,9 @@ function Registrar() {
         )}
 
         <form onSubmit={handleRegister} className="form-group-spacing">
-          {/* NOMBRE COMPLETO */}
+          {/* Nombre completo */}
           <div>
-            <label htmlFor="nombreCompleto" className="form-label">
-              Nombre Completo
-            </label>
+            <label htmlFor="nombreCompleto" className="form-label">Nombre Completo</label>
             <input
               type="text"
               id="nombreCompleto"
@@ -101,11 +114,9 @@ function Registrar() {
             />
           </div>
 
-          {/* EMAIL */}
+          {/* Email */}
           <div>
-            <label htmlFor="email" className="form-label">
-              Correo Electrónico
-            </label>
+            <label htmlFor="email" className="form-label">Correo Electrónico</label>
             <input
               type="email"
               id="email"
@@ -117,39 +128,65 @@ function Registrar() {
             />
           </div>
 
-          {/* PASSWORD */}
+          {/* Password + toggle */}
           <div>
-            <label htmlFor="password" className="form-label">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              id="password"
-              className="form-input"
-              placeholder="************"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <label htmlFor="password" className="form-label">Contraseña</label>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type={showPass1 ? 'text' : 'password'}
+                id="password"
+                className="form-input"
+                placeholder="************"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowPass1((v) => !v)}
+                aria-label={showPass1 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPass1 ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
           </div>
 
-          {/* CONFIRM PASSWORD */}
+          {/* Confirm password + toggle + mismatch */}
           <div>
-            <label htmlFor="confirmPassword" className="form-label">
-              Repetir Contraseña
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              className="form-input"
-              placeholder="************"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
+            <label htmlFor="confirmPassword" className="form-label">Repetir Contraseña</label>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type={showPass2 ? 'text' : 'password'}
+                id="confirmPassword"
+                className="form-input"
+                placeholder="************"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                style={{ flex: 1, borderColor: passwordsMismatch ? '#ef4444' : undefined }}
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowPass2((v) => !v)}
+                aria-label={showPass2 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPass2 ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+
+            {passwordsMismatch && (
+              <div style={{ color: '#ef4444', marginTop: '6px', fontSize: '0.9rem' }}>
+                Las contraseñas no coinciden.
+              </div>
+            )}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn-primary" disabled={disableSubmit}>
             {loading ? 'Registrando...' : 'Registrar'}
           </button>
         </form>
