@@ -1,9 +1,10 @@
-// ChoferFinderProfile.jsx (butone globale active mereu + navigate inline + păstrat restul logicii)
+// src/components/ChoferFinderProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './ChoferFinderProfile.module.css';
+import { useAuth } from '../AuthContext';
 
 // Icons
 const SearchIcon = () => (
@@ -47,13 +48,15 @@ const CalendarIcon = () => (
   </svg>
 );
 
-// Widgets
+// Widgets (le ai deja în proiect)
 import VacacionesWidget from '../components/widgets/VacacionesWidget';
 import NominaWidget from '../components/widgets/NominaWidget';
 
 export default function ChoferFinderProfile() {
   const navigate = useNavigate();
   const inputRef = useRef(null);
+  const { profile: me } = useAuth();
+  const canEdit = ['admin', 'dispecer'].includes(String(me?.role || '').toLowerCase());
 
   // căutare
   const [q, setQ] = useState('');
@@ -98,7 +101,7 @@ export default function ChoferFinderProfile() {
 
         if (words.length === 1) {
           query = query.ilike('nombre_completo', `%${words[0]}%`);
-        } else if (words.length > 1) {
+        } else {
           const orFilter = words.map(w => `nombre_completo.ilike.%${w}%`).join(',');
           query = query.or(`(${orFilter})`);
         }
@@ -111,7 +114,7 @@ export default function ChoferFinderProfile() {
         if (!cancel) {
           setRows(data || []);
           setOpen(true);
-          setHi(data && data.length ? 0 : -1);
+          setHi((data && data.length) ? 0 : -1);
         }
       } catch (e) {
         if (!cancel) { setRows([]); setOpen(true); setHi(-1); }
@@ -124,7 +127,7 @@ export default function ChoferFinderProfile() {
     return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
-  /* încarcă profilul complet (include avatar_url) */
+  /* încarcă profilul complet */
   const loadProfile = async (id) => {
     if (!id) return;
     setProfileBusy(true);
@@ -178,17 +181,16 @@ export default function ChoferFinderProfile() {
   const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
   const handleFocus = () => { if (blurTimer.current) clearTimeout(blurTimer.current); if (rows.length) setOpen(true); };
 
-  /* acțiuni rapide (unități) */
+  /* acțiuni rapide */
   const goCamion = () => profile?.camioane?.id && navigate(`/camion/${profile.camioane.id}`);
   const goRemorca = () => profile?.remorci?.id && navigate(`/remorca/${profile.remorci.id}`);
-
-  /* comenzi globale — MEREU active */
-  const goNominaGlobal = () => navigate('/calculadora-nomina');
-  const goVacacionesGlobal = () => navigate('/vacaciones-admin');
 
   /* widget -> navigare per-șofer */
   const goNominaForSelected = () => selectedId && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(selectedId)}`);
   const goVacacionesAdminForSelected = () => selectedId && navigate(`/vacaciones-admin/${encodeURIComponent(selectedId)}`);
+
+  const goChoferProfile = () => selectedId && navigate(`/chofer/${encodeURIComponent(selectedId)}`);
+  const goChoferEdit = () => selectedId && navigate(`/chofer/${encodeURIComponent(selectedId)}?edit=1`);
 
   const highlightedId = useMemo(
     () => (hi >= 0 && hi < rows.length) ? rows[hi]?.id : lastClickedId,
@@ -202,11 +204,6 @@ export default function ChoferFinderProfile() {
       if (!selectedId) { if (alive) setVacInfo({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 }); return; }
       const year = new Date().getFullYear();
 
-      const fmt = (d) => {
-        const x = new Date(d);
-        const z = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
-        return z.toISOString().slice(0, 10);
-      };
       const overlapDaysWithinYear = (ev) => {
         const yStart = new Date(`${year}-01-01T00:00:00`);
         const yEnd   = new Date(`${year}-12-31T23:59:59`);
@@ -218,7 +215,6 @@ export default function ChoferFinderProfile() {
         return Math.floor((e - s) / 86400000) + 1;
       };
 
-      // parametri an
       const { data: cfg } = await supabase
         .from('vacaciones_parametros_anio')
         .select('*')
@@ -229,7 +225,6 @@ export default function ChoferFinderProfile() {
       const pers = cfg?.dias_personales ?? 2;
       const pueblo = cfg?.dias_pueblo ?? 0;
 
-      // extra per user
       const { data: ex } = await supabase
         .from('vacaciones_asignaciones_extra')
         .select('dias_extra')
@@ -239,7 +234,6 @@ export default function ChoferFinderProfile() {
 
       const total = (base||0)+(pers||0)+(pueblo||0)+(ex?.dias_extra||0);
 
-      // evenimente care ating anul
       const yearStart = `${year}-01-01`;
       const yearEnd   = `${year}-12-31`;
       const { data: evs } = await supabase
@@ -267,7 +261,10 @@ export default function ChoferFinderProfile() {
   useEffect(() => {
     let alive = true;
     async function loadNomina() {
-      if (!selectedId) { if (alive) { setNominaSummary({ dias:0, km:0, conts:0, desayunos:0, cenas:0, procenas:0 }); setNominaMarks(new Set()); } return; }
+      if (!selectedId) {
+        if (alive) { setNominaSummary({ dias:0, km:0, conts:0, desayunos:0, cenas:0, procenas:0 }); setNominaMarks(new Set()); }
+        return;
+      }
       const y = currentDate.getFullYear();
       const m = currentDate.getMonth() + 1;
       const { data } = await supabase
@@ -277,9 +274,11 @@ export default function ChoferFinderProfile() {
         .eq('an', y)
         .eq('mes', m)
         .maybeSingle();
+
       const zile = data?.pontaj_complet?.zilePontaj || [];
       let D=0,C=0,P=0,KM=0,CT=0;
       const marks = new Set();
+
       zile.forEach((zi, idx) => {
         if (!zi) return;
         const d = idx + 1;
@@ -289,10 +288,12 @@ export default function ChoferFinderProfile() {
         if (zi.procena) P++;
         if (kmZi > 0) KM += kmZi;
         if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
+
         if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
           marks.add(d);
         }
       });
+
       if (alive) {
         setNominaSummary({ desayunos:D, cenas:C, procenas:P, km:Math.round(KM), conts:CT, dias:marks.size });
         setNominaMarks(marks);
@@ -306,9 +307,8 @@ export default function ChoferFinderProfile() {
     <Layout>
       <div className={styles.page}>
         <header className={styles.header}>
-          <h1><UsersIcon /> Buscar chófer</h1>
+          <h1 className={styles.h1}><UsersIcon /> Buscar chófer</h1>
           <div className={styles.actions}>
-            {/* butoane globale – mereu active */}
             <button type="button" className={styles.btn} onClick={() => navigate('/calculadora-nomina')}>
               <CalcIcon /> Nómina
             </button>
@@ -342,15 +342,19 @@ export default function ChoferFinderProfile() {
               ) : (rows || []).map((r, idx) => (
                 <button
                   key={r.id}
-                  className={`${styles.item} ${idx===hi ? styles.active : ''}`}
+                  className={`${styles.item} ${idx===hi ? styles.active : ''} ${highlightedId === r.id ? styles.highlight : ''}`}
                   onClick={() => onPick(r.id)}
                   onMouseEnter={() => setHi(idx)}
+                  type="button"
                 >
                   <div className={styles.itemRow}>
                     <div className={styles.avatarSm}>
-                      {r.avatar_url ? <img src={r.avatar_url} alt="" /> : <span className={styles.avatarFallback}>{(r.nombre_completo||'?').slice(0,1).toUpperCase()}</span>}
+                      {r.avatar_url
+                        ? <img src={r.avatar_url} alt="" />
+                        : <span className={styles.avatarFallback}>{(r.nombre_completo||'?').slice(0,1).toUpperCase()}</span>}
                     </div>
-                    <div>
+
+                    <div className={styles.itemBody}>
                       <div className={styles.itemTitle}>{r.nombre_completo}</div>
                       <div className={styles.meta}>
                         <span>Camión: <b>{r.camioane?.matricula || '—'}</b></span>
@@ -377,10 +381,32 @@ export default function ChoferFinderProfile() {
               {/* Header profil cu avatar */}
               <div className={styles.profileHeader}>
                 <div className={styles.avatarLg}>
-                  {profile.avatar_url ? <img src={profile.avatar_url} alt={profile.nombre_completo} /> :
-                    <span className={styles.avatarFallbackLg}>{(profile.nombre_completo||'??').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}</span>}
+                  {profile.avatar_url
+                    ? <img src={profile.avatar_url} alt={profile.nombre_completo} />
+                    : <span className={styles.avatarFallbackLg}>
+                        {(profile.nombre_completo||'??').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}
+                      </span>}
                 </div>
-                <div className={styles.profileName}>{profile.nombre_completo}</div>
+                <div className={styles.profileTitleWrap}>
+                  <div className={styles.profileName}>{profile.nombre_completo}</div>
+                  <div className={styles.profileSub}>
+                    {profile.camioane?.matricula ? <>Camión: <b>{profile.camioane.matricula}</b></> : <>Camión: <b>—</b></>}
+                    <span className={styles.dot}>•</span>
+                    {profile.remorci?.matricula ? <>Remolque: <b>{profile.remorci.matricula}</b></> : <>Remolque: <b>—</b></>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Acțiuni profil */}
+              <div className={styles.profileActions}>
+                <button type="button" className={styles.btn} onClick={goChoferProfile}>
+                  Ver perfil
+                </button>
+                {canEdit && (
+                  <button type="button" className={styles.btnAccent} onClick={goChoferEdit}>
+                    Editar
+                  </button>
+                )}
               </div>
 
               {/* Widgets pentru șoferul selectat */}
@@ -410,7 +436,9 @@ export default function ChoferFinderProfile() {
                 <div className={styles.card}>
                   <div className={styles.rowHeader}>
                     <h3>Camión</h3>
-                    <button className={styles.ghost} disabled={!profile.camioane?.id} onClick={goCamion}><TruckIcon/> Ver ficha</button>
+                    <button className={styles.ghost} disabled={!profile.camioane?.id} onClick={goCamion} type="button">
+                      <TruckIcon/> Ver ficha
+                    </button>
                   </div>
                   <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || '—'}</span></div>
                 </div>
@@ -418,7 +446,9 @@ export default function ChoferFinderProfile() {
                 <div className={styles.card}>
                   <div className={styles.rowHeader}>
                     <h3>Remolque</h3>
-                    <button className={styles.ghost} disabled={!profile.remorci?.id} onClick={goRemorca}><TrailerIcon/> Ver ficha</button>
+                    <button className={styles.ghost} disabled={!profile.remorci?.id} onClick={goRemorca} type="button">
+                      <TrailerIcon/> Ver ficha
+                    </button>
                   </div>
                   <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || '—'}</span></div>
                 </div>
