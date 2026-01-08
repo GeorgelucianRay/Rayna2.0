@@ -334,7 +334,7 @@ export const AuthProvider = ({ children }) => {
         user_id: s.user.id,
         email: profile?.email ?? null,
         continut: feedbackText,
-        origen: 'modal',
+        origen: 'app',
         categoria: 'sugerencia',
         severidad: 'baja',
         contexto: { ruta: window.location?.pathname || null },
