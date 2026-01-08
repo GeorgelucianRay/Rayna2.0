@@ -131,3 +131,16 @@
 .mt-2-px {
   margin-top: 8px; /* Margine sus */
 }
+
+.btn-secondary{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-secondary:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
