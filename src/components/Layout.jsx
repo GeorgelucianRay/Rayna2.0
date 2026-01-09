@@ -47,7 +47,7 @@ export default function Layout({ children }) {
       {bgClass && (
   <div className={styles.backgroundContainer}>
     <div className={`${styles.backgroundImage} ${bgClass}`} />
-    {/* ⛔ backgroundOverlay eliminat */}
+    <div className={styles.backgroundOverlay} />
   </div>
 )}
 
