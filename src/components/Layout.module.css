@@ -8,9 +8,6 @@
   --accent: #22c55e;
   --cta1: #2563eb;
   --cta2: #3b82f6;
-  --gold-start: #fff;
-  --gold-mid: #ffd7b1;
-  --gold-end: #ff8c3a;
 }
 
 /* =========================
@@ -21,27 +18,46 @@
   width: 100%;
   min-height: 100vh;
 }
+
+/* fără background -> fallback */
 .layoutWrapper:not(.hasBackground) {
   background-color: #f3f4f6;
 }
 
+/* container fix pentru imagine */
 .backgroundContainer {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
 }
+
+/* imaginea de fundal */
 .backgroundImage {
   position: absolute;
-  inset: -20px;
+  inset: 0;
   background-size: cover;
   background-position: center;
-  filter: blur(8px);
+  /* blur mic doar pe fundal, NU pe content */
+  filter: blur(6px);
+  transform: scale(1.05);
 }
+
+/*
+  ✅ IMPORTANT:
+  NU mai punem “peliculă de sticlă” albicioasă.
+  Punem overlay inteligent pentru contrast (mai ales pe fundaluri luminoase).
+*/
 .backgroundOverlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(10, 10, 20, 0.8);
+
+  /* gradient + vignette: păstrează vibe-ul, dar face textul lizibil */
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.70) 55%, rgba(0,0,0,0.82) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.78));
+
+  /* fără blur aici -> nu “spală” tot */
 }
 
 /* fundaluri existente */
@@ -59,6 +75,32 @@
 .calculadoraBackground { background-image: url('/IMG_9705.jpeg'); }
 
 /* =========================
+   CONTENT WRAPPER
+   ========================= */
+.pageContentWrapper {
+  transition: margin-left .3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: transparent;
+}
+
+/* fără background -> alb */
+.layoutWrapper:not(.hasBackground) .pageContentWrapper {
+  background-color: #f3f4f6;
+}
+
+/* cu background -> transparent */
+.hasBackground .pageContentWrapper {
+  background-color: transparent;
+}
+
+/* content */
+.mainContent{
+  width: 100%;
+}
+
+/* =========================
    SIDE NAV
    ========================= */
 .navMenu {
@@ -74,22 +116,13 @@
   background-color: #111827;
   border-right: 1px solid #374151;
 }
+
 .menuOpen .navMenu {
   transform: translateX(0);
   box-shadow: 0 10px 30px -15px rgba(0,0,0,.3);
 }
 
-.pageContentWrapper {
-  transition: margin-left .3s ease-in-out;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: transparent;
-}
-.layoutWrapper:not(.hasBackground) .pageContentWrapper { background-color: #f3f4f6; }
-.hasBackground .pageContentWrapper { background-color: transparent; }
-
-/* ✅ FIX iOS: pointer-events */
+/* ✅ FIX iOS: overlay nu blochează tap dacă e ascuns */
 .navMenuOverlay {
   position: fixed;
   inset: 0;
@@ -97,16 +130,17 @@
   z-index: 1999;
   opacity: 0;
   visibility: hidden;
-  pointer-events: none; /* 🔑 când e ascuns, NU blochează tap/click */
+  pointer-events: none;
   transition: opacity .3s ease-in-out, visibility .3s ease-in-out;
 }
+
 .menuOpen .navMenuOverlay {
   opacity: 1;
   visibility: visible;
-  pointer-events: auto; /* 🔑 blochează doar când e deschis */
+  pointer-events: auto;
 }
 
-/* header (dreapta, pe mobil) */
+/* header (mobil) */
 .header {
   padding: 1rem;
   display: flex;
@@ -114,13 +148,23 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+
+  /* fără background alb pe fundaluri cu poză */
+  background-color: transparent;
+  border-bottom: 1px solid rgba(255,255,255,.10);
 }
-.headerTransparent { background-color: transparent; border-bottom: none; }
-.menuButtonHeader { background: transparent; border: none; padding: .25rem; color: #1f2937; cursor: pointer; }
+
+.headerTransparent {
+  background-color: transparent;
+  border-bottom: none;
+}
 
 .menuButtonHeader {
+  background: transparent;
+  border: none;
+  padding: .25rem;
+  color: #fff; /* pe background */
+  cursor: pointer;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
@@ -130,15 +174,13 @@
   transform: scale(0.9);
 }
 
-/* glas pe fundal când există imagine */
+/* glas doar pe NAV, nu pe pagină */
 .hasBackground .navMenu {
-  background-color: rgba(17,24,39,.8);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-right: 1px solid rgba(255,255,255,.1);
+  background-color: rgba(17,24,39,.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-right: 1px solid rgba(255,255,255,.10);
 }
-.hasBackground .header { background-color: transparent; border-bottom: 1px solid rgba(255,255,255,.1); }
-.hasBackground .menuButtonHeader { color: #fff; }
 
 /* =========================
    NAV HEADER (HUB + ICONIȚE)
@@ -153,7 +195,6 @@
   gap:.75rem;
 }
 
-/* Butonul de sus – RaynaHub */
 .hubButton{
   display:inline-flex;
   align-items:center;
@@ -173,39 +214,35 @@
     0 14px 32px -10px rgba(6, 182, 212, .7);
 }
 .hubButton:focus-visible{ outline: 2px solid #06b6d4; outline-offset: 2px; }
+
 .hubLogo{
   width: 30px; height: 30px;
   border-radius: 9999px;
   display:block;
 }
 
-/* iconițe din dreapta */
 .headerIcons{ display:flex; align-items:center; gap:1rem; }
-.notificationBell{
+
+.notificationBell,
+.closeButtonMenu{
   position:relative;
-  background: rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.28);
   color:#fff;
   border-radius:50%;
   width:2.5rem; height:2.5rem;
   display:flex; justify-content:center; align-items:center;
   cursor:pointer;
 }
+
 .notificationBadge{
   position:absolute; top:-.25rem; right:-.25rem;
   background:#ef4444; color:#fff; border-radius:9999px;
   padding:0 .4rem; font-size:.75rem; font-weight:600;
 }
-.closeButtonMenu{
-  background: rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.3);
-  color:#fff; border-radius:50%;
-  width:2.5rem; height:2.5rem; display:flex; justify-content:center; align-items:center;
-  cursor:pointer;
-}
 
 /* =========================
-   NUMELE UTILIZATORULUI (sub HUB)
+   USER BLOCK
    ========================= */
 .userBlock{
   display:flex; align-items:center; gap:.75rem;
@@ -214,7 +251,6 @@
 }
 .userName{ color:#fff; font-weight:700; line-height:1; }
 
-/* (opțional) avatar inițiale – dacă vrei să-l păstrezi */
 .userAvatar{
   width:42px; height:42px; border-radius:9999px;
   display:flex; align-items:center; justify-content:center;
@@ -225,7 +261,7 @@
 .userMeta{ display:flex; flex-direction:column; }
 
 /* =========================
-   MENIU LINK-URI
+   NAV LINKS
    ========================= */
 .navLinks{
   display:flex; flex-direction:column;
@@ -239,7 +275,11 @@
   transition: transform .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease;
   overflow:hidden;
 }
-.navLink:hover{ background:rgba(255,255,255,.08); transform: translateX(2px); color:#fff; }
+.navLink:hover{
+  background:rgba(255,255,255,.08);
+  transform: translateX(2px);
+  color:#fff;
+}
 .navLink svg{ opacity:.95; }
 
 .active{
@@ -251,7 +291,9 @@
     0 8px 24px -12px var(--accent-strong, #3b82f6);
 }
 .active::before{
-  content:''; position:absolute; left:0; top:8px; bottom:8px; width:4px; border-radius:4px;
+  content:'';
+  position:absolute; left:0; top:8px; bottom:8px;
+  width:4px; border-radius:4px;
   background: linear-gradient(180deg, var(--accent, #60a5fa), var(--accent-strong, #3b82f6));
   box-shadow: 0 0 10px var(--accent, #60a5fa);
 }
@@ -259,7 +301,7 @@
 .navLink span{ font-size:1rem; }
 .navLinkLogout{ color:#f87171; }
 
-/* expirate (notificări) */
+/* expirate */
 .expired{ color:#ef4444; font-weight:600; }
 
 /* =========================
@@ -267,9 +309,12 @@
    ========================= */
 @media (max-width: 1279px){
   .menuOpen .pageContentWrapper{
-    margin-left:300px; border-radius:10px 0 0 10px; overflow:hidden;
+    margin-left:300px;
+    border-radius:10px 0 0 10px;
+    overflow:hidden;
   }
 }
+
 @media (min-width: 1280px){
   .layoutWrapper{ display:flex; }
   .navMenu{ position: static; transform: none; box-shadow:none; width:300px; flex-shrink:0; }
@@ -279,10 +324,10 @@
 }
 
 /* =========================
-   MODAL (nedezvoltat)
+   MODAL
    ========================= */
 .modalOverlay{
-  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  position:fixed; inset:0; background:rgba(0,0,0,.60);
   backdrop-filter: blur(5px);
   z-index:3000; display:flex; justify-content:center; align-items:center;
   padding:1rem; overflow-y:auto;
@@ -292,9 +337,19 @@
   width:100%; max-width:500px; box-shadow:0 10px 30px rgba(0,0,0,.2);
   max-height:90vh; display:flex; flex-direction:column; overflow:hidden;
 }
-.modalHeader{ padding:1.5rem; flex-shrink:0; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; }
+.modalHeader{
+  padding:1.5rem;
+  flex-shrink:0;
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid #e5e7eb;
+}
 .modalBody{ overflow-y:auto; padding:1.5rem; }
-.modalFooter{ padding:1.5rem; flex-shrink:0; border-top:1px solid #e5e7eb; display:flex; justify-content:flex-end; gap:.5rem; }
+.modalFooter{
+  padding:1.5rem;
+  flex-shrink:0;
+  border-top:1px solid #e5e7eb;
+  display:flex; justify-content:flex-end; gap:.5rem;
+}
 .modalTitle{ font-size:1.25rem; font-weight:600; color:#1f2937; }
 .notificationsModal{ max-height:60vh; }
 .notificationsList{ list-style:none; padding:0; margin:0; }
