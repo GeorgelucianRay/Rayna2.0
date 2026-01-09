@@ -13,12 +13,14 @@ const SearchIcon = () => (
     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
 );
+
 const ClearIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="18" y1="6" x2="6" y2="18"></line>
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
+
 const UsersIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -27,34 +29,43 @@ const UsersIcon = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
   </svg>
 );
+
 const TruckIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M10 17h4M1 17h2m18 0h2M3 17V7a2 2 0 0 1 2-2h9v12M22 17v-5a2 2 0 0 0-2-2h-4" />
-    <circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" />
+    <circle cx="7.5" cy="17.5" r="1.5" />
+    <circle cx="16.5" cy="17.5" r="1.5" />
   </svg>
 );
+
 const TrailerIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="3" y="8" width="13" height="7" rx="1" />
-    <circle cx="8" cy="17" r="1.5" /><circle cx="15" cy="17" r="1.5" />
+    <circle cx="8" cy="17" r="1.5" />
+    <circle cx="15" cy="17" r="1.5" />
   </svg>
 );
+
 const CalcIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="4" y="2" width="16" height="20" rx="2" />
     <line x1="8" y1="6" x2="16" y2="6" />
-    <line x1="8" y1="10" x2="8" y2="18" /><line x1="12" y1="10" x2="12" y2="18" /><line x1="16" y1="10" x2="16" y2="18" />
+    <line x1="8" y1="10" x2="8" y2="18" />
+    <line x1="12" y1="10" x2="12" y2="18" />
+    <line x1="16" y1="10" x2="16" y2="18" />
   </svg>
 );
+
 const CalendarIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="3" y="4" width="18" height="18" rx="2" />
-    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
     <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
 );
 
-// Widgets (le ai deja în proiect)
+// Widgets
 import VacacionesWidget from '../components/widgets/VacacionesWidget';
 import NominaWidget from '../components/widgets/NominaWidget';
 
@@ -64,7 +75,7 @@ export default function ChoferFinderProfile() {
   const { profile: me } = useAuth();
   const canEdit = ['admin', 'dispecer'].includes(String(me?.role || '').toLowerCase());
 
-  // căutare
+  // Search
   const [q, setQ] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -72,70 +83,100 @@ export default function ChoferFinderProfile() {
   const [hi, setHi] = useState(-1);
   const [lastClickedId, setLastClickedId] = useState(null);
 
-  // profil selectat
+  // Selected profile
   const [selectedId, setSelectedId] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileBusy, setProfileBusy] = useState(false);
 
-  // widget data pentru șoferul selectat
+  // Widgets data
   const [vacInfo, setVacInfo] = useState({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
   const [nominaSummary, setNominaSummary] = useState({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
   const [nominaMarks, setNominaMarks] = useState(new Set());
   const currentDate = useMemo(() => new Date(), []);
 
-  /* căutare tolerantă la ordine */
+  // Clear search
+  const clearSearch = () => {
+    setQ('');
+    setRows([]);
+    setHi(-1);
+    setOpen(false);
+    setLoading(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  /* Search tolerant to order (AND on words, order independent) */
   useEffect(() => {
     let cancel = false;
+
     const t = setTimeout(async () => {
       const term = q.trim();
+
       if (!term) {
-        if (!cancel) { setRows([]); setHi(-1); setOpen(false); }
+        if (!cancel) {
+          setRows([]);
+          setHi(-1);
+          setOpen(false);
+          setLoading(false);
+        }
         return;
       }
+
       setLoading(true);
+
       try {
         const words = term
-  .split(/\s+/)
-  .map(w => w.trim())
-  .filter(Boolean);
+          .split(/\s+/)
+          .map(w => w.trim().toLowerCase())
+          .filter(Boolean);
 
-let query = supabase
-  .from('profiles')
-  .select(`
-    id, nombre_completo, avatar_url,
-    camion_id, remorca_id,
-    camioane:camion_id(matricula),
-    remorci:remorca_id(matricula)
-  `)
-  .eq('role', 'sofer');
-
-// IMPORTANT: AND pe fiecare cuvânt (ordine indiferentă)
-words.forEach((w) => {
-  query = query.ilike('nombre_completo', `%${w}%`);
-});
-
-const { data, error } = await query
-  .order('nombre_completo', { ascending: true })
-  .limit(12);
+        // Server side: restrict by first word (fast)
+        // Client side: AND filter by all words (order independent)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`
+            id, nombre_completo, avatar_url,
+            camion_id, remorca_id,
+            camioane:camion_id(matricula),
+            remorci:remorca_id(matricula)
+          `)
+          .eq('role', 'sofer')
+          .ilike('nombre_completo', `%${words[0]}%`)
+          .order('nombre_completo', { ascending: true })
+          .limit(50);
 
         if (error) throw error;
+
+        const filtered = (data || [])
+          .filter(r => {
+            const name = String(r.nombre_completo || '').toLowerCase();
+            return words.every(w => name.includes(w));
+          })
+          .slice(0, 12);
+
         if (!cancel) {
-          setRows(data || []);
+          setRows(filtered);
           setOpen(true);
-          setHi((data && data.length) ? 0 : -1);
+          setHi(filtered.length ? 0 : -1);
         }
       } catch (e) {
-        if (!cancel) { setRows([]); setOpen(true); setHi(-1); }
-        console.warn('Search error:', e.message);
+        if (!cancel) {
+          setRows([]);
+          setOpen(true);
+          setHi(-1);
+        }
+        console.warn('Search error:', e?.message || e);
       } finally {
         if (!cancel) setLoading(false);
       }
     }, 250);
 
-    return () => { cancel = true; clearTimeout(t); };
+    return () => {
+      cancel = true;
+      clearTimeout(t);
+    };
   }, [q]);
 
-  /* încarcă profilul complet */
+  /* Load full profile */
   const loadProfile = async (id) => {
     if (!id) return;
     setProfileBusy(true);
@@ -152,10 +193,11 @@ const { data, error } = await query
         `)
         .eq('id', id)
         .maybeSingle();
+
       if (error) throw error;
       setProfile(data || null);
     } catch (e) {
-      console.error('Load profile error:', e.message);
+      console.error('Load profile error:', e?.message || e);
       setProfile(null);
     } finally {
       setProfileBusy(false);
@@ -169,13 +211,16 @@ const { data, error } = await query
     loadProfile(id);
   };
 
-  /* keyboard nav */
+  /* Keyboard nav */
   const onKeyDown = (e) => {
     if (!open || !rows.length) return;
+
     if (e.key === 'ArrowDown') {
-      e.preventDefault(); setHi(p => Math.min(p + 1, rows.length - 1));
+      e.preventDefault();
+      setHi(p => Math.min(p + 1, rows.length - 1));
     } else if (e.key === 'ArrowUp') {
-      e.preventDefault(); setHi(p => Math.max(p - 1, 0));
+      e.preventDefault();
+      setHi(p => Math.max(p - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (hi >= 0 && hi < rows.length) onPick(rows[hi].id);
@@ -184,16 +229,21 @@ const { data, error } = await query
     }
   };
 
-  // închidere dropdown la blur
+  // Close dropdown on blur (delayed to allow click)
   const blurTimer = useRef(null);
-  const handleBlur = () => { blurTimer.current = setTimeout(() => setOpen(false), 120); };
-  const handleFocus = () => { if (blurTimer.current) clearTimeout(blurTimer.current); if (rows.length) setOpen(true); };
+  const handleBlur = () => {
+    blurTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+  const handleFocus = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    if (rows.length) setOpen(true);
+  };
 
-  /* acțiuni rapide */
+  /* Quick actions */
   const goCamion = () => profile?.camioane?.id && navigate(`/camion/${profile.camioane.id}`);
   const goRemorca = () => profile?.remorci?.id && navigate(`/remorca/${profile.remorci.id}`);
 
-  /* widget -> navigare per-șofer */
+  /* Widget navigation per driver */
   const goNominaForSelected = () => selectedId && navigate(`/calculadora-nomina?user_id=${encodeURIComponent(selectedId)}`);
   const goVacacionesAdminForSelected = () => selectedId && navigate(`/vacaciones-admin/${encodeURIComponent(selectedId)}`);
 
@@ -205,20 +255,25 @@ const { data, error } = await query
     [hi, rows, lastClickedId]
   );
 
-  /* ——— date pentru widget-uri ale șoferului selectat ——— */
+  /* ------- Selected driver widgets data ------- */
   useEffect(() => {
     let alive = true;
+
     async function loadVacInfo() {
-      if (!selectedId) { if (alive) setVacInfo({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 }); return; }
+      if (!selectedId) {
+        if (alive) setVacInfo({ total: 0, usadas: 0, pendientes: 0, disponibles: 0 });
+        return;
+      }
+
       const year = new Date().getFullYear();
 
       const overlapDaysWithinYear = (ev) => {
         const yStart = new Date(`${year}-01-01T00:00:00`);
-        const yEnd   = new Date(`${year}-12-31T23:59:59`);
+        const yEnd = new Date(`${year}-12-31T23:59:59`);
         const s0 = new Date(ev.start_date);
         const e0 = new Date(ev.end_date);
         const s = s0 < yStart ? yStart : s0;
-        const e = e0 > yEnd   ? yEnd   : e0;
+        const e = e0 > yEnd ? yEnd : e0;
         if (e < s) return 0;
         return Math.floor((e - s) / 86400000) + 1;
       };
@@ -240,10 +295,10 @@ const { data, error } = await query
         .eq('anio', year)
         .maybeSingle();
 
-      const total = (base||0)+(pers||0)+(pueblo||0)+(ex?.dias_extra||0);
+      const total = (base || 0) + (pers || 0) + (pueblo || 0) + (ex?.dias_extra || 0);
 
       const yearStart = `${year}-01-01`;
-      const yearEnd   = `${year}-12-31`;
+      const yearEnd = `${year}-12-31`;
       const { data: evs } = await supabase
         .from('vacaciones_eventos')
         .select('id,tipo,state,start_date,end_date')
@@ -251,30 +306,37 @@ const { data, error } = await query
         .lte('start_date', yearEnd)
         .gte('end_date', yearStart);
 
-      const usadas = (evs||[])
+      const usadas = (evs || [])
         .filter(e => e.state === 'aprobado')
-        .reduce((s,e)=>s+overlapDaysWithinYear(e),0);
+        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
 
-      const pendientes = (evs||[])
+      const pendientes = (evs || [])
         .filter(e => e.state === 'pendiente' || e.state === 'conflicto')
-        .reduce((s,e)=>s+overlapDaysWithinYear(e),0);
+        .reduce((s, e) => s + overlapDaysWithinYear(e), 0);
 
       const disponibles = Math.max(total - usadas - pendientes, 0);
       if (alive) setVacInfo({ total, usadas, pendientes, disponibles });
     }
+
     loadVacInfo();
     return () => { alive = false; };
   }, [selectedId]);
 
   useEffect(() => {
     let alive = true;
+
     async function loadNomina() {
       if (!selectedId) {
-        if (alive) { setNominaSummary({ dias:0, km:0, conts:0, desayunos:0, cenas:0, procenas:0 }); setNominaMarks(new Set()); }
+        if (alive) {
+          setNominaSummary({ dias: 0, km: 0, conts: 0, desayunos: 0, cenas: 0, procenas: 0 });
+          setNominaMarks(new Set());
+        }
         return;
       }
+
       const y = currentDate.getFullYear();
       const m = currentDate.getMonth() + 1;
+
       const { data } = await supabase
         .from('pontaje_curente')
         .select('pontaj_complet')
@@ -284,29 +346,38 @@ const { data, error } = await query
         .maybeSingle();
 
       const zile = data?.pontaj_complet?.zilePontaj || [];
-      let D=0,C=0,P=0,KM=0,CT=0;
+      let D = 0, C = 0, P = 0, KM = 0, CT = 0;
       const marks = new Set();
 
       zile.forEach((zi, idx) => {
         if (!zi) return;
         const d = idx + 1;
         const kmZi = (parseFloat(zi.km_final) || 0) - (parseFloat(zi.km_iniciar) || 0);
+
         if (zi.desayuno) D++;
         if (zi.cena) C++;
         if (zi.procena) P++;
         if (kmZi > 0) KM += kmZi;
         if ((zi.contenedores || 0) > 0) CT += zi.contenedores || 0;
 
-        if (zi.desayuno || zi.cena || zi.procena || kmZi > 0 || (zi.contenedores || 0) > 0 || (zi.suma_festivo || 0) > 0) {
+        if (
+          zi.desayuno ||
+          zi.cena ||
+          zi.procena ||
+          kmZi > 0 ||
+          (zi.contenedores || 0) > 0 ||
+          (zi.suma_festivo || 0) > 0
+        ) {
           marks.add(d);
         }
       });
 
       if (alive) {
-        setNominaSummary({ desayunos:D, cenas:C, procenas:P, km:Math.round(KM), conts:CT, dias:marks.size });
+        setNominaSummary({ desayunos: D, cenas: C, procenas: P, km: Math.round(KM), conts: CT, dias: marks.size });
         setNominaMarks(marks);
       }
     }
+
     loadNomina();
     return () => { alive = false; };
   }, [selectedId, currentDate]);
@@ -329,40 +400,43 @@ const { data, error } = await query
         {/* Search */}
         <div className={styles.searchWrap}>
           <div className={styles.searchBox}>
-            <span className={styles.icon}><SearchIcon/></span>
+            <span className={styles.icon}><SearchIcon /></span>
+
             <input
               ref={inputRef}
               value={q}
-              onChange={(e)=>setQ(e.target.value)}
+              onChange={(e) => setQ(e.target.value)}
               onKeyDown={onKeyDown}
               onBlur={handleBlur}
               onFocus={handleFocus}
               placeholder="Escribe el nombre del chófer…"
               autoFocus
             />
-            {loading && <span className={styles.spinner}/>}
+
+            {loading && <span className={styles.spinner} />}
+
             {q.trim().length > 0 && (
-  <button
-    type="button"
-    className={styles.clearBtn}
-    onMouseDown={(e) => e.preventDefault()}   // nu pierde focus / nu închide aiurea dropdown-ul
-    onClick={clearSearch}
-    aria-label="Limpiar búsqueda"
-    title="Limpiar"
-  >
-    <ClearIcon />
-  </button>
-)}
+              <button
+                type="button"
+                className={styles.clearBtn}
+                onMouseDown={(e) => e.preventDefault()} // keep focus, don't close dropdown
+                onClick={clearSearch}
+                aria-label="Limpiar búsqueda"
+                title="Limpiar"
+              >
+                <ClearIcon />
+              </button>
+            )}
           </div>
 
           {open && (
-            <div className={styles.dropdown} onMouseDown={(e)=>e.preventDefault()}>
+            <div className={styles.dropdown} onMouseDown={(e) => e.preventDefault()}>
               {(rows || []).length === 0 ? (
                 <div className={styles.empty}>No hay resultados</div>
               ) : (rows || []).map((r, idx) => (
                 <button
                   key={r.id}
-                  className={`${styles.item} ${idx===hi ? styles.active : ''} ${highlightedId === r.id ? styles.highlight : ''}`}
+                  className={`${styles.item} ${idx === hi ? styles.active : ''} ${highlightedId === r.id ? styles.highlight : ''}`}
                   onClick={() => onPick(r.id)}
                   onMouseEnter={() => setHi(idx)}
                   type="button"
@@ -371,7 +445,7 @@ const { data, error } = await query
                     <div className={styles.avatarSm}>
                       {r.avatar_url
                         ? <img src={r.avatar_url} alt="" />
-                        : <span className={styles.avatarFallback}>{(r.nombre_completo||'?').slice(0,1).toUpperCase()}</span>}
+                        : <span className={styles.avatarFallback}>{(r.nombre_completo || '?').slice(0, 1).toUpperCase()}</span>}
                     </div>
 
                     <div className={styles.itemBody}>
@@ -388,7 +462,7 @@ const { data, error } = await query
           )}
         </div>
 
-        {/* Profil jos */}
+        {/* Profile panel */}
         <section className={styles.profilePanel}>
           {!selectedId ? (
             <p className={styles.hint}>Selectează un chófer din căutare pentru a-i vedea detaliile aici.</p>
@@ -398,26 +472,38 @@ const { data, error } = await query
             <div className={styles.card}><p>No se pudo cargar el perfil.</p></div>
           ) : (
             <>
-              {/* Header profil cu avatar */}
+              {/* Profile header */}
               <div className={styles.profileHeader}>
                 <div className={styles.avatarLg}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.nombre_completo} />
-                    : <span className={styles.avatarFallbackLg}>
-                        {(profile.nombre_completo||'??').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()}
-                      </span>}
+                    : (
+                      <span className={styles.avatarFallbackLg}>
+                        {(profile.nombre_completo || '??')
+                          .split(' ')
+                          .map(s => s[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
+                      </span>
+                    )}
                 </div>
+
                 <div className={styles.profileTitleWrap}>
                   <div className={styles.profileName}>{profile.nombre_completo}</div>
                   <div className={styles.profileSub}>
-                    {profile.camioane?.matricula ? <>Camión: <b>{profile.camioane.matricula}</b></> : <>Camión: <b>—</b></>}
+                    {profile.camioane?.matricula
+                      ? <>Camión: <b>{profile.camioane.matricula}</b></>
+                      : <>Camión: <b>—</b></>}
                     <span className={styles.dot}>•</span>
-                    {profile.remorci?.matricula ? <>Remolque: <b>{profile.remorci.matricula}</b></> : <>Remolque: <b>—</b></>}
+                    {profile.remorci?.matricula
+                      ? <>Remolque: <b>{profile.remorci.matricula}</b></>
+                      : <>Remolque: <b>—</b></>}
                   </div>
                 </div>
               </div>
 
-              {/* Acțiuni profil */}
+              {/* Profile actions */}
               <div className={styles.profileActions}>
                 <button type="button" className={styles.btn} onClick={goChoferProfile}>
                   Ver perfil
@@ -429,7 +515,7 @@ const { data, error } = await query
                 )}
               </div>
 
-              {/* Widgets pentru șoferul selectat */}
+              {/* Widgets */}
               <div className={styles.widgetsRow}>
                 <NominaWidget
                   summary={nominaSummary}
@@ -443,7 +529,7 @@ const { data, error } = await query
                 />
               </div>
 
-              {/* Detalii structură */}
+              {/* Details grid */}
               <div className={styles.grid}>
                 <div className={styles.card}>
                   <h3>Conductor</h3>
@@ -457,7 +543,7 @@ const { data, error } = await query
                   <div className={styles.rowHeader}>
                     <h3>Camión</h3>
                     <button className={styles.ghost} disabled={!profile.camioane?.id} onClick={goCamion} type="button">
-                      <TruckIcon/> Ver ficha
+                      <TruckIcon /> Ver ficha
                     </button>
                   </div>
                   <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.camioane?.matricula || '—'}</span></div>
@@ -467,7 +553,7 @@ const { data, error } = await query
                   <div className={styles.rowHeader}>
                     <h3>Remolque</h3>
                     <button className={styles.ghost} disabled={!profile.remorci?.id} onClick={goRemorca} type="button">
-                      <TrailerIcon/> Ver ficha
+                      <TrailerIcon /> Ver ficha
                     </button>
                   </div>
                   <div className={styles.kv}><span className={styles.k}>Matrícula</span><span className={styles.v}>{profile.remorci?.matricula || '—'}</span></div>
