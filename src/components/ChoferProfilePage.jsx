@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './ChoferProfilePage.module.css';
@@ -26,7 +26,6 @@ const BackIcon = () => (
 export default function ChoferProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [profileData, setProfileData] = useState(null);
   const [camioane, setCamioane] = useState([]);
@@ -36,32 +35,41 @@ export default function ChoferProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editableProfile, setEditableProfile] = useState(null);
 
+  // modal “add camion/remorca”
+  const [addTruckOpen, setAddTruckOpen] = useState(false);
+  const [addTrailerOpen, setAddTrailerOpen] = useState(false);
+  const [newTruck, setNewTruck] = useState({ matricula: '', marca: '', fecha_itv: '' });
+  const [newTrailer, setNewTrailer] = useState({ matricula: '', tipo: '', fecha_itv: '' });
+  const [savingNew, setSavingNew] = useState(false);
+
+  const fetchLists = async () => {
+    // IMPORTANT: select minim (mai rapid + mai puține probleme)
+    const [{ data: cams, error: eC }, { data: rems, error: eR }] = await Promise.all([
+      supabase.from('camioane').select('id, matricula').order('matricula', { ascending: true }),
+      supabase.from('remorci').select('id, matricula').order('matricula', { ascending: true }),
+    ]);
+    if (eC) console.warn('camioane select error:', eC.message);
+    if (eR) console.warn('remorci select error:', eR.message);
+
+    setCamioane(cams || []);
+    setRemorci(rems || []);
+  };
+
+  const fetchProfile = async () => {
+    const { data: prof, error } = await supabase
+      .from('profiles')
+      .select('id, nombre_completo, cap_expirare, carnet_caducidad, tiene_adr, adr_caducidad, camion_id, remorca_id, camioane:camion_id(id, matricula, fecha_itv), remorci:remorca_id(id, matricula, fecha_itv)')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    setProfileData(prof);
+  };
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const { data: prof, error: e1 } = await supabase
-          .from('profiles')
-          .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
-          .eq('id', id)
-          .single();
-        if (e1) throw e1;
-        setProfileData(prof);
-        
-        useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const shouldOpen = params.get('edit') === '1';
-
-  if (shouldOpen && profileData && !isEditOpen) {
-    setEditableProfile({ ...profileData });
-    setIsEditOpen(true);
-  }
-}, [location.search, profileData, isEditOpen]);
-
-        const { data: cams } = await supabase.from('camioane').select('*').order('matricula', { ascending: true });
-        const { data: rems } = await supabase.from('remorci').select('*').order('matricula', { ascending: true });
-        setCamioane(cams || []);
-        setRemorci(rems || []);
+        await Promise.all([fetchProfile(), fetchLists()]);
       } catch (err) {
         console.error(err);
         alert('No se pudo cargar el perfil del chófer.');
@@ -70,36 +78,120 @@ export default function ChoferProfilePage() {
       }
     };
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const openEdit = () => {
     if (!profileData) return;
-    setEditableProfile({ ...profileData });
+    // clonează doar câmpurile editabile
+    setEditableProfile({
+      id: profileData.id,
+      nombre_completo: profileData.nombre_completo ?? '',
+      cap_expirare: profileData.cap_expirare ?? '',
+      carnet_caducidad: profileData.carnet_caducidad ?? '',
+      tiene_adr: !!profileData.tiene_adr,
+      adr_caducidad: profileData.adr_caducidad ?? '',
+      camion_id: profileData.camion_id ?? '',
+      remorca_id: profileData.remorca_id ?? '',
+    });
     setIsEditOpen(true);
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const { id: pid, role, camioane: _c, remorci: _r, ...rest } = editableProfile || {};
+      if (!editableProfile?.id) return;
+
+      // whitelist strict (NU trimite * / join objects)
       const payload = {
-        ...rest,
-        camion_id: rest.camion_id === '' ? null : rest.camion_id,
-        remorca_id: rest.remorca_id === '' ? null : rest.remorca_id,
+        nombre_completo: (editableProfile.nombre_completo || '').trim(),
+        cap_expirare: editableProfile.cap_expirare || null,
+        carnet_caducidad: editableProfile.carnet_caducidad || null,
+        tiene_adr: !!editableProfile.tiene_adr,
+        adr_caducidad: editableProfile.tiene_adr ? (editableProfile.adr_caducidad || null) : null,
+        camion_id: editableProfile.camion_id === '' ? null : editableProfile.camion_id,
+        remorca_id: editableProfile.remorca_id === '' ? null : editableProfile.remorca_id,
       };
-      const { error } = await supabase.from('profiles').update(payload).eq('id', pid);
+
+      const { error } = await supabase.from('profiles').update(payload).eq('id', editableProfile.id);
       if (error) throw error;
 
-      const { data: refreshed } = await supabase
-        .from('profiles')
-        .select('*, camioane:camion_id(*), remorci:remorca_id(*)')
-        .eq('id', id)
-        .single();
-      setProfileData(refreshed);
+      await fetchProfile();
       setIsEditOpen(false);
       alert('¡Perfil del chófer actualizado con éxito!');
     } catch (err) {
+      console.error(err);
       alert(`Error al actualizar el perfil: ${err.message}`);
+    }
+  };
+
+  const saveNewTruck = async () => {
+    const matricula = (newTruck.matricula || '').trim().toUpperCase();
+    if (!matricula) return alert('Introduce la matrícula del camión.');
+
+    setSavingNew(true);
+    try {
+      const insertPayload = {
+        matricula,
+        marca: (newTruck.marca || '').trim() || null,
+        fecha_itv: newTruck.fecha_itv || null,
+      };
+
+      const { data, error } = await supabase
+        .from('camioane')
+        .insert(insertPayload)
+        .select('id, matricula')
+        .single();
+
+      if (error) throw error;
+
+      await fetchLists();
+
+      // selectează automat camionul nou în edit
+      setEditableProfile((p) => p ? { ...p, camion_id: data.id } : p);
+
+      setNewTruck({ matricula: '', marca: '', fecha_itv: '' });
+      setAddTruckOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert(`No se pudo crear el camión: ${e.message}`);
+    } finally {
+      setSavingNew(false);
+    }
+  };
+
+  const saveNewTrailer = async () => {
+    const matricula = (newTrailer.matricula || '').trim().toUpperCase();
+    if (!matricula) return alert('Introduce la matrícula del remolque.');
+
+    setSavingNew(true);
+    try {
+      const insertPayload = {
+        matricula,
+        tipo: (newTrailer.tipo || '').trim() || null,
+        fecha_itv: newTrailer.fecha_itv || null,
+      };
+
+      const { data, error } = await supabase
+        .from('remorci')
+        .insert(insertPayload)
+        .select('id, matricula')
+        .single();
+
+      if (error) throw error;
+
+      await fetchLists();
+
+      // selectează automat remorca nouă în edit
+      setEditableProfile((p) => p ? { ...p, remorca_id: data.id } : p);
+
+      setNewTrailer({ matricula: '', tipo: '', fecha_itv: '' });
+      setAddTrailerOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert(`No se pudo crear el remolque: ${e.message}`);
+    } finally {
+      setSavingNew(false);
     }
   };
 
@@ -131,7 +223,7 @@ export default function ChoferProfilePage() {
             <button className={styles.editBtn} onClick={openEdit}>
               <EditIcon /> Editar perfil
             </button>
-            <button className={styles.backBtn} onClick={() => navigate('/choferes')}>
+            <button className={styles.backBtn} onClick={() => navigate('/choferes-finder')}>
               <BackIcon /> Volver
             </button>
           </div>
@@ -212,23 +304,11 @@ export default function ChoferProfilePage() {
 
         {/* Modal Editar */}
         {isEditOpen && editableProfile && (
-          <div
-  className={styles.modalOverlay}
-  onClick={() => {
-    setIsEditOpen(false);
-    navigate(`/chofer/${id}`, { replace: true });
-  }}
->
+          <div className={styles.modalOverlay} onClick={() => setIsEditOpen(false)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
                 <h3>Editar perfil — {profileData.nombre_completo}</h3>
-                <button
-  className={styles.iconBtn}
-  onClick={() => {
-    setIsEditOpen(false);
-    navigate(`/chofer/${id}`, { replace: true });
-  }}
->
+                <button className={styles.iconBtn} onClick={() => setIsEditOpen(false)} aria-label="Cerrar">
                   <CloseIcon />
                 </button>
               </div>
@@ -239,9 +319,7 @@ export default function ChoferProfilePage() {
                   <input
                     type="text"
                     value={editableProfile.nombre_completo || ''}
-                    onChange={(e) =>
-                      setEditableProfile((p) => ({ ...p, nombre_completo: e.target.value }))
-                    }
+                    onChange={(e) => setEditableProfile((p) => ({ ...p, nombre_completo: e.target.value }))}
                   />
                 </div>
 
@@ -251,9 +329,7 @@ export default function ChoferProfilePage() {
                     <input
                       type="date"
                       value={editableProfile.cap_expirare || ''}
-                      onChange={(e) =>
-                        setEditableProfile((p) => ({ ...p, cap_expirare: e.target.value }))
-                      }
+                      onChange={(e) => setEditableProfile((p) => ({ ...p, cap_expirare: e.target.value }))}
                     />
                   </div>
                   <div className={styles.inputGroup}>
@@ -261,9 +337,7 @@ export default function ChoferProfilePage() {
                     <input
                       type="date"
                       value={editableProfile.carnet_caducidad || ''}
-                      onChange={(e) =>
-                        setEditableProfile((p) => ({ ...p, carnet_caducidad: e.target.value }))
-                      }
+                      onChange={(e) => setEditableProfile((p) => ({ ...p, carnet_caducidad: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -273,9 +347,7 @@ export default function ChoferProfilePage() {
                     <label>¿Tiene ADR?</label>
                     <select
                       value={String(!!editableProfile.tiene_adr)}
-                      onChange={(e) =>
-                        setEditableProfile((p) => ({ ...p, tiene_adr: e.target.value === 'true' }))
-                      }
+                      onChange={(e) => setEditableProfile((p) => ({ ...p, tiene_adr: e.target.value === 'true' }))}
                     >
                       <option value="false">No</option>
                       <option value="true">Sí</option>
@@ -287,57 +359,72 @@ export default function ChoferProfilePage() {
                       <input
                         type="date"
                         value={editableProfile.adr_caducidad || ''}
-                        onChange={(e) =>
-                          setEditableProfile((p) => ({ ...p, adr_caducidad: e.target.value }))
-                        }
+                        onChange={(e) => setEditableProfile((p) => ({ ...p, adr_caducidad: e.target.value }))}
                       />
                     </div>
                   )}
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label>Camión asignado</label>
-                  <select
-                    value={editableProfile.camion_id || ''}
-                    onChange={(e) =>
-                      setEditableProfile((p) => ({ ...p, camion_id: e.target.value }))
-                    }
-                  >
-                    <option value="">Ninguno</option>
-                    {camioane.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.matricula}
-                      </option>
-                    ))}
-                  </select>
+                {/* Camion */}
+                <div className={styles.grid2}>
+                  <div className={styles.inputGroup}>
+                    <label>Camión asignado</label>
+                    <select
+                      value={editableProfile.camion_id || ''}
+                      onChange={(e) => setEditableProfile((p) => ({ ...p, camion_id: e.target.value }))}
+                    >
+                      <option value="">Ninguno</option>
+                      {camioane.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.matricula}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>&nbsp;</label>
+                    <button
+                      type="button"
+                      className={styles.btnGhost}
+                      onClick={() => setAddTruckOpen(true)}
+                    >
+                      + Añadir camión
+                    </button>
+                  </div>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label>Remolque asignado</label>
-                  <select
-                    value={editableProfile.remorca_id || ''}
-                    onChange={(e) =>
-                      setEditableProfile((p) => ({ ...p, remorca_id: e.target.value }))
-                    }
-                  >
-                    <option value="">Ninguno</option>
-                    {remorci.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.matricula}
-                      </option>
-                    ))}
-                  </select>
+                {/* Remorca */}
+                <div className={styles.grid2}>
+                  <div className={styles.inputGroup}>
+                    <label>Remolque asignado</label>
+                    <select
+                      value={editableProfile.remorca_id || ''}
+                      onChange={(e) => setEditableProfile((p) => ({ ...p, remorca_id: e.target.value }))}
+                    >
+                      <option value="">Ninguno</option>
+                      {remorci.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.matricula}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>&nbsp;</label>
+                    <button
+                      type="button"
+                      className={styles.btnGhost}
+                      onClick={() => setAddTrailerOpen(true)}
+                    >
+                      + Añadir remolque
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.modalFooter}>
-                  <button
-  type="button"
-  className={styles.btnGhost}
-  onClick={() => {
-    setIsEditOpen(false);
-    navigate(`/chofer/${id}`, { replace: true });
-  }}
->
+                  <button type="button" className={styles.btnGhost} onClick={() => setIsEditOpen(false)}>
                     Cancelar
                   </button>
                   <button type="submit" className={styles.btnPrimary}>
@@ -348,6 +435,111 @@ export default function ChoferProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Modal ADD CAMION */}
+        {addTruckOpen && (
+          <div className={styles.modalOverlay} onClick={() => setAddTruckOpen(false)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>Nuevo camión</h3>
+                <button className={styles.iconBtn} onClick={() => setAddTruckOpen(false)} aria-label="Cerrar">
+                  <CloseIcon />
+                </button>
+              </div>
+
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}>
+                  <label>Matrícula *</label>
+                  <input
+                    value={newTruck.matricula}
+                    onChange={(e) => setNewTruck((p) => ({ ...p, matricula: e.target.value }))}
+                    placeholder="1234ABC"
+                  />
+                </div>
+                <div className={styles.grid2}>
+                  <div className={styles.inputGroup}>
+                    <label>Marca</label>
+                    <input
+                      value={newTruck.marca}
+                      onChange={(e) => setNewTruck((p) => ({ ...p, marca: e.target.value }))}
+                      placeholder="Scania / DAF..."
+                    />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label>ITV</label>
+                    <input
+                      type="date"
+                      value={newTruck.fecha_itv}
+                      onChange={(e) => setNewTruck((p) => ({ ...p, fecha_itv: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button type="button" className={styles.btnGhost} onClick={() => setAddTruckOpen(false)} disabled={savingNew}>
+                    Cancelar
+                  </button>
+                  <button type="button" className={styles.btnPrimary} onClick={saveNewTruck} disabled={savingNew}>
+                    {savingNew ? 'Guardando…' : 'Crear'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal ADD REMOLQUE */}
+        {addTrailerOpen && (
+          <div className={styles.modalOverlay} onClick={() => setAddTrailerOpen(false)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>Nuevo remolque</h3>
+                <button className={styles.iconBtn} onClick={() => setAddTrailerOpen(false)} aria-label="Cerrar">
+                  <CloseIcon />
+                </button>
+              </div>
+
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}>
+                  <label>Matrícula *</label>
+                  <input
+                    value={newTrailer.matricula}
+                    onChange={(e) => setNewTrailer((p) => ({ ...p, matricula: e.target.value }))}
+                    placeholder="R-1234-XYZ"
+                  />
+                </div>
+                <div className={styles.grid2}>
+                  <div className={styles.inputGroup}>
+                    <label>Tipo</label>
+                    <input
+                      value={newTrailer.tipo}
+                      onChange={(e) => setNewTrailer((p) => ({ ...p, tipo: e.target.value }))}
+                      placeholder="Frigo / Lona / Cisterna..."
+                    />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label>ITV</label>
+                    <input
+                      type="date"
+                      value={newTrailer.fecha_itv}
+                      onChange={(e) => setNewTrailer((p) => ({ ...p, fecha_itv: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button type="button" className={styles.btnGhost} onClick={() => setAddTrailerOpen(false)} disabled={savingNew}>
+                    Cancelar
+                  </button>
+                  <button type="button" className={styles.btnPrimary} onClick={saveNewTrailer} disabled={savingNew}>
+                    {savingNew ? 'Guardando…' : 'Crear'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </Layout>
   );
