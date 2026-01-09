@@ -45,11 +45,11 @@ export default function Layout({ children }) {
   return (
     <div className={wrapperCls}>
       {bgClass && (
-        <div className={styles.backgroundContainer}>
-          <div className={`${styles.backgroundImage} ${bgClass}`} />
-          <div className={styles.backgroundOverlay} />
-        </div>
-      )}
+  <div className={styles.backgroundContainer}>
+    <div className={`${styles.backgroundImage} ${bgClass}`} />
+    {/* ⛔ backgroundOverlay eliminat */}
+  </div>
+)}
 
       {/* Navbar primește controlul, dar clasa rămâne pe wrapper */}
       <Navbar open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)} />
