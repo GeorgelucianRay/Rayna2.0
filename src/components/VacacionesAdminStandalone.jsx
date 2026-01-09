@@ -1,5 +1,6 @@
 // VacacionesAdminGlobal.jsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import styles from './VacacionesAdmin.module.css';
@@ -37,6 +38,7 @@ function monthLabel(date) {
 }
 
 export default function VacacionesAdminGlobal() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const canEdit = ['admin','dispecer','dispatcher'].includes(String(profile?.role||'').toLowerCase());
 
@@ -269,9 +271,18 @@ export default function VacacionesAdminGlobal() {
           <h1 className={styles.title}>Vacaciones — Panel Global</h1>
           <span className={styles.sub}>Gestión centralizada de parámetros y solapamientos</span>
         </div>
-        <div className={styles.hRight}>
-          <span className={styles.pill}>{anio}</span>
-        </div>
+       <div className={styles.hRight}>
+  <button
+    type="button"
+    className={styles.btnGhost}
+    onClick={() => navigate(-1)}
+    aria-label="Volver"
+    title="Volver"
+  >
+    Volver
+  </button>
+  <span className={styles.pill}>{anio}</span>
+</div>
       </header>
 
       {errorDb && <div className={styles.alert}>{errorDb}</div>}
