@@ -30,6 +30,7 @@ import CalculadoraNomina from './components/nomina/CalculadoraNomina';
 import VacacionesStandalone from './components/VacacionesStandalone.jsx';
 import VacacionesAdminStandalone from './components/VacacionesAdminStandalone.jsx';
 import ChoferFinderProfile from './components/ChoferFinderProfile.jsx';
+import ChoferProfilePage from './components/ChoferProfilePage.jsx';
 import MiPerfilPage from './pages/MiPerfilPage.jsx';
 import Utilizatori from './pages/admin/Utilizatori.jsx';
 import AdminFeedback from './pages/admin/AdminFeedback.jsx';
@@ -121,6 +122,7 @@ export default function App() {
             {/* Finder */}
             <Route path="/choferes" element={<Navigate to="/choferes-finder" replace />} />
             <Route path="/choferes-finder" element={<ChoferFinderProfile />} />
+            <Route path="/chofer/:id" element={<ChoferProfilePage />} />
 
             {/* Taller / Nómina */}
             <Route path="/taller" element={<TallerPage />} />
