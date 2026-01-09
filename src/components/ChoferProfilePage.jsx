@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './ChoferProfilePage.module.css';
@@ -26,6 +26,7 @@ const BackIcon = () => (
 export default function ChoferProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [profileData, setProfileData] = useState(null);
   const [camioane, setCamioane] = useState([]);
@@ -46,6 +47,16 @@ export default function ChoferProfilePage() {
           .single();
         if (e1) throw e1;
         setProfileData(prof);
+        
+        useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const shouldOpen = params.get('edit') === '1';
+
+  if (shouldOpen && profileData && !isEditOpen) {
+    setEditableProfile({ ...profileData });
+    setIsEditOpen(true);
+  }
+}, [location.search, profileData, isEditOpen]);
 
         const { data: cams } = await supabase.from('camioane').select('*').order('matricula', { ascending: true });
         const { data: rems } = await supabase.from('remorci').select('*').order('matricula', { ascending: true });
@@ -201,11 +212,23 @@ export default function ChoferProfilePage() {
 
         {/* Modal Editar */}
         {isEditOpen && editableProfile && (
-          <div className={styles.modalOverlay} onClick={() => setIsEditOpen(false)}>
+          <div
+  className={styles.modalOverlay}
+  onClick={() => {
+    setIsEditOpen(false);
+    navigate(`/chofer/${id}`, { replace: true });
+  }}
+>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
                 <h3>Editar perfil — {profileData.nombre_completo}</h3>
-                <button className={styles.iconBtn} onClick={() => setIsEditOpen(false)}>
+                <button
+  className={styles.iconBtn}
+  onClick={() => {
+    setIsEditOpen(false);
+    navigate(`/chofer/${id}`, { replace: true });
+  }}
+>
                   <CloseIcon />
                 </button>
               </div>
@@ -307,7 +330,14 @@ export default function ChoferProfilePage() {
                 </div>
 
                 <div className={styles.modalFooter}>
-                  <button type="button" className={styles.btnGhost} onClick={() => setIsEditOpen(false)}>
+                  <button
+  type="button"
+  className={styles.btnGhost}
+  onClick={() => {
+    setIsEditOpen(false);
+    navigate(`/chofer/${id}`, { replace: true });
+  }}
+>
                     Cancelar
                   </button>
                   <button type="submit" className={styles.btnPrimary}>
