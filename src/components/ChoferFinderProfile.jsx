@@ -13,6 +13,12 @@ const SearchIcon = () => (
     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
 );
+const ClearIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
 const UsersIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -88,27 +94,29 @@ export default function ChoferFinderProfile() {
       }
       setLoading(true);
       try {
-        const words = term.split(/\s+/).filter(Boolean);
-        let query = supabase
-          .from('profiles')
-          .select(`
-            id, nombre_completo, avatar_url,
-            camion_id, remorca_id,
-            camioane:camion_id(matricula),
-            remorci:remorca_id(matricula)
-          `)
-          .eq('role', 'sofer');
+        const words = term
+  .split(/\s+/)
+  .map(w => w.trim())
+  .filter(Boolean);
 
-        if (words.length === 1) {
-          query = query.ilike('nombre_completo', `%${words[0]}%`);
-        } else {
-          const orFilter = words.map(w => `nombre_completo.ilike.%${w}%`).join(',');
-          query = query.or(`(${orFilter})`);
-        }
+let query = supabase
+  .from('profiles')
+  .select(`
+    id, nombre_completo, avatar_url,
+    camion_id, remorca_id,
+    camioane:camion_id(matricula),
+    remorci:remorca_id(matricula)
+  `)
+  .eq('role', 'sofer');
 
-        const { data, error } = await query
-          .order('nombre_completo', { ascending: true })
-          .limit(12);
+// IMPORTANT: AND pe fiecare cuvânt (ordine indiferentă)
+words.forEach((w) => {
+  query = query.ilike('nombre_completo', `%${w}%`);
+});
+
+const { data, error } = await query
+  .order('nombre_completo', { ascending: true })
+  .limit(12);
 
         if (error) throw error;
         if (!cancel) {
@@ -333,6 +341,18 @@ export default function ChoferFinderProfile() {
               autoFocus
             />
             {loading && <span className={styles.spinner}/>}
+            {q.trim().length > 0 && (
+  <button
+    type="button"
+    className={styles.clearBtn}
+    onMouseDown={(e) => e.preventDefault()}   // nu pierde focus / nu închide aiurea dropdown-ul
+    onClick={clearSearch}
+    aria-label="Limpiar búsqueda"
+    title="Limpiar"
+  >
+    <ClearIcon />
+  </button>
+)}
           </div>
 
           {open && (
