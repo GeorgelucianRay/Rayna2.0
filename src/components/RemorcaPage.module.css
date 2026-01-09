@@ -1,375 +1,418 @@
-/* src/components/RemorcaPage.module.css */
+/* ================= Rayna 2.0 — RemorcaPage.module.css ================= */
+/* Folosește variabilele globale :root (glass, stroke, radius, shadows, text) */
 
-.pageHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    color: white;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.pageHeader h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
-    margin: 0;
+.loadingScreen{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  color:var(--text-strong);
+  font-size:18px;
+  font-weight:800;
+  text-shadow:0 8px 22px rgba(0,0,0,.35);
 }
 
-/* --- STILURI NOI/ACTUALIZATE PENTRU ACȚIUNILE DIN HEADER --- */
-.headerActions {
-    display: flex;
-    gap: 1rem;
+/* ---------- Header pagină ---------- */
+.pageHeader{
+  margin:14px;
+  padding:16px;
+  border-radius:var(--radius-lg);
+  background:var(--glass-strong);
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow-inset), var(--shadow-outer);
+  color:var(--text-strong);
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
 }
 
-.backButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 200ms;
-    text-decoration: none;
-}
-.backButton:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+.pageHeader h1{
+  margin:0;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:.2px;
 }
 
-.editButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-image: linear-gradient(to right, #3b82f6, #2563eb);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-    box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.4);
-}
-.editButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px -5px rgba(59, 130, 246, 0.5);
+.headerActions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
 }
 
-.detailsGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 3rem;
+/* Butoane header */
+.backButton,
+.editButton{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:28px;
+  cursor:pointer;
+  font-weight:800;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong);
+  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  transition:transform .12s ease, box-shadow .2s ease, background .2s ease;
 }
 
-.detailCard {
-    background-color: rgba(17, 24, 39, 0.5);
-    backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-.detailCard h3 {
-    font-size: 0.875rem;
-    color: #9ca3af;
-    text-transform: uppercase;
-    margin: 0 0 0.5rem 0;
-}
-.detailCard p {
-    font-size: 1.125rem;
-    color: white;
-    font-weight: 500;
-    margin: 0;
+.backButton:hover,
+.editButton:hover{
+  transform:translateY(-1px);
 }
 
-.sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+/* Remorca: păstrez accent “albastru” la Edit (ca în componenta ta veche) */
+.editButton{
+  border-color:rgba(255,255,255,.65);
+  background:linear-gradient(180deg, rgba(59,130,246,.95), rgba(37,99,235,.86));
+  color:#071428;
+  box-shadow:0 12px 26px rgba(37,99,235,.32), var(--shadow-inset);
 }
 
-.sectionTitle {
-    color: white;
-    font-size: 1.75rem;
-    font-weight: 600;
+/* ---------- Grid detalii remorcă ---------- */
+.detailsGrid{
+  margin:14px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:10px;
 }
 
-.addButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-    color: white;
-    padding: 0.6rem 1.25rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-    box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
-}
-.addButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+.detailCard{
+  border-radius:16px;
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  box-shadow:0 8px 18px rgba(0,0,0,.25), var(--shadow-inset);
+  padding:14px;
+  color:var(--text-strong);
 }
 
-/* --- STILURI NOI PENTRU BARA DE CĂUTARE --- */
-.searchBar {
-    display: flex;
-    align-items: center;
-    background-color: rgba(17, 24, 39, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.75rem;
-    padding: 0.5rem 1rem;
-    margin-bottom: 2rem;
-    color: #9ca3af;
-}
-.searchBar input {
-    flex-grow: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: white;
-    font-size: 1rem;
-    padding: 0.5rem;
-    margin-left: 0.75rem;
-}
-.searchBar input::placeholder {
-    color: #6b7280;
+.detailCard h3{
+  margin:0 0 6px 0;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  color:var(--text-soft);
 }
 
-/* --- STILURI NOI/ACTUALIZATE PENTRU LISTA DE REPARAȚII --- */
-.repairsList {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+.detailCard p{
+  margin:0;
+  font-size:16px;
+  font-weight:800;
+  color:var(--text-strong);
 }
 
-.repairCard {
-    background-color: rgba(17, 24, 39, 0.6);
-    backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #d1d5db;
+/* ---------- Secțiune reparații ---------- */
+.sectionHeader{
+  margin:14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
 }
 
-.repairHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding-bottom: 0.75rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-.repairHeader h4 {
-    color: white;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-}
-.repairHeader span {
-    font-size: 0.875rem;
-    color: #9ca3af;
-}
-.repairDetails {
-    white-space: pre-wrap;
-    background-color: rgba(0,0,0,0.2);
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    margin-top: 0.75rem;
-    line-height: 1.6;
-}
-.noRepairs {
-    text-align: center;
-    font-size: 1.1rem;
-    color: #9ca3af;
-    padding: 2rem;
-    background-color: rgba(17, 24, 39, 0.6);
-    border-radius: 1rem;
+.sectionTitle{
+  margin:0;
+  font-size:18px;
+  font-weight:900;
+  color:var(--text-strong);
+  letter-spacing:.2px;
 }
 
-/* --- STILURI NOI PENTRU PAGINARE --- */
-.paginationContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 2.5rem;
-    gap: 1rem;
-    color: white;
+.addButton{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
+  padding:10px 14px;
+  border-radius:28px;
+  border:1px solid rgba(255,255,255,.75);
+  background:linear-gradient(180deg, rgba(255,193,7,.95), rgba(255,152,0,.85));
+  color:#2a1b00;
+  font-weight:900;
+
+  cursor:pointer;
+  box-shadow:0 12px 26px rgba(255,160,0,.30), var(--shadow-inset);
+  transition:transform .12s ease;
 }
-.paginationButton {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 200ms;
-}
-.paginationButton:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-.paginationButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.pageIndicator {
-    font-weight: 500;
+.addButton:hover{ transform:translateY(-1px); }
+
+/* ---------- Search bar ---------- */
+.searchBar{
+  margin:14px;
+  padding:10px 12px;
+  border-radius:18px;
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow-inset), 0 8px 18px rgba(0,0,0,.18);
+  color:var(--text-soft);
+
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 
-
-.loadingScreen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    color: white;
-    font-size: 1.5rem;
+.searchBar svg{
+  opacity:.85;
 }
 
-/* --- STILURI NOI/ACTUALIZATE PENTRU MODAL --- */
-.modalOverlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    z-index: 50;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
+.searchBar input{
+  flex:1 1 auto;
+  border:none;
+  outline:none;
+  background:transparent;
+  color:var(--text-strong);
+  font-weight:700;
+  font-size:14px;
+  padding:6px 0;
 }
 
-.modalContent {
-    background-color: #1f2937;
-    padding: 2rem;
-    border-radius: 1rem;
-    width: 100%;
-    max-width: 600px;
-    color: white;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+.searchBar input::placeholder{
+  color:var(--text-soft);
+  opacity:.85;
 }
 
-.modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+/* ---------- Listă reparații ---------- */
+.repairsList{
+  margin:14px;
+  display:grid;
+  gap:10px;
 }
 
-.modalTitle {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0;
+.repairCard{
+  border-radius:16px;
+  background:var(--glass-strong);
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow-inset), 0 10px 22px rgba(0,0,0,.22);
+  color:var(--text-strong);
+  overflow:hidden;
 }
 
-.modalCloseButton {
-    background: transparent;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
+.repairHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 14px;
+  border-bottom:1px solid var(--stroke-soft);
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  flex-wrap:wrap;
 }
 
-.modalCloseButton:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+.repairHeader h4{
+  margin:0;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:.2px;
+  color:var(--text-strong);
 }
 
-.modalForm {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+.repairHeader span{
+  font-size:12px;
+  font-weight:700;
+  color:var(--text-soft);
 }
 
-.formGroup, .formGroupFull {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.repairDetails{
+  margin:0;
+  padding:12px 14px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  color:var(--text-strong);
+  background:rgba(0,0,0,.12);
 }
 
-.formGroupFull {
-    grid-column: 1 / -1;
+/* ---------- Empty ---------- */
+.noRepairs{
+  margin:14px;
+  padding:14px;
+  border-radius:16px;
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow-inset), 0 10px 22px rgba(0,0,0,.18);
+  color:var(--text-soft);
+  text-align:center;
+  font-weight:800;
 }
 
-.formGroup label, .formGroupFull label {
-    font-weight: 600;
-    color: #d1d5db;
+/* ---------- Pagination ---------- */
+.paginationContainer{
+  margin:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.formGroup input, .formGroupFull input, .formGroupFull textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #e5e7eb;
-    transition: border-color 0.2s, box-shadow 0.2s;
+.paginationButton{
+  padding:10px 14px;
+  border-radius:28px;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong);
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(0,0,0,.22), var(--shadow-inset);
+  transition:transform .12s ease, opacity .12s ease;
+}
+.paginationButton:hover:not(:disabled){ transform:translateY(-1px); }
+.paginationButton:disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
 
-.formGroup input:focus, .formGroupFull input:focus, .formGroupFull textarea:focus {
-    outline: none;
-    border-color: #fb923c;
-    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.3);
+.pageIndicator{
+  color:var(--text-strong);
+  font-weight:800;
+  opacity:.9;
 }
 
-.formGroupFull textarea {
-    resize: vertical;
+/* ---------- Modal ---------- */
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.70);
+  backdrop-filter: blur(6px);
+  z-index:50;
+  display:grid;
+  place-items:center;
+  padding:14px;
 }
 
-.modalActions {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+.modalContent{
+  width:min(680px, 100%);
+  border-radius:var(--radius-lg);
+  background:var(--glass-strong);
+  border:1px solid rgba(255,255,255,.25);
+  box-shadow:0 24px 70px rgba(0,0,0,.45), var(--shadow-inset);
+  color:var(--text-strong);
+  overflow:hidden;
 }
 
-.cancelButton {
-    padding: 0.6rem 1.5rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background-color: transparent;
-    color: #e5e7eb;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+.modalHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--stroke-soft);
 }
 
-.cancelButton:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.4);
+.modalTitle{
+  margin:0;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:.2px;
 }
 
-.saveButton {
-    padding: 0.6rem 1.5rem;
-    border-radius: 0.5rem;
-    border: none;
-    background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c);
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
+.modalCloseButton{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  border:1px solid var(--stroke);
+  background:var(--glass);
+  color:var(--text-strong);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(0,0,0,.22), var(--shadow-inset);
+  transition:transform .12s ease;
+}
+.modalCloseButton:hover{ transform:translateY(-1px); }
+
+.modalForm{
+  padding:16px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
 }
 
-.saveButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px -5px rgba(249, 115, 22, 0.5);
+.formGroup,
+.formGroupFull{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.formGroupFull{ grid-column:1 / -1; }
+
+.formGroup label,
+.formGroupFull label{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.3px;
+  color:var(--text-soft);
+}
+
+.formGroup input,
+.formGroupFull input,
+.formGroupFull textarea{
+  width:100%;
+  padding:12px 12px;
+  border-radius:16px;
+  border:1px solid var(--stroke);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color:var(--text-strong);
+  outline:none;
+  box-shadow:var(--shadow-inset);
+}
+
+.formGroupFull textarea{ resize:vertical; min-height:120px; }
+
+.formGroup input:focus,
+.formGroupFull input:focus,
+.formGroupFull textarea:focus{
+  border-color:rgba(255,255,255,.75);
+  box-shadow:0 0 0 3px rgba(59,130,246,.22), var(--shadow-inset);
+}
+
+.modalActions{
+  grid-column:1 / -1;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:10px;
+  margin-top:4px;
+  border-top:1px solid rgba(255,255,255,.12);
+}
+
+.cancelButton,
+.saveButton{
+  padding:10px 14px;
+  border-radius:28px;
+  font-weight:900;
+  cursor:pointer;
+  border:1px solid var(--stroke);
+  box-shadow:0 6px 16px rgba(0,0,0,.22), var(--shadow-inset);
+}
+
+.cancelButton{
+  background:var(--glass);
+  color:var(--text-strong);
+}
+
+.saveButton{
+  border-color:rgba(255,255,255,.65);
+  background:linear-gradient(180deg, rgba(59,130,246,.95), rgba(37,99,235,.86));
+  color:#071428;
+  box-shadow:0 12px 26px rgba(37,99,235,.30), var(--shadow-inset);
+}
+
+.cancelButton:hover,
+.saveButton:hover{ transform:translateY(-1px); }
+
+/* ---------- Responsive ---------- */
+@media (max-width:720px){
+  .pageHeader{ margin:12px; }
+  .detailsGrid{ margin:12px; }
+  .sectionHeader{ margin:12px; }
+  .searchBar{ margin:12px; }
+  .repairsList{ margin:12px; }
+  .paginationContainer{ margin:12px; }
+  .modalForm{ grid-template-columns:1fr; }
 }
