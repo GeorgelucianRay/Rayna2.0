@@ -1,0 +1,76 @@
+/* src/components/ChoferProfilePage.module.css */
+
+.page { min-height: 100vh; padding: 16px; }
+.loading { padding: 24px; text-align: center; }
+
+.header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+.headerBtns { display:flex; gap:10px; flex-wrap:wrap; }
+
+.editBtn, .backBtn {
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(0,0,0,.25);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  display:flex; align-items:center; gap:8px;
+}
+
+.cardsGrid { display:grid; grid-template-columns:1fr; gap:12px; }
+.card { background: rgba(17,24,39,.65); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 14px; color:#fff; }
+.cardTitle { font-weight:700; margin-bottom:10px; }
+.cardTitleRow { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+.rows2 { display:grid; grid-template-columns:1fr; gap:10px; }
+
+.k { display:block; font-size:12px; opacity:.75; }
+.v { display:block; font-weight:600; margin-top:2px; }
+
+.ghostBtn {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  text-decoration:none;
+}
+
+.tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+/* Modal */
+.modalOverlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px; }
+.modal { width:min(720px, 100%); background:#0b1220; border:1px solid rgba(255,255,255,.14); border-radius:16px; overflow:hidden; color:#fff; }
+.modalHeader { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.10); }
+.iconBtn { background:transparent; border:none; color:#fff; cursor:pointer; }
+.modalBody { padding:16px; display:grid; gap:12px; }
+.inputGroup label { display:block; font-size:12px; opacity:.8; margin-bottom:6px; }
+.inputGroup input, .inputGroup select {
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#fff;
+}
+.grid2 { display:grid; grid-template-columns:1fr; gap:12px; }
+.modalFooter { display:flex; justify-content:flex-end; gap:10px; padding:14px 16px; border-top:1px solid rgba(255,255,255,.10); }
+
+.btnGhost, .btnPrimary {
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor:pointer;
+  border: 1px solid rgba(255,255,255,.18);
+}
+.btnGhost { background: rgba(255,255,255,.06); color:#fff; }
+.btnPrimary { background: #2563eb; border-color: rgba(37,99,235,.6); color:#fff; }
+
+@media (min-width: 900px){
+  .cardsGrid { grid-template-columns: repeat(3, 1fr); }
+  .rows2 { grid-template-columns: 1fr 1fr; }
+  .grid2 { grid-template-columns: 1fr 1fr; }
+}
