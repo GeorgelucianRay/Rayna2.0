@@ -1,169 +1,287 @@
-.tallerBackground {
-  background: linear-gradient(180deg, #0f172a, #1e293b);
+/* ================= Rayna 2.0 — TallerPage.module.css ================= */
+/* Reutiliza variables :root (text, glass, stroke, radios, sombras) */
+/* Background vine din <Layout backgroundClassName="taller-background" /> */
+
+.pageHeader{
+  margin: 14px;
+  padding: 18px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
+  position: relative;
+  overflow: hidden;
 }
 
-.pageHeader {
-  text-align: center;
-  margin-bottom: 1rem;
-  color: white;
-  font-size: 1.5rem;
+/* “Hero image”/banner optional: pui un <img className={styles.heroImg} .../> */
+.heroImg{
+  position:absolute;
+  inset: 0;
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  opacity:.18;
+  filter: saturate(1.1) contrast(1.05);
+  pointer-events:none;
 }
-
-.subTitle {
-  font-size: 1rem;
-  color: #94a3b8;
+.heroOverlay{
+  position:absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 20% 10%, rgba(59,228,118,.22), transparent 55%),
+    radial-gradient(90% 80% at 85% 20%, rgba(0,229,255,.18), transparent 55%),
+    linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.55));
+  pointer-events:none;
 }
-
-.controlsHeader {
-  display: flex;
+.heroContent{
+  position:relative;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
 }
 
-.tabContainer {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.pageHeader h1{
+  margin:0;
+  font-weight: 900;
+  letter-spacing: .2px;
+  font-size: 26px;
+  line-height: 1.1;
 }
 
-.tabButton {
-  padding: 0.75rem 1.5rem;
-  border: none;
+.subTitle{
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-weight: 650;
+  font-size: 13px;
+}
+
+/* ---------- Header controls: Tabs + Search ---------- */
+.controlsHeader{
+  margin: 14px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Tabs */
+.tabContainer{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tabButton{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--glass);
+  color: var(--text-strong);
+  font-weight: 800;
+  cursor:pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+}
+.tabButton:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.10);
+}
+.active{
+  border-color: rgba(255,255,255,.75);
+  background: linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color: #062012;
+  box-shadow: 0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
+}
+
+/* Icon în tab (optional dacă pui <span className={styles.tabIcon}>...</span>) */
+.tabIcon{
+  display:grid;
+  place-items:center;
+  opacity:.95;
+}
+
+/* Search */
+.searchBar{
+  flex: 1 1 320px;
+  max-width: 520px;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+  box-shadow: var(--shadow-inset);
+  color: var(--text-soft);
+}
+
+.searchBar svg{
+  opacity:.9;
+}
+
+.searchBar input{
+  width:100%;
+  border:none;
+  outline:none;
   background: transparent;
-  color: #cbd5e1;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-bottom: 3px solid transparent;
+  color: var(--text-strong);
+  font-size: 15px;
+}
+.searchBar input::placeholder{
+  color: var(--text-soft);
 }
 
-.tabButton:hover {
-  color: white;
-}
-
-.tabButton.active {
-  color: #38bdf8;
-  border-bottom-color: #38bdf8;
-}
-
-.searchBar {
-  display: flex;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  flex-grow: 1;
-  max-width: 400px;
-}
-
-.searchBar svg {
-  color: #94a3b8;
-  margin-right: 0.5rem;
-}
-
-.searchBar input {
-  background: transparent;
-  border: none;
-  color: white;
-  width: 100%;
-}
-
-.searchBar input::placeholder {
-  color: #64748b;
-}
-
+/* ---------- States ---------- */
 .loadingText,
-.noDataText {
-  color: white;
-  text-align: center;
-  margin-top: 4rem;
-  font-size: 1.1rem;
-  font-weight: 600;
+.noDataText{
+  margin: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  border: 1px solid var(--stroke-soft);
+  color: var(--text-soft);
+  box-shadow: var(--shadow-inset);
 }
 
-.vehicleGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+/* ---------- Grid of vehicles ---------- */
+.vehicleGrid{
+  margin: 14px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 12px;
 }
 
-.vehicleCard {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  color: #e2e8f0;
-  text-decoration: none;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+.vehicleCard{
+  position:relative;
+  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  color: var(--text-strong);
+  box-shadow: 0 10px 24px rgba(0,0,0,.28), var(--shadow-inset);
+  padding: 14px;
+  text-decoration:none;
+  overflow:hidden;
+  transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
 }
 
-.vehicleCard:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  border-color: rgba(56, 189, 248, 0.5);
+.vehicleCard::before{
+  content:"";
+  position:absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 60% at 20% 20%, rgba(0,229,255,.12), transparent 60%),
+    radial-gradient(70% 60% at 90% 10%, rgba(59,228,118,.10), transparent 60%);
+  pointer-events:none;
 }
 
-.cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.vehicleCard:hover{
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,.42);
+  box-shadow: 0 16px 34px rgba(0,0,0,.35), var(--shadow-inset);
 }
 
-.vehicleCard h3 {
-  color: white;
-  font-size: 1.3rem;
-  margin: 0;
+.cardHeader{
+  position:relative;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.cardType {
-  background: #38bdf8;
-  color: #0f172a;
-  padding: 0.25rem 0.6rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+.cardHeader h3{
+  margin:0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .25px;
 }
 
-.vehicleCard p {
-  margin-top: 0.5rem;
-  color: #38bdf8;
-  font-weight: 600;
+.cardType{
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,.06);
+  color: var(--text-strong);
+  font-weight: 800;
+  font-size: 12px;
+  box-shadow: var(--shadow-inset);
 }
 
-.paginationContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 3rem;
-  color: white;
+.vehicleCard p{
+  position:relative;
+  margin:0;
+  color: var(--text-soft);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
-.paginationButton {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
+/* ---------- Pagination ---------- */
+.paginationContainer{
+  margin: 18px 14px 24px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--text-strong);
 }
 
-.paginationButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.paginationButton{
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--glass);
+  color: var(--text-strong);
+  font-weight: 800;
+  cursor:pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  transition: transform .12s ease, background .2s ease;
+}
+.paginationButton:hover:not(:disabled){
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.10);
+}
+.paginationButton:disabled{
+  opacity:.45;
+  cursor:not-allowed;
 }
 
-.paginationButton:not(:disabled):hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.pageIndicator{
+  font-weight: 800;
+  color: var(--text-soft);
 }
 
-.pageIndicator {
-  font-weight: 600;
+/* ---------- Responsive ---------- */
+@media (max-width: 980px){
+  .vehicleGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 640px){
+  .vehicleGrid{ grid-template-columns: 1fr; }
+  .pageHeader, .controlsHeader, .loadingText, .noDataText{ margin: 12px; }
+}
+
+/* ---------- A11y focus ---------- */
+.tabButton:focus-visible,
+.paginationButton:focus-visible,
+.vehicleCard:focus-visible{
+  outline: 2px solid rgba(59,228,118,.75);
+  outline-offset: 2px;
 }
