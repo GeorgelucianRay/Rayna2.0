@@ -77,6 +77,7 @@ function HomepageDispecer() {
   const [editId, setEditId]     = useState(null);
   const [editName, setEditName] = useState('');
   const [editUrl, setEditUrl]   = useState('');
+  const [editThumb, setEditThumb] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   const cameraLinks = useMemo(() => links.filter(l => l.icon_type === 'camera'), [links]);
@@ -185,11 +186,13 @@ function HomepageDispecer() {
 
   // admin: edit link
   const startEdit = (row) => {
-    if (!isAdmin) return;
-    setEditId(row.id);
-    setEditName(row.name || '');
-    setEditUrl(row.url || '');
-  };
+  if (!isAdmin) return;
+  setEditId(row.id);
+  setEditName(row.name || '');
+  setEditUrl(row.url || '');
+  setEditThumb(row.thumbnail_url || '');
+};
+  
 
   const cancelEdit = () => {
     setEditId(null);
@@ -202,12 +205,24 @@ function HomepageDispecer() {
     setEditSaving(true);
 
     const prev = links;
-    setLinks((cur) => cur.map(l => (l.id === editId ? { ...l, name: editName, url: editUrl } : l)));
+    setLinks((cur) =>
+  cur.map(l =>
+    l.id === editId
+      ? { ...l, name: editName, url: editUrl, thumbnail_url: editThumb }
+      : l
+  )
+);
 
-    const { error } = await supabase
-      .from('external_links')
-      .update({ name: editName, url: editUrl })
-      .eq('id', editId);
+    let url = (editUrl || '').trim();
+if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+
+let thumb = (editThumb || '').trim();
+if (thumb && !/^https?:\/\//i.test(thumb)) thumb = `https://${thumb}`;
+
+const { error } = await supabase
+  .from('external_links')
+  .update({ name: editName, url, thumbnail_url: thumb || null })
+  .eq('id', editId);
 
     if (error) {
       setLinks(prev);
@@ -402,11 +417,35 @@ function HomepageDispecer() {
                 <div key={link.id} className={styles.linkCard}>
                   {editId === link.id ? (
                     <div className={styles.editRow}>
-                      <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nombre" />
-                      <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
-                      <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Guardar</button>
-                      <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Cancelar</button>
-                    </div>
+  <input
+    className={styles.input}
+    value={editName}
+    onChange={e => setEditName(e.target.value)}
+    placeholder="Nombre"
+  />
+  <input
+    className={styles.input}
+    value={editUrl}
+    onChange={e => setEditUrl(e.target.value)}
+    placeholder="URL"
+  />
+
+  {/* Nou: thumbnail */}
+  <input
+    className={styles.input}
+    value={editThumb}
+    onChange={e => setEditThumb(e.target.value)}
+    placeholder="Imagen (URL) opcional"
+    style={{ gridColumn: '1 / -1' }}
+  />
+
+  <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">
+    Guardar
+  </button>
+  <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">
+    Cancelar
+  </button>
+</div>
                   ) : (
                     <>
                       <a className={styles.linkAnchor} href={link.url} target="_blank" rel="noopener noreferrer">
