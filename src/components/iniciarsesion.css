@@ -1,146 +1,279 @@
-/* src/components/iniciarsesion.css */
+:root{
+  --rayna-primary:#1392ec;
+  --rayna-bg:#101a22;
+  --rayna-graphite:#111518;
+  --rayna-text:#ffffff;
+  --rayna-muted:#9dadb9;
 
-/* Stiluri specifice pentru componenta IniciarSesion */
-.login-container {
-  min-height: 100vh; /* Ocupă toată înălțimea vizibilă */
-  display: flex; /* Folosește Flexbox pentru centrare */
-  align-items: center; /* Centrează vertical */
-  justify-content: center; /* Centrează orizontal */
-  padding: 16px; /* Padding general */
-  /* Imaginea ta de fundal */
-  background-image: url('/rayna.jpg'); /* Calea către imaginea ta din directorul public */
-  background-size: cover; /* Acoperă toată suprafața */
-  background-position: center; /* Centrează imaginea */
-  background-repeat: no-repeat; /* Nu repetă imaginea */
-  background-color: #f3f4f6; /* Culoare de fundal de rezervă */
+  --stroke: rgba(255,255,255,.14);
+  --glass: rgba(28, 34, 39, 0.62);
+
+  --shadow: 0 25px 50px -12px rgba(0,0,0,.55);
+  --radius: 16px;
 }
 
-.login-card {
-  /* Chenarul cu transparență și blur */
-  background-color: rgba(255, 255, 255, 0.8); /* Fundal alb cu 80% opacitate */
-  padding: 32px; /* Padding interior */
-  border-radius: 12px; /* Colțuri rotunjite */
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Umbră pronunțată */
-  width: 100%; /* Lățime 100% în interiorul max-width */
-  max-width: 384px; /* Lățime maximă de 384px */
-  border: 1px solid #e5e7eb; /* Bordură subțire */
-  backdrop-filter: blur(2px); /* Efect de blur pe fundalul din spatele chenarului */
-  box-sizing: border-box; /* Asigură că padding-ul și bordura nu măresc lățimea totală */
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
+body{
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  color: var(--rayna-text);
+  background: var(--rayna-graphite);
 }
 
-/* Stiluri pentru titlul paginii de login */
-.login-title {
-  font-size: 2.25rem; /* 36px */
-  line-height: 2.5rem; /* 40px */
-  font-weight: 800; /* Foarte bold */
-  text-align: center;
-  color: #1d4ed8; /* Albastru închis */
-  margin-bottom: 32px; /* Margine jos */
+/* Wrapper */
+.raynaLogin{
+  min-height: 100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 20px 16px;
+  position:relative;
+  overflow:hidden;
 }
 
-/* Stiluri pentru mesajele de eroare */
-.error-message {
-  color: #dc2626; /* Roșu */
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.25rem; /* 20px */
-  text-align: center;
-  margin-bottom: 16px; /* Margine jos */
+/* Background image */
+.raynaBg{
+  position:absolute;
+  inset:0;
+  background-image: url('/rayna.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(1.05) contrast(1.02);
+  transform: scale(1.03);
+  z-index:0;
+}
+.raynaBg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(1200px 600px at 20% 10%, rgba(19,146,236,.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(19,146,236,.10), transparent 60%),
+    linear-gradient(180deg, rgba(10,14,18,.66), rgba(10,14,18,.78));
 }
 
-/* Stiluri pentru spațierea grupurilor de formular */
-.form-group-spacing > div + div {
-  margin-top: 24px; /* Spațiu între div-urile din formular */
+/* Glow overlay */
+.raynaGlow{
+  position:absolute;
+  inset:-120px;
+  background:
+    radial-gradient(500px 500px at 15% 15%, rgba(19,146,236,.22), transparent 60%),
+    radial-gradient(600px 600px at 90% 80%, rgba(19,146,236,.14), transparent 60%);
+  filter: blur(20px);
+  z-index:1;
+  pointer-events:none;
 }
 
-/* Stiluri pentru etichetele câmpurilor de formular */
-.form-label {
-  display: block;
-  color: #374151; /* Gri închis */
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.25rem; /* 20px */
-  font-weight: 600; /* Semi-bold */
-  margin-bottom: 8px; /* Margine jos */
+/* Card */
+.raynaCard{
+  width:100%;
+  max-width: 420px;
+  position:relative;
+  z-index:2;
+
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 28px;
 }
 
-/* Stiluri pentru câmpurile de input */
-.form-input {
-  width: 100%;
-  padding: 8px 16px; /* Padding interior */
-  border: 1px solid #d1d5db; /* Bordură gri */
-  border-radius: 0.5rem; /* Colțuri rotunjite */
-  transition: all 200ms ease-in-out; /* Tranziție lină la focus */
-  box-sizing: border-box; /* Asigură că padding-ul și bordura nu măresc lățimea totală */
+/* Brand header */
+.raynaTop{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  margin-bottom: 18px;
+}
+.raynaLogo{
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  background: linear-gradient(180deg, rgba(19,146,236,.95), rgba(19,146,236,.75));
+  box-shadow: 0 14px 34px rgba(19,146,236,.25);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.raynaLogoIcon{ font-size: 26px; }
+.raynaBrand{
+  margin:0;
+  font-weight: 800;
+  letter-spacing: .2px;
+  font-size: 22px;
+}
+.raynaSub{
+  margin:0;
+  color: var(--rayna-muted);
+  font-size: 13px;
 }
 
-.form-input:focus {
-  outline: 2px solid transparent; /* Elimină outline-ul implicit */
-  outline-offset: 2px;
-  box-shadow: 0 0 0 calc(2px + 2px) #3b82f6; /* Inel de focus albastru */
-  border-color: transparent; /* Bordură transparentă la focus */
+/* Intro */
+.raynaIntro{
+  text-align:center;
+  margin-bottom: 14px;
+}
+.raynaTitle{
+  margin:0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.2px;
+}
+.raynaHint{
+  margin: 8px 0 0;
+  color: var(--rayna-muted);
+  font-size: 14px;
 }
 
-/* Stiluri pentru butonul principal */
-.btn-primary {
-  margin-top: 24px; /* Spațiere adăugată pentru a nu se suprapune */
-  width: 100%;
-  background-color: #2563eb; /* Albastru */
-  color: #fff; /* Text alb */
-  font-weight: 700; /* Bold */
-  padding: 12px 16px; /* Padding interior */
-  border-radius: 0.5rem; /* Colțuri rotunjite */
-  font-size: 1.125rem; /* 18px */
-  line-height: 1.75rem; /* 28px */
-  transition: all 200ms ease-in-out; /* Tranziție lină la hover */
-  border: none; /* Fără bordură */
-  cursor: pointer; /* Cursor pointer la hover */
+/* Error */
+.raynaError{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding: 12px 12px;
+  border-radius: 12px;
+  margin: 8px 0 10px;
+
+  background: rgba(220,38,38,.12);
+  border: 1px solid rgba(220,38,38,.28);
+  color: #ffd6d6;
+}
+.raynaErrorIcon{ line-height: 1.2; }
+
+/* Form */
+.raynaForm{ display:grid; gap: 14px; }
+.raynaField{ display:grid; gap: 8px; }
+
+.raynaLabel{
+  color: rgba(255,255,255,.86);
+  font-size: 13px;
+  font-weight: 650;
 }
 
-.btn-primary:hover {
-  background-color: #1d4ed8; /* Albastru mai închis la hover */
+/* iPhone safe: font-size 16px => no zoom */
+.raynaInput{
+  width:100%;
+  height: 54px;
+  padding: 0 14px;
+  border-radius: 12px;
+
+  font-size: 16px;
+  color: var(--rayna-text);
+  background: rgba(16, 26, 34, .62);
+  border: 1px solid rgba(255,255,255,.18);
+
+  outline: none;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.raynaInput::placeholder{ color: rgba(157,173,185,.85); }
+.raynaInput:focus{
+  border-color: rgba(19,146,236,.75);
+  box-shadow: 0 0 0 3px rgba(19,146,236,.18);
 }
 
-.btn-primary:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 calc(2px + 2px) #3b82f6;
+/* Password row */
+.raynaRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.raynaPasswordWrap{
+  display:flex;
+  align-items:stretch;
+}
+.raynaInputPw{
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.raynaPwToggle{
+  width: 54px;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-left: 0;
+  background: rgba(16, 26, 34, .62);
+  color: rgba(157,173,185,.95);
+  cursor:pointer;
+  font-size: 18px;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.raynaPasswordWrap:focus-within .raynaPwToggle{
+  border-color: rgba(19,146,236,.75);
+  box-shadow: 0 0 0 3px rgba(19,146,236,.18);
+}
+.raynaPwToggle:hover{
+  background: rgba(16,26,34,.80);
+  color: #fff;
 }
 
-/* Stiluri pentru textele de link (sub butoane) */
-.link-text {
-  margin-top: 24px; /* Margine sus */
-  text-align: center;
-  color: #4b5563; /* Gri */
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.25rem; /* 20px */
+/* Links */
+.raynaLink{
+  color: var(--rayna-primary);
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: none;
+}
+.raynaLink:hover{ text-decoration: underline; }
+
+.raynaLinkStrong{
+  color: var(--rayna-primary);
+  font-weight: 800;
+  text-decoration: none;
+}
+.raynaLinkStrong:hover{ text-decoration: underline; }
+
+/* Button */
+.raynaBtnPrimary{
+  height: 54px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.18);
+  cursor:pointer;
+
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+
+  background: linear-gradient(180deg, rgba(19,146,236,.98), rgba(19,146,236,.82));
+  box-shadow: 0 16px 34px rgba(19,146,236,.22);
+  transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+}
+.raynaBtnPrimary:active{ transform: scale(.985); }
+.raynaBtnPrimary:hover{ filter: brightness(1.03); }
+.raynaBtnPrimary:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.raynaArrow{ margin-left: 10px; opacity:.9; }
+
+/* Footer */
+.raynaFooter{ text-align:center; margin-top: 2px; }
+.raynaFooterText{
+  margin: 0;
+  color: var(--rayna-muted);
+  font-size: 13px;
 }
 
-/* Stiluri pentru link-uri */
-.link-style {
-  color: #2563eb; /* Albastru */
-  font-weight: 500; /* Mediu bold */
-  transition: all 200ms ease-in-out; /* Tranziție lină la hover */
-  text-decoration: none; /* Fără subliniere implicită */
+/* Security badge */
+.raynaBadge{
+  margin-top: 18px;
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  opacity:.6;
+  letter-spacing: .18em;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.link-style:hover {
-  text-decoration: underline; /* Subliniere la hover */
-  color: #1e40af; /* Albastru mai închis la hover */
-}
-
-/* Margine suplimentară pentru al doilea link */
-.mt-2-px {
-  margin-top: 8px; /* Margine sus */
-}
-
-.btn-secondary{
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-.btn-secondary:disabled{
-  opacity: .6;
-  cursor: not-allowed;
+/* Mobile tweaks */
+@media (max-width: 420px){
+  .raynaCard{ padding: 22px; }
+  .raynaTitle{ font-size: 24px; }
 }
