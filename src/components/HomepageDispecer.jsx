@@ -195,10 +195,11 @@ function HomepageDispecer() {
   
 
   const cancelEdit = () => {
-    setEditId(null);
-    setEditName('');
-    setEditUrl('');
-  };
+  setEditId(null);
+  setEditName('');
+  setEditUrl('');
+  setEditThumb('');
+};
 
   const saveEdit = async () => {
     if (!isAdmin || !editId) return;
@@ -336,12 +337,48 @@ const { error } = await supabase
                     </div>
 
                     {editId === link.id && (
-                      <div className={styles.editRow}>
-                        <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nombre" />
-                        <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
-                        <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Guardar</button>
-                        <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Cancelar</button>
-                      </div>
+  <div className={styles.editRow}>
+    <input
+      className={styles.input}
+      value={editName}
+      onChange={e => setEditName(e.target.value)}
+      placeholder="Nombre"
+    />
+
+    <input
+      className={styles.input}
+      value={editUrl}
+      onChange={e => setEditUrl(e.target.value)}
+      placeholder="URL"
+    />
+
+    {/* ✅ AICI: link imagine pentru cameră */}
+    <input
+      className={styles.input}
+      value={editThumb}
+      onChange={e => setEditThumb(e.target.value)}
+      placeholder="Imagen (URL) opcional"
+      style={{ gridColumn: '1 / -1' }}
+    />
+
+    <button
+      className={styles.saveBtnSm}
+      onClick={saveEdit}
+      disabled={editSaving}
+      type="button"
+    >
+      Guardar
+    </button>
+
+    <button
+      className={styles.cancelBtnSm}
+      onClick={cancelEdit}
+      type="button"
+    >
+      Cancelar
+    </button>
+  </div>
+)}
                     )}
                   </div>
                 );
