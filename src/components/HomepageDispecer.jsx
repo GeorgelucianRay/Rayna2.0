@@ -1,3 +1,4 @@
+// src/components/HomepageDispecer.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -8,7 +9,17 @@ import { useAuth } from '../AuthContext.jsx';
 
 /* --- Iconițe SVG --- */
 const RssIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="28"
+    height="28"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M4 11a9 9 0 0 1 9 9"></path>
     <path d="M4 4a16 16 0 0 1 16 16"></path>
     <circle cx="5" cy="19" r="1"></circle>
@@ -25,8 +36,8 @@ const InstagramIcon = () => (
 
 const TiktokIcon = () => (
   <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20.73 7.44v3.86a.7.7 0 0 1-.7.7h-3.86a.7.7 0 0 1-.7-.7V7.44a.7.7 0 0 1 .7-.7h3.86a.7.7 0 0 1 .7.7Z" stroke="currentColor" strokeWidth="1.4"/>
-    <path d="M16.17 11.3v8.84a3.5 3.5 0 1 1-3.5-3.5h3.5Z" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M20.73 7.44v3.86a.7.7 0 0 1-.7.7h-3.86a.7.7 0 0 1-.7-.7V7.44a.7.7 0 0 1 .7-.7h3.86a.7.7 0 0 1 .7.7Z" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M16.17 11.3v8.84a3.5 3.5 0 1 1-3.5-3.5h3.5Z" stroke="currentColor" strokeWidth="1.4" />
   </svg>
 );
 
@@ -46,18 +57,20 @@ const CameraIcon = () => (
 const renderIcon = (iconType) => {
   switch (iconType) {
     case 'instagram': return <InstagramIcon />;
-    case 'tiktok':    return <TiktokIcon />;
-    case 'whatsapp':  return <WhatsappIcon />;
-    case 'camera':    return <CameraIcon />;
-    default:          return null;
+    case 'tiktok': return <TiktokIcon />;
+    case 'whatsapp': return <WhatsappIcon />;
+    case 'camera': return <CameraIcon />;
+    default: return null;
   }
 };
 
-function HomepageDispecer() {
+export default function HomepageDispecer() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const isAdmin    = profile?.role === 'admin';
-  const isDispecer = profile?.role === 'dispecer';
+
+  const role = (profile?.role || '').toLowerCase();
+  const isAdmin = role === 'admin';
+  const isDispecer = role === 'dispecer';
   const canEditAnnouncement = isAdmin || isDispecer;
 
   const [announcementText, setAnnouncementText] = useState('Cargando anuncios...');
@@ -66,24 +79,24 @@ function HomepageDispecer() {
   const [links, setLinks] = useState([]);
   const [loadingLinks, setLoadingLinks] = useState(true);
 
-  // form adăugare link (admin)
+  // add link (admin)
   const [newName, setNewName] = useState('');
-  const [newUrl,  setNewUrl]  = useState('');
+  const [newUrl, setNewUrl] = useState('');
   const [newThumb, setNewThumb] = useState('');
-  const [newType, setNewType] = useState('camera'); // camera | instagram | tiktok | whatsapp
+  const [newType, setNewType] = useState('camera');
   const [savingNew, setSavingNew] = useState(false);
 
   // edit inline (admin)
-  const [editId, setEditId]     = useState(null);
+  const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editUrl, setEditUrl]   = useState('');
+  const [editUrl, setEditUrl] = useState('');
   const [editThumb, setEditThumb] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   const cameraLinks = useMemo(() => links.filter(l => l.icon_type === 'camera'), [links]);
   const socialLinks = useMemo(() => links.filter(l => l.icon_type !== 'camera'), [links]);
 
-  // 6 slots: primele 5 normal, al 6-lea centrat
+  // 6 slots (dacă ai mai multe, le vezi în altă pagină; aici dashboard)
   const camsSix = useMemo(() => cameraLinks.slice(0, 6), [cameraLinks]);
 
   const fetchAnnouncements = useCallback(async () => {
@@ -96,8 +109,8 @@ function HomepageDispecer() {
       if (error) throw error;
       setAnnouncementText(data?.content ?? '');
     } catch (e) {
-      setAnnouncementText('No se pudieron cargar los anuncios.');
       console.error('Error fetching announcements:', e);
+      setAnnouncementText('No se pudieron cargar los anuncios.');
     }
   }, []);
 
@@ -117,6 +130,11 @@ function HomepageDispecer() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchAnnouncements();
+    fetchLinks();
+  }, [fetchAnnouncements, fetchLinks]);
+
   const handleSaveAnnouncement = async (newContent) => {
     if (!canEditAnnouncement) return;
     try {
@@ -129,9 +147,16 @@ function HomepageDispecer() {
       setIsModalOpen(false);
       alert('¡Anuncio actualizado con éxito!');
     } catch (e) {
-      alert('Error: No se pudieron guardar los cambios.');
       console.error('Error updating announcement:', e);
+      alert('Error: No se pudieron guardar los cambios.');
     }
+  };
+
+  const normalizeHttp = (value) => {
+    const v = (value || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    return `https://${v}`;
   };
 
   // admin: add link
@@ -142,14 +167,10 @@ function HomepageDispecer() {
 
     setSavingNew(true);
 
-    // normalize url
-    let url = newUrl.trim();
-    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    const url = normalizeHttp(newUrl);
+    const thumb = normalizeHttp(newThumb);
 
-    // normalize thumb url (optional)
-    let thumb = newThumb.trim();
-    if (thumb && !/^https?:\/\//i.test(thumb)) thumb = `https://${thumb}`;
-
+    // order per category
     const pool = newType === 'camera' ? cameraLinks : socialLinks;
     const nextOrder = (pool[pool.length - 1]?.display_order ?? 0) + 1;
 
@@ -158,7 +179,8 @@ function HomepageDispecer() {
       url,
       icon_type: newType,
       display_order: nextOrder,
-      thumbnail_url: thumb || null,
+      // doar pentru camere are sens; pt social îl ignorăm
+      thumbnail_url: newType === 'camera' ? (thumb || null) : null,
     };
 
     const tempId = `tmp_${Date.now()}`;
@@ -184,57 +206,60 @@ function HomepageDispecer() {
     setSavingNew(false);
   };
 
-  // admin: edit link
   const startEdit = (row) => {
-  if (!isAdmin) return;
-  setEditId(row.id);
-  setEditName(row.name || '');
-  setEditUrl(row.url || '');
-  setEditThumb(row.thumbnail_url || '');
-};
-  
+    if (!isAdmin) return;
+    setEditId(row.id);
+    setEditName(row.name || '');
+    setEditUrl(row.url || '');
+    setEditThumb(row.thumbnail_url || '');
+  };
 
   const cancelEdit = () => {
-  setEditId(null);
-  setEditName('');
-  setEditUrl('');
-  setEditThumb('');
-};
+    setEditId(null);
+    setEditName('');
+    setEditUrl('');
+    setEditThumb('');
+  };
 
   const saveEdit = async () => {
     if (!isAdmin || !editId) return;
     setEditSaving(true);
 
     const prev = links;
+
+    // optimist update local
     setLinks((cur) =>
-  cur.map(l =>
-    l.id === editId
-      ? { ...l, name: editName, url: editUrl, thumbnail_url: editThumb }
-      : l
-  )
-);
+      cur.map(l =>
+        l.id === editId
+          ? { ...l, name: editName, url: editUrl, thumbnail_url: editThumb }
+          : l
+      )
+    );
 
-    let url = (editUrl || '').trim();
-if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    const current = prev.find(l => l.id === editId);
+    const isCamera = current?.icon_type === 'camera';
 
-let thumb = (editThumb || '').trim();
-if (thumb && !/^https?:\/\//i.test(thumb)) thumb = `https://${thumb}`;
+    const url = normalizeHttp(editUrl);
+    const thumb = normalizeHttp(editThumb);
 
-const { error } = await supabase
-  .from('external_links')
-  .update({ name: editName, url, thumbnail_url: thumb || null })
-  .eq('id', editId);
+    const updatePayload = isCamera
+      ? { name: editName, url, thumbnail_url: thumb || null }
+      : { name: editName, url };
+
+    const { error } = await supabase
+      .from('external_links')
+      .update(updatePayload)
+      .eq('id', editId);
 
     if (error) {
       setLinks(prev);
-      alert(error.message || 'Editarea a eșuat.');
+      alert(error.message || 'La edición falló.');
     }
 
     setEditSaving(false);
     cancelEdit();
   };
 
-  // admin: delete link
   const handleDeleteLink = async (id) => {
     if (!isAdmin) return;
     if (!confirm('¿Seguro que quieres eliminar este enlace?')) return;
@@ -253,12 +278,6 @@ const { error } = await supabase
     }
   };
 
-  useEffect(() => {
-    fetchAnnouncements();
-    fetchLinks();
-  }, [fetchAnnouncements, fetchLinks]);
-
-  // Quick actions (rutele tale reale)
   const quickActions = [
     { label: 'Depósito', icon: '🏗️', to: '/depot' },
     { label: 'Programación', icon: '📅', to: '/programacion' },
@@ -276,6 +295,7 @@ const { error } = await supabase
               <span className={styles.liveDot} />
               Cámaras en vivo
             </h3>
+
             <button
               className={styles.linkBtn}
               type="button"
@@ -297,7 +317,7 @@ const { error } = await supabase
           ) : (
             <div className={styles.camsGrid}>
               {camsSix.map((link, idx) => {
-                const isLast = idx === 5; // slot #6
+                const isLast = idx === 5; // slot 6 centrat
                 return (
                   <div
                     key={link.id}
@@ -305,7 +325,7 @@ const { error } = await supabase
                   >
                     <a
                       className={styles.camCard}
-                      href={link.url}
+                      href={normalizeHttp(link.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={link.name}
@@ -313,10 +333,12 @@ const { error } = await supabase
                       <div
                         className={styles.camPreview}
                         style={{
-                          backgroundImage: link.thumbnail_url ? `url(${link.thumbnail_url})` : undefined
+                          backgroundImage: link.thumbnail_url ? `url(${link.thumbnail_url})` : undefined,
                         }}
                       >
-                        {!link.thumbnail_url && <div className={styles.camNoise} aria-hidden="true" />}
+                        {!link.thumbnail_url && (
+                          <div className={styles.camNoise} aria-hidden="true" />
+                        )}
 
                         <div className={styles.camTag}>
                           <span className={styles.liveMiniDot} />
@@ -325,74 +347,79 @@ const { error } = await supabase
                       </div>
                     </a>
 
-                    
-    <div className={styles.camFooterRow}>
-  <div className={styles.camLabel}>{link.name}</div>
+                    <div className={styles.camFooterRow}>
+                      <div className={styles.camLabel}>{link.name}</div>
 
-  {isAdmin && (
-    <div className={styles.camActions}>
-      <button
-        className={styles.iconBtnInfo}
-        onClick={() => startEdit(link)}
-        title="Editar"
-        type="button"
-      >
-        ✎
-      </button>
-      <button
-        className={styles.iconBtnDanger}
-        onClick={() => handleDeleteLink(link.id)}
-        title="Eliminar"
-        type="button"
-      >
-        ✕
-      </button>
-    </div>
-  )}
-</div>
+                      {isAdmin && (
+                        <div className={styles.camActions}>
+                          <button
+                            className={styles.iconBtnInfo}
+                            onClick={() => startEdit(link)}
+                            title="Editar"
+                            type="button"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className={styles.iconBtnDanger}
+                            onClick={() => handleDeleteLink(link.id)}
+                            title="Eliminar"
+                            type="button"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-{editId === link.id && (
-  <div className={styles.editRow}>
-    <input
-      className={styles.input}
-      value={editName}
-      onChange={(e) => setEditName(e.target.value)}
-      placeholder="Nombre"
-    />
+                    {editId === link.id && (
+                      <div className={styles.editRow}>
+                        <input
+                          className={styles.input}
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Nombre"
+                        />
 
-    <input
-      className={styles.input}
-      value={editUrl}
-      onChange={(e) => setEditUrl(e.target.value)}
-      placeholder="URL"
-    />
+                        <input
+                          className={styles.input}
+                          value={editUrl}
+                          onChange={(e) => setEditUrl(e.target.value)}
+                          placeholder="URL"
+                        />
 
-    <input
-      className={styles.input}
-      value={editThumb}
-      onChange={(e) => setEditThumb(e.target.value)}
-      placeholder="Imagen (URL) opcional"
-      style={{ gridColumn: '1 / -1' }}
-    />
+                        <input
+                          className={styles.input}
+                          value={editThumb}
+                          onChange={(e) => setEditThumb(e.target.value)}
+                          placeholder="Imagen (URL) opcional"
+                          style={{ gridColumn: '1 / -1' }}
+                        />
 
-    <button
-      className={styles.saveBtnSm}
-      onClick={saveEdit}
-      disabled={editSaving}
-      type="button"
-    >
-      Guardar
-    </button>
+                        <button
+                          className={styles.saveBtnSm}
+                          onClick={saveEdit}
+                          disabled={editSaving}
+                          type="button"
+                        >
+                          Guardar
+                        </button>
 
-    <button
-      className={styles.cancelBtnSm}
-      onClick={cancelEdit}
-      type="button"
-    >
-      Cancelar
-    </button>
-  </div>
-)}
+                        <button
+                          className={styles.cancelBtnSm}
+                          onClick={cancelEdit}
+                          type="button"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* ================= QUICK ACTIONS ================= */}
         <section className={styles.section}>
@@ -419,11 +446,19 @@ const { error } = await supabase
 
             <div className={styles.headActions}>
               {canEditAnnouncement && (
-                <button onClick={() => setIsModalOpen(true)} className={styles.primaryPill} type="button">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className={styles.primaryPill}
+                  type="button"
+                >
                   Editar
                 </button>
               )}
-              <button onClick={fetchAnnouncements} className={styles.ghostPill} type="button">
+              <button
+                onClick={fetchAnnouncements}
+                className={styles.ghostPill}
+                type="button"
+              >
                 Refrescar
               </button>
             </div>
@@ -433,6 +468,7 @@ const { error } = await supabase
             <div className={styles.announceIconWrap} aria-hidden="true">
               <RssIcon />
             </div>
+
             <div className={styles.announceBody}>
               <div className={styles.announceTopRow}>
                 <h4 className={styles.announceTitle}>Anuncios Importantes</h4>
@@ -444,55 +480,84 @@ const { error } = await supabase
         </section>
 
         {/* ================= SOCIAL LINKS ================= */}
-        {/* ================= SOCIAL LINKS ================= */}
-{!loadingLinks && socialLinks.length > 0 && (
-  <section className={styles.section}>
-    <h3 className={styles.sectionTitle}>Redes sociales y contacto</h3>
+        {/* NU arăta nimic dacă nu există */}
+        {!loadingLinks && socialLinks.length > 0 && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Redes sociales y contacto</h3>
 
-    <div className={styles.linksGrid}>
-      {socialLinks.map(link => (
-        <div key={link.id} className={styles.linkCard}>
-          {editId === link.id ? (
-            <div className={styles.editRow}>
-              <input
-                className={styles.input}
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-                placeholder="Nombre"
-              />
-              <input
-                className={styles.input}
-                value={editUrl}
-                onChange={e => setEditUrl(e.target.value)}
-                placeholder="URL"
-              />
-              <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">
-                Guardar
-              </button>
-              <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">
-                Cancelar
-              </button>
-            </div>
-          ) : (
-            <>
-              <a className={styles.linkAnchor} href={link.url} target="_blank" rel="noopener noreferrer">
-                <span className={styles.linkIcon}>{renderIcon(link.icon_type)}</span>
-                <span className={styles.linkTitle}>{link.name}</span>
-              </a>
+            <div className={styles.linksGrid}>
+              {socialLinks.map((link) => (
+                <div key={link.id} className={styles.linkCard}>
+                  {editId === link.id ? (
+                    <div className={styles.editRow}>
+                      <input
+                        className={styles.input}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Nombre"
+                      />
+                      <input
+                        className={styles.input}
+                        value={editUrl}
+                        onChange={(e) => setEditUrl(e.target.value)}
+                        placeholder="URL"
+                      />
 
-              {isAdmin && (
-                <div className={styles.cardActions}>
-                  <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
-                  <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
+                      <button
+                        className={styles.saveBtnSm}
+                        onClick={saveEdit}
+                        disabled={editSaving}
+                        type="button"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        className={styles.cancelBtnSm}
+                        onClick={cancelEdit}
+                        type="button"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <a
+                        className={styles.linkAnchor}
+                        href={normalizeHttp(link.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className={styles.linkIcon}>{renderIcon(link.icon_type)}</span>
+                        <span className={styles.linkTitle}>{link.name}</span>
+                      </a>
+
+                      {isAdmin && (
+                        <div className={styles.cardActions}>
+                          <button
+                            className={styles.iconBtnInfo}
+                            onClick={() => startEdit(link)}
+                            title="Editar"
+                            type="button"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className={styles.iconBtnDanger}
+                            onClick={() => handleDeleteLink(link.id)}
+                            title="Eliminar"
+                            type="button"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      ))}
-    </div>
-  </section>
-)}
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ================= ADMIN: ADD LINK ================= */}
         {isAdmin && (
@@ -549,32 +614,44 @@ const { error } = await supabase
                   required
                 />
                 <label className={styles.floatingLabel}>URL (https://…)</label>
-                <small className={styles.hint}>Se aceptan enlaces sin https:// (lo añadimos automáticamente).</small>
-              </div>
-
-              {/* THUMBNAIL */}
-              <div className={styles.fieldWide}>
-                <span className={styles.iconLeft}>🖼️</span>
-                <input
-                  type="url"
-                  className={styles.inputBase}
-                  placeholder=" "
-                  value={newThumb}
-                  onChange={(e) => setNewThumb(e.target.value)}
-                  inputMode="url"
-                />
-                <label className={styles.floatingLabel}>Imagen (URL opcional)</label>
                 <small className={styles.hint}>
-                  Pega un enlace directo a una imagen (jpg/png/webp). Ej: de Google Images (copiar URL de imagen).
+                  Se aceptan enlaces sin https:// (lo añadimos automáticamente).
                 </small>
               </div>
 
-              {/* Acciones */}
+              {/* Imagen doar pentru CAMERĂ */}
+              {newType === 'camera' && (
+                <div className={styles.fieldWide}>
+                  <span className={styles.iconLeft}>🖼️</span>
+                  <input
+                    type="url"
+                    className={styles.inputBase}
+                    placeholder=" "
+                    value={newThumb}
+                    onChange={(e) => setNewThumb(e.target.value)}
+                    inputMode="url"
+                  />
+                  <label className={styles.floatingLabel}>Imagen (URL opcional)</label>
+                  <small className={styles.hint}>
+                    Pega un enlace directo a una imagen (jpg/png/webp).
+                  </small>
+                </div>
+              )}
+
               <div className={styles.actionsRow}>
-                <button className={styles.btnGhost} type="button" onClick={() => { setNewName(''); setNewUrl(''); setNewThumb(''); }}>
+                <button
+                  className={styles.btnGhost}
+                  type="button"
+                  onClick={() => { setNewName(''); setNewUrl(''); setNewThumb(''); }}
+                >
                   Resetear
                 </button>
-                <button className={styles.btnPrimary} type="submit" disabled={savingNew}>
+
+                <button
+                  className={styles.btnPrimary}
+                  type="submit"
+                  disabled={savingNew}
+                >
                   {savingNew ? 'Añadiendo…' : 'Añadir'}
                 </button>
               </div>
@@ -592,5 +669,3 @@ const { error } = await supabase
     </Layout>
   );
 }
-
-export default HomepageDispecer;
