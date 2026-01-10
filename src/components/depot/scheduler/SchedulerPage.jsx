@@ -175,18 +175,20 @@ export default function SchedulerPage() {
           <span />
         </div>
 
-        <SchedulerToolbar
-          tabs={TABS}
-          tab={tab}
-          setTab={(t) => { setTab(t); setShowList(true); }}
-          query={query} setQuery={setQuery}
-          date={date} setDate={setDate}
-          onExportExcel={exportarExcelTab}
-          onProgramarClick={() => setProgramarOpen(true)}
-          canProgramar={role === 'admin' || role === 'dispecer'}
-          showCalendar={showCalendar}
-          onToggleCalendar={handleToggleCalendar}
-        />
+       <SchedulerToolbar
+  backTo="/depot"
+  title="Programar Contenedor"
+  tabs={TABS}
+  tab={tab}
+  setTab={(t) => { setTab(t); setShowList(true); }}
+  query={query} setQuery={setQuery}
+  date={date} setDate={setDate}
+  onExportExcel={exportarExcelTab}
+  onProgramarClick={() => setProgramarOpen(true)}
+  canProgramar={role === "admin" || role === "dispecer"}
+  showCalendar={showCalendar}
+  onToggleCalendar={handleToggleCalendar}
+/>
 
         <div className={styles.grid}>
           {showList && (
