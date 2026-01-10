@@ -374,3 +374,61 @@
   .addButton{ width: 220px; }
   .containersGrid{ grid-template-columns: 1fr 1fr; }
 }
+/* ---------- Pagination ---------- */
+.paginationContainer{
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  background: rgba(18, 24, 33, .55);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+
+  padding: 10px 12px;
+}
+
+.paginationButton{
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.90);
+
+  font-weight: 1000;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 120ms ease, opacity 120ms ease, border-color 120ms ease;
+}
+
+.paginationButton:active{
+  transform: scale(.99);
+}
+
+.paginationButton:disabled{
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.pageIndicator{
+  flex: 1;
+  text-align: center;
+  color: rgba(255,255,255,.70);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: .2px;
+}
+
+/* optional: pe ecrane mari, păstrează indicatorul mai “fix” */
+@media (min-width: 680px){
+  .paginationContainer{ padding: 12px 14px; }
+  .paginationButton{ height: 38px; }
+  .pageIndicator{ font-size: 12.5px; }
+}
