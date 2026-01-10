@@ -333,7 +333,6 @@ const { error } = await supabase
                           <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
                           <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
                         </div>
-                      )}
                     </div>
 
                     {editId === link.id && (
@@ -437,72 +436,55 @@ const { error } = await supabase
         </section>
 
         {/* ================= SOCIAL LINKS ================= */}
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Redes sociales y contacto</h3>
+        {/* ================= SOCIAL LINKS ================= */}
+{!loadingLinks && socialLinks.length > 0 && (
+  <section className={styles.section}>
+    <h3 className={styles.sectionTitle}>Redes sociales y contacto</h3>
 
-          {loadingLinks ? (
-            <div className={styles.glassCard} style={{ padding: 14 }}>
-              Cargando enlaces…
-            </div>
-          ) : socialLinks.length === 0 ? (
-            <div className={styles.glassCard} style={{ padding: 14 }}>
-              No hay enlaces sociales configurados.
+    <div className={styles.linksGrid}>
+      {socialLinks.map(link => (
+        <div key={link.id} className={styles.linkCard}>
+          {editId === link.id ? (
+            <div className={styles.editRow}>
+              <input
+                className={styles.input}
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                placeholder="Nombre"
+              />
+              <input
+                className={styles.input}
+                value={editUrl}
+                onChange={e => setEditUrl(e.target.value)}
+                placeholder="URL"
+              />
+              <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">
+                Guardar
+              </button>
+              <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">
+                Cancelar
+              </button>
             </div>
           ) : (
-            <div className={styles.linksGrid}>
-              {socialLinks.map(link => (
-                <div key={link.id} className={styles.linkCard}>
-                  {editId === link.id ? (
-                    <div className={styles.editRow}>
-  <input
-    className={styles.input}
-    value={editName}
-    onChange={e => setEditName(e.target.value)}
-    placeholder="Nombre"
-  />
-  <input
-    className={styles.input}
-    value={editUrl}
-    onChange={e => setEditUrl(e.target.value)}
-    placeholder="URL"
-  />
+            <>
+              <a className={styles.linkAnchor} href={link.url} target="_blank" rel="noopener noreferrer">
+                <span className={styles.linkIcon}>{renderIcon(link.icon_type)}</span>
+                <span className={styles.linkTitle}>{link.name}</span>
+              </a>
 
-  {/* Nou: thumbnail */}
-  <input
-    className={styles.input}
-    value={editThumb}
-    onChange={e => setEditThumb(e.target.value)}
-    placeholder="Imagen (URL) opcional"
-    style={{ gridColumn: '1 / -1' }}
-  />
-
-  <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">
-    Guardar
-  </button>
-  <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">
-    Cancelar
-  </button>
-</div>
-                  ) : (
-                    <>
-                      <a className={styles.linkAnchor} href={link.url} target="_blank" rel="noopener noreferrer">
-                        <span className={styles.linkIcon}>{renderIcon(link.icon_type)}</span>
-                        <span className={styles.linkTitle}>{link.name}</span>
-                      </a>
-
-                      {isAdmin && (
-                        <div className={styles.cardActions}>
-                          <button className={styles.iconBtnInfo}  onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
-                          <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
-                        </div>
-                      )}
-                    </>
-                  )}
+              {isAdmin && (
+                <div className={styles.cardActions}>
+                  <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
+                  <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
-        </section>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
 
         {/* ================= ADMIN: ADD LINK ================= */}
         {isAdmin && (
