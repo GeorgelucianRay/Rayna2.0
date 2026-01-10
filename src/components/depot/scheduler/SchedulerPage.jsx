@@ -1,4 +1,3 @@
-// src/components/depot/scheduler/SchedulerPage.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -34,14 +33,13 @@ export default function SchedulerPage() {
   const [selected, setSelected] = useState(null);
 
   // UI state
-  const [showCalendar, setShowCalendar] = useState(false); // ascuns la început
-  const [showList, setShowList] = useState(false);         // ascuns la început
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showList, setShowList] = useState(true);   // ✅ IMPORTANT: lista vizibilă by default
 
   const calRef = useRef(null);
   const [programarOpen, setProgramarOpen] = useState(false);
   const [markers, setMarkers] = useState({});
 
-  // safety pentru rolul mecanic (nu există "todos")
   useEffect(() => {
     if (role === 'mecanic' && tab === 'todos') setTab('programado');
   }, [role, tab, setTab]);
@@ -59,26 +57,35 @@ export default function SchedulerPage() {
     const loadMonth = async () => {
       const y = date.getFullYear();
       const m = date.getMonth();
+
+      // ⚠️ păstrăm format YYYY-MM-DD
       const start = new Date(y, m, 1).toISOString().slice(0, 10);
       const end   = new Date(y, m + 1, 0).toISOString().slice(0, 10);
+
       const { data, error } = await supabase
         .from('contenedores_programados')
         .select('fecha')
         .gte('fecha', start)
         .lte('fecha', end);
 
-      if (error) { console.error('Month markers:', error); setMarkers({}); return; }
+      if (error) {
+        console.error('Month markers:', error);
+        setMarkers({});
+        return;
+      }
+
       const map = {};
-      (data || []).forEach(r => { if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1; });
+      (data || []).forEach(r => {
+        if (r.fecha) map[r.fecha] = (map[r.fecha] || 0) + 1;
+      });
       setMarkers(map);
     };
+
     loadMonth();
   }, [date]);
 
-  // lista vizibilă (după filtrele din hook)
   const visibleItems = useMemo(() => filtered || [], [filtered]);
 
-  // export excel pentru tabul curent
   const exportarExcelTab = () => {
     const items = visibleItems || [];
     const hoja = items.map((r) => {
@@ -133,15 +140,25 @@ export default function SchedulerPage() {
       matricula_camion: payload.matricula_camion || null,
       estado: payload.estado || 'programado',
     };
+
     const { error } = await supabase.from('contenedores_programados').insert([insert]);
+
     if (error) {
       console.error(error);
       alert(`Error al programar:\n${error.message || error}`);
       return;
     }
+
+    // ✅ update markers instant
     if (insert.fecha) {
       setMarkers(prev => ({ ...prev, [insert.fecha]: (prev[insert.fecha] || 0) + 1 }));
     }
+
+    // ✅ IMPORTANT: după insert, mergem pe tab-ul corect + forțăm refresh în hook
+    setTab('programado');     // să-l vezi sigur (insert = programado)
+    setShowList(true);        // lista vizibilă
+    setDate(prev => new Date(prev)); // trigger re-fetch în useScheduler dacă depinde de `date`
+
     setProgramarOpen(false);
     alert('¡Programación guardada!');
   };
@@ -152,14 +169,12 @@ export default function SchedulerPage() {
         <div className={styles.bg} />
         <div className={styles.vignette} />
 
-        {/* Header fără butonul de calendar */}
         <div className={styles.topBar}>
           <Link to="/depot" className={styles.backBtn}>Depósito</Link>
           <h1 className={styles.title}>Programar Contenedor</h1>
-          <span /> {/* placeholder pentru spațiere */}
+          <span />
         </div>
 
-        {/* Toolbar (controlează calendarul) */}
         <SchedulerToolbar
           tabs={TABS}
           tab={tab}
@@ -173,7 +188,6 @@ export default function SchedulerPage() {
           onToggleCalendar={handleToggleCalendar}
         />
 
-        {/* Grid principal */}
         <div className={styles.grid}>
           {showList && (
             <SchedulerList
