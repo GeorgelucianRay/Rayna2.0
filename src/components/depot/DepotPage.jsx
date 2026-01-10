@@ -1,6 +1,6 @@
 // src/components/depot/DepotPage.jsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import Layout from "../Layout";
 import styles from "./DepotPage.module.css";
 import { useAuth } from "../../AuthContext";
@@ -23,7 +23,7 @@ export default function DepotPage() {
   const navigate = useNavigate();
   const { session, sessionReady } = useAuth();
 
-  // ► Normal auth check
+  // ✅ așteaptă auth
   if (!sessionReady) {
     return (
       <Layout backgroundClassName="depotBackground">
@@ -31,14 +31,14 @@ export default function DepotPage() {
       </Layout>
     );
   }
-  if (!session) return navigate("/login");
 
-  // ► State orchestration
+  // ✅ redirect corect (fără navigate în render)
+  if (!session) return <Navigate to="/login" replace />;
+
   const [activeTab, setActiveTab] = useState("contenedores");
   const [search, setSearch] = useState("");
-  const [showMiniMap, setShowMiniMap] = useState(false); // 👈 popup 3D
+  const [showMiniMap, setShowMiniMap] = useState(false);
 
-  // ► Custom hooks that handle logic
   const {
     containers,
     totalPages,
@@ -55,73 +55,83 @@ export default function DepotPage() {
   } = useDepotData(activeTab, search);
 
   const slotMap = useDepotSlots(refresh);
-
-  const { handleAdd, handleEdit, handleSalida } = useDepotMutations(
-    activeTab,
-    refresh
-  );
+  const { handleAdd, handleEdit, handleSalida } = useDepotMutations(activeTab, refresh);
 
   return (
     <Layout backgroundClassName="depotBackground">
       <div className={styles.pageWrap}>
-        {/* TABS */}
-        <DepotTabs active={activeTab} onChange={setActiveTab} />
+        {/* Header area (look iOS) */}
+        <div className={styles.topPad} />
 
-        {/* ACTION SHORTCUTS */}
+        {/* Tabs */}
+        <div className={styles.glassTop}>
+          <DepotTabs active={activeTab} onChange={setActiveTab} />
+        </div>
+
+        {/* Quick chips */}
         <div className={styles.extraButtons}>
           <button
-            className={`${styles.actionButton} ${styles.programButton}`}
+            className={`${styles.chipBtn} ${styles.chipPrimary}`}
             onClick={() => navigate("/programacion")}
+            type="button"
           >
-            📅 Programación
+            <span className={styles.chipIcon}>📅</span>
+            Programación
           </button>
+
           <button
-            className={`${styles.actionButton} ${styles.mapButton}`}
+            className={`${styles.chipBtn} ${styles.chipNeutral}`}
             onClick={() => navigate("/mapa")}
+            type="button"
           >
-            🗺️ Ver Mapa
+            <span className={styles.chipIcon}>🗺️</span>
+            Ver mapa
           </button>
 
           {activeTab === "contenedores" && (
             <button
-              className={`${styles.actionButton}`}
+              className={`${styles.chipBtn} ${styles.chipNeutral}`}
               onClick={() => setShowMiniMap(true)}
+              type="button"
             >
-              🧭 Mapa rápido 3D
+              <span className={styles.chipIcon}>🧭</span>
+              Mapa rápido 3D
             </button>
           )}
         </div>
 
-        {/* SEARCH + EXCEL + ADD */}
-        <DepotToolbar
-          activeTab={activeTab}
-          search={search}
-          setSearch={setSearch}
-          onAddClick={openAddModal}
-        />
+        {/* Search / add */}
+        <div className={styles.glassBlock}>
+          <DepotToolbar
+            activeTab={activeTab}
+            search={search}
+            setSearch={setSearch}
+            onAddClick={openAddModal}
+          />
+        </div>
 
-        {/* LISTA */}
-        <DepotCards
-          containers={containers}
-          loading={loading}
-          activeTab={activeTab}
-          onEdit={openEditModal}
-          onSalida={openSalidaModal}
-        />
+        {/* List */}
+        <div className={styles.cardsBlock}>
+          <DepotCards
+            containers={containers}
+            loading={loading}
+            activeTab={activeTab}
+            onEdit={openEditModal}
+            onSalida={openSalidaModal}
+          />
+        </div>
 
-        {/* PAGINATION */}
-        <DepotPagination
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+        {/* Pagination */}
+        <div className={styles.glassBlock}>
+          <DepotPagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+          />
+        </div>
 
-        {/* MODALS */}
-        <AddContainerModal
-          isOpen={modalState.add}
-          onClose={closeModals}
-          onAdd={handleAdd}
-        />
+        {/* Modals */}
+        <AddContainerModal isOpen={modalState.add} onClose={closeModals} onAdd={handleAdd} />
 
         <EditContainerModal
           isOpen={modalState.edit}
@@ -137,13 +147,10 @@ export default function DepotPage() {
           onSubmit={handleSalida}
         />
 
-        {/* 🔍 POPUP 3D MINI MAP */}
-        {showMiniMap && (
-          <DepotMiniMap3D
-            slotMap={slotMap}
-            onClose={() => setShowMiniMap(false)}
-          />
-        )}
+        {/* Mini map */}
+        {showMiniMap && <DepotMiniMap3D slotMap={slotMap} onClose={() => setShowMiniMap(false)} />}
+
+        <div className={styles.bottomSafe} />
       </div>
     </Layout>
   );
