@@ -1,42 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import styles from './HomepageDispecer.module.css'; // Refolosește stilurile pentru consistență
+// src/components/EditAnnouncementModal.jsx
+import React, { useEffect, useState } from "react";
+import styles from "./EditAnnouncementModal.module.css";
 
-function EditAnnouncementModal({ isOpen, onClose, currentContent, onSave }) {
-  const [newContent, setNewContent] = useState(currentContent);
+export default function EditAnnouncementModal({
+  isOpen,
+  onClose,
+  currentContent = "",
+  onSave,
+}) {
+  const [value, setValue] = useState(currentContent);
 
   useEffect(() => {
-    setNewContent(currentContent);
-  }, [currentContent]);
+    if (isOpen) setValue(currentContent || "");
+  }, [isOpen, currentContent]);
 
-  if (!isOpen) {
-    return null;
-  }
+  // Blochează scroll-ul paginii când modalul e deschis (iOS friendly)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const handleSave = () => {
-    onSave(newContent);
+    onSave?.(value);
   };
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <h3 className={styles.modalTitle}>Editar Anuncio</h3>
+    <div
+      className={styles.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Editar anuncio"
+      onMouseDown={(e) => {
+        // click pe fundal => close
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className={styles.modal}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Editar anuncio</h3>
+          <button className={styles.closeBtn} type="button" onClick={onClose} aria-label="Cerrar">
+            ✕
+          </button>
+        </div>
+
         <textarea
-          className={styles.modalTextarea}
-          value={newContent}
-          onChange={(e) => setNewContent(e.target.value)}
-          rows="6"
+          className={styles.textarea}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Escribe el anuncio…"
+          rows={6}
         />
-        <div className={styles.modalActions}>
-          <button onClick={onClose} className={styles.cancelButton}>
+
+        <div className={styles.actions}>
+          <button className={styles.btnGhost} type="button" onClick={onClose}>
             Cancelar
           </button>
-          <button onClick={handleSave} className={styles.saveButton}>
-            Guardar Cambios
+          <button className={styles.btnPrimary} type="button" onClick={handleSave}>
+            Guardar cambios
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-export default EditAnnouncementModal;
