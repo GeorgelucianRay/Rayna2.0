@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // Importăm clientul Supabase
-import './iniciarsesion.css'; // Reutilizăm stilurile
+import { supabase } from '../supabaseClient';
+import './iniciarsesion.css';
 
 function RestaurarContrasena() {
   const [email, setEmail] = useState('');
@@ -16,53 +16,79 @@ function RestaurarContrasena() {
     setError('');
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/actualizar-contrasena`, // Pagina unde va fi redirecționat userul
+      redirectTo: `${window.location.origin}/actualizar-contrasena`,
     });
 
-    if (error) {
-      setError(`Error: ${error.message}`);
-    } else {
-      setMessage('Se ha enviado un enlace para restaurar la contraseña a tu correo electrónico.');
-    }
+    if (error) setError(`Error: ${error.message}`);
+    else setMessage('Se ha enviado un enlace para restaurar la contraseña a tu correo.');
     setLoading(false);
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h2 className="login-title">Restaurar Contraseña</h2>
-        <p className="link-text" style={{ marginTop: '-16px', marginBottom: '24px' }}>
-          Introduce tu correo y te enviaremos un enlace para resetear tu contraseña.
-        </p>
+    <div className="raynaLogin">
+      <div className="raynaBg" aria-hidden="true" />
+      <div className="raynaGlow" aria-hidden="true" />
 
-        {message && <p style={{ color: 'green', textAlign: 'center', marginBottom: '16px' }}>{message}</p>}
-        {error && <p className="error-message">{error}</p>}
+      <div className="raynaCard">
+        <div className="raynaTop">
+          <div className="raynaLogo" aria-hidden="true">
+            <span className="raynaLogoIcon">🔁</span>
+          </div>
+          <h2 className="raynaBrand">Rayna 2.0</h2>
+          <p className="raynaSub">Logistics Management System</p>
+        </div>
 
-        <form onSubmit={handlePasswordReset}>
-          <div>
-            <label htmlFor="email" className="form-label">
-              Correo Electrónico
-            </label>
+        <div className="raynaIntro">
+          <h1 className="raynaTitle">Restaurar contraseña</h1>
+          <p className="raynaHint">Introduce tu correo y te enviaremos un enlace</p>
+        </div>
+
+        {error && (
+          <div className="raynaError" role="alert" aria-live="polite">
+            <span className="raynaErrorIcon">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {message && (
+          <div className="raynaSuccess" role="status" aria-live="polite">
+            <span className="raynaSuccessIcon">✅</span>
+            <span>{message}</span>
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordReset} className="raynaForm">
+          <div className="raynaField">
+            <label htmlFor="email" className="raynaLabel">Correo electrónico</label>
             <input
               type="email"
               id="email"
-              className="form-input"
+              className="raynaInput"
               placeholder="tu@ejemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              inputMode="email"
+              autoComplete="email"
             />
           </div>
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Enviando...' : 'Enviar Enlace'}
+
+          <button type="submit" className="raynaBtnPrimary" disabled={loading || !email.trim()}>
+            {loading ? 'Enviando…' : 'Enviar enlace'}
+            <span className="raynaArrow">→</span>
           </button>
+
+          <div className="raynaFooter">
+            <p className="raynaFooterText">
+              <Link to="/login" className="raynaLinkStrong">Volver a iniciar sesión</Link>
+            </p>
+          </div>
         </form>
 
-        <p className="link-text">
-          <Link to="/login" className="link-style">
-            Volver a Iniciar Sesión
-          </Link>
-        </p>
+        <div className="raynaBadge" aria-hidden="true">
+          <span>🔒</span>
+          <span>ENCRYPTED CONNECTION</span>
+        </div>
       </div>
     </div>
   );
