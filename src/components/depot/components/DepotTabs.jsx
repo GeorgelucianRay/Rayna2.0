@@ -1,4 +1,3 @@
-// src/components/depot/components/DepotTabs.jsx
 import styles from "../DepotPage.module.css";
 
 export default function DepotTabs({ active, onChange }) {
@@ -7,6 +6,7 @@ export default function DepotTabs({ active, onChange }) {
       {["contenedores", "contenedores_rotos", "contenedores_salidos"].map((t) => (
         <button
           key={t}
+          type="button"
           className={`${styles.depotTabButton} ${active === t ? styles.active : ""}`}
           onClick={() => onChange(t)}
         >
