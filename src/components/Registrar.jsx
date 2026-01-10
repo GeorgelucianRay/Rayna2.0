@@ -18,13 +18,20 @@ function Registrar() {
   const [error, setError] = useState(null);
 
   const passwordsMismatch = useMemo(() => {
-    if (!password || !confirmPassword) return false; // nu arătăm până nu scrie în ambele
+    if (!password || !confirmPassword) return false;
     return password !== confirmPassword;
   }, [password, confirmPassword]);
 
+  const disableSubmit =
+    loading ||
+    !nombreCompleto.trim() ||
+    !email.trim() ||
+    !password ||
+    !confirmPassword ||
+    passwordsMismatch;
+
   const handleRegister = async (event) => {
     event.preventDefault();
-
     setError(null);
     setMessage('');
 
@@ -32,40 +39,32 @@ function Registrar() {
       setError('El nombre completo es obligatorio');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
 
     setLoading(true);
-
     try {
-      // 1) Crear usuario
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) throw signUpError;
 
       const userId = data?.user?.id;
       if (!userId) throw new Error('No se pudo obtener el ID del usuario.');
 
-      // 2) Crear perfil
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           email,
           nombre_completo: nombreCompleto.trim(),
-          role: 'sofer', // schimbă dacă vrei alt rol default
+          role: 'sofer',
         });
 
       if (profileError) throw profileError;
 
-      setMessage('¡Registro exitoso! Por favor, revisa tu correo para confirmar tu cuenta.');
+      setMessage('¡Registro exitoso! Revisa tu correo para confirmar la cuenta.');
 
-      // reset
       setNombreCompleto('');
       setEmail('');
       setPassword('');
@@ -79,124 +78,138 @@ function Registrar() {
     }
   };
 
-  const disableSubmit =
-    loading ||
-    !nombreCompleto.trim() ||
-    !email.trim() ||
-    !password ||
-    !confirmPassword ||
-    passwordsMismatch;
-
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h2 className="login-title">Crear Cuenta</h2>
+    <div className="raynaLogin">
+      <div className="raynaBg" aria-hidden="true" />
+      <div className="raynaGlow" aria-hidden="true" />
 
-        {error && <p className="error-message">{error}</p>}
-        {message && (
-          <p style={{ color: 'green', textAlign: 'center', marginBottom: '16px' }}>
-            {message}
-          </p>
+      <div className="raynaCard">
+        <div className="raynaTop">
+          <div className="raynaLogo" aria-hidden="true">
+            <span className="raynaLogoIcon">🧾</span>
+          </div>
+          <h2 className="raynaBrand">Rayna 2.0</h2>
+          <p className="raynaSub">Logistics Management System</p>
+        </div>
+
+        <div className="raynaIntro">
+          <h1 className="raynaTitle">Crear cuenta</h1>
+          <p className="raynaHint">Completa tus datos para solicitar acceso</p>
+        </div>
+
+        {error && (
+          <div className="raynaError" role="alert" aria-live="polite">
+            <span className="raynaErrorIcon">⚠️</span>
+            <span>{error}</span>
+          </div>
         )}
 
-        <form onSubmit={handleRegister} className="form-group-spacing">
-          {/* Nombre completo */}
-          <div>
-            <label htmlFor="nombreCompleto" className="form-label">Nombre Completo</label>
+        {message && (
+          <div className="raynaSuccess" role="status" aria-live="polite">
+            <span className="raynaSuccessIcon">✅</span>
+            <span>{message}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleRegister} className="raynaForm">
+          <div className="raynaField">
+            <label htmlFor="nombreCompleto" className="raynaLabel">Nombre completo</label>
             <input
               type="text"
               id="nombreCompleto"
-              className="form-input"
+              className="raynaInput"
               placeholder="Juan Pérez"
               value={nombreCompleto}
               onChange={(e) => setNombreCompleto(e.target.value)}
               required
+              autoComplete="name"
             />
           </div>
 
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="form-label">Correo Electrónico</label>
+          <div className="raynaField">
+            <label htmlFor="email" className="raynaLabel">Correo electrónico</label>
             <input
               type="email"
               id="email"
-              className="form-input"
+              className="raynaInput"
               placeholder="tu@ejemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              inputMode="email"
+              autoComplete="email"
             />
           </div>
 
-          {/* Password + toggle */}
-          <div>
-            <label htmlFor="password" className="form-label">Contraseña</label>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="raynaField">
+            <label htmlFor="password" className="raynaLabel">Contraseña</label>
+            <div className="raynaPasswordWrap">
               <input
                 type={showPass1 ? 'text' : 'password'}
                 id="password"
-                className="form-input"
+                className="raynaInput raynaInputPw"
                 placeholder="************"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                style={{ flex: 1 }}
+                autoComplete="new-password"
               />
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => setShowPass1((v) => !v)}
+                className="raynaPwToggle"
                 aria-label={showPass1 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPass1(v => !v)}
               >
-                {showPass1 ? 'Ocultar' : 'Mostrar'}
+                {showPass1 ? '🙈' : '👁️'}
               </button>
             </div>
           </div>
 
-          {/* Confirm password + toggle + mismatch */}
-          <div>
-            <label htmlFor="confirmPassword" className="form-label">Repetir Contraseña</label>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="raynaField">
+            <label htmlFor="confirmPassword" className="raynaLabel">Repetir contraseña</label>
+            <div className={`raynaPasswordWrap ${passwordsMismatch ? 'raynaMismatch' : ''}`}>
               <input
                 type={showPass2 ? 'text' : 'password'}
                 id="confirmPassword"
-                className="form-input"
+                className="raynaInput raynaInputPw"
                 placeholder="************"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                style={{ flex: 1, borderColor: passwordsMismatch ? '#ef4444' : undefined }}
+                autoComplete="new-password"
               />
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => setShowPass2((v) => !v)}
+                className="raynaPwToggle"
                 aria-label={showPass2 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPass2(v => !v)}
               >
-                {showPass2 ? 'Ocultar' : 'Mostrar'}
+                {showPass2 ? '🙈' : '👁️'}
               </button>
             </div>
 
             {passwordsMismatch && (
-              <div style={{ color: '#ef4444', marginTop: '6px', fontSize: '0.9rem' }}>
-                Las contraseñas no coinciden.
-              </div>
+              <div className="raynaInlineError">Las contraseñas no coinciden.</div>
             )}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={disableSubmit}>
-            {loading ? 'Registrando...' : 'Registrar'}
+          <button type="submit" className="raynaBtnPrimary" disabled={disableSubmit}>
+            {loading ? 'Registrando…' : 'Registrar'}
+            <span className="raynaArrow">→</span>
           </button>
+
+          <div className="raynaFooter">
+            <p className="raynaFooterText">
+              ¿Ya tienes cuenta?{' '}
+              <Link to="/login" className="raynaLinkStrong">Iniciar sesión</Link>
+            </p>
+          </div>
         </form>
 
-        <p className="link-text">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="link-style">
-            Iniciar Sesión
-          </Link>
-        </p>
+        <div className="raynaBadge" aria-hidden="true">
+          <span>🔒</span>
+          <span>ENCRYPTED CONNECTION</span>
+        </div>
       </div>
     </div>
   );
