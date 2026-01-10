@@ -1,95 +1,5 @@
 /* src/components/depot/DepotPage.module.css */
 
-.loadingText{
-  color: rgba(255,255,255,.85);
-  padding: 20px;
-  text-align: center;
-}
-
-.pageWrap{
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 12px 14px 18px;
-}
-
-.topPad{
-  height: 6px;
-}
-
-/* Glass surfaces */
-.glassTop,
-.glassBlock{
-  background: rgba(18, 24, 33, .55);
-  border: 1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 18px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
-}
-
-.glassTop{
-  padding: 8px 10px;
-}
-
-.glassBlock{
-  padding: 12px;
-  margin-top: 12px;
-}
-
-.cardsBlock{
-  margin-top: 12px;
-}
-
-/* Quick chips row */
-.extraButtons{
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 12px 2px 2px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.extraButtons::-webkit-scrollbar{ display: none; }
-
-.chipBtn{
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.92);
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.chipBtn:active{ transform: scale(.98); }
-
-.chipIcon{
-  opacity: .95;
-}
-
-.chipPrimary{
-  border-color: rgba(19,146,236,.40);
-  background: rgba(19,146,236,.18);
-  box-shadow: 0 12px 30px rgba(19,146,236,.18);
-}
-
-.chipNeutral{
-  border-color: rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-}
-
-.bottomSafe{
-  height: calc(12px + env(safe-area-inset-bottom));
-}
-/* src/components/depot/DepotPage.module.css */
-
 /* ---------- Base layout ---------- */
 .pageWrap{
   max-width: 720px;
@@ -107,14 +17,14 @@
   color: rgba(255,255,255,.86);
   padding: 20px 8px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .noDataText{
   color: rgba(255,255,255,.70);
   padding: 18px 10px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* ---------- Glass surfaces ---------- */
@@ -155,7 +65,7 @@
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
   color: rgba(255,255,255,.78);
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 12px;
   letter-spacing: .2px;
   cursor: pointer;
@@ -169,7 +79,7 @@
   box-shadow: 0 12px 30px rgba(19,146,236,.18);
 }
 
-/* ---------- Quick chips row (if you keep them in DepotPage) ---------- */
+/* ---------- Quick chips row (DepotPage extra buttons) ---------- */
 .extraButtons{
   display: flex;
   gap: 10px;
@@ -179,7 +89,7 @@
 }
 .extraButtons::-webkit-scrollbar{ display:none; }
 
-.chipBtn{
+.actionButton{
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -190,21 +100,19 @@
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
   color: rgba(255,255,255,.92);
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 13px;
   cursor: pointer;
   user-select: none;
 }
-.chipBtn:active{ transform: scale(.98); }
+.actionButton:active{ transform: scale(.98); }
 
-.chipIcon{ opacity:.95; }
-
-.chipPrimary{
+.programButton{
   border-color: rgba(19,146,236,.40);
   background: rgba(19,146,236,.18);
   box-shadow: 0 12px 30px rgba(19,146,236,.18);
 }
-.chipNeutral{
+.mapButton{
   border-color: rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
 }
@@ -214,6 +122,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+  margin-top: 12px;
 }
 
 .searchBar{
@@ -227,27 +136,20 @@
   overflow: hidden;
 }
 
-.searchIcon{
-  position: absolute;
-  left: 14px;
-  opacity: .70;
-  font-size: 16px;
-}
-
 .searchBar input{
   width: 100%;
   height: 44px;
-  padding: 0 14px 0 40px;
+  padding: 0 14px 0 14px;
   border: none;
   outline: none;
   background: transparent;
   color: rgba(255,255,255,.92);
-  font-weight: 800;
+  font-weight: 900;
   font-size: 13px;
 }
 .searchBar input::placeholder{
   color: rgba(255,255,255,.45);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .addButton{
@@ -256,7 +158,7 @@
   border: 1px solid rgba(19,146,236,.40);
   background: rgba(19,146,236,.22);
   color: rgba(255,255,255,.96);
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 13px;
   cursor: pointer;
   box-shadow: 0 18px 45px rgba(19,146,236,.16);
@@ -272,9 +174,10 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+  margin-top: 12px;
 }
 
-/* Card look like Stich glass */
+/* Base card look */
 .containerCard{
   background: rgba(18, 24, 33, .55);
   border: 1px solid rgba(255,255,255,.10);
@@ -285,6 +188,7 @@
   padding: 14px;
 }
 
+/* (Legacy header styles – keep if you still use them somewhere) */
 .cardHeader{
   display: flex;
   justify-content: space-between;
@@ -292,8 +196,6 @@
   gap: 12px;
   margin-bottom: 10px;
 }
-
-.cardTitleCol{ min-width: 0; }
 
 .cardMatricula{
   margin: 0;
@@ -327,7 +229,7 @@
   border: 1px solid rgba(255,255,255,.14);
   background: rgba(255,255,255,.06);
   color: rgba(255,255,255,.88);
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 12px;
   cursor: pointer;
 }
@@ -351,25 +253,124 @@
   padding-top: 10px;
   color: rgba(255,255,255,.78);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.6;
 }
 .cardBody strong{
   color: rgba(255,255,255,.92);
-  font-weight: 900;
+  font-weight: 1000;
 }
 
-/* Small responsive bump */
+/* =========================================================
+   STICH-LIKE ADDITIONS (for the richer DepotCards version)
+   ========================================================= */
+
+.cardTopRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.cardTitleCol{ min-width:0; }
+
+.statusPill{
+  flex:0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.9);
+}
+
+.status_ready{
+  color:#10b981;
+  background: rgba(16,185,129,.12);
+  border-color: rgba(16,185,129,.22);
+}
+.status_delayed{
+  color:#f59e0b;
+  background: rgba(245,158,11,.12);
+  border-color: rgba(245,158,11,.22);
+}
+.status_maintenance{
+  color:#a855f7;
+  background: rgba(168,85,247,.12);
+  border-color: rgba(168,85,247,.22);
+}
+.status_out{
+  color: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.10);
+}
+
+.cardMidGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  margin: 8px 0 10px;
+}
+
+.midCell{ min-width:0; }
+
+.midLabel{
+  margin:0;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+}
+
+.midValue{
+  margin:4px 0 0;
+  font-size: 13px;
+  font-weight: 1000;
+  color: rgba(255,255,255,.9);
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+
+.footerIcons{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+}
+
+.footerIcon{
+  width: 28px;
+  height: 28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  font-size: 14px;
+}
+
+/* ---------- Responsive ---------- */
 @media (min-width: 680px){
   .toolbar{
     grid-template-columns: 1fr auto;
     align-items: center;
   }
-  .addButton{
-    width: 220px;
-  }
-  .containersGrid{
-    grid-template-columns: 1fr 1fr;
-  }
+  .addButton{ width: 220px; }
+  .containersGrid{ grid-template-columns: 1fr 1fr; }
 }
-
