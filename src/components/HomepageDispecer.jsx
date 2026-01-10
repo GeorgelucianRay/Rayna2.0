@@ -325,37 +325,52 @@ const { error } = await supabase
                       </div>
                     </a>
 
-                    <div className={styles.camFooterRow}>
-                      <div className={styles.camLabel}>{link.name}</div>
+                    
+    <div className={styles.camFooterRow}>
+  <div className={styles.camLabel}>{link.name}</div>
 
-                      {isAdmin && (
-                        <div className={styles.camActions}>
-                          <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
-                          <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
-                        </div>
-                    </div>
+  {isAdmin && (
+    <div className={styles.camActions}>
+      <button
+        className={styles.iconBtnInfo}
+        onClick={() => startEdit(link)}
+        title="Editar"
+        type="button"
+      >
+        ✎
+      </button>
+      <button
+        className={styles.iconBtnDanger}
+        onClick={() => handleDeleteLink(link.id)}
+        title="Eliminar"
+        type="button"
+      >
+        ✕
+      </button>
+    </div>
+  )}
+</div>
 
-                    {editId === link.id && (
+{editId === link.id && (
   <div className={styles.editRow}>
     <input
       className={styles.input}
       value={editName}
-      onChange={e => setEditName(e.target.value)}
+      onChange={(e) => setEditName(e.target.value)}
       placeholder="Nombre"
     />
 
     <input
       className={styles.input}
       value={editUrl}
-      onChange={e => setEditUrl(e.target.value)}
+      onChange={(e) => setEditUrl(e.target.value)}
       placeholder="URL"
     />
 
-    {/* ✅ AICI: link imagine pentru cameră */}
     <input
       className={styles.input}
       value={editThumb}
-      onChange={e => setEditThumb(e.target.value)}
+      onChange={(e) => setEditThumb(e.target.value)}
       placeholder="Imagen (URL) opcional"
       style={{ gridColumn: '1 / -1' }}
     />
@@ -378,13 +393,6 @@ const { error } = await supabase
     </button>
   </div>
 )}
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
 
         {/* ================= QUICK ACTIONS ================= */}
         <section className={styles.section}>
