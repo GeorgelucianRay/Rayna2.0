@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Layout from './Layout';
 import styles from './HomepageDispecer.module.css';
@@ -53,6 +54,7 @@ const renderIcon = (iconType) => {
 };
 
 function HomepageDispecer() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const isAdmin    = profile?.role === 'admin';
   const isDispecer = profile?.role === 'dispecer';
@@ -67,6 +69,7 @@ function HomepageDispecer() {
   // form adăugare link (admin)
   const [newName, setNewName] = useState('');
   const [newUrl,  setNewUrl]  = useState('');
+  const [newThumb, setNewThumb] = useState('');
   const [newType, setNewType] = useState('camera'); // camera | instagram | tiktok | whatsapp
   const [savingNew, setSavingNew] = useState(false);
 
@@ -78,6 +81,9 @@ function HomepageDispecer() {
 
   const cameraLinks = useMemo(() => links.filter(l => l.icon_type === 'camera'), [links]);
   const socialLinks = useMemo(() => links.filter(l => l.icon_type !== 'camera'), [links]);
+
+  // 6 slots: primele 5 normal, al 6-lea centrat
+  const camsSix = useMemo(() => cameraLinks.slice(0, 6), [cameraLinks]);
 
   const fetchAnnouncements = useCallback(async () => {
     try {
@@ -134,14 +140,24 @@ function HomepageDispecer() {
     if (!newName.trim() || !newUrl.trim()) return;
 
     setSavingNew(true);
+
+    // normalize url
+    let url = newUrl.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+
+    // normalize thumb url (optional)
+    let thumb = newThumb.trim();
+    if (thumb && !/^https?:\/\//i.test(thumb)) thumb = `https://${thumb}`;
+
     const pool = newType === 'camera' ? cameraLinks : socialLinks;
     const nextOrder = (pool[pool.length - 1]?.display_order ?? 0) + 1;
 
     const newRow = {
       name: newName.trim(),
-      url: newUrl.trim(),
+      url,
       icon_type: newType,
       display_order: nextOrder,
+      thumbnail_url: thumb || null,
     };
 
     const tempId = `tmp_${Date.now()}`;
@@ -155,10 +171,13 @@ function HomepageDispecer() {
 
     if (error) {
       setLinks((cur) => cur.filter(l => l.id !== tempId));
-      alert(error.message || 'Nu am putut adăuga linkul.');
+      alert(error.message || 'No se pudo añadir el enlace.');
     } else {
       setLinks((cur) => cur.map(l => (l.id === tempId ? data : l)));
-      setNewName(''); setNewUrl(''); setNewType('camera');
+      setNewName('');
+      setNewUrl('');
+      setNewThumb('');
+      setNewType('camera');
     }
 
     setSavingNew(false);
@@ -171,11 +190,13 @@ function HomepageDispecer() {
     setEditName(row.name || '');
     setEditUrl(row.url || '');
   };
+
   const cancelEdit = () => {
     setEditId(null);
     setEditName('');
     setEditUrl('');
   };
+
   const saveEdit = async () => {
     if (!isAdmin || !editId) return;
     setEditSaving(true);
@@ -200,7 +221,7 @@ function HomepageDispecer() {
   // admin: delete link
   const handleDeleteLink = async (id) => {
     if (!isAdmin) return;
-    if (!confirm('Sigur vrei să ștergi acest link?')) return;
+    if (!confirm('¿Seguro que quieres eliminar este enlace?')) return;
 
     const prev = links;
     setLinks((cur) => cur.filter(l => l.id !== id));
@@ -212,7 +233,7 @@ function HomepageDispecer() {
 
     if (error) {
       setLinks(prev);
-      alert(error.message || 'Ștergerea a eșuat.');
+      alert(error.message || 'La eliminación falló.');
     }
   };
 
@@ -221,20 +242,31 @@ function HomepageDispecer() {
     fetchLinks();
   }, [fetchAnnouncements, fetchLinks]);
 
-  const camsPreview = cameraLinks.slice(0, 4);
+  // Quick actions (rutele tale reale)
+  const quickActions = [
+    { label: 'Depósito', icon: '🏗️', to: '/depot' },
+    { label: 'Programación', icon: '📅', to: '/programacion' },
+    { label: 'Mapa 3D', icon: '🗺️', to: '/mapa' },
+    { label: 'GPS', icon: '📍', to: '/gps' },
+  ];
 
   return (
     <Layout backgroundClassName="homepageBackground">
       <div className={styles.page}>
-        {/* ========== LIVE CAMS ========== */}
+        {/* ================= LIVE CAMERAS ================= */}
         <section className={styles.section}>
           <div className={styles.sectionHead}>
             <h3 className={styles.sectionTitleRow}>
               <span className={styles.liveDot} />
-              Live Terminal Camera
+              Cámaras en vivo
             </h3>
-            <button className={styles.linkBtn} type="button">
-              View All
+            <button
+              className={styles.linkBtn}
+              type="button"
+              onClick={() => navigate('/depot')}
+              title="Ver todas"
+            >
+              VER TODO
             </button>
           </div>
 
@@ -242,84 +274,89 @@ function HomepageDispecer() {
             <div className={styles.glassCard} style={{ padding: 14 }}>
               Cargando cámaras…
             </div>
-          ) : camsPreview.length === 0 ? (
+          ) : cameraLinks.length === 0 ? (
             <div className={styles.glassCard} style={{ padding: 14 }}>
               No hay cámaras configuradas.
             </div>
           ) : (
             <div className={styles.camsGrid}>
-              {camsPreview.map((link, idx) => (
-                <div key={link.id} className={styles.camShell}>
-                  {/* Card clicabil */}
-                  <a
-                    className={styles.camCard}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={link.name}
+              {camsSix.map((link, idx) => {
+                const isLast = idx === 5; // slot #6
+                return (
+                  <div
+                    key={link.id}
+                    className={`${styles.camShell} ${isLast ? styles.camCenter : ''}`}
                   >
-                    <div className={styles.camPreview}>
-                      {/* placeholder preview – în viitor poți pune thumbnails reale */}
-                      <div className={styles.camNoise} aria-hidden="true" />
-                      <div className={styles.camTag}>
-                        <span className={styles.liveMiniDot} />
-                        CAM {String(idx + 1).padStart(2, '0')}
+                    <a
+                      className={styles.camCard}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={link.name}
+                    >
+                      <div
+                        className={styles.camPreview}
+                        style={{
+                          backgroundImage: link.thumbnail_url ? `url(${link.thumbnail_url})` : undefined
+                        }}
+                      >
+                        {!link.thumbnail_url && <div className={styles.camNoise} aria-hidden="true" />}
+
+                        <div className={styles.camTag}>
+                          <span className={styles.liveMiniDot} />
+                          CAM {String(idx + 1).padStart(2, '0')}
+                        </div>
                       </div>
+                    </a>
+
+                    <div className={styles.camFooterRow}>
+                      <div className={styles.camLabel}>{link.name}</div>
+
+                      {isAdmin && (
+                        <div className={styles.camActions}>
+                          <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
+                          <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
+                        </div>
+                      )}
                     </div>
-                  </a>
 
-                  <div className={styles.camFooterRow}>
-                    <div className={styles.camLabel}>{link.name}</div>
-
-                    {isAdmin && (
-                      <div className={styles.camActions}>
-                        <button className={styles.iconBtnInfo} onClick={() => startEdit(link)} title="Editează" type="button">✎</button>
-                        <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Șterge" type="button">✕</button>
+                    {editId === link.id && (
+                      <div className={styles.editRow}>
+                        <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nombre" />
+                        <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
+                        <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Guardar</button>
+                        <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Cancelar</button>
                       </div>
                     )}
                   </div>
-
-                  {editId === link.id && (
-                    <div className={styles.editRow}>
-                      <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nume" />
-                      <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
-                      <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Salvează</button>
-                      <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Anulează</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
 
-        {/* ========== QUICK ACTIONS ========== */}
+        {/* ================= QUICK ACTIONS ================= */}
         <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Quick Actions</h3>
+          <h3 className={styles.sectionTitle}>Acciones rápidas</h3>
           <div className={styles.quickGrid}>
-            <button className={styles.quickBtn} type="button">
-              <span className={styles.quickIcon}>🛣️</span>
-              <span className={styles.quickText}>New Route</span>
-            </button>
-            <button className={styles.quickBtn} type="button">
-              <span className={styles.quickIcon}>🧑‍✈️</span>
-              <span className={styles.quickText}>Driver Check</span>
-            </button>
-            <button className={styles.quickBtn} type="button">
-              <span className={styles.quickIcon}>📊</span>
-              <span className={styles.quickText}>Reports</span>
-            </button>
-            <button className={styles.quickBtn} type="button">
-              <span className={styles.quickIcon}>🗺️</span>
-              <span className={styles.quickText}>Live Map</span>
-            </button>
+            {quickActions.map((a) => (
+              <button
+                key={a.to}
+                className={styles.quickBtn}
+                type="button"
+                onClick={() => navigate(a.to)}
+              >
+                <span className={styles.quickIcon}>{a.icon}</span>
+                <span className={styles.quickText}>{a.label}</span>
+              </button>
+            ))}
           </div>
         </section>
 
-        {/* ========== ANNOUNCEMENTS ========== */}
+        {/* ================= ANNOUNCEMENTS ================= */}
         <section className={styles.section}>
           <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>Recent Announcements</h3>
+            <h3 className={styles.sectionTitle}>Avisos recientes</h3>
 
             <div className={styles.headActions}>
               {canEditAnnouncement && (
@@ -347,9 +384,9 @@ function HomepageDispecer() {
           </div>
         </section>
 
-        {/* ========== SOCIAL LINKS ========== */}
+        {/* ================= SOCIAL LINKS ================= */}
         <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Redes Sociales y Contacto</h3>
+          <h3 className={styles.sectionTitle}>Redes sociales y contacto</h3>
 
           {loadingLinks ? (
             <div className={styles.glassCard} style={{ padding: 14 }}>
@@ -365,10 +402,10 @@ function HomepageDispecer() {
                 <div key={link.id} className={styles.linkCard}>
                   {editId === link.id ? (
                     <div className={styles.editRow}>
-                      <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nume" />
+                      <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nombre" />
                       <input className={styles.input} value={editUrl}  onChange={e => setEditUrl(e.target.value)}  placeholder="URL" />
-                      <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Salvează</button>
-                      <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Anulează</button>
+                      <button className={styles.saveBtnSm} onClick={saveEdit} disabled={editSaving} type="button">Guardar</button>
+                      <button className={styles.cancelBtnSm} onClick={cancelEdit} type="button">Cancelar</button>
                     </div>
                   ) : (
                     <>
@@ -379,8 +416,8 @@ function HomepageDispecer() {
 
                       {isAdmin && (
                         <div className={styles.cardActions}>
-                          <button className={styles.iconBtnInfo}  onClick={() => startEdit(link)} title="Editează" type="button">✎</button>
-                          <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Șterge" type="button">✕</button>
+                          <button className={styles.iconBtnInfo}  onClick={() => startEdit(link)} title="Editar" type="button">✎</button>
+                          <button className={styles.iconBtnDanger} onClick={() => handleDeleteLink(link.id)} title="Eliminar" type="button">✕</button>
                         </div>
                       )}
                     </>
@@ -391,35 +428,35 @@ function HomepageDispecer() {
           )}
         </section>
 
-        {/* ========== ADMIN ADD LINK ========== */}
+        {/* ================= ADMIN: ADD LINK ================= */}
         {isAdmin && (
           <section className={styles.addCard}>
             <div className={styles.addCardHeader}>
               <div>
-                <h3 className={styles.addTitle}>Adaugă link</h3>
-                <p className={styles.addSubtitle}>Creează rapid o cameră sau un link social.</p>
+                <h3 className={styles.addTitle}>Añadir enlace</h3>
+                <p className={styles.addSubtitle}>Crea rápido una cámara o un enlace social.</p>
               </div>
             </div>
 
             <form className={styles.addForm} onSubmit={handleAddLink}>
-              {/* Tip */}
+              {/* Tipo */}
               <div className={styles.field}>
                 <span className={styles.iconLeft}>📂</span>
                 <select
                   className={`${styles.inputBase} ${styles.selectBase}`}
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  aria-label="Tip link"
+                  aria-label="Tipo"
                 >
-                  <option value="camera">Cameră</option>
+                  <option value="camera">Cámara</option>
                   <option value="instagram">Instagram</option>
                   <option value="tiktok">TikTok</option>
                   <option value="whatsapp">WhatsApp</option>
                 </select>
-                <label className={styles.floatingLabel}>Tip</label>
+                <label className={styles.floatingLabel}>Tipo</label>
               </div>
 
-              {/* Nume */}
+              {/* Nombre */}
               <div className={styles.field}>
                 <span className={styles.iconLeft}>🏷️</span>
                 <input
@@ -430,7 +467,7 @@ function HomepageDispecer() {
                   onChange={(e) => setNewName(e.target.value)}
                   required
                 />
-                <label className={styles.floatingLabel}>Nume</label>
+                <label className={styles.floatingLabel}>Nombre</label>
               </div>
 
               {/* URL */}
@@ -443,20 +480,36 @@ function HomepageDispecer() {
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
                   inputMode="url"
-                  pattern="https?://.*"
                   required
                 />
                 <label className={styles.floatingLabel}>URL (https://…)</label>
-                <small className={styles.hint}>Folosește un URL complet (ex.: https://exemplu.com)</small>
+                <small className={styles.hint}>Se aceptan enlaces sin https:// (lo añadimos automáticamente).</small>
               </div>
 
-              {/* Actiune */}
+              {/* THUMBNAIL */}
+              <div className={styles.fieldWide}>
+                <span className={styles.iconLeft}>🖼️</span>
+                <input
+                  type="url"
+                  className={styles.inputBase}
+                  placeholder=" "
+                  value={newThumb}
+                  onChange={(e) => setNewThumb(e.target.value)}
+                  inputMode="url"
+                />
+                <label className={styles.floatingLabel}>Imagen (URL opcional)</label>
+                <small className={styles.hint}>
+                  Pega un enlace directo a una imagen (jpg/png/webp). Ej: de Google Images (copiar URL de imagen).
+                </small>
+              </div>
+
+              {/* Acciones */}
               <div className={styles.actionsRow}>
-                <button className={styles.btnGhost} type="button" onClick={() => { setNewName(''); setNewUrl(''); }}>
-                  Resetează
+                <button className={styles.btnGhost} type="button" onClick={() => { setNewName(''); setNewUrl(''); setNewThumb(''); }}>
+                  Resetear
                 </button>
                 <button className={styles.btnPrimary} type="submit" disabled={savingNew}>
-                  {savingNew ? 'Se adaugă…' : 'Adaugă'}
+                  {savingNew ? 'Añadiendo…' : 'Añadir'}
                 </button>
               </div>
             </form>
