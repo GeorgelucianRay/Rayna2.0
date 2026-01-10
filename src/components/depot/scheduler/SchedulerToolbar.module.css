@@ -1,49 +1,169 @@
-/* ===== LAYOUT ===== */
-.toolbar{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; margin:12px 0; }
+/* src/components/depot/scheduler/SchedulerToolbar.module.css */
 
-/* Tabs */
-.tabs{ display:flex; gap:8px; flex-wrap:wrap; }
-.tab{ padding:8px 14px; border-radius:20px; border:1px solid rgba(255,255,255,.25);
-      background:rgba(17,17,17,.35); color:#eaf3ff; font-weight:700; backdrop-filter:blur(8px); transition:.2s; }
-.active{ background:linear-gradient(180deg,rgba(59,228,118,.95),rgba(59,228,118,.82)); color:#062012; border-color:rgba(255,255,255,.7); }
+.toolbar{
+  position: sticky;
+  top: 0;
+  z-index: 999; /* peste vignette/bg */
+  padding: 12px 12px 10px;
+  margin: 0 auto 10px;
+  max-width: 720px;
 
-/* Search + Month */
-.filters{ display:flex; gap:8px; align-items:center; }
-.search{ min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(17,17,17,.5); color:#fff; outline:none; }
-.search:focus{ border-color:rgba(255,255,255,.6); }
-.month{ padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(17,17,17,.5); color:#fff; }
-
-/* Actions */
-.actions{ display:flex; align-items:center; gap:12px; justify-content:flex-start; flex-wrap:nowrap; }
-.calendarBtn,.excelBtn,.programarBtn{ flex:0 0 auto; }
-
-/* Icon round buttons */
-.calendarBtn,.excelBtn{
-  inline-size:48px; block-size:48px; border-radius:50%; overflow:hidden; border:0; background:none; padding:0;
-  display:grid; place-items:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); transition:transform .2s, box-shadow .2s;
+  background: rgba(10, 15, 24, .72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.calendarBtn img,.excelBtn img{ inline-size:100%; block-size:100%; object-fit:cover; display:block; user-select:none; -webkit-user-drag:none; }
-.calendarBtn:hover,.excelBtn:hover{ transform:scale(1.05); box-shadow:0 8px 20px rgba(0,0,0,.45); }
 
-/* ===== PROGRAMAR (folosește background, nu <img>) ===== */
+/* TOP ROW */
+.topRow{
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.backBtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+
+  color: rgba(255,255,255,.92);
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 12px;
+
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+}
+
+.backBtn:active{ transform: scale(.98); }
+
+.topTitle{
+  text-align: center;
+  color: rgba(255,255,255,.96);
+  font-weight: 1000;
+  letter-spacing: .3px;
+  font-size: 14px;
+}
+
+.topRight{ height: 34px; } /* păstrează centrul perfect */
+
+/* TABS */
+.tabs{
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 10px;
+}
+.tabs::-webkit-scrollbar{ display:none; }
+
+.tab{
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.75);
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab:active{ transform: scale(.98); }
+
+.active{
+  border-color: rgba(19,146,236,.45);
+  background: rgba(19,146,236,.18);
+  color: rgba(255,255,255,.95);
+  box-shadow: 0 12px 30px rgba(19,146,236,.16);
+}
+
+/* FILTERS */
+.filters{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.search{
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  padding: 0 12px;
+  outline: none;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.search::placeholder{ color: rgba(255,255,255,.45); }
+
+.month{
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.86);
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.month:active{ transform: scale(.99); }
+
+/* ACTIONS */
+.actions{
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.calendarBtn,
+.excelBtn{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendarBtn img,
+.excelBtn img{
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
 .programarBtn{
-  inline-size:132px; block-size:58px; /* raport 16:7 */
-  border:0; border-radius:16px; padding:0; overflow:hidden; display:inline-block; cursor:pointer;
-  box-shadow:0 6px 18px rgba(0,0,0,.35); transition:transform .2s, box-shadow .2s; background-color:transparent;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(19,146,236,.45);
+  background: rgba(19,146,236,.18);
+  box-shadow: 0 12px 30px rgba(19,146,236,.16);
+  cursor: pointer;
 }
 
-/* PNG-ul tău existent: /Programar.PNG */
+/* dacă folosești skin cu background-image */
 .programarSkin{
-  background-image:url('/Programar.PNG');  /* <- numele tău vechi */
-  background-repeat:no-repeat;
-  background-size:cover;        /* umple fără margini */
-  background-position:50% 60%;  /* focus ușor mai jos ca să nu “taie” baza */
+  background-image: url("/plus.png"); /* schimbă dacă ai alt icon */
+  background-size: 22px 22px;
+  background-position: center;
+  background-repeat: no-repeat;
 }
-
-/* Nu există <img> în interior – evităm artefacte */
-.programarBtn > img{ display:none !important; }
-
-.programarBtn:hover{ transform:scale(1.03); box-shadow:0 10px 26px rgba(0,0,0,.45); }
-
-@media (max-width:900px){ .toolbar{ grid-template-columns:1fr; } .filters{ flex-wrap:wrap; } }
-@media (max-width:480px){ .programarBtn{ inline-size:120px; block-size:54px; border-radius:14px; } }
