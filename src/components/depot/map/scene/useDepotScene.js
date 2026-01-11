@@ -279,9 +279,6 @@ const zoomBy = useCallback((mult) => {
   clampOrbit(camera, controls);
 }, []);
 
-const zoomIn  = useCallback(() => zoomBy(0.85), [zoomBy]); // apropie
-const zoomOut = useCallback(() => zoomBy(1.18), [zoomBy]); // depărtează
-
   const zoomIn = useCallback(() => zoomBy(1.18), [zoomBy]);
   const zoomOut = useCallback(() => zoomBy(1 / 1.18), [zoomBy]);
 
@@ -501,7 +498,6 @@ const zoomOut = useCallback(() => zoomBy(1.18), [zoomBy]); // depărtează
   handleBuildClick(e.clientX, e.clientY);
 };
 renderer.domElement.addEventListener('pointerdown', onPointerDownBuild);
-    renderer.domElement.addEventListener('pointerdown', onPointerDownBuild);
 
     // Loop
     const animate = () => {
