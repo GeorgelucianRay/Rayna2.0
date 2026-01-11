@@ -17,45 +17,49 @@ export default function Map3DPage() {
   const [selectedContainer, setSelectedContainer] = useState(null);
 
   const {
-  isFP,
-  setFPEnabled,
-  setForwardPressed,
-  setJoystick,
-  setBuildActive,
-  buildApi,
-  containers,
-  openWorldItems,
-  setOnContainerSelected,
-  focusCameraOnContainer,
+    isFP,
+    setFPEnabled,
+    setForwardPressed,
+    setJoystick,
+    setBuildActive,
+    buildApi,
+    containers,
+    openWorldItems,
+    setOnContainerSelected,
+    focusCameraOnContainer,
 
-  // ✅ ADĂUGAT
-  showSelectedMarker,
-  zoomIn,
-  zoomOut,
-  recenter,
+    // ✅ UI API
+    showSelectedMarker,
+    zoomIn,
+    zoomOut,
+    recenter,
 
-  isOrbitLibre,
-  startOrbitLibre,
-  stopOrbitLibre,
-} = useDepotScene({ mountRef });
+    isOrbitLibre,
+    startOrbitLibre,
+    stopOrbitLibre,
+  } = useDepotScene({ mountRef });
 
   useEffect(() => {
-    setOnContainerSelected(selected => setSelectedContainer(selected));
-  }, [setOnContainerSelected]);
+    setOnContainerSelected((selected) => {
+      setSelectedContainer(selected);
+      if (selected) showSelectedMarker?.(selected);
+    });
+  }, [setOnContainerSelected, showSelectedMarker]);
 
   return (
     <div className={styles.root}>
       {/* Canvas host */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* TOP APP BAR (Stich style) */}
-      <header className={styles.appBar}>
+      {/* TOP APP BAR */}
+      <header className={styles.appBar} data-map-ui="1">
         <div className={styles.appBarLeft}>
           <button
             className={styles.appIconBtn}
             onClick={() => navigate('/depot')}
             aria-label="Volver a Depósito"
             title="Volver"
+            type="button"
           >
             ←
           </button>
@@ -76,6 +80,7 @@ export default function Map3DPage() {
             }
             aria-label="Orbit libre"
             title={isOrbitLibre ? 'Oprește orbit' : 'Pornește orbit'}
+            type="button"
           >
             ⟳
           </button>
@@ -85,24 +90,31 @@ export default function Map3DPage() {
             onClick={() => openWorldItems()}
             aria-label="Items"
             title="Items"
+            type="button"
           >
             ☰
           </button>
         </div>
       </header>
 
-      {/* Navbar tools dock (FAB + dock + search) */}
+      {/* ✅ ZOOM CONTROLS (apare sigur) */}
+      <div className={styles.zoomControls} data-map-ui="1">
+        <button className={styles.zoomBtn} type="button" onClick={zoomIn} aria-label="Zoom in">＋</button>
+        <button className={styles.zoomBtn} type="button" onClick={zoomOut} aria-label="Zoom out">－</button>
+        <button className={styles.zoomBtn} type="button" onClick={recenter} aria-label="Recenter">⌖</button>
+      </div>
+
+      {/* Navbar tools dock */}
       <Navbar3D
         containers={containers}
         onSelectContainer={(c) => {
           setSelectedContainer(c);
-         showSelectedMarker?.(c);
-
-  if (isOrbitLibre) stopOrbitLibre();
-  setFPEnabled(false);
-  focusCameraOnContainer?.(c, { smooth: true });
-}}
-        onToggleFP={() => setFPEnabled(prev => !prev)}
+          showSelectedMarker?.(c);
+          if (isOrbitLibre) stopOrbitLibre();
+          setFPEnabled(false);
+          focusCameraOnContainer?.(c, { smooth: true });
+        }}
+        onToggleFP={() => setFPEnabled((prev) => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
         onOpenWorldItems={() => openWorldItems()}
@@ -130,7 +142,7 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Card info container */}
+      {/* Card info */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
