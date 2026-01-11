@@ -96,10 +96,12 @@ export default function Map3DPage() {
         containers={containers}
         onSelectContainer={(c) => {
           setSelectedContainer(c);
-          if (isOrbitLibre) stopOrbitLibre();
-          setFPEnabled(false);
-          focusCameraOnContainer?.(c, { smooth: true });
-        }}
+         showSelectedMarker?.(c);
+
+  if (isOrbitLibre) stopOrbitLibre();
+  setFPEnabled(false);
+  focusCameraOnContainer?.(c, { smooth: true });
+}}
         onToggleFP={() => setFPEnabled(prev => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
