@@ -272,3 +272,38 @@
   .appIconBtn{ width: 40px; height: 40px; border-radius: 13px; }
   .toolsFab{ width: 52px; height: 52px; border-radius: 26px; }
 }
+/* AppBar nu blochează taps spre canvas */
+.appBar{ pointer-events: none; }
+.appIconBtn{ pointer-events: auto; }
+
+/* ===== ZOOM CONTROLS ===== */
+.zoomControls{
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  top: calc(max(10px, env(safe-area-inset-top)) + 78px);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.zoomBtn{
+  -webkit-tap-highlight-color: transparent;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(17,24,39,0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255,255,255,0.95);
+  font-size: 20px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+}
+.zoomBtn:active{ transform: scale(.98); }
