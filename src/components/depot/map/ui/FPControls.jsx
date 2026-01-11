@@ -1,76 +1,233 @@
-// src/components/depot/map/ui/FPControls.jsx
-import React, { useRef, useState } from 'react';
-import * as THREE from 'three';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import styles from "./FPControls.module.css";
 
-export default function FPControls({ ensureFP, setForwardPressed, setJoystick }) {
-  return (
-    <>
-      <VirtualJoystick ensureFP={ensureFP} onChange={setJoystick} />
-      <ForwardButton ensureFP={ensureFP} setForwardPressed={setForwardPressed} />
-    </>
-  );
+// ---------- small helpers ----------
+function clamp(v, a, b) {
+  return Math.max(a, Math.min(b, v));
 }
 
-function VirtualJoystick({ onChange, ensureFP, size = 120 }) {
-  const ref = useRef(null);
+function getTouchById(touches, id) {
+  for (let i = 0; i < touches.length; i++) if (touches[i].identifier === id) return touches[i];
+  return null;
+}
+
+function useIsTouchDevice() {
+  return useMemo(() => {
+    if (typeof window === "undefined") return true;
+    return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  }, []);
+}
+
+// ---------- Joystick ----------
+function Joystick({
+  label,
+  side = "left",
+  deadzone = 0.06,
+  onMove, // ({x,y}) normalized -1..1
+}) {
+  const baseRef = useRef(null);
+  const knobRef = useRef(null);
+
   const [active, setActive] = useState(false);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
-  function setVec(clientX, clientY) {
-    const el = ref.current; if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const dx = clientX - cx, dy = clientY - cy;
-    const rad = r.width / 2;
-    const nx = THREE.MathUtils.clamp(dx / rad, -1, 1);
-    const ny = THREE.MathUtils.clamp(dy / rad, -1, 1);
-    setKnob({ x: nx, y: ny });
-    onChange?.({ x: nx, y: ny, active: true });
-  }
-  const stop = () => { setKnob({x:0,y:0}); setActive(false); onChange?.({x:0,y:0,active:false}); };
+
+  // state for a single active touch pointer
+  const touchIdRef = useRef(null);
+  const centerRef = useRef({ x: 0, y: 0 });
+  const radiusRef = useRef(1);
+
+  const setKnob = (nx, ny) => {
+    const knob = knobRef.current;
+    if (!knob) return;
+    // knob travel in px (radius)
+    const r = radiusRef.current;
+    knob.style.transform = `translate(${nx * r}px, ${ny * r}px)`;
+  };
+
+  const emit = (nx, ny) => {
+    // deadzone
+    const dz = deadzone;
+    let x = Math.abs(nx) < dz ? 0 : nx;
+    let y = Math.abs(ny) < dz ? 0 : ny;
+    onMove?.({ x, y });
+  };
+
+  const reset = () => {
+    setActive(false);
+    touchIdRef.current = null;
+    setKnob(0, 0);
+    emit(0, 0);
+  };
+
+  const start = (touch) => {
+    const base = baseRef.current;
+    if (!base) return;
+
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    centerRef.current = { x: cx, y: cy };
+    radiusRef.current = Math.max(20, rect.width * 0.34); // travel radius
+
+    touchIdRef.current = touch.identifier;
+    setActive(true);
+
+    // first move
+    move(touch);
+  };
+
+  const move = (touch) => {
+    const { x: cx, y: cy } = centerRef.current;
+    const r = radiusRef.current;
+
+    let dx = touch.clientX - cx;
+    let dy = touch.clientY - cy;
+
+    // normalize -1..1 and clamp to circle
+    let nx = dx / r;
+    let ny = dy / r;
+
+    const len = Math.hypot(nx, ny);
+    if (len > 1) {
+      nx /= len;
+      ny /= len;
+    }
+
+    setKnob(nx, ny);
+    emit(nx, ny);
+  };
+
+  // touch listeners
+  useEffect(() => {
+    const base = baseRef.current;
+    if (!base) return;
+
+    const onTouchStart = (e) => {
+      // ignore if already active
+      if (touchIdRef.current != null) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      start(t);
+    };
+
+    const onTouchMove = (e) => {
+      const id = touchIdRef.current;
+      if (id == null) return;
+      const t = getTouchById(e.touches, id);
+      if (!t) return;
+      move(t);
+    };
+
+    const onTouchEnd = (e) => {
+      const id = touchIdRef.current;
+      if (id == null) return;
+      // if our touch ended
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === id) {
+          reset();
+          break;
+        }
+      }
+    };
+
+    base.addEventListener("touchstart", onTouchStart, { passive: false });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: false });
+
+    return () => {
+      base.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
-      ref={ref}
-      style={{
-        position:'absolute', left:12, bottom:12, zIndex:5,
-        width:size, height:size, borderRadius:size/2,
-        background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,.2)',
-        touchAction:'none', userSelect:'none'
-      }}
-      onMouseDown={e => { ensureFP?.(); setActive(true); setVec(e.clientX, e.clientY); }}
-      onMouseMove={e => active && setVec(e.clientX, e.clientY)}
-      onMouseUp={stop} onMouseLeave={stop}
-      onTouchStart={e => { ensureFP?.(); setActive(true); const t=e.touches[0]; setVec(t.clientX,t.clientY); }}
-      onTouchMove={e => { const t=e.touches[0]; setVec(t.clientX,t.clientY); }}
-      onTouchEnd={stop}
+      ref={baseRef}
+      className={`${styles.joyBase} ${side === "right" ? styles.right : styles.left} ${
+        active ? styles.active : ""
+      }`}
+      data-map-ui="1"
+      aria-label={label}
     >
-      <div style={{
-        position:'absolute',
-        left:`calc(50% + ${knob.x * (size*0.35)}px)`,
-        top:`calc(50% + ${knob.y * (size*0.35)}px)`,
-        transform:'translate(-50%,-50%)',
-        width:size*0.35, height:size*0.35, borderRadius:'50%',
-        background:'rgba(255,255,255,.25)', backdropFilter:'blur(2px)'
-      }}/>
+      <div className={styles.joyRing} />
+      <div ref={knobRef} className={styles.joyKnob} />
+      <div className={styles.joyLabel}>{label}</div>
     </div>
   );
 }
 
-function ForwardButton({ ensureFP, setForwardPressed }) {
-  const [pressed, setPressed] = useState(false);
+// ---------- FPControls ----------
+export default function FPControls({
+  ensureFP,
+  setForwardPressed, // optional (legacy)
+  setJoystick,       // move
+  setLookJoystick,   // look (NEW)
+  onSelect,          // selectFromCrosshair (NEW)
+}) {
+  const isTouch = useIsTouchDevice();
+
+  // ensure FP on mount (when component appears)
+  useEffect(() => {
+    ensureFP?.();
+  }, [ensureFP]);
+
+  // If desktop (no touch) you may still want a small select button
+  // but component is designed mainly for touch.
+  if (!isTouch) {
+    return (
+      <div className={styles.fpHud} data-map-ui="1">
+        <button className={styles.selectBtn} type="button" onClick={() => onSelect?.()}>
+          SELECT (E)
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <button
-      onMouseDown={() => { ensureFP?.(); setPressed(true); setForwardPressed(true); }}
-      onMouseUp={() => { setPressed(false); setForwardPressed(false); }}
-      onMouseLeave={() => { setPressed(false); setForwardPressed(false); }}
-      onTouchStart={() => { ensureFP?.(); setPressed(true); setForwardPressed(true); }}
-      onTouchEnd={() => { setPressed(false); setForwardPressed(false); }}
-      title="Mergi înainte"
-      style={{
-        position:'absolute', right:12, bottom:14, zIndex:5,
-        width:64, height:64, borderRadius:32, border:'none',
-        background: pressed ? '#10b981' : '#1f2937', color:'#fff',
-        fontSize:30, lineHeight:'64px', boxShadow:'0 2px 10px rgba(0,0,0,.25)'
-      }}
-    >↑</button>
+    <div className={styles.fpHud} data-map-ui="1">
+      {/* LEFT: move */}
+      <Joystick
+        label="MOVE"
+        side="left"
+        onMove={({ x, y }) => {
+          // y: up is negative in screen, but for movement we want: up = forward (positive)
+          const ny = clamp(-y, -1, 1);
+          const nx = clamp(x, -1, 1);
+
+          setJoystick?.({ x: nx, y: ny });
+
+          // optional legacy: forward pressed bool
+          if (setForwardPressed) setForwardPressed(ny > 0.25);
+        }}
+      />
+
+      {/* RIGHT: look */}
+      <Joystick
+        label="LOOK"
+        side="right"
+        deadzone={0.03}
+        onMove={({ x, y }) => {
+          // For look we keep screen axis:
+          // x -> yaw, y -> pitch (up negative)
+          // We'll send x,y normalized; firstPerson will decide how to apply.
+          const nx = clamp(x, -1, 1);
+          const ny = clamp(y, -1, 1);
+          setLookJoystick?.({ x: nx, y: ny });
+        }}
+      />
+
+      {/* ACTIONS */}
+      <div className={styles.actions} data-map-ui="1">
+        <button className={styles.selectBtn} type="button" onClick={() => onSelect?.()}>
+          SELECT
+        </button>
+      </div>
+
+      {/* Crosshair */}
+      <div className={styles.crosshair} aria-hidden="true" data-map-ui="1" />
+    </div>
   );
 }
