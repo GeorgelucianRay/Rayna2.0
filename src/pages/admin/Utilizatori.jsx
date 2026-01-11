@@ -74,8 +74,12 @@ export default function Utilizatori() {
 
   return (
     <div className={styles.pageRoot}>
-      {/* buton închidere */}
-      <button className={styles.closeBtn} onClick={() => navigate(-1)}>✕</button>
+      <button
+  className={styles.closeBtn}
+  onClick={() => navigate('/dispecer-homepage', { replace: true })}
+>
+  ✕
+</button>
 
       <div className={styles.wrapper}>
         <div className={styles.header}>
