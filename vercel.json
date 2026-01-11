@@ -9,8 +9,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/models/(.*)\\.glb", "destination": "/models/$1.glb" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/" }
   ],
   "cleanUrls": true,
   "trailingSlash": false
