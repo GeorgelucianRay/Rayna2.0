@@ -27,46 +27,50 @@ export default function Map3DPage() {
     openWorldItems,
     setOnContainerSelected,
     focusCameraOnContainer,
+
+    // ✅ Zoom
+    zoomIn,
+    zoomOut,
+    recenter,
+
+    // orbit libre
     isOrbitLibre,
     startOrbitLibre,
     stopOrbitLibre,
   } = useDepotScene({ mountRef });
 
   useEffect(() => {
-    setOnContainerSelected(selected => setSelectedContainer(selected));
+    setOnContainerSelected((selected) => setSelectedContainer(selected));
   }, [setOnContainerSelected]);
 
   return (
-    <div className={styles.root}>
-      {/* Canvas host */}
-      <div ref={mountRef} className={styles.canvasHost} />
-
-      {/* TOP APP BAR (Stich style) */}
+    <div className={styles.fullscreenRoot}>
+      {/* Top App Bar (stil Stich) */}
       <header className={styles.appBar}>
         <div className={styles.appBarLeft}>
           <button
             className={styles.appIconBtn}
             onClick={() => navigate('/depot')}
-            aria-label="Volver a Depósito"
-            title="Volver"
+            aria-label="Înapoi la Depósito"
+            title="Înapoi"
           >
             ←
           </button>
 
-          <div className={styles.appTitles}>
+          <div className={styles.appTitleWrap}>
             <div className={styles.appTitle}>Rayna 2.0</div>
-            <div className={styles.appSubtitle}>Mapa 3D • Depósito</div>
+            <div className={styles.appSubtitle}>Depot Map 3D</div>
           </div>
         </div>
 
         <div className={styles.appBarRight}>
+          <button className={styles.appIconBtn} onClick={zoomIn} aria-label="Zoom in" title="Zoom +">+</button>
+          <button className={styles.appIconBtn} onClick={zoomOut} aria-label="Zoom out" title="Zoom -">−</button>
+          <button className={styles.appIconBtn} onClick={recenter} aria-label="Recenter" title="Recenter">⦿</button>
+
           <button
             className={`${styles.appIconBtn} ${isOrbitLibre ? styles.isActive : ''}`}
-            onClick={() =>
-              isOrbitLibre
-                ? stopOrbitLibre()
-                : startOrbitLibre({ speed: Math.PI / 32, height: 9 })
-            }
+            onClick={() => (isOrbitLibre ? stopOrbitLibre() : startOrbitLibre({ speed: Math.PI / 32, height: 9 }))}
             aria-label="Orbit libre"
             title={isOrbitLibre ? 'Oprește orbit' : 'Pornește orbit'}
           >
@@ -84,7 +88,7 @@ export default function Map3DPage() {
         </div>
       </header>
 
-      {/* Navbar tools dock (FAB + dock + search) */}
+      {/* Navbar / dock (funcțiile tale rămân) */}
       <Navbar3D
         containers={containers}
         onSelectContainer={(c) => {
@@ -93,11 +97,14 @@ export default function Map3DPage() {
           setFPEnabled(false);
           focusCameraOnContainer?.(c, { smooth: true });
         }}
-        onToggleFP={() => setFPEnabled(prev => !prev)}
+        onToggleFP={() => setFPEnabled((prev) => !prev)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
         onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
         onOpenWorldItems={() => openWorldItems()}
       />
+
+      {/* Canvas host */}
+      <div ref={mountRef} className={styles.canvasHost} />
 
       {/* Controls mobile FP */}
       {isFP && (
@@ -121,7 +128,7 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Card info container */}
+      {/* Card info container selectat */}
       <ContainerInfoCard
         container={selectedContainer}
         onClose={() => setSelectedContainer(null)}
