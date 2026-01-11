@@ -17,20 +17,27 @@ export default function Map3DPage() {
   const [selectedContainer, setSelectedContainer] = useState(null);
 
   const {
-    isFP,
-    setFPEnabled,
-    setForwardPressed,
-    setJoystick,
-    setBuildActive,
-    buildApi,
-    containers,
-    openWorldItems,
-    setOnContainerSelected,
-    focusCameraOnContainer,
-    isOrbitLibre,
-    startOrbitLibre,
-    stopOrbitLibre,
-  } = useDepotScene({ mountRef });
+  isFP,
+  setFPEnabled,
+  setForwardPressed,
+  setJoystick,
+  setBuildActive,
+  buildApi,
+  containers,
+  openWorldItems,
+  setOnContainerSelected,
+  focusCameraOnContainer,
+
+  // ✅ ADĂUGAT
+  showSelectedMarker,
+  zoomIn,
+  zoomOut,
+  recenter,
+
+  isOrbitLibre,
+  startOrbitLibre,
+  stopOrbitLibre,
+} = useDepotScene({ mountRef });
 
   useEffect(() => {
     setOnContainerSelected(selected => setSelectedContainer(selected));
