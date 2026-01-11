@@ -11,7 +11,7 @@ import createSky from '../threeWorld/createSky';
 import createLandscape from '../threeWorld/createLandscape';
 import createBaseWorld from '../threeWorld/createBaseWorld';
 import createFirstPerson from '../threeWorld/firstPerson';
-import { slotToWorld } from '../threeWorld/slotToWorld'; // 👈 ADĂUGAT
+import { slotToWorld } from '../threeWorld/slotToWorld';
 
 import createBuildController from '../world/buildController';
 import styles from '../Map3DStandalone.module.css';
@@ -20,9 +20,18 @@ import styles from '../Map3DStandalone.module.css';
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
 const SLOT_LEN = 6.06, SLOT_GAP = 0.06, STEP = SLOT_LEN + SLOT_GAP;
 const ABC_CENTER_OFFSET_X = 5 * STEP;
+
 const CFG = {
-  ground: { width: YARD_WIDTH, depth: YARD_DEPTH, color: YARD_COLOR, abcOffsetX: ABC_CENTER_OFFSET_X, defOffsetX: 32.3, abcToDefGap: -6.2 },
-  fence:  { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
+  ground: {
+    width: YARD_WIDTH,
+    depth: YARD_DEPTH,
+    color: YARD_COLOR,
+    abcOffsetX: ABC_CENTER_OFFSET_X,
+    defOffsetX: 32.3,
+    abcToDefGap: -6.2,
+    abcNumbersReversed: true,
+  },
+  fence: { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
 };
 
 // ===== Helper: colectează mesh-uri (poți exclude după nume) =====
@@ -52,8 +61,8 @@ export function useDepotScene({ mountRef }) {
   useEffect(() => { orbitLibreRef.current = orbitLibre; }, [orbitLibre]);
 
   // refs interne
-  const cameraRef = useRef();
-  const controlsRef = useRef();
+  const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
   const fpRef = useRef(null);
   const buildRef = useRef(null);
   const containersLayerRef = useRef(null);
@@ -65,51 +74,64 @@ export function useDepotScene({ mountRef }) {
 
   // margini „hard” ale curții (mic pad)
   const yardPad = 0.5;
-  const yardMinX = -YARD_WIDTH/2 + yardPad;
-  const yardMaxX =  YARD_WIDTH/2 - yardPad;
-  const yardMinZ = -YARD_DEPTH/2 + yardPad;
-  const yardMaxZ =  YARD_DEPTH/2 - yardPad;
+  const yardMinX = -YARD_WIDTH / 2 + yardPad;
+  const yardMaxX =  YARD_WIDTH / 2 - yardPad;
+  const yardMinZ = -YARD_DEPTH / 2 + yardPad;
+  const yardMaxZ =  YARD_DEPTH / 2 - yardPad;
 
-  // parametri orbit libre (poziție cameră în cerc, infinit de lin)
+  // parametri orbit libre
   const autoOrbitRef = useRef({
     angle: 0,
-    speed: Math.PI / 28,                   // ~6.4s/tură
+    speed: Math.PI / 28,
     radius: Math.hypot(YARD_WIDTH, YARD_DEPTH) * 0.55,
     height: 10,
     target: new THREE.Vector3(0, 1, 0),
     clockwise: true,
   });
 
-  // clamp pentru target și poziție cameră
   function clampOrbit(camera, controls) {
+    if (!camera || !controls) return;
     controls.target.x = THREE.MathUtils.clamp(controls.target.x, yardMinX, yardMaxX);
     controls.target.z = THREE.MathUtils.clamp(controls.target.z, yardMinZ, yardMaxZ);
+
     if (camera.position.y < 0.5) camera.position.y = 0.5;
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, yardMinX, yardMaxX);
     camera.position.z = THREE.MathUtils.clamp(camera.position.z, yardMinZ, yardMaxZ);
   }
 
+  // FP bounds
+  const bounds = useMemo(() => ({
+    minX: -YARD_WIDTH / 2 + 2,
+    maxX:  YARD_WIDTH / 2 - 2,
+    minZ: -YARD_DEPTH / 2 + 2,
+    maxZ:  YARD_DEPTH / 2 - 2,
+  }), []);
+
   // FP on/off
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
+
     if (enabled) {
-      setOrbitLibre(false); // dezactivăm auto-orbit când intri în FP
+      setOrbitLibre(false);
       orbit.enabled = false;
       fpRef.current.enable();
       fpRef.current.addKeyboard();
-      isFPRef.current = true; setIsFP(true);
+      isFPRef.current = true;
+      setIsFP(true);
     } else {
       fpRef.current.disable();
       fpRef.current.removeKeyboard();
       orbit.enabled = !buildActiveRef.current;
-      isFPRef.current = false; setIsFP(false);
+      isFPRef.current = false;
+      setIsFP(false);
     }
   }, []);
+
   const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
   const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
 
-  // Build API (expunem controllerul + starea)
+  // Build API
   const [buildMode, setBuildMode] = useState('place');
   const buildApi = useMemo(() => ({
     get mode() { return buildMode; },
@@ -130,49 +152,51 @@ export function useDepotScene({ mountRef }) {
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
-  // ===== Teleport / focus pe un container (SMOOTH) =====
-  const focusCameraOnContainer = useCallback((container) => {
+  // ===== Focus camera on container (smooth) =====
+  const focusCameraOnContainer = useCallback((container, opts = {}) => {
     if (!container || !cameraRef.current || !controlsRef.current) return;
 
-    // oprim turul automat, ca să nu tragă camera înapoi
     setOrbitLibre(false);
+    setFPEnabled(false);
 
-    // slotul: ex. "B12A" / "E03C"
     const slot = container.pos || container.posicion;
     if (!slot || typeof slot !== 'string') return;
 
-    // calculăm poziția în lume, exact ca la plasarea containerelor
+    const idx = parseInt(slot.match(/\d+/)?.[0] || '0', 10);
+    const lane = slot[0];
+    const tier = slot.match(/[A-Z]$/)?.[0] || 'A';
+
     const wp = slotToWorld(
-      {
-        lane: slot[0],
-        index: parseInt(slot.match(/\d+/)?.[0] || '0', 10),
-        tier: slot.match(/[A-Z]$/)?.[0] || 'A',
-      },
-      { ...CFG.ground, abcNumbersReversed: true }
+      { lane, index: idx, tier },
+      CFG.ground
     );
     if (!wp?.position) return;
 
     const camera = cameraRef.current;
     const controls = controlsRef.current;
 
-    // țintim ușor deasupra slotului
-    const target = wp.position.clone();
-    target.y = 1.5;
-
-    // poziția camerei: puțin lateral & sus
+    const target = wp.position.clone(); target.y = 1.5;
     const desiredPos = target.clone().add(new THREE.Vector3(6, 4, 6));
 
-    // animăm tranziția (easeOutQuad ~ 1s)
-    const duration = 1000;
+    const duration = opts?.smooth ? 900 : 0;
+
+    if (!duration) {
+      controls.target.copy(target);
+      camera.position.copy(desiredPos);
+      controls.update();
+      clampOrbit(camera, controls);
+      return;
+    }
+
+    const t0 = performance.now();
     const start = {
       x: camera.position.x, y: camera.position.y, z: camera.position.z,
-      tx: controls.target.x, ty: controls.target.y, tz: controls.target.z
+      tx: controls.target.x, ty: controls.target.y, tz: controls.target.z,
     };
     const end = {
       x: desiredPos.x, y: desiredPos.y, z: desiredPos.z,
-      tx: target.x,    ty: target.y,    tz: target.z
+      tx: target.x, ty: target.y, tz: target.z,
     };
-    const t0 = performance.now();
 
     function step(now) {
       const t = Math.min(1, (now - t0) / duration);
@@ -189,22 +213,52 @@ export function useDepotScene({ mountRef }) {
         start.tz + (end.tz - start.tz) * e
       );
       controls.update();
+      clampOrbit(camera, controls);
 
       if (t < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+  }, [setFPEnabled]);
+
+  // ===== Zoom API (OrbitControls) =====
+  const zoomBy = useCallback((factor) => {
+    const controls = controlsRef.current;
+    const camera = cameraRef.current;
+    if (!controls || !camera) return;
+
+    if (isFPRef.current) return;     // nu zoom în FP
+    if (buildActiveRef.current) return; // opțional: nu zoom în build
+
+    setOrbitLibre(false);
+
+    // OrbitControls: dollyIn/out
+    if (factor > 1) controls.dollyIn(factor);
+    else controls.dollyOut(1 / factor);
+
+    controls.update();
+    clampOrbit(camera, controls);
   }, []);
 
-  // FP bounds (poți relaxa marginile)
-  const bounds = useMemo(() => ({
-    minX: -YARD_WIDTH / 2 + 2,
-    maxX:  YARD_WIDTH / 2 - 2,
-    minZ: -YARD_DEPTH / 2 + 2,
-    maxZ:  YARD_DEPTH / 2 - 2,
-  }), []);
+  const zoomIn = useCallback(() => zoomBy(1.18), [zoomBy]);
+  const zoomOut = useCallback(() => zoomBy(1 / 1.18), [zoomBy]);
+
+  const recenter = useCallback(() => {
+    const controls = controlsRef.current;
+    const camera = cameraRef.current;
+    if (!controls || !camera) return;
+
+    setOrbitLibre(false);
+    setFPEnabled(false);
+
+    controls.target.set(0, 1, 0);
+    camera.position.set(20, 8, 20);
+    controls.update();
+    clampOrbit(camera, controls);
+  }, [setFPEnabled]);
 
   useEffect(() => {
-    const mount = mountRef.current; if (!mount) return;
+    const mount = mountRef.current;
+    if (!mount) return;
 
     // ===== Renderer =====
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -215,7 +269,7 @@ export function useDepotScene({ mountRef }) {
 
     // ===== Scene & Camera =====
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth/mount.clientHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
@@ -223,15 +277,12 @@ export function useDepotScene({ mountRef }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-
-    // === LIMITĂRI ORBIT ===
     controls.enablePan = true;
     controls.screenSpacePanning = false;
     controls.minPolarAngle = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.03;
-    controls.minDistance   = 4;
-    controls.maxDistance   = Math.max(YARD_WIDTH, YARD_DEPTH);
-
+    controls.minDistance = 4;
+    controls.maxDistance = Math.max(YARD_WIDTH, YARD_DEPTH);
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
@@ -239,15 +290,23 @@ export function useDepotScene({ mountRef }) {
     fpRef.current = createFirstPerson(camera, bounds, {
       eyeHeight: 1.7,
       stepMax: 0.6,
-      slopeMax: Math.tan(40 * Math.PI/180),
+      slopeMax: Math.tan(40 * Math.PI / 180),
     });
 
-    // ===== Lumină / mediu =====
+    // ===== Lights / Env =====
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); scene.add(dir);
-    scene.add(createSky({ scene, renderer, hdrPath: '/textures/lume/golden_gate_hills_1k.hdr', exposure: 1.1 }));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(5, 10, 5);
+    scene.add(dir);
 
-    // ===== Peisaj / Bază / Grup editabil =====
+    scene.add(createSky({
+      scene,
+      renderer,
+      hdrPath: '/textures/lume/golden_gate_hills_1k.hdr',
+      exposure: 1.1
+    }));
+
+    // ===== Landscape / Base / WorldGroup =====
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
@@ -258,8 +317,9 @@ export function useDepotScene({ mountRef }) {
     worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
 
-    // ===== Curte + gard =====
+    // ===== Ground + Fence =====
     const depotGroup = new THREE.Group();
+
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
 
@@ -274,7 +334,7 @@ export function useDepotScene({ mountRef }) {
           { z: -7, width: 4 },
           { z: -9, width: 4 },
         ],
-        east:  [], north: [], south: [],
+        east: [], north: [], south: [],
       }
     });
 
@@ -292,23 +352,25 @@ export function useDepotScene({ mountRef }) {
         baseWorld,
         landscape
       ],
-      grid: 1
+      grid: 1,
     });
     buildRef.current?.setMode(buildMode);
     buildRef.current?.setType?.('road.segment');
 
-    // ===== Containere =====
+    // ===== Containers =====
     (async () => {
       try {
         const data = await fetchContainers();
-        setContainers(data.containers || []);
+        setContainers(data?.containers || []);
         const layer = createContainersLayerOptimized(data, CFG.ground);
         containersLayerRef.current = layer;
         depotGroup.add(layer);
-      } catch (e) { console.warn('fetchContainers', e); }
+      } catch (e) {
+        console.warn('fetchContainers', e);
+      }
     })();
 
-    // ===== FP WALKABLES & COLLIDERS =====
+    // ===== FP walkables & colliders =====
     const walkables = [groundMesh, baseWorld, worldGroup, landscape];
     fpRef.current.setWalkables?.(walkables);
 
@@ -320,41 +382,50 @@ export function useDepotScene({ mountRef }) {
     const attachCollidersWhenReady = () => {
       const layer = containersLayerRef.current;
       const colGroup = layer?.userData?.colliders;
-      if (colGroup) {
-        colliders.push(colGroup);
-      } else {
-        setTimeout(attachCollidersWhenReady, 50);
-      }
+      if (colGroup) colliders.push(colGroup);
+      else setTimeout(attachCollidersWhenReady, 50);
     };
     attachCollidersWhenReady();
 
     (fpRef.current.setCollisionTargets || fpRef.current.setColliders || fpRef.current.setObstacles)?.(colliders);
 
-    // ===== Pick containere (dezactivat în build) =====
+    // ===== Pick containers (disabled in build) =====
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
     const onClick = (event) => {
+      // nu selecta când click e pe search UI
       if (event.target.closest?.(`.${styles.searchContainer}`)) return;
       if (buildActiveRef.current) return;
+
       const rect = mount.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(depotGroup.children, true);
+
       if (intersects.length > 0) {
-        const hit = intersects[0], obj = hit.object;
+        const hit = intersects[0];
+        const obj = hit.object;
+
         if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
           const rec = obj.userData.records[hit.instanceId];
           onContainerSelectedRef.current?.(rec || null);
           return;
         }
-        if (obj.userData?.__record) { onContainerSelectedRef.current?.(obj.userData.__record); return; }
+
+        if (obj.userData?.__record) {
+          onContainerSelectedRef.current?.(obj.userData.__record);
+          return;
+        }
       }
+
       onContainerSelectedRef.current?.(null);
     };
     mount.addEventListener('click', onClick);
 
-    // ===== INPUT Build: desktop + touch =====
+    // ===== Build inputs =====
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
@@ -376,8 +447,16 @@ export function useDepotScene({ mountRef }) {
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
-    const onTouchMove = (e) => { const t = e.touches?.[0]; if (!t) return; handleMove(t.clientX, t.clientY); };
-    const onTouchStart = (e) => { const t = e.touches?.[0]; if (!t) return; handleClick(t.clientX, t.clientY); };
+    const onTouchMove = (e) => {
+      const t = e.touches?.[0];
+      if (!t) return;
+      handleMove(t.clientX, t.clientY);
+    };
+    const onTouchStart = (e) => {
+      const t = e.touches?.[0];
+      if (!t) return;
+      handleClick(t.clientX, t.clientY);
+    };
     renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
     renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
 
@@ -388,35 +467,38 @@ export function useDepotScene({ mountRef }) {
 
       if (buildActiveRef.current) buildRef.current?.updatePreview?.();
 
-      const camera = cameraRef.current;
-      const controls = controlsRef.current;
+      const cam = cameraRef.current;
+      const ctl = controlsRef.current;
 
       if (isFPRef.current) {
         fpRef.current?.update(delta);
       } else {
-        if (orbitLibreRef.current && camera && controls) {
+        if (orbitLibreRef.current && cam && ctl) {
           const p = autoOrbitRef.current;
           p.angle += (p.clockwise ? 1 : -1) * p.speed * delta;
           const cx = Math.cos(p.angle) * p.radius;
           const cz = Math.sin(p.angle) * p.radius;
-          controls.target.copy(p.target);
-          camera.position.set(cx, p.height, cz);
-          camera.lookAt(p.target);
-          controls.update();
+
+          ctl.target.copy(p.target);
+          cam.position.set(cx, p.height, cz);
+          cam.lookAt(p.target);
+          ctl.update();
         } else {
-          controls.update();
+          ctl?.update();
         }
-        clampOrbit(camera, controls);
+        clampOrbit(cam, ctl);
       }
 
-      renderer.render(scene, camera);
+      renderer.render(scene, cam);
     };
     animate();
 
     // ===== Resize =====
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
-      camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
@@ -424,18 +506,21 @@ export function useDepotScene({ mountRef }) {
     return () => {
       mount.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
+
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('touchmove', onTouchMove);
       renderer.domElement.removeEventListener('touchstart', onTouchStart);
+
       fpRef.current?.removeKeyboard();
       renderer.dispose();
     };
   }, []); // mount once
 
-  // Orbit ON/OFF când intri/ieși din build / FP
+  // Orbit enabled/disabled în build
   useEffect(() => {
-    const orbit = controlsRef.current; if (!orbit) return;
+    const orbit = controlsRef.current;
+    if (!orbit) return;
     orbit.enabled = !buildActive && !isFPRef.current;
     if (!orbit.enabled) setOrbitLibre(false);
   }, [buildActive]);
@@ -445,27 +530,37 @@ export function useDepotScene({ mountRef }) {
     setFPEnabled,
     setForwardPressed,
     setJoystick,
+
     buildActive,
     setBuildActive,
     buildApi,
+
     containers,
+
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
 
-    // API focus cameră pentru SearchBox / Navbar
-    focusCameraOnContainer, // 👈 ADĂUGAT
+    focusCameraOnContainer,
 
-    // === API Orbit Libre ===
+    // ✅ Zoom
+    zoomIn,
+    zoomOut,
+    recenter,
+
+    // ✅ Orbit libre
     startOrbitLibre: (opts = {}) => {
       setFPEnabled(false);
       setBuildActive(false);
+
       const p = autoOrbitRef.current;
-      if (opts.speed)   p.speed = opts.speed;
-      if (opts.radius)  p.radius = opts.radius;
-      if (opts.height)  p.height = opts.height;
+      if (opts.speed) p.speed = opts.speed;
+      if (opts.radius) p.radius = opts.radius;
+      if (opts.height) p.height = opts.height;
       if (opts.clockwise != null) p.clockwise = !!opts.clockwise;
+
       const controls = controlsRef.current;
       if (controls) controls.target.set(0, 1, 0);
+
       setOrbitLibre(true);
     },
     stopOrbitLibre: () => setOrbitLibre(false),
