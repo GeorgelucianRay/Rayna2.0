@@ -28,12 +28,10 @@ export default function Map3DPage() {
     setOnContainerSelected,
     focusCameraOnContainer,
 
-    // ✅ Zoom
     zoomIn,
     zoomOut,
     recenter,
 
-    // orbit libre
     isOrbitLibre,
     startOrbitLibre,
     stopOrbitLibre,
@@ -45,50 +43,7 @@ export default function Map3DPage() {
 
   return (
     <div className={styles.fullscreenRoot}>
-      {/* Top App Bar (stil Stich) */}
-      <header className={styles.appBar}>
-        <div className={styles.appBarLeft}>
-          <button
-            className={styles.appIconBtn}
-            onClick={() => navigate('/depot')}
-            aria-label="Înapoi la Depósito"
-            title="Înapoi"
-          >
-            ←
-          </button>
-
-          <div className={styles.appTitleWrap}>
-            <div className={styles.appTitle}>Rayna 2.0</div>
-            <div className={styles.appSubtitle}>Depot Map 3D</div>
-          </div>
-        </div>
-
-        <div className={styles.appBarRight}>
-          <button className={styles.appIconBtn} onClick={zoomIn} aria-label="Zoom in" title="Zoom +">+</button>
-          <button className={styles.appIconBtn} onClick={zoomOut} aria-label="Zoom out" title="Zoom -">−</button>
-          <button className={styles.appIconBtn} onClick={recenter} aria-label="Recenter" title="Recenter">⦿</button>
-
-          <button
-            className={`${styles.appIconBtn} ${isOrbitLibre ? styles.isActive : ''}`}
-            onClick={() => (isOrbitLibre ? stopOrbitLibre() : startOrbitLibre({ speed: Math.PI / 32, height: 9 }))}
-            aria-label="Orbit libre"
-            title={isOrbitLibre ? 'Oprește orbit' : 'Pornește orbit'}
-          >
-            ⟳
-          </button>
-
-          <button
-            className={styles.appIconBtn}
-            onClick={() => openWorldItems()}
-            aria-label="Items"
-            title="Items"
-          >
-            ☰
-          </button>
-        </div>
-      </header>
-
-      {/* Navbar / dock (funcțiile tale rămân) */}
+      {/* ✅ Navbar3D rămâne (dock + search + FP + build + items) */}
       <Navbar3D
         containers={containers}
         onSelectContainer={(c) => {
@@ -103,10 +58,36 @@ export default function Map3DPage() {
         onOpenWorldItems={() => openWorldItems()}
       />
 
+      {/* ✅ Top bar (zoom/orbit/close) – NU afectează Navbar3D */}
+      <div className={styles.topBar}>
+        <div className={styles.topBarRight}>
+          <button className={styles.iconBtn} onClick={zoomIn} title="Zoom +" aria-label="Zoom in">＋</button>
+          <button className={styles.iconBtn} onClick={zoomOut} title="Zoom -" aria-label="Zoom out">−</button>
+          <button className={styles.iconBtn} onClick={recenter} title="Recenter" aria-label="Recenter">⦿</button>
+
+          <button
+            className={`${styles.iconBtn} ${styles.iconBtnSmall} ${isOrbitLibre ? styles.active : ''}`}
+            onClick={() =>
+              isOrbitLibre
+                ? stopOrbitLibre()
+                : startOrbitLibre({ speed: Math.PI / 32, height: 9 })
+            }
+            title={isOrbitLibre ? 'Oprește orbit libre' : 'Pornește orbit libre'}
+            aria-label="Orbit libre"
+          >
+            ⟳
+          </button>
+
+          <button className={styles.iconBtn} onClick={() => navigate('/depot')} aria-label="Close" title="Înapoi">
+            ✕
+          </button>
+        </div>
+      </div>
+
       {/* Canvas host */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* Controls mobile FP */}
+      {/* FP Controls */}
       {isFP && (
         <FPControls
           ensureFP={() => setFPEnabled(true)}
@@ -128,11 +109,8 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Card info container selectat */}
-      <ContainerInfoCard
-        container={selectedContainer}
-        onClose={() => setSelectedContainer(null)}
-      />
+      {/* Container Info Card (tap pe container în scenă) */}
+      <ContainerInfoCard container={selectedContainer} onClose={() => setSelectedContainer(null)} />
     </div>
   );
 }
