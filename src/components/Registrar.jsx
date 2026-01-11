@@ -14,8 +14,8 @@ function Registrar() {
   const [showPass2, setShowPass2] = useState(false);
 
   const [loading, setLoading] = useState(false);
-const [message, setMessage] = useState('');
-const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState(null);
 
   const passwordsMismatch = useMemo(() => {
     if (!password || !confirmPassword) return false;
@@ -54,13 +54,14 @@ const [error, setError] = useState(null);
         options: {
           data: {
             nombre_completo: fullName,
-            full_name: fullName, // bonus (compat)
+            full_name: fullName, // bonus: compat
           },
         },
       });
 
       if (signUpError) throw signUpError;
 
+      // dacă ai confirmare pe email, user poate fi null până confirmă
       setMessage('¡Registro exitoso! Revisa tu correo para confirmar la cuenta.');
 
       setNombreCompleto('');
@@ -70,6 +71,7 @@ const [error, setError] = useState(null);
       setShowPass1(false);
       setShowPass2(false);
     } catch (err) {
+      console.error(err);
       setError(err.message || 'No se pudo completar el registro.');
     } finally {
       setLoading(false);
