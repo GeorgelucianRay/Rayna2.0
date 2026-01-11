@@ -14,7 +14,6 @@ import createFirstPerson from '../threeWorld/firstPerson';
 import { slotToWorld } from '../threeWorld/slotToWorld';
 
 import createBuildController from '../world/buildController';
-import styles from '../Map3DStandalone.module.css';
 
 // ===== Config curte =====
 const YARD_WIDTH = 90, YARD_DEPTH = 60, YARD_COLOR = 0x9aa0a6;
@@ -34,7 +33,6 @@ const CFG = {
   fence: { margin: 2, postEvery: 10, gate: { side: 'west', width: 10, centerZ: -6.54, tweakZ: 0 } },
 };
 
-// ===== Helper: colectează mesh-uri (poți exclude după nume) =====
 function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
   const out = [];
   if (!root) return out;
@@ -49,51 +47,37 @@ function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
   return out;
 }
 
-// ===== Helper: parse slot "B12A" =====
-function parseSlot(slot) {
-  if (!slot || typeof slot !== 'string') return null;
-  const lane = slot[0];
-  const idx = parseInt(slot.match(/\d+/)?.[0] || '0', 10);
-  const tier = slot.match(/[A-Z]$/)?.[0] || 'A';
-  if (!lane || Number.isNaN(idx)) return null;
-  return { lane, index: idx, tier };
-}
-
 export function useDepotScene({ mountRef }) {
-  // expus în sus
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
-  // === ORBIT LIBRE ===
+  // ORBIT LIBRE
   const [orbitLibre, setOrbitLibre] = useState(false);
   const orbitLibreRef = useRef(false);
   useEffect(() => { orbitLibreRef.current = orbitLibre; }, [orbitLibre]);
 
-  // refs interne
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
   const fpRef = useRef(null);
   const buildRef = useRef(null);
   const containersLayerRef = useRef(null);
 
-  // marker (highlight container selectat)
-  const selectedMarkerRef = useRef(null);
-  const selectedSlotRef = useRef(null);
+  const sceneRef = useRef(null);
+  const markerRef = useRef(null);
 
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
   const buildActiveRef = useRef(false);
   useEffect(() => { buildActiveRef.current = buildActive; }, [buildActive]);
 
-  // margini „hard” ale curții (mic pad)
+  // margini curte
   const yardPad = 0.5;
   const yardMinX = -YARD_WIDTH / 2 + yardPad;
   const yardMaxX =  YARD_WIDTH / 2 - yardPad;
   const yardMinZ = -YARD_DEPTH / 2 + yardPad;
   const yardMaxZ =  YARD_DEPTH / 2 - yardPad;
 
-  // parametri orbit libre
   const autoOrbitRef = useRef({
     angle: 0,
     speed: Math.PI / 28,
@@ -107,13 +91,11 @@ export function useDepotScene({ mountRef }) {
     if (!camera || !controls) return;
     controls.target.x = THREE.MathUtils.clamp(controls.target.x, yardMinX, yardMaxX);
     controls.target.z = THREE.MathUtils.clamp(controls.target.z, yardMinZ, yardMaxZ);
-
     if (camera.position.y < 0.5) camera.position.y = 0.5;
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, yardMinX, yardMaxX);
     camera.position.z = THREE.MathUtils.clamp(camera.position.z, yardMinZ, yardMaxZ);
   }
 
-  // FP bounds
   const bounds = useMemo(() => ({
     minX: -YARD_WIDTH / 2 + 2,
     maxX:  YARD_WIDTH / 2 - 2,
@@ -121,7 +103,6 @@ export function useDepotScene({ mountRef }) {
     maxZ:  YARD_DEPTH / 2 - 2,
   }), []);
 
-  // FP on/off
   const setFPEnabled = useCallback((enabled) => {
     const orbit = controlsRef.current;
     if (!orbit || !fpRef.current) return;
@@ -142,8 +123,8 @@ export function useDepotScene({ mountRef }) {
     }
   }, []);
 
-  const setForwardPressed = useCallback(v => fpRef.current?.setForwardPressed(v), []);
-  const setJoystick = useCallback(v => fpRef.current?.setJoystick(v), []);
+  const setForwardPressed = useCallback((v) => fpRef.current?.setForwardPressed(v), []);
+  const setJoystick = useCallback((v) => fpRef.current?.setJoystick(v), []);
 
   // Build API
   const [buildMode, setBuildMode] = useState('place');
@@ -162,88 +143,50 @@ export function useDepotScene({ mountRef }) {
     get active() { return buildActiveRef.current; },
   }), [buildMode]);
 
-  // select container callback
+  // callback select container
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => { onContainerSelectedRef.current = fn; }, []);
 
-  // ===== Marker (halo/beam) =====
-  const ensureMarker = useCallback((depotGroup) => {
-    if (selectedMarkerRef.current) return selectedMarkerRef.current;
-
-    const g = new THREE.Group();
-    g.name = 'selectedMarker';
-    g.visible = false;
-
-    const ringGeo = new THREE.RingGeometry(1.15, 1.65, 44);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0x1392ec,
-      transparent: true,
-      opacity: 0.85,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.renderOrder = 999;
-
-    const poleGeo = new THREE.CylinderGeometry(0.045, 0.045, 4.2, 14);
-    const poleMat = new THREE.MeshBasicMaterial({
-      color: 0x22d3ee,
-      transparent: true,
-      opacity: 0.6,
-      depthWrite: false,
-    });
-    const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.y = 2.1;
-    pole.renderOrder = 999;
-
-    const capGeo = new THREE.SphereGeometry(0.16, 14, 10);
-    const capMat = new THREE.MeshBasicMaterial({
-      color: 0x00e5ff,
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false,
-    });
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.y = 4.3;
-    cap.renderOrder = 999;
-
-    g.add(ring, pole, cap);
-    depotGroup.add(g);
-
-    selectedMarkerRef.current = g;
-    return g;
-  }, []);
-
+  // ===== Marker vizual (inel) =====
   const showSelectedMarker = useCallback((container) => {
-    const marker = selectedMarkerRef.current;
-    if (!marker) return;
-
-    if (!container) {
-      selectedSlotRef.current = null;
-      marker.visible = false;
-      return;
-    }
+    const scene = sceneRef.current;
+    if (!scene || !container) return;
 
     const slot = container.pos || container.posicion;
-    const parsed = parseSlot(slot);
-    if (!parsed) {
-      selectedSlotRef.current = null;
-      marker.visible = false;
-      return;
+    if (!slot || typeof slot !== 'string') return;
+
+    const idx = parseInt(slot.match(/\d+/)?.[0] || '0', 10);
+    const lane = slot[0];
+    const tier = slot.match(/[A-Z]$/)?.[0] || 'A';
+
+    const wp = slotToWorld({ lane, index: idx, tier }, CFG.ground);
+    if (!wp?.position) return;
+
+    // create marker once
+    if (!markerRef.current) {
+      const geo = new THREE.RingGeometry(0.8, 1.15, 48);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x22d3ee,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.renderOrder = 9999;
+      ring.name = 'selectedMarker';
+      scene.add(ring);
+      markerRef.current = ring;
     }
 
-    const wp = slotToWorld(parsed, CFG.ground);
-    if (!wp?.position) {
-      selectedSlotRef.current = null;
-      marker.visible = false;
-      return;
-    }
+    const ring = markerRef.current;
+    ring.position.copy(wp.position);
+    ring.position.y = 0.08; // puțin peste sol
+    ring.visible = true;
 
-    selectedSlotRef.current = slot;
-    marker.position.copy(wp.position);
-    marker.position.y = 0.06;
-    marker.visible = true;
+    // mic “pulse” (doar o animație simplă pe scale)
+    ring.userData._pulseT = 0;
   }, []);
 
   // ===== Focus camera on container (smooth) =====
@@ -253,14 +196,14 @@ export function useDepotScene({ mountRef }) {
     setOrbitLibre(false);
     setFPEnabled(false);
 
-    // ✅ highlight
-    showSelectedMarker(container);
-
     const slot = container.pos || container.posicion;
-    const parsed = parseSlot(slot);
-    if (!parsed) return;
+    if (!slot || typeof slot !== 'string') return;
 
-    const wp = slotToWorld(parsed, CFG.ground);
+    const idx = parseInt(slot.match(/\d+/)?.[0] || '0', 10);
+    const lane = slot[0];
+    const tier = slot.match(/[A-Z]$/)?.[0] || 'A';
+
+    const wp = slotToWorld({ lane, index: idx, tier }, CFG.ground);
     if (!wp?.position) return;
 
     const camera = cameraRef.current;
@@ -291,7 +234,7 @@ export function useDepotScene({ mountRef }) {
 
     function step(now) {
       const t = Math.min(1, (now - t0) / duration);
-      const e = t * (2 - t); // easeOutQuad
+      const e = t * (2 - t);
 
       camera.position.set(
         start.x + (end.x - start.x) * e,
@@ -309,32 +252,20 @@ export function useDepotScene({ mountRef }) {
       if (t < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
-  }, [setFPEnabled, showSelectedMarker]);
+  }, [setFPEnabled]);
 
-  // ===== Zoom API (OrbitControls) =====
+  // ===== Zoom API =====
   const zoomBy = useCallback((factor) => {
     const controls = controlsRef.current;
     const camera = cameraRef.current;
     if (!controls || !camera) return;
-
-    if (isFPRef.current) return; // nu zoom în FP
+    if (isFPRef.current) return;
 
     setOrbitLibre(false);
 
-    // OrbitControls: dollyIn/out
-    // (pe unele versiuni dollyIn/out sunt private-ish, dar există; fallback mai jos)
-    if (typeof controls.dollyIn === 'function' && typeof controls.dollyOut === 'function') {
-      if (factor > 1) controls.dollyIn(factor);
-      else controls.dollyOut(1 / factor);
-      controls.update();
-      clampOrbit(camera, controls);
-      return;
-    }
+    if (factor > 1) controls.dollyIn(factor);
+    else controls.dollyOut(1 / factor);
 
-    // fallback: mutăm camera pe direcția targetului
-    const dir = new THREE.Vector3().subVectors(camera.position, controls.target);
-    dir.multiplyScalar(factor > 1 ? 0.85 : 1.18);
-    camera.position.copy(controls.target).add(dir);
     controls.update();
     clampOrbit(camera, controls);
   }, []);
@@ -350,30 +281,27 @@ export function useDepotScene({ mountRef }) {
     setOrbitLibre(false);
     setFPEnabled(false);
 
-    showSelectedMarker(null);
-
     controls.target.set(0, 1, 0);
     camera.position.set(20, 8, 20);
     controls.update();
     clampOrbit(camera, controls);
-  }, [setFPEnabled, showSelectedMarker]);
+  }, [setFPEnabled]);
 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // ===== Renderer =====
+    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
-    // IMPORTANT iOS: nu lăsa browserul să facă gestures peste canvas
-    renderer.domElement.style.touchAction = 'none';
-
-    // ===== Scene & Camera =====
+    // Scene & Camera
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
+
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
@@ -398,7 +326,7 @@ export function useDepotScene({ mountRef }) {
       slopeMax: Math.tan(40 * Math.PI / 180),
     });
 
-    // ===== Lights / Env =====
+    // Lights / Env
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(5, 10, 5);
@@ -411,7 +339,7 @@ export function useDepotScene({ mountRef }) {
       exposure: 1.1
     }));
 
-    // ===== Landscape / Base / WorldGroup =====
+    // Landscape / Base / WorldGroup
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
@@ -422,7 +350,7 @@ export function useDepotScene({ mountRef }) {
     worldGroup.name = 'worldGroup';
     scene.add(worldGroup);
 
-    // ===== Ground + Fence =====
+    // Ground + Fence
     const depotGroup = new THREE.Group();
 
     const groundNode = createGround(CFG.ground);
@@ -446,10 +374,7 @@ export function useDepotScene({ mountRef }) {
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // ✅ marker highlight
-    ensureMarker(depotGroup);
-
-    // ===== Build controller =====
+    // Build controller
     buildRef.current = createBuildController({
       camera,
       domElement: renderer.domElement,
@@ -465,7 +390,7 @@ export function useDepotScene({ mountRef }) {
     buildRef.current?.setMode(buildMode);
     buildRef.current?.setType?.('road.segment');
 
-    // ===== Containers =====
+    // Containers
     (async () => {
       try {
         const data = await fetchContainers();
@@ -478,7 +403,7 @@ export function useDepotScene({ mountRef }) {
       }
     })();
 
-    // ===== FP walkables & colliders =====
+    // FP walkables & colliders
     const walkables = [groundMesh, baseWorld, worldGroup, landscape];
     fpRef.current.setWalkables?.(walkables);
 
@@ -486,7 +411,6 @@ export function useDepotScene({ mountRef }) {
     const baseWorldSolids = collectMeshes(baseWorld, { excludeNameIncludes: ['grass'] });
 
     const colliders = [baseWorld, ...baseWorldSolids, worldGroup, fence, ...landscapeSolids];
-
     const attachCollidersWhenReady = () => {
       const layer = containersLayerRef.current;
       const colGroup = layer?.userData?.colliders;
@@ -497,62 +421,52 @@ export function useDepotScene({ mountRef }) {
 
     (fpRef.current.setCollisionTargets || fpRef.current.setColliders || fpRef.current.setObstacles)?.(colliders);
 
-    // ===== Pick containers (FIX iOS): pointerdown pe canvas =====
+    // ===== PICK (IMPORTANT: pointerdown pe canvas, nu click pe mount) =====
     const raycaster = new THREE.Raycaster();
-    const ndc = new THREE.Vector2();
+    const mouse = new THREE.Vector2();
 
-    const pickAt = (clientX, clientY) => {
+    const onPick = (event) => {
       if (buildActiveRef.current) return;
 
-      // nu selecta dacă e peste UI de search
-      const el = document.elementFromPoint(clientX, clientY);
-      if (el?.closest?.(`.${styles.searchDock}`) || el?.closest?.(`.${styles.searchContainer}`)) return;
+      // dacă atingi UI, nu facem pick
+      if (event.target?.closest?.('[data-map-ui="1"]')) return;
 
       const rect = renderer.domElement.getBoundingClientRect();
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      const x = event.clientX ?? 0;
+      const y = event.clientY ?? 0;
 
-      raycaster.setFromCamera(ndc, camera);
+      mouse.x = ((x - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((y - rect.top) / rect.height) * 2 + 1;
 
-      const hits = raycaster.intersectObjects(depotGroup.children, true);
-      if (!hits.length) {
-        onContainerSelectedRef.current?.(null);
-        showSelectedMarker(null);
-        return;
-      }
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(depotGroup.children, true);
 
-      for (const hit of hits) {
+      if (intersects.length > 0) {
+        const hit = intersects[0];
         const obj = hit.object;
 
-        // Instanced container
+        // Instanced containers
         if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
           const rec = obj.userData.records[hit.instanceId];
           onContainerSelectedRef.current?.(rec || null);
-          showSelectedMarker(rec || null);
+          if (rec) showSelectedMarker(rec);
           return;
         }
 
-        // Mesh cu record
         if (obj.userData?.__record) {
-          const rec = obj.userData.__record;
-          onContainerSelectedRef.current?.(rec);
-          showSelectedMarker(rec);
+          onContainerSelectedRef.current?.(obj.userData.__record);
+          showSelectedMarker(obj.userData.__record);
           return;
         }
       }
 
       onContainerSelectedRef.current?.(null);
-      showSelectedMarker(null);
+      if (markerRef.current) markerRef.current.visible = false;
     };
 
-    const onPickPointerDown = (e) => {
-      // doar buton principal / touch
-      pickAt(e.clientX, e.clientY);
-    };
+    renderer.domElement.addEventListener('pointerdown', onPick, { passive: true });
 
-    renderer.domElement.addEventListener('pointerdown', onPickPointerDown);
-
-    // ===== Build inputs =====
+    // Build inputs (rămân, dar nu “fură” pick-ul pentru că buildActiveRef)
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
@@ -563,31 +477,19 @@ export function useDepotScene({ mountRef }) {
       buildRef.current.updatePreviewAt(x, y);
     };
 
-    const handleClick = (x, y) => {
+    const handleBuildClick = (x, y) => {
       if (!buildActiveRef.current || !buildRef.current) return;
       if (isOverBuildUI(x, y)) return;
       buildRef.current.clickAt(x, y);
     };
 
     const onPointerMove = (e) => handleMove(e.clientX, e.clientY);
-    const onBuildPointerDown = (e) => handleClick(e.clientX, e.clientY);
+    const onPointerDownBuild = (e) => handleBuildClick(e.clientX, e.clientY);
+
     renderer.domElement.addEventListener('pointermove', onPointerMove);
-    renderer.domElement.addEventListener('pointerdown', onBuildPointerDown);
+    renderer.domElement.addEventListener('pointerdown', onPointerDownBuild);
 
-    const onTouchMove = (e) => {
-      const t = e.touches?.[0];
-      if (!t) return;
-      handleMove(t.clientX, t.clientY);
-    };
-    const onTouchStart = (e) => {
-      const t = e.touches?.[0];
-      if (!t) return;
-      handleClick(t.clientX, t.clientY);
-    };
-    renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
-    renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
-
-    // ===== Loop =====
+    // Loop
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
@@ -597,16 +499,13 @@ export function useDepotScene({ mountRef }) {
       const cam = cameraRef.current;
       const ctl = controlsRef.current;
 
-      // pulse marker
-      const marker = selectedMarkerRef.current;
-      if (marker?.visible) {
-        const t = performance.now() * 0.003;
-        const ring = marker.children?.[0];
-        const pole = marker.children?.[1];
-        const cap = marker.children?.[2];
-        if (ring?.material) ring.material.opacity = 0.55 + 0.30 * Math.sin(t);
-        if (pole?.material) pole.material.opacity = 0.45 + 0.20 * Math.sin(t + 0.7);
-        if (cap?.material)  cap.material.opacity  = 0.70 + 0.25 * Math.sin(t + 1.2);
+      // marker pulse
+      if (markerRef.current?.visible) {
+        const ring = markerRef.current;
+        ring.userData._pulseT = (ring.userData._pulseT || 0) + delta * 2.2;
+        const s = 1 + Math.sin(ring.userData._pulseT) * 0.08;
+        ring.scale.set(s, s, s);
+        ring.material.opacity = 0.75 + (Math.sin(ring.userData._pulseT) * 0.18);
       }
 
       if (isFPRef.current) {
@@ -617,7 +516,6 @@ export function useDepotScene({ mountRef }) {
           p.angle += (p.clockwise ? 1 : -1) * p.speed * delta;
           const cx = Math.cos(p.angle) * p.radius;
           const cz = Math.sin(p.angle) * p.radius;
-
           ctl.target.copy(p.target);
           cam.position.set(cx, p.height, cz);
           cam.lookAt(p.target);
@@ -632,7 +530,7 @@ export function useDepotScene({ mountRef }) {
     };
     animate();
 
-    // ===== Resize =====
+    // Resize
     const onResize = () => {
       const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
@@ -641,24 +539,20 @@ export function useDepotScene({ mountRef }) {
     };
     window.addEventListener('resize', onResize);
 
-    // ===== Cleanup =====
+    // Cleanup
     return () => {
       window.removeEventListener('resize', onResize);
-
-      renderer.domElement.removeEventListener('pointerdown', onPickPointerDown);
-
+      renderer.domElement.removeEventListener('pointerdown', onPick);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
-      renderer.domElement.removeEventListener('pointerdown', onBuildPointerDown);
-      renderer.domElement.removeEventListener('touchmove', onTouchMove);
-      renderer.domElement.removeEventListener('touchstart', onTouchStart);
-
+      renderer.domElement.removeEventListener('pointerdown', onPointerDownBuild);
       fpRef.current?.removeKeyboard();
       renderer.dispose();
-      mount.removeChild(renderer.domElement);
+      markerRef.current = null;
+      sceneRef.current = null;
     };
-  }, []); // mount once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Orbit enabled/disabled în build
   useEffect(() => {
     const orbit = controlsRef.current;
     if (!orbit) return;
@@ -681,17 +575,13 @@ export function useDepotScene({ mountRef }) {
     openWorldItems: () => console.log('[WorldItems] open (TODO Modal)'),
     setOnContainerSelected,
 
-    // selection helpers
+    focusCameraOnContainer,
     showSelectedMarker,
 
-    focusCameraOnContainer,
-
-    // ✅ Zoom
     zoomIn,
     zoomOut,
     recenter,
 
-    // ✅ Orbit libre
     startOrbitLibre: (opts = {}) => {
       setFPEnabled(false);
       setBuildActive(false);
