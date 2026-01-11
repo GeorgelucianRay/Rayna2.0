@@ -14,8 +14,8 @@ function Registrar() {
   const [showPass2, setShowPass2] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState '';
-  const [error, setError] = useState(null);
+const [message, setMessage] = useState('');
+const [error, setError] = useState(null);
 
   const passwordsMismatch = useMemo(() => {
     if (!password || !confirmPassword) return false;
