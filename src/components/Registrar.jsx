@@ -1,20 +1,20 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import "./iniciarsesion.css";
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import './iniciarsesion.css';
 
 function Registrar() {
-  const [nombreCompleto, setNombreCompleto] = useState("");
-  const [email, setEmail] = useState("");
+  const [nombreCompleto, setNombreCompleto] = useState('');
+  const [email, setEmail] = useState('');
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [showPass1, setShowPass1] = useState(false);
   const [showPass2, setShowPass2] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState '';
   const [error, setError] = useState(null);
 
   const passwordsMismatch = useMemo(() => {
@@ -33,58 +33,44 @@ function Registrar() {
   const handleRegister = async (event) => {
     event.preventDefault();
     setError(null);
-    setMessage("");
+    setMessage('');
 
     const fullName = nombreCompleto.trim();
-    const userEmail = email.trim();
 
     if (!fullName) {
-      setError("El nombre completo es obligatorio");
+      setError('El nombre completo es obligatorio');
       return;
     }
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      setError('Las contraseñas no coinciden');
       return;
     }
 
     setLoading(true);
     try {
-      // ✅ Trimitem numele în metadata (raw_user_meta_data)
-      // Triggerul din DB îl poate prelua automat și salva în profiles.nombre_completo
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: userEmail,
+        email: email.trim(),
         password,
         options: {
           data: {
             nombre_completo: fullName,
-            // opțional (dacă vrei și aici):
-            full_name: fullName,
+            full_name: fullName, // bonus (compat)
           },
         },
       });
 
       if (signUpError) throw signUpError;
 
-      // În majoritatea cazurilor, dacă ai email confirmation ON,
-      // user-ul există, dar session poate lipsi — e OK.
-      const userId = data?.user?.id;
-      if (!userId) throw new Error("No se pudo obtener el ID del usuario.");
+      setMessage('¡Registro exitoso! Revisa tu correo para confirmar la cuenta.');
 
-      // ✅ NU mai facem insert în profiles (că deja îl face triggerul on_auth_user_created)
-      // Dacă vrei să fii extra-safe (dacă triggerul e vechi și nu salvează numele),
-      // poți face un update "best effort", dar poate e blocat de RLS înainte de confirmare.
-      // Îl lăsăm doar pe trigger ca să nu mai apară conflicte.
-
-      setMessage("¡Registro exitoso! Revisa tu correo para confirmar la cuenta.");
-
-      setNombreCompleto("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
+      setNombreCompleto('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
       setShowPass1(false);
       setShowPass2(false);
     } catch (err) {
-      setError(err?.message || "No se pudo completar el registro.");
+      setError(err.message || 'No se pudo completar el registro.');
     } finally {
       setLoading(false);
     }
@@ -125,9 +111,7 @@ function Registrar() {
 
         <form onSubmit={handleRegister} className="raynaForm">
           <div className="raynaField">
-            <label htmlFor="nombreCompleto" className="raynaLabel">
-              Nombre completo
-            </label>
+            <label htmlFor="nombreCompleto" className="raynaLabel">Nombre completo</label>
             <input
               type="text"
               id="nombreCompleto"
@@ -141,9 +125,7 @@ function Registrar() {
           </div>
 
           <div className="raynaField">
-            <label htmlFor="email" className="raynaLabel">
-              Correo electrónico
-            </label>
+            <label htmlFor="email" className="raynaLabel">Correo electrónico</label>
             <input
               type="email"
               id="email"
@@ -158,12 +140,10 @@ function Registrar() {
           </div>
 
           <div className="raynaField">
-            <label htmlFor="password" className="raynaLabel">
-              Contraseña
-            </label>
+            <label htmlFor="password" className="raynaLabel">Contraseña</label>
             <div className="raynaPasswordWrap">
               <input
-                type={showPass1 ? "text" : "password"}
+                type={showPass1 ? 'text' : 'password'}
                 id="password"
                 className="raynaInput raynaInputPw"
                 placeholder="************"
@@ -175,21 +155,19 @@ function Registrar() {
               <button
                 type="button"
                 className="raynaPwToggle"
-                aria-label={showPass1 ? "Ocultar contraseña" : "Mostrar contraseña"}
-                onClick={() => setShowPass1((v) => !v)}
+                aria-label={showPass1 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPass1(v => !v)}
               >
-                {showPass1 ? "🙈" : "👁️"}
+                {showPass1 ? '🙈' : '👁️'}
               </button>
             </div>
           </div>
 
           <div className="raynaField">
-            <label htmlFor="confirmPassword" className="raynaLabel">
-              Repetir contraseña
-            </label>
-            <div className={`raynaPasswordWrap ${passwordsMismatch ? "raynaMismatch" : ""}`}>
+            <label htmlFor="confirmPassword" className="raynaLabel">Repetir contraseña</label>
+            <div className={`raynaPasswordWrap ${passwordsMismatch ? 'raynaMismatch' : ''}`}>
               <input
-                type={showPass2 ? "text" : "password"}
+                type={showPass2 ? 'text' : 'password'}
                 id="confirmPassword"
                 className="raynaInput raynaInputPw"
                 placeholder="************"
@@ -201,10 +179,10 @@ function Registrar() {
               <button
                 type="button"
                 className="raynaPwToggle"
-                aria-label={showPass2 ? "Ocultar contraseña" : "Mostrar contraseña"}
-                onClick={() => setShowPass2((v) => !v)}
+                aria-label={showPass2 ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPass2(v => !v)}
               >
-                {showPass2 ? "🙈" : "👁️"}
+                {showPass2 ? '🙈' : '👁️'}
               </button>
             </div>
 
@@ -214,16 +192,14 @@ function Registrar() {
           </div>
 
           <button type="submit" className="raynaBtnPrimary" disabled={disableSubmit}>
-            {loading ? "Registrando…" : "Registrar"}
+            {loading ? 'Registrando…' : 'Registrar'}
             <span className="raynaArrow">→</span>
           </button>
 
           <div className="raynaFooter">
             <p className="raynaFooterText">
-              ¿Ya tienes cuenta?{" "}
-              <Link to="/login" className="raynaLinkStrong">
-                Iniciar sesión
-              </Link>
+              ¿Ya tienes cuenta?{' '}
+              <Link to="/login" className="raynaLinkStrong">Iniciar sesión</Link>
             </p>
           </div>
         </form>
