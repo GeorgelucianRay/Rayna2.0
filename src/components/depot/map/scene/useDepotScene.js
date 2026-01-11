@@ -254,21 +254,33 @@ export function useDepotScene({ mountRef }) {
     requestAnimationFrame(step);
   }, [setFPEnabled]);
 
-  // ===== Zoom API =====
-  const zoomBy = useCallback((factor) => {
-    const controls = controlsRef.current;
-    const camera = cameraRef.current;
-    if (!controls || !camera) return;
-    if (isFPRef.current) return;
+// ===== Zoom API (GARANTAT) =====
+const zoomBy = useCallback((mult) => {
+  const controls = controlsRef.current;
+  const camera = cameraRef.current;
+  if (!controls || !camera) return;
+  if (isFPRef.current) return;
 
-    setOrbitLibre(false);
+  setOrbitLibre(false);
 
-    if (factor > 1) controls.dollyIn(factor);
-    else controls.dollyOut(1 / factor);
+  const target = controls.target.clone();
+  const dir = camera.position.clone().sub(target);
+  const dist = dir.length();
+  if (dist < 0.0001) return;
 
-    controls.update();
-    clampOrbit(camera, controls);
-  }, []);
+  const minD = controls.minDistance ?? 4;
+  const maxD = controls.maxDistance ?? Math.max(YARD_WIDTH, YARD_DEPTH);
+  const newDist = THREE.MathUtils.clamp(dist * mult, minD, maxD);
+
+  dir.normalize().multiplyScalar(newDist);
+  camera.position.copy(target.clone().add(dir));
+
+  controls.update();
+  clampOrbit(camera, controls);
+}, []);
+
+const zoomIn  = useCallback(() => zoomBy(0.85), [zoomBy]); // apropie
+const zoomOut = useCallback(() => zoomBy(1.18), [zoomBy]); // depărtează
 
   const zoomIn = useCallback(() => zoomBy(1.18), [zoomBy]);
   const zoomOut = useCallback(() => zoomBy(1 / 1.18), [zoomBy]);
@@ -484,9 +496,11 @@ export function useDepotScene({ mountRef }) {
     };
 
     const onPointerMove = (e) => handleMove(e.clientX, e.clientY);
-    const onPointerDownBuild = (e) => handleBuildClick(e.clientX, e.clientY);
-
-    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    const onPointerDownBuild = (e) => {
+  if (!buildActiveRef.current) return; // ✅ IMPORTANT
+  handleBuildClick(e.clientX, e.clientY);
+};
+renderer.domElement.addEventListener('pointerdown', onPointerDownBuild);
     renderer.domElement.addEventListener('pointerdown', onPointerDownBuild);
 
     // Loop
