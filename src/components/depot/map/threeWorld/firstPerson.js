@@ -24,12 +24,22 @@ export default function createFirstPerson(
     touchLookSpeed = 0.006,
     minPitch = -1.2,
     maxPitch = 1.2,
+
+    // joystick look feel
+    lookJoyYawSpeed = 2.8,     // rad/sec at full deflection
+    lookJoyPitchSpeed = 2.2,   // rad/sec at full deflection
+    lookJoyDeadzone = 0.06,    // 0..1
   } = {}
 ) {
   // ===== INPUT =====
   let enabled = false;
   const keys = { w: false, a: false, s: false, d: false, shift: false };
+
+  // joystick de mers (stanga/dreapta + inainte/inapoi)
   let joystick = { x: 0, y: 0 };
+
+  // joystick de camera (yaw/pitch)
+  let lookJoystick = { x: 0, y: 0 };
 
   // ===== WORLD SETS =====
   let walkables = [];
@@ -66,9 +76,21 @@ export default function createFirstPerson(
   function setCollisionTargets(meshes) { setColliders(meshes); } // compat
 
   function enable() { enabled = true; }
-  function disable() { enabled = false; }
+  function disable() {
+    enabled = false;
+    // opreste orice input “ramas”
+    joystick.x = 0; joystick.y = 0;
+    lookJoystick.x = 0; lookJoystick.y = 0;
+    keys.w = keys.a = keys.s = keys.d = keys.shift = false;
+  }
+
   function setForwardPressed(v) { keys.w = !!v; }
-  function setJoystick({ x = 0, y = 0 }) { joystick.x = x; joystick.y = y; }
+
+  // mers
+  function setJoystick({ x = 0, y = 0 } = {}) { joystick.x = x; joystick.y = y; }
+
+  // camera
+  function setLookJoystick({ x = 0, y = 0 } = {}) { lookJoystick.x = x; lookJoystick.y = y; }
 
   // ===== Bounds clamp =====
   function clampInBounds(v3) {
@@ -162,6 +184,7 @@ export default function createFirstPerson(
   // ===== Pointer lock helpers =====
   function requestPointerLock() {
     if (!domEl) return;
+    // pe mobil nu exista pointer lock, pe desktop e ok
     if (domEl.requestPointerLock) domEl.requestPointerLock();
   }
   function onPointerLockChange() {
@@ -182,7 +205,7 @@ export default function createFirstPerson(
     domEl.addEventListener("touchmove", onTouchMove, { passive: true });
     domEl.addEventListener("touchend", onTouchEnd, { passive: true });
 
-    // click to lock
+    // click to lock (desktop)
     domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
   }
 
@@ -206,15 +229,18 @@ export default function createFirstPerson(
 
   // ===== Collision push (simple circle) =====
   function pushOutFromHit(pos, hit) {
-    // push away in XZ only
     const p = hit.point.clone();
     p.y = pos.y;
+
     const toPos = pos.clone().sub(p);
     toPos.y = 0;
+
     const d = toPos.length();
     if (d < 1e-6) return pos;
+
     const minD = radius + 0.02;
     if (d >= minD) return pos;
+
     toPos.normalize().multiplyScalar(minD - d);
     pos.add(toPos);
     return pos;
@@ -223,7 +249,6 @@ export default function createFirstPerson(
   function collide(pos, moveDir) {
     if (!colliders.length) return pos;
 
-    // cast a ray at waist height forward (not into ground)
     const origin = pos.clone().add(new THREE.Vector3(0, eyeHeight * 0.55, 0));
     wallRay.set(origin, moveDir.clone().normalize());
     wallRay.far = wallFar;
@@ -231,7 +256,6 @@ export default function createFirstPerson(
     const hits = wallRay.intersectObjects(colliders, true);
     if (!hits.length) return pos;
 
-    // push out based on first hit
     return pushOutFromHit(pos, hits[0]);
   }
 
@@ -244,9 +268,36 @@ export default function createFirstPerson(
     return hits.length ? hits[0] : null;
   }
 
+  function applyLookJoystick(delta) {
+    // daca user trage cu degetul (touch look), nu mai adaugam joystick look in acelasi timp
+    // (altfel se simte “ciudat”). Daca vrei combinate, scoate conditia asta.
+    if (touchLooking) return;
+
+    const lx = lookJoystick.x;
+    const ly = lookJoystick.y;
+
+    // deadzone
+    const ax = Math.abs(lx);
+    const ay = Math.abs(ly);
+    if (ax < lookJoyDeadzone && ay < lookJoyDeadzone) return;
+
+    // normalize after deadzone (optional, keeps smooth)
+    const nx = ax < lookJoyDeadzone ? 0 : (lx);
+    const ny = ay < lookJoyDeadzone ? 0 : (ly);
+
+    // yaw: left/right, pitch: up/down (invers pe pitch ca in jocuri)
+    yaw -= nx * lookJoyYawSpeed * delta;
+    pitch -= ny * lookJoyPitchSpeed * delta;
+
+    applyLook();
+  }
+
   // ===== Update =====
   function update(delta) {
     if (!enabled) return;
+
+    // ✅ 0) apply look joystick
+    applyLookJoystick(delta);
 
     // 1) desired movement direction
     const mv = computeDesiredDir();
@@ -255,11 +306,9 @@ export default function createFirstPerson(
     const maxSpeed = keys.shift ? sprintSpeed : walkSpeed;
 
     if (mv.lengthSq() > 1e-6) {
-      // accelerate toward desired
       const targetVel = mv.clone().multiplyScalar(maxSpeed);
       vel.lerp(targetVel, 1 - Math.exp(-accel * delta));
     } else {
-      // friction to stop
       vel.lerp(new THREE.Vector3(0, 0, 0), 1 - Math.exp(-friction * delta));
     }
 
@@ -298,12 +347,17 @@ export default function createFirstPerson(
     attach,
     detach,
 
-    // compat
-    addKeyboard: () => {},  // nu mai folosim
+    // compat (nu le folosești)
+    addKeyboard: () => {},
     removeKeyboard: () => {},
 
     setForwardPressed,
+
+    // ✅ mers
     setJoystick,
+
+    // ✅ camera
+    setLookJoystick,
 
     setWalkables,
     setColliders,
