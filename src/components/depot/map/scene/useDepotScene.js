@@ -340,26 +340,36 @@ export function useDepotScene({ mountRef }) {
   }, [setFPEnabled]);
 
   const selectFromCrosshair = useCallback(() => {
-    const fp = fpRef.current;
-    if (!fp) return;
+  const camera = cameraRef.current;
+  const layer = containersLayerRef.current;
+  if (!camera || !layer) return;
 
-    const hit = fp.getInteractHit?.({ maxDist: 45 });
-    if (!hit) return;
+  // Ray din centrul ecranului
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  raycaster.far = 60;
 
-    const obj = hit.object;
+  // IMPORTANT: raycast doar pe layer-ul de containere (vizual, cu records)
+  const hits = raycaster.intersectObject(layer, true);
+  if (!hits.length) return;
 
-    if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
-      const rec = obj.userData.records[hit.instanceId];
-      onContainerSelectedRef.current?.(rec || null);
-      if (rec) showSelectedMarker(rec);
-      return;
-    }
+  const hit = hits[0];
+  const obj = hit.object;
 
-    if (obj?.userData?.__record) {
-      onContainerSelectedRef.current?.(obj.userData.__record);
-      showSelectedMarker(obj.userData.__record);
-    }
-  }, [showSelectedMarker]);
+  // Instanced containers
+  if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+    const rec = obj.userData.records[hit.instanceId];
+    onContainerSelectedRef.current?.(rec || null);
+    if (rec) showSelectedMarker(rec);
+    return;
+  }
+
+  // Mesh container
+  if (obj?.userData?.__record) {
+    onContainerSelectedRef.current?.(obj.userData.__record);
+    showSelectedMarker(obj.userData.__record);
+  }
+}, [showSelectedMarker]);
 
   useEffect(() => {
     const onKey = (e) => {
