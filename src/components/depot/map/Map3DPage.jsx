@@ -1,5 +1,5 @@
 // src/components/depot/map/Map3DPage.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Map3DStandalone.module.css';
 
@@ -9,10 +9,8 @@ import { useDepotScene } from './scene/useDepotScene';
 import FPControls from './ui/FPControls';
 import BuildPalette from './build/BuildPalette';
 
-// ✅ modalul tău REAL pentru +
+// ✅ modal wizard pentru +
 import AddContainerWizardModal from '../modals/AddContainerWizardModal';
-
-// ✅ dacă ai deja un modal pt salida, îl importăm în locul celui inline (vezi mai jos)
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -21,7 +19,7 @@ export default function Map3DPage() {
   const [showBuild, setShowBuild] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
 
-  // ✅ burger/topMenu state (dacă deja îl ai, păstrează-l pe al tău)
+  // ✅ burger/topMenu
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ✅ modale
@@ -63,9 +61,39 @@ export default function Map3DPage() {
     });
   }, [setOnContainerSelected, showSelectedMarker]);
 
-  // ✅ aici conectezi cu logica ta reală de ADD (supabase)
+  /**
+   * ✅ validatePosition pentru wizard
+   * Verifică dacă poziția există deja în `containers` (din Supabase).
+   * Returnează formatul așteptat de AddContainerModal/AddContainerWizardModal:
+   * { ok: boolean, conflict?: { matricula_contenedor, posicion } }
+   */
+  const validatePosition = useCallback(async (pos, tipo, ignoreId = null) => {
+    const P = String(pos || '').trim().toUpperCase();
+    if (!P || P === 'PENDIENTE') return { ok: true };
+
+    const conflict = (containers || []).find((c) => {
+      const cpos = String(c?.posicion ?? c?.pos ?? '').trim().toUpperCase();
+      if (!cpos) return false;
+      if (ignoreId != null && (c?.id === ignoreId)) return false;
+      return cpos === P;
+    });
+
+    if (conflict) {
+      return {
+        ok: false,
+        conflict: {
+          matricula_contenedor: conflict.matricula_contenedor || conflict.matricula || '—',
+          posicion: conflict.posicion || conflict.pos || P,
+        },
+      };
+    }
+
+    return { ok: true };
+  }, [containers]);
+
+  // ✅ aici conectezi cu logica ta reală de ADD (supabase insert + refresh)
   const handleAddContainer = async (payload /*, isBroken */) => {
-    // TODO: înlocuiește cu funcția ta reală (insert în supabase, refresh etc.)
+    // TODO: aici pui insert în supabase + refresh lista
     console.log('[ADD CONTAINER]', payload);
   };
 
@@ -115,7 +143,7 @@ export default function Map3DPage() {
             ⟳
           </button>
 
-          {/* ✅ burger - deschide top menu */}
+          {/* ✅ burger */}
           <button
             className={styles.appIconBtn}
             onClick={() => setMenuOpen(v => !v)}
@@ -128,7 +156,7 @@ export default function Map3DPage() {
         </div>
       </header>
 
-      {/* ✅ TOP MENU care cade (panel) */}
+      {/* ✅ TOP MENU */}
       <div
         className={`${styles.topMenu} ${menuOpen ? styles.topMenuOpen : ''}`}
         data-map-ui="1"
@@ -136,7 +164,7 @@ export default function Map3DPage() {
         <Navbar3D
           variant="panel"
           containers={containers}
-          onRequestClose={() => setMenuOpen(false)}   // ⬅️ SUPER IMPORTANT
+          onRequestClose={() => setMenuOpen(false)}
           onSelectContainer={(c) => {
             setSelectedContainer(c);
             showSelectedMarker?.(c);
@@ -154,16 +182,17 @@ export default function Map3DPage() {
             openWorldItems();
             setMenuOpen(false);
           }}
-          // ✅ + / − trebuie să închidă meniul și să deschidă modalul
+          // ✅ + / −: închide meniul + deschide modal
           onOpenAddModal={() => { setMenuOpen(false); setAddModalOpen(true); }}
           onOpenExitModal={() => { setMenuOpen(false); setExitModalOpen(true); }}
         />
       </div>
 
+      {/* ✅ ZOOM – împins când meniul e deschis */}
       <div
         className={styles.zoomControls}
         data-map-ui="1"
-        style={{ transform: `translateY(${menuOpen ? 110 : 0}px)` }} // ✅ simplu: împinge zoom în jos
+        style={{ transform: `translateY(${menuOpen ? 110 : 0}px)` }}
       >
         <button className={styles.zoomBtn} type="button" onClick={zoomIn} aria-label="Zoom in">
           ＋
@@ -175,10 +204,6 @@ export default function Map3DPage() {
           ⌖
         </button>
       </div>
-
-      {/* ✅ Dacă vrei să păstrezi și FAB jos, îl poți lăsa (variant="fab") – opțional.
-          Dacă NU mai vrei FAB-ul, nu îl mai randa. */}
-      {/* <Navbar3D variant="fab" ... /> */}
 
       {isFP && (
         <FPControls
@@ -207,22 +232,28 @@ export default function Map3DPage() {
 
       <ContainerInfoCard container={selectedContainer} onClose={() => setSelectedContainer(null)} />
 
-      {/* ✅ MODAL REAL pentru + (Entrada) */}
+      {/* ✅ MODAL WIZARD pentru + */}
       <AddContainerWizardModal
-  isOpen={addModalOpen}
-  onClose={() => setAddModalOpen(false)}
-  onAdd={handleAddContainer}
-  validatePosition={validatePosition /* dacă ai */}
-  slotMap={null}
-/>
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onAdd={handleAddContainer}
+        validatePosition={validatePosition}
+        slotMap={null}
+      />
 
-      {/* ✅ MODAL temporar pt - (Salida) – fără fișier nou */}
+      {/* ✅ MODAL temporar pt - */}
       {exitModalOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalCard}>
             <div className={styles.modalHead}>
               <h3 className={styles.modalTitle}>Salida • Container</h3>
-              <button className={styles.modalClose} onClick={() => setExitModalOpen(false)} type="button">✕</button>
+              <button
+                className={styles.modalClose}
+                onClick={() => setExitModalOpen(false)}
+                type="button"
+              >
+                ✕
+              </button>
             </div>
 
             <label className={styles.modalField}>
