@@ -17,95 +17,54 @@ function IconBtn({ title, onClick, children, className }) {
   );
 }
 
-// ✅ refolosit pt + și - (entrada/salida)
-function AddItemModal({ open, onClose, onSubmit, title = 'Adaugă', mode = 'entrada' }) {
-  const [form, setForm] = useState({ name: '' });
-  if (!open) return null;
-
-  return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-      <div className={styles.modalCard}>
-        <div className={styles.modalHead}>
-          <h3 className={styles.modalTitle}>{title}</h3>
-          <button className={styles.modalClose} onClick={onClose} type="button">✕</button>
-        </div>
-
-        <label className={styles.modalField}>
-          <span>Container</span>
-          <input
-            value={form.name}
-            onChange={e => setForm({ ...form, name: e.target.value })}
-            className={styles.modalInput}
-            placeholder="ex: MSCU1234567"
-          />
-        </label>
-
-        <button
-          onClick={() => onSubmit?.({ ...form, mode })}
-          className={styles.modalPrimary}
-          type="button"
-        >
-          Salvează
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function Navbar3D({
   containers = [],
   onSelectContainer,
   onToggleFP,
-  onAdd,
   onOpenBuild,
   onOpenWorldItems,
 
-  // ✅ NOU
-  variant = 'fab', // 'fab' (jos) sau 'panel' (în burger top-down)
-  onRequestClose,  // opțional: închide burger-ul după click
+  // ✅ NOU (pentru modalele reale din Map3DPage)
+  onOpenAddModal,   // + (Entrada)
+  onOpenExitModal,  // - (Salida)
+
+  // ✅ pentru burger top-down
+  variant = 'fab',     // 'fab' sau 'panel'
+  onRequestClose,      // închide burger/topMenu după click (opțional)
 }) {
   const isPanel = variant === 'panel';
 
   const [dockOpen, setDockOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // ✅ + / - modals
-  const [addOpen, setAddOpen] = useState(false);
-  const [exitOpen, setExitOpen] = useState(false);
-
-  // ✅ în panel: dock-ul e deschis by default
+  // în panel: dock deschis by default
   useEffect(() => {
     if (isPanel) setDockOpen(true);
   }, [isPanel]);
 
-  const closeAll = () => {
-    setDockOpen(false);
-    setSearchOpen(false);
-    setAddOpen(false);
-    setExitOpen(false);
-    onRequestClose?.();
-  };
-
-  const closeDockIfFab = () => {
+  const closePanelIfNeeded = () => {
+    // În panel, închidem burger-ul
+    if (isPanel) onRequestClose?.();
+    // În fab, închidem dock-ul
     if (!isPanel) setDockOpen(false);
   };
 
   return (
     <div className={isPanel ? styles.navPanel : undefined}>
-      {/* ✅ SEARCH: în panel -> în flow (sub dock), în fab -> overlay (cum era) */}
+      {/* SEARCH: panel = în flow; fab = overlay */}
       {searchOpen && (
         <div className={isPanel ? styles.searchDockPanel : styles.searchDock}>
           <SearchBox
             containers={containers}
             onContainerSelect={(c) => {
               onSelectContainer?.(c);
-              if (isPanel) closeAll();
+              if (isPanel) onRequestClose?.();
             }}
           />
         </div>
       )}
 
-      {/* ✅ FAB doar în modul jos */}
+      {/* FAB doar în modul jos */}
       {!isPanel && (
         <button
           onClick={() => setDockOpen(v => !v)}
@@ -118,7 +77,6 @@ export default function Navbar3D({
         </button>
       )}
 
-      {/* ✅ Dock: în panel e în flow, în fab e ca înainte */}
       {(dockOpen || isPanel) && (
         <div className={isPanel ? styles.toolsDockPanel : styles.toolsDock}>
           <IconBtn
@@ -134,8 +92,7 @@ export default function Navbar3D({
             className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
             onClick={() => {
               onToggleFP?.();
-              if (isPanel) closeAll();
-              else closeDockIfFab();
+              closePanelIfNeeded();
             }}
           >
             👤
@@ -146,8 +103,7 @@ export default function Navbar3D({
             className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
             onClick={() => {
               onOpenBuild?.();
-              if (isPanel) closeAll();
-              else closeDockIfFab();
+              closePanelIfNeeded();
             }}
           >
             🧱
@@ -158,64 +114,37 @@ export default function Navbar3D({
             className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
             onClick={() => {
               onOpenWorldItems?.();
-              if (isPanel) closeAll();
-              else closeDockIfFab();
+              closePanelIfNeeded();
             }}
           >
             📋
           </IconBtn>
 
-          {/* ✅ + Entrada (verde) */}
+          {/* ✅ + = deschide AddContainerModal real (în Map3DPage) */}
           <IconBtn
             title="Entrada (+)"
             className={`${isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn} ${styles.iconSphereGreen}`}
             onClick={() => {
-              setAddOpen(true);
-              closeDockIfFab();
+              closePanelIfNeeded();     // ⬅️ închide navbar/burger imediat
+              onOpenAddModal?.();       // ⬅️ deschide modalul plutitor real
             }}
           >
             ＋
           </IconBtn>
 
-          {/* ✅ - Salida (roșu) */}
+          {/* ✅ - = deschide modal “Salida” real (în Map3DPage) */}
           <IconBtn
             title="Salida (-)"
             className={`${isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn} ${styles.iconSphereRed}`}
             onClick={() => {
-              setExitOpen(true);
-              closeDockIfFab();
+              closePanelIfNeeded();     // ⬅️ închide navbar/burger imediat
+              onOpenExitModal?.();      // ⬅️ deschide modalul plutitor real
             }}
           >
             −
           </IconBtn>
         </div>
       )}
-
-      {/* ✅ Modal + (entrada) */}
-      <AddItemModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title="Entrada • Container"
-        mode="entrada"
-        onSubmit={(data) => {
-          onAdd?.(data);     // data = { name, mode:"entrada" }
-          setAddOpen(false);
-          if (isPanel) closeAll();
-        }}
-      />
-
-      {/* ✅ Modal - (salida) */}
-      <AddItemModal
-        open={exitOpen}
-        onClose={() => setExitOpen(false)}
-        title="Salida • Container"
-        mode="salida"
-        onSubmit={(data) => {
-          onAdd?.(data);     // data = { name, mode:"salida" }
-          setExitOpen(false);
-          if (isPanel) closeAll();
-        }}
-      />
     </div>
   );
 }
