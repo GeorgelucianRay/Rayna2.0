@@ -26,80 +26,81 @@ export default function createFirstPerson(
     maxPitch = 1.2,
 
     // joystick look feel
-    lookJoyYawSpeed = 2.8,     // rad/sec at full deflection
-    lookJoyPitchSpeed = 2.2,   // rad/sec at full deflection
-    lookJoyDeadzone = 0.06,    // 0..1
+    lookJoyYawSpeed = 2.8, // rad/sec at full deflection
+    lookJoyPitchSpeed = 2.2, // rad/sec at full deflection
+    lookJoyDeadzone = 0.06, // 0..1
   } = {}
 ) {
-  // ===== INPUT =====
   let enabled = false;
+
   const keys = { w: false, a: false, s: false, d: false, shift: false };
+  const joystick = { x: 0, y: 0 };
+  const lookJoystick = { x: 0, y: 0 };
 
-  // joystick de mers (stanga/dreapta + inainte/inapoi)
-  let joystick = { x: 0, y: 0 };
-
-  // joystick de camera (yaw/pitch)
-  let lookJoystick = { x: 0, y: 0 };
-
-  // ===== WORLD SETS =====
   let walkables = [];
-  let colliders = []; // IMPORTANT: containere/gard/cladiri
+  let colliders = [];
 
-  // ===== STATE =====
-  const vel = new THREE.Vector3();       // velocity on XZ
-  const desired = new THREE.Vector3();   // desired direction
+  const vel = new THREE.Vector3();
+  const desired = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
 
   const downRay = new THREE.Raycaster();
   const wallRay = new THREE.Raycaster();
 
-  // yaw/pitch
   const euler = new THREE.Euler(0, 0, 0, "YXZ");
   let yaw = 0;
   let pitch = 0;
 
-  // pointer lock
   let domEl = null;
   let pointerLocked = false;
 
-  // touch look
   let touchLooking = false;
-  let lastTouch = { x: 0, y: 0 };
+  const lastTouch = { x: 0, y: 0 };
 
-  // interact ray (center)
   const interactRay = new THREE.Raycaster();
   const centerNDC = new THREE.Vector2(0, 0);
 
-  // ===== API setters =====
-  function setWalkables(meshes) { walkables = (meshes || []).filter(Boolean); }
-  function setColliders(meshes) { colliders = (meshes || []).filter(Boolean); }
-  function setCollisionTargets(meshes) { setColliders(meshes); } // compat
-
-  function enable() { enabled = true; }
-  function disable() {
-    enabled = false;
-    // opreste orice input “ramas”
-    joystick.x = 0; joystick.y = 0;
-    lookJoystick.x = 0; lookJoystick.y = 0;
-    keys.w = keys.a = keys.s = keys.d = keys.shift = false;
+  function setWalkables(meshes) {
+    walkables = (meshes || []).filter(Boolean);
+  }
+  function setColliders(meshes) {
+    colliders = (meshes || []).filter(Boolean);
+  }
+  function setCollisionTargets(meshes) {
+    setColliders(meshes);
   }
 
-  function setForwardPressed(v) { keys.w = !!v; }
+  function enable() {
+    enabled = true;
+  }
+  function disable() {
+    enabled = false;
+    joystick.x = 0;
+    joystick.y = 0;
+    lookJoystick.x = 0;
+    lookJoystick.y = 0;
+    keys.w = keys.a = keys.s = keys.d = keys.shift = false;
+    touchLooking = false;
+  }
 
-  // mers
-  function setJoystick({ x = 0, y = 0 } = {}) { joystick.x = x; joystick.y = y; }
+  function setForwardPressed(v) {
+    keys.w = !!v;
+  }
+  function setJoystick({ x = 0, y = 0 } = {}) {
+    joystick.x = x;
+    joystick.y = y;
+  }
+  function setLookJoystick({ x = 0, y = 0 } = {}) {
+    lookJoystick.x = x;
+    lookJoystick.y = y;
+  }
 
-  // camera
-  function setLookJoystick({ x = 0, y = 0 } = {}) { lookJoystick.x = x; lookJoystick.y = y; }
-
-  // ===== Bounds clamp =====
   function clampInBounds(v3) {
     if (!bounds) return;
     v3.x = THREE.MathUtils.clamp(v3.x, bounds.minX, bounds.maxX);
     v3.z = THREE.MathUtils.clamp(v3.z, bounds.minZ, bounds.maxZ);
   }
 
-  // ===== Ground sample =====
   function sampleGroundHit(x, z, fromY = 80) {
     if (!walkables.length) return null;
     downRay.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
@@ -107,7 +108,6 @@ export default function createFirstPerson(
     return hits.length ? hits[0] : null;
   }
 
-  // ===== Movement vector (camera-relative) =====
   function computeDesiredDir() {
     const moveZ = (keys.w ? 1 : 0) + (keys.s ? -1 : 0) + joystick.y;
     const moveX = (keys.d ? 1 : 0) + (keys.a ? -1 : 0) + joystick.x;
@@ -128,7 +128,6 @@ export default function createFirstPerson(
     return desired;
   }
 
-  // ===== Look =====
   function applyLook() {
     pitch = THREE.MathUtils.clamp(pitch, minPitch, maxPitch);
     euler.set(pitch, yaw, 0);
@@ -157,6 +156,7 @@ export default function createFirstPerson(
     if (!touchLooking) return;
     const t = e.touches?.[0];
     if (!t) return;
+
     const dx = t.clientX - lastTouch.x;
     const dy = t.clientY - lastTouch.y;
     lastTouch.x = t.clientX;
@@ -171,7 +171,6 @@ export default function createFirstPerson(
     touchLooking = false;
   }
 
-  // ===== Keyboard =====
   function onKey(e) {
     const v = e.type === "keydown";
     if (e.code === "KeyW" || e.code === "ArrowUp") keys.w = v;
@@ -181,12 +180,11 @@ export default function createFirstPerson(
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.shift = v;
   }
 
-  // ===== Pointer lock helpers =====
   function requestPointerLock() {
     if (!domEl) return;
-    // pe mobil nu exista pointer lock, pe desktop e ok
     if (domEl.requestPointerLock) domEl.requestPointerLock();
   }
+
   function onPointerLockChange() {
     pointerLocked = document.pointerLockElement === domEl;
   }
@@ -200,13 +198,14 @@ export default function createFirstPerson(
     document.addEventListener("pointerlockchange", onPointerLockChange);
     window.addEventListener("mousemove", onMouseMove);
 
-    // touch look
-    domEl.addEventListener("touchstart", onTouchStart, { passive: true });
-    domEl.addEventListener("touchmove", onTouchMove, { passive: true });
-    domEl.addEventListener("touchend", onTouchEnd, { passive: true });
+    if (domEl) {
+      domEl.addEventListener("touchstart", onTouchStart, { passive: true });
+      domEl.addEventListener("touchmove", onTouchMove, { passive: true });
+      domEl.addEventListener("touchend", onTouchEnd, { passive: true });
+      domEl.addEventListener("touchcancel", onTouchEnd, { passive: true });
 
-    // click to lock (desktop)
-    domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
+      domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
+    }
   }
 
   function detach() {
@@ -220,14 +219,15 @@ export default function createFirstPerson(
       domEl.removeEventListener("touchstart", onTouchStart);
       domEl.removeEventListener("touchmove", onTouchMove);
       domEl.removeEventListener("touchend", onTouchEnd);
+      domEl.removeEventListener("touchcancel", onTouchEnd);
       domEl.removeEventListener("pointerdown", requestPointerLock);
     }
 
     domEl = null;
     pointerLocked = false;
+    touchLooking = false;
   }
 
-  // ===== Collision push (simple circle) =====
   function pushOutFromHit(pos, hit) {
     const p = hit.point.clone();
     p.y = pos.y;
@@ -249,8 +249,13 @@ export default function createFirstPerson(
   function collide(pos, moveDir) {
     if (!colliders.length) return pos;
 
+    const dir = moveDir.clone();
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-8) return pos;
+    dir.normalize();
+
     const origin = pos.clone().add(new THREE.Vector3(0, eyeHeight * 0.55, 0));
-    wallRay.set(origin, moveDir.clone().normalize());
+    wallRay.set(origin, dir);
     wallRay.far = wallFar;
 
     const hits = wallRay.intersectObjects(colliders, true);
@@ -259,50 +264,43 @@ export default function createFirstPerson(
     return pushOutFromHit(pos, hits[0]);
   }
 
-  // ===== Interact/select (center of screen) =====
-  function getInteractHit({ maxDist = 30 } = {}) {
-    if (!colliders.length) return null;
+  function getInteractHit({ maxDist = 30, objects = null } = {}) {
+    const targets = objects ? (objects || []).filter(Boolean) : colliders;
+    if (!targets.length) return null;
+
     interactRay.setFromCamera(centerNDC, camera);
     interactRay.far = maxDist;
-    const hits = interactRay.intersectObjects(colliders, true);
+
+    const hits = interactRay.intersectObjects(targets, true);
     return hits.length ? hits[0] : null;
   }
 
   function applyLookJoystick(delta) {
-    // daca user trage cu degetul (touch look), nu mai adaugam joystick look in acelasi timp
-    // (altfel se simte “ciudat”). Daca vrei combinate, scoate conditia asta.
     if (touchLooking) return;
 
     const lx = lookJoystick.x;
     const ly = lookJoystick.y;
 
-    // deadzone
     const ax = Math.abs(lx);
     const ay = Math.abs(ly);
     if (ax < lookJoyDeadzone && ay < lookJoyDeadzone) return;
 
-    // normalize after deadzone (optional, keeps smooth)
-    const nx = ax < lookJoyDeadzone ? 0 : (lx);
-    const ny = ay < lookJoyDeadzone ? 0 : (ly);
+    const nx = ax < lookJoyDeadzone ? 0 : lx;
+    const ny = ay < lookJoyDeadzone ? 0 : ly;
 
-    // yaw: left/right, pitch: up/down (invers pe pitch ca in jocuri)
     yaw -= nx * lookJoyYawSpeed * delta;
     pitch -= ny * lookJoyPitchSpeed * delta;
 
     applyLook();
   }
 
-  // ===== Update =====
   function update(delta) {
     if (!enabled) return;
 
-    // ✅ 0) apply look joystick
     applyLookJoystick(delta);
 
-    // 1) desired movement direction
     const mv = computeDesiredDir();
 
-    // 2) accel/friction in XZ
     const maxSpeed = keys.shift ? sprintSpeed : walkSpeed;
 
     if (mv.lengthSq() > 1e-6) {
@@ -312,14 +310,11 @@ export default function createFirstPerson(
       vel.lerp(new THREE.Vector3(0, 0, 0), 1 - Math.exp(-friction * delta));
     }
 
-    // 3) propose next
     const next = camera.position.clone().addScaledVector(vel, delta);
     clampInBounds(next);
 
-    // 4) collide with obstacles (colliders)
     if (mv.lengthSq() > 1e-6) collide(next, mv);
 
-    // 5) ground align (walkables)
     let newY = camera.position.y;
     const g = sampleGroundHit(next.x, next.z, 120);
     if (g) {
@@ -343,20 +338,15 @@ export default function createFirstPerson(
     enable,
     disable,
 
-    // attach/detach replaces addKeyboard/removeKeyboard (mai modern)
     attach,
     detach,
 
-    // compat (nu le folosești)
     addKeyboard: () => {},
     removeKeyboard: () => {},
 
     setForwardPressed,
 
-    // ✅ mers
     setJoystick,
-
-    // ✅ camera
     setLookJoystick,
 
     setWalkables,
@@ -365,7 +355,6 @@ export default function createFirstPerson(
 
     update,
 
-    // interact API (îl vei folosi în useDepotScene)
     getInteractHit,
   };
 }
