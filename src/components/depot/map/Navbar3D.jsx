@@ -81,17 +81,17 @@ export default function Navbar3D({
   };
 
   return (
-    <div className={isPanel ? styles.navPanel : undefined}>
+    <div className={isPanel ? `${styles.navPanel} ${searchOpen ? styles.navPanelWithSearch : ''}` : undefined}>
       {searchOpen && (
-        <div className={styles.searchDock}>
-          <SearchBox
-            containers={containers}
-            onContainerSelect={(c) => {
-              onSelectContainer?.(c);
-              if (isPanel) closeAll();
-            }}
-          />
-        </div>
+  <div className={isPanel ? styles.searchDockPanel : styles.searchDock}>
+    <SearchBox
+      containers={containers}
+      onContainerSelect={(c) => {
+        onSelectContainer?.(c);
+        if (isPanel) closeAll();
+      }}
+    />
+  </div>
       )}
 
       {/* ✅ FAB îl afișăm doar în modul "fab" (jos) */}
