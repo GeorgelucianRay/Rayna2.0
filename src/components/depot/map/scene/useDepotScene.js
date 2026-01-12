@@ -77,6 +77,13 @@ export function useDepotScene({ mountRef }) {
   const markerRef = useRef(null);
   const depotGroupRef = useRef(null);
   const rendererRef = useRef(null);
+  const selectedLightRef = useRef(null);
+
+const selectedInstanceRef = useRef({
+  mesh: null,
+  index: null,
+  originalColor: null,
+});
 
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
@@ -389,22 +396,14 @@ export function useDepotScene({ mountRef }) {
   };
 
   // ✅ Instanced containers: caută records și pe părinți
-  if (obj?.isInstancedMesh && hit.instanceId != null) {
-    const holder = findUp(obj, (o) => Array.isArray(o?.userData?.records));
-    const rec = holder?.userData?.records?.[hit.instanceId];
+  if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+  const rec = obj.userData.records[hit.instanceId];
 
-    console.warn("[SELECT] instanced holder", {
-      found: !!holder,
-      holderType: holder?.type,
-      holderName: holder?.name,
-      holderKeys: holder?.userData ? Object.keys(holder.userData) : [],
-      rec: rec || null,
-    });
+  onContainerSelectedRef.current?.(rec || null);
+  highlightContainer(hit, rec);
 
-    onContainerSelectedRef.current?.(rec || null);
-    if (rec) showSelectedMarker(rec);
-    return;
-  }
+  return;
+}
 
   // ✅ Mesh container: caută __record și pe părinți
   const recordHolder = findUp(obj, (o) => !!o?.userData?.__record);
@@ -421,6 +420,68 @@ export function useDepotScene({ mountRef }) {
     userData: obj?.userData || null,
   });
 }, [showSelectedMarker]);
+
+const highlightContainer = useCallback((hit, record) => {
+  const scene = sceneRef.current;
+  if (!scene || !hit) return;
+
+  const mesh = hit.object;
+  const index = hit.instanceId;
+
+  // 🧹 curăță highlight vechi
+  if (selectedInstanceRef.current.mesh) {
+    const { mesh: oldMesh, index: oldIndex, originalColor } =
+      selectedInstanceRef.current;
+
+    if (oldMesh?.setColorAt && originalColor) {
+      oldMesh.setColorAt(oldIndex, originalColor);
+      oldMesh.instanceColor.needsUpdate = true;
+    }
+  }
+
+  // 💡 lumină deasupra containerului
+  if (!selectedLightRef.current) {
+    const light = new THREE.PointLight(0x22d3ee, 2.2, 10);
+    light.castShadow = false;
+    scene.add(light);
+    selectedLightRef.current = light;
+  }
+
+  const tempMatrix = new THREE.Matrix4();
+  const tempPos = new THREE.Vector3();
+  mesh.getMatrixAt(index, tempMatrix);
+  tempMatrix.decompose(tempPos, new THREE.Quaternion(), new THREE.Vector3());
+
+  selectedLightRef.current.visible = true;
+  selectedLightRef.current.position.set(
+    tempPos.x,
+    tempPos.y + 2.8,
+    tempPos.z
+  );
+
+  // ✨ glow prin culoare instanță
+  if (!mesh.instanceColor) {
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(mesh.count * 3),
+      3
+    );
+    for (let i = 0; i < mesh.count; i++) {
+      mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+    }
+  }
+
+  const original = new THREE.Color();
+  mesh.getColorAt(index, original);
+
+  mesh.setColorAt(index, new THREE.Color(0.2, 1, 1)); // cyan
+  mesh.instanceColor.needsUpdate = true;
+
+  selectedInstanceRef.current = {
+    mesh,
+    index,
+    originalColor: original,
+  };
+}, []);
 
   useEffect(() => {
     const onKey = (e) => {
