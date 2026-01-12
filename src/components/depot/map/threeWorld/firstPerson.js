@@ -9,54 +9,69 @@ export default function createFirstPerson(
     stepMax = 0.6,
     slopeMax = Math.tan((35 * Math.PI) / 180),
 
+    // feel
     walkSpeed = 5.2,
     sprintSpeed = 8.5,
     accel = 18,
     friction = 12,
 
+    // collision
     radius = 0.35,
-    wallFar = 1.25,
+    wallFar = 0.75,
 
+    // look
     lookSpeed = 0.0022,
     touchLookSpeed = 0.006,
     minPitch = -1.2,
     maxPitch = 1.2,
 
-    lookJoyYawSpeed = 1.15,
-    lookJoyPitchSpeed = 0.9,
-    lookJoyDeadzone = 0.06,
+    // joystick look feel (⬇️ mai mic by default)
+    lookJoyYawSpeed = 1.25, // rad/sec at full deflection
+    lookJoyPitchSpeed = 1.0, // rad/sec at full deflection
+    lookJoyDeadzone = 0.06, // 0..1
   } = {}
 ) {
+  // ===== INPUT =====
   let enabled = false;
   const keys = { w: false, a: false, s: false, d: false, shift: false };
 
+  // joystick de mers (stanga/dreapta + inainte/inapoi)
   let joystick = { x: 0, y: 0 };
+
+  // joystick de camera (yaw/pitch)
   let lookJoystick = { x: 0, y: 0 };
 
+  // ===== WORLD SETS =====
   let walkables = [];
-  let colliders = [];
-  let interactTargets = []; // ✅ separat
+  let colliders = []; // collision targets
+  let interactTargets = []; // ✅ interact/select targets (separate)
 
-  const vel = new THREE.Vector3();
-  const desired = new THREE.Vector3();
+  // ===== STATE =====
+  const vel = new THREE.Vector3(); // velocity on XZ
+  const desired = new THREE.Vector3(); // desired direction
   const up = new THREE.Vector3(0, 1, 0);
 
   const downRay = new THREE.Raycaster();
   const wallRay = new THREE.Raycaster();
 
+  // yaw/pitch
   const euler = new THREE.Euler(0, 0, 0, "YXZ");
   let yaw = 0;
   let pitch = 0;
 
+  // pointer lock
   let domEl = null;
   let pointerLocked = false;
 
+  // touch look
   let touchLooking = false;
   let lastTouch = { x: 0, y: 0 };
 
+  // interact ray (center)
   const interactRay = new THREE.Raycaster();
   const centerNDC = new THREE.Vector2(0, 0);
 
+  // ===== API setters =====
   function setWalkables(meshes) {
     walkables = (meshes || []).filter(Boolean);
   }
@@ -65,10 +80,18 @@ export default function createFirstPerson(
   }
   function setCollisionTargets(meshes) {
     setColliders(meshes);
-  }
+  } // compat
+
+  // ✅ interact targets
   function setInteractTargets(meshes) {
     interactTargets = (meshes || []).filter(Boolean);
   }
+  function setInteractables(meshes) {
+    setInteractTargets(meshes);
+  } // alias
+  function setRaycastTargets(meshes) {
+    setInteractTargets(meshes);
+  } // alias
 
   function enable() {
     enabled = true;
@@ -80,27 +103,32 @@ export default function createFirstPerson(
     lookJoystick.x = 0;
     lookJoystick.y = 0;
     keys.w = keys.a = keys.s = keys.d = keys.shift = false;
-    vel.set(0, 0, 0);
   }
 
   function setForwardPressed(v) {
     keys.w = !!v;
   }
+
+  // mers
   function setJoystick({ x = 0, y = 0 } = {}) {
     joystick.x = x;
     joystick.y = y;
   }
+
+  // camera
   function setLookJoystick({ x = 0, y = 0 } = {}) {
     lookJoystick.x = x;
     lookJoystick.y = y;
   }
 
+  // ===== Bounds clamp =====
   function clampInBounds(v3) {
     if (!bounds) return;
     v3.x = THREE.MathUtils.clamp(v3.x, bounds.minX, bounds.maxX);
     v3.z = THREE.MathUtils.clamp(v3.z, bounds.minZ, bounds.maxZ);
   }
 
+  // ===== Ground sample =====
   function sampleGroundHit(x, z, fromY = 80) {
     if (!walkables.length) return null;
     downRay.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
@@ -108,6 +136,7 @@ export default function createFirstPerson(
     return hits.length ? hits[0] : null;
   }
 
+  // ===== Movement vector (camera-relative) =====
   function computeDesiredDir() {
     const moveZ = (keys.w ? 1 : 0) + (keys.s ? -1 : 0) + joystick.y;
     const moveX = (keys.d ? 1 : 0) + (keys.a ? -1 : 0) + joystick.x;
@@ -128,6 +157,7 @@ export default function createFirstPerson(
     return desired;
   }
 
+  // ===== Look =====
   function applyLook() {
     pitch = THREE.MathUtils.clamp(pitch, minPitch, maxPitch);
     euler.set(pitch, yaw, 0);
@@ -135,7 +165,8 @@ export default function createFirstPerson(
   }
 
   function onMouseMove(e) {
-    if (!enabled || !pointerLocked) return;
+    if (!enabled) return;
+    if (!pointerLocked) return;
     yaw -= e.movementX * lookSpeed;
     pitch -= e.movementY * lookSpeed;
     applyLook();
@@ -151,7 +182,8 @@ export default function createFirstPerson(
   }
 
   function onTouchMove(e) {
-    if (!enabled || !touchLooking) return;
+    if (!enabled) return;
+    if (!touchLooking) return;
     const t = e.touches?.[0];
     if (!t) return;
     const dx = t.clientX - lastTouch.x;
@@ -168,6 +200,7 @@ export default function createFirstPerson(
     touchLooking = false;
   }
 
+  // ===== Keyboard =====
   function onKey(e) {
     const v = e.type === "keydown";
     if (e.code === "KeyW" || e.code === "ArrowUp") keys.w = v;
@@ -177,11 +210,11 @@ export default function createFirstPerson(
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.shift = v;
   }
 
+  // ===== Pointer lock helpers =====
   function requestPointerLock() {
     if (!domEl) return;
     if (domEl.requestPointerLock) domEl.requestPointerLock();
   }
-
   function onPointerLockChange() {
     pointerLocked = document.pointerLockElement === domEl;
   }
@@ -195,10 +228,12 @@ export default function createFirstPerson(
     document.addEventListener("pointerlockchange", onPointerLockChange);
     window.addEventListener("mousemove", onMouseMove);
 
+    // touch look
     domEl.addEventListener("touchstart", onTouchStart, { passive: true });
     domEl.addEventListener("touchmove", onTouchMove, { passive: true });
     domEl.addEventListener("touchend", onTouchEnd, { passive: true });
 
+    // click to lock (desktop)
     domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
   }
 
@@ -220,6 +255,7 @@ export default function createFirstPerson(
     pointerLocked = false;
   }
 
+  // ===== Collision push (simple circle) =====
   function pushOutFromHit(pos, hit) {
     const p = hit.point.clone();
     p.y = pos.y;
@@ -230,7 +266,7 @@ export default function createFirstPerson(
     const d = toPos.length();
     if (d < 1e-6) return pos;
 
-    const minD = radius + 0.06;
+    const minD = radius + 0.02;
     if (d >= minD) return pos;
 
     toPos.normalize().multiplyScalar(minD - d);
@@ -238,36 +274,28 @@ export default function createFirstPerson(
     return pos;
   }
 
-  function castWall(origin, dir) {
-    wallRay.set(origin, dir.clone().normalize());
-    wallRay.far = wallFar;
-    const hits = wallRay.intersectObjects(colliders, true);
-    return hits.length ? hits[0] : null;
-  }
-
-  function collide(pos, dir) {
+  function collide(pos, moveDir) {
     if (!colliders.length) return pos;
 
     const origin = pos.clone().add(new THREE.Vector3(0, eyeHeight * 0.55, 0));
+    wallRay.set(origin, moveDir.clone().normalize());
+    wallRay.far = wallFar;
 
-    const fwd = dir.clone().setY(0);
-    if (fwd.lengthSq() < 1e-8) return pos;
-    fwd.normalize();
+    const hits = wallRay.intersectObjects(colliders, true);
+    if (!hits.length) return pos;
 
-    const right = new THREE.Vector3().copy(fwd).cross(up).normalize();
+    return pushOutFromHit(pos, hits[0]);
+  }
 
-    const dirs = [
-      fwd,
-      fwd.clone().addScaledVector(right, 0.55).normalize(),
-      fwd.clone().addScaledVector(right, -0.55).normalize(),
-    ];
+  // ===== Interact/select (center of screen) =====
+  function getInteractHit({ maxDist = 30 } = {}) {
+    const targets = interactTargets.length ? interactTargets : colliders;
+    if (!targets.length) return null;
 
-    for (const d of dirs) {
-      const hit = castWall(origin, d);
-      if (hit) pushOutFromHit(pos, hit);
-    }
-
-    return pos;
+    interactRay.setFromCamera(centerNDC, camera);
+    interactRay.far = maxDist;
+    const hits = interactRay.intersectObjects(targets, true);
+    return hits.length ? hits[0] : null;
   }
 
   function applyLookJoystick(delta) {
@@ -276,55 +304,30 @@ export default function createFirstPerson(
     const lx = lookJoystick.x;
     const ly = lookJoystick.y;
 
-    if (Math.abs(lx) < lookJoyDeadzone && Math.abs(ly) < lookJoyDeadzone) return;
+    const ax = Math.abs(lx);
+    const ay = Math.abs(ly);
+    if (ax < lookJoyDeadzone && ay < lookJoyDeadzone) return;
 
-    yaw -= lx * lookJoyYawSpeed * delta;
-    pitch -= ly * lookJoyPitchSpeed * delta;
+    const nx = ax < lookJoyDeadzone ? 0 : lx;
+    const ny = ay < lookJoyDeadzone ? 0 : ly;
+
+    yaw -= nx * lookJoyYawSpeed * delta;
+    pitch -= ny * lookJoyPitchSpeed * delta;
 
     applyLook();
   }
 
-  function isSelectableObject(obj) {
-    return !!(
-      (obj?.isInstancedMesh && obj.userData?.records) ||
-      obj?.userData?.__record
-    );
-  }
-
-  function findSelectableInParents(obj) {
-    let cur = obj;
-    let steps = 0;
-    while (cur && steps++ < 8) {
-      if (isSelectableObject(cur)) return cur;
-      cur = cur.parent;
-    }
-    return null;
-  }
-
-  function getInteractHit({ maxDist = 30 } = {}) {
-    const targets = interactTargets.length ? interactTargets : colliders;
-    if (!targets.length) return null;
-
-    interactRay.setFromCamera(centerNDC, camera);
-    interactRay.far = maxDist;
-
-    const hits = interactRay.intersectObjects(targets, true);
-    if (!hits.length) return null;
-
-    for (const h of hits) {
-      const sel = findSelectableInParents(h.object);
-      if (sel) return { ...h, object: sel };
-    }
-
-    return null;
-  }
-
+  // ===== Update =====
   function update(delta) {
     if (!enabled) return;
 
+    // 0) apply look joystick
     applyLookJoystick(delta);
 
+    // 1) desired movement direction
     const mv = computeDesiredDir();
+
+    // 2) accel/friction in XZ
     const maxSpeed = keys.shift ? sprintSpeed : walkSpeed;
 
     if (mv.lengthSq() > 1e-6) {
@@ -334,15 +337,14 @@ export default function createFirstPerson(
       vel.lerp(new THREE.Vector3(0, 0, 0), 1 - Math.exp(-friction * delta));
     }
 
+    // 3) propose next
     const next = camera.position.clone().addScaledVector(vel, delta);
     clampInBounds(next);
 
-    // ✅ coliziune și când ai inerție (vel) după ce eliberezi joystick
-    const velDir = vel.clone().setY(0);
-    if (velDir.lengthSq() > 1e-6) {
-      collide(next, mv.lengthSq() > 1e-6 ? mv : velDir);
-    }
+    // 4) collide with obstacles (colliders)
+    if (mv.lengthSq() > 1e-6) collide(next, mv);
 
+    // 5) ground align (walkables)
     let newY = camera.position.y;
     const g = sampleGroundHit(next.x, next.z, 120);
     if (g) {
@@ -365,22 +367,33 @@ export default function createFirstPerson(
   return {
     enable,
     disable,
+
+    // attach/detach replaces addKeyboard/removeKeyboard (mai modern)
     attach,
     detach,
 
+    // compat (nu le folosești)
     addKeyboard: () => {},
     removeKeyboard: () => {},
 
     setForwardPressed,
+
+    // mers
     setJoystick,
+
+    // camera
     setLookJoystick,
 
     setWalkables,
     setColliders,
     setCollisionTargets,
+
+    // ✅ interact API
     setInteractTargets,
+    setInteractables,
+    setRaycastTargets,
+    getInteractHit,
 
     update,
-    getInteractHit,
   };
 }
