@@ -56,6 +56,9 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+
+  /* AppBar nu blochează taps spre canvas */
+  pointer-events: none;
 }
 
 .appBarLeft{
@@ -111,6 +114,8 @@
   cursor: pointer;
   user-select: none;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
+
+  pointer-events: auto;
 }
 .appIconBtn:active{ transform: scale(.98); }
 .appIconBtn:hover{ background: rgba(255,255,255,0.09); }
@@ -121,7 +126,7 @@
   box-shadow: 0 10px 26px rgba(19,146,236,0.20);
 }
 
-/* ===== NAVBAR3D (FAB + Dock) ===== */
+/* ===== NAVBAR3D (FAB + Dock - varianta veche) ===== */
 .toolsFab{
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
@@ -181,13 +186,18 @@
 .dockIconBtn:active{ transform: scale(.98); }
 .dockIconBtn:hover{ background: rgba(255,255,255,0.10); }
 
-/* Search overlay position */
+/* Search overlay position (varianta veche, sub appBar) */
 .searchDock{
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
   top: calc(max(10px, env(safe-area-inset-top)) + 72px);
   z-index: 28;
+}
+
+/* Search în panel (burger): apare în flow, imediat sub dock */
+.searchDockPanel{
+  margin-top: 10px;
 }
 
 /* ===== Modal (Add item) ===== */
@@ -267,15 +277,6 @@
 }
 .modalPrimary:active{ transform: scale(.99); }
 
-/* Small tweaks */
-@media (max-width: 420px){
-  .appIconBtn{ width: 40px; height: 40px; border-radius: 13px; }
-  .toolsFab{ width: 52px; height: 52px; border-radius: 26px; }
-}
-/* AppBar nu blochează taps spre canvas */
-.appBar{ pointer-events: none; }
-.appIconBtn{ pointer-events: auto; }
-
 /* ===== ZOOM CONTROLS ===== */
 .zoomControls{
   position: absolute;
@@ -286,6 +287,10 @@
   flex-direction: column;
   gap: 10px;
   pointer-events: auto;
+
+  /* când meniul top-down e deschis, îl împingem în jos */
+  transform: translateY(var(--menuOffset, 0px));
+  transition: transform .22s ease;
 }
 
 .zoomBtn{
@@ -307,6 +312,8 @@
   box-shadow: 0 18px 50px rgba(0,0,0,.35);
 }
 .zoomBtn:active{ transform: scale(.98); }
+
+/* ===== Drawer (dacă îl folosești în altă parte, îl păstrăm) ===== */
 .drawerOverlay {
   position: fixed;
   inset: 0;
@@ -367,35 +374,38 @@
   overflow: auto;
 }
 
-/* împinge zoom-ul când meniul e deschis */
-.zoomShiftDown {
-  transform: translateY(64px);
-  transition: transform .2s ease;
-}
-/* Panelul care “cade” de sus în jos */
-.topMenu {
+/* ===== Top-down menu (burger -> “cade” de sus în jos) ===== */
+/* IMPORTANT: definit o singură dată (în codul tău era duplicat) */
+.topMenu{
   position: fixed;
-  left: 0;
-  right: 0;
-  top: var(--appBarH, 64px); /* dacă appBar-ul tău are altă înălțime, setează var */
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  top: var(--appBarBottom, calc(max(10px, env(safe-area-inset-top)) + 72px));
+
   max-height: 0;
   overflow: hidden;
+
+  border-radius: 16px;
   background: rgba(10, 12, 16, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.12);
+
   z-index: 2100;
   transition: max-height .22s ease;
 }
 
-/* Când e deschis */
-.topMenuOpen {
-  max-height: 260px; /* trebuie să fie IDENTIC cu MENU_HEIGHT din JSX */
+.topMenuOpen{
+  max-height: 520px; /* suficient pt dock + search */
 }
 
 /* Navbar3D în modul panel (în burger) */
 .navPanel{
   padding: 10px 12px;
+}
+
+.navPanelWithSearch{
+  padding-bottom: 14px;
 }
 
 /* Dock în panel: nu mai e absolute jos, e “în flow” */
@@ -428,33 +438,8 @@
   cursor: pointer;
 }
 
-/* Panelul top-down: poziționat exact sub appBar */
-.topMenu{
-  position: fixed;
-  left: max(10px, env(safe-area-inset-left));
-  right: max(10px, env(safe-area-inset-right));
-  top: var(--appBarBottom, calc(max(10px, env(safe-area-inset-top)) + 72px));
-
-  max-height: 0;
-  overflow: hidden;
-
-  border-radius: 16px;
-  background: rgba(10, 12, 16, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,.12);
-
-  z-index: 2100;
-  transition: max-height .22s ease;
-}
-
-.topMenuOpen{
-  max-height: 220px; /* suficient pt dock + search */
-}
-
-/* IMPORTANT: zoomControls să fie definit o singură dată în fișier!
-   Adaugă DOAR astea în clasa existentă .zoomControls: */
-.zoomControls{
-  transform: translateY(var(--menuOffset, 0px));
-  transition: transform .22s ease;
+/* Small tweaks */
+@media (max-width: 420px){
+  .appIconBtn{ width: 40px; height: 40px; border-radius: 13px; }
+  .toolsFab{ width: 52px; height: 52px; border-radius: 26px; }
 }
