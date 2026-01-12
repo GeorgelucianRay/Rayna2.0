@@ -21,6 +21,9 @@ export default function Map3DPage() {
     setFPEnabled,
     setForwardPressed,
     setJoystick,
+    setLookJoystick,
+    selectFromCrosshair,
+
     setBuildActive,
     buildApi,
     containers,
@@ -28,7 +31,6 @@ export default function Map3DPage() {
     setOnContainerSelected,
     focusCameraOnContainer,
 
-    // ✅ UI API
     showSelectedMarker,
     zoomIn,
     zoomOut,
@@ -48,10 +50,8 @@ export default function Map3DPage() {
 
   return (
     <div className={styles.root}>
-      {/* Canvas host */}
       <div ref={mountRef} className={styles.canvasHost} />
 
-      {/* TOP APP BAR */}
       <header className={styles.appBar} data-map-ui="1">
         <div className={styles.appBarLeft}>
           <button
@@ -97,14 +97,18 @@ export default function Map3DPage() {
         </div>
       </header>
 
-      {/* ✅ ZOOM CONTROLS (apare sigur) */}
       <div className={styles.zoomControls} data-map-ui="1">
-        <button className={styles.zoomBtn} type="button" onClick={zoomIn} aria-label="Zoom in">＋</button>
-        <button className={styles.zoomBtn} type="button" onClick={zoomOut} aria-label="Zoom out">－</button>
-        <button className={styles.zoomBtn} type="button" onClick={recenter} aria-label="Recenter">⌖</button>
+        <button className={styles.zoomBtn} type="button" onClick={zoomIn} aria-label="Zoom in">
+          ＋
+        </button>
+        <button className={styles.zoomBtn} type="button" onClick={zoomOut} aria-label="Zoom out">
+          －
+        </button>
+        <button className={styles.zoomBtn} type="button" onClick={recenter} aria-label="Recenter">
+          ⌖
+        </button>
       </div>
 
-      {/* Navbar tools dock */}
       <Navbar3D
         containers={containers}
         onSelectContainer={(c) => {
@@ -114,26 +118,32 @@ export default function Map3DPage() {
           setFPEnabled(false);
           focusCameraOnContainer?.(c, { smooth: true });
         }}
-        onToggleFP={() => setFPEnabled((prev) => !prev)}
+        onToggleFP={() => setFPEnabled(!isFP)}
         onAdd={(data) => console.log('Add from Navbar3D', data)}
-        onOpenBuild={() => { setShowBuild(true); setBuildActive(true); }}
+        onOpenBuild={() => {
+          setShowBuild(true);
+          setBuildActive(true);
+        }}
         onOpenWorldItems={() => openWorldItems()}
       />
 
-      {/* Controls mobile FP */}
       {isFP && (
         <FPControls
           ensureFP={() => setFPEnabled(true)}
           setForwardPressed={setForwardPressed}
           setJoystick={setJoystick}
+          setLookJoystick={setLookJoystick}
+          onSelect={selectFromCrosshair}
         />
       )}
 
-      {/* Build Palette */}
       {showBuild && (
         <BuildPalette
           open={showBuild}
-          onClose={() => { setShowBuild(false); setBuildActive(false); }}
+          onClose={() => {
+            setShowBuild(false);
+            setBuildActive(false);
+          }}
           buildController={buildApi.controller}
           buildActive={buildApi.active}
           setBuildActive={setBuildActive}
@@ -142,11 +152,7 @@ export default function Map3DPage() {
         />
       )}
 
-      {/* Card info */}
-      <ContainerInfoCard
-        container={selectedContainer}
-        onClose={() => setSelectedContainer(null)}
-      />
+      <ContainerInfoCard container={selectedContainer} onClose={() => setSelectedContainer(null)} />
     </div>
   );
 }
