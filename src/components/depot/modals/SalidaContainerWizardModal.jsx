@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Modal from "../ui/Modal";
-import shell from "../ui/Modal.module.css";
+
+// ✅ din depot/modals -> components/ui
+import Modal from "../../ui/Modal";
+import shell from "../../ui/Modal.module.css";
 
 // NOTE:
 // - containers vine din Map3DPage (lista actuală din DB)
