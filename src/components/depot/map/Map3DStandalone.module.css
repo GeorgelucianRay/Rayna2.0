@@ -372,3 +372,29 @@
   transform: translateY(64px);
   transition: transform .2s ease;
 }
+/* Panelul care “cade” de sus în jos */
+.topMenu {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--appBarH, 64px); /* dacă appBar-ul tău are altă înălțime, setează var */
+  max-height: 0;
+  overflow: hidden;
+  background: rgba(10, 12, 16, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  z-index: 2100;
+  transition: max-height .22s ease;
+}
+
+/* Când e deschis */
+.topMenuOpen {
+  max-height: 260px; /* trebuie să fie IDENTIC cu MENU_HEIGHT din JSX */
+}
+
+/* Zoom-ul se mută în jos când meniul e deschis */
+.zoomControls {
+  transform: translateY(var(--menuOffset, 0px));
+  transition: transform .22s ease;
+}
