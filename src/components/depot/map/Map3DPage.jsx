@@ -10,7 +10,7 @@ import FPControls from './ui/FPControls';
 import BuildPalette from './build/BuildPalette';
 
 // ✅ modalul tău REAL pentru +
-import AddContainerModal from '../modals/AddContainerModal';
+import AddContainerWizardModal from '../modals/AddContainerWizardModal';
 
 // ✅ dacă ai deja un modal pt salida, îl importăm în locul celui inline (vezi mai jos)
 
@@ -208,13 +208,13 @@ export default function Map3DPage() {
       <ContainerInfoCard container={selectedContainer} onClose={() => setSelectedContainer(null)} />
 
       {/* ✅ MODAL REAL pentru + (Entrada) */}
-      <AddContainerModal
-        isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onAdd={handleAddContainer}
-        validatePosition={null /* <- conectează funcția ta reală dacă o ai */}
-        slotMap={null}
-      />
+      <AddContainerWizardModal
+  isOpen={addModalOpen}
+  onClose={() => setAddModalOpen(false)}
+  onAdd={handleAddContainer}
+  validatePosition={validatePosition /* dacă ai */}
+  slotMap={null}
+/>
 
       {/* ✅ MODAL temporar pt - (Salida) – fără fișier nou */}
       {exitModalOpen && (
