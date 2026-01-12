@@ -504,18 +504,31 @@ export function useDepotScene({ mountRef }) {
 
     const colliders = [baseWorld, ...baseWorldSolids, worldGroup, fence, ...landscapeSolids];
 
-    const attachCollidersWhenReady = () => {
-      const layer = containersLayerRef.current;
-      const colGroup = layer?.userData?.colliders;
-      if (colGroup) {
-        colliders.push(colGroup);
-        fpRef.current?.setColliders?.(colliders);
-        (fpRef.current.setCollisionTargets || fpRef.current.setColliders)?.(colliders);
-      } else {
-        setTimeout(attachCollidersWhenReady, 50);
-      }
-    };
-    attachCollidersWhenReady();
+const attachCollidersWhenReady = () => {
+  const layer = containersLayerRef.current;
+  const colGroup = layer?.userData?.colliders;
+
+  if (!layer) return setTimeout(attachCollidersWhenReady, 50);
+
+  // ✅ INTERACT: select-ul trebuie să raycasteze pe mesh-urile vizuale care au records/__record
+  const interactables = [];
+  layer.traverse((o) => {
+    if (o?.isInstancedMesh && o.userData?.records) interactables.push(o);
+    if (o?.isMesh && o.userData?.__record) interactables.push(o);
+  });
+  fpRef.current?.setInteractTargets?.(interactables);
+
+  // ✅ COLLISION: rămâne pe colGroup (proxy colliders)
+  if (colGroup) {
+    colliders.push(colGroup);
+    fpRef.current?.setColliders?.(colliders);
+    (fpRef.current.setCollisionTargets || fpRef.current.setColliders)?.(colliders);
+  } else {
+    setTimeout(attachCollidersWhenReady, 50);
+  }
+};
+
+attachCollidersWhenReady();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
