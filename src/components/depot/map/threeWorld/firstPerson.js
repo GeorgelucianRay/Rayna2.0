@@ -17,7 +17,7 @@ export default function createFirstPerson(
 
     // collision
     radius = 0.35,
-    wallFar = 0.75,
+    wallFar = 1.15, // ↑ mai mare ca sa nu “treci” prin margini
 
     // look
     lookSpeed = 0.0022,
@@ -25,17 +25,17 @@ export default function createFirstPerson(
     minPitch = -1.2,
     maxPitch = 1.2,
 
-    // joystick look feel
-    lookJoyYawSpeed = 1.4, // rad/sec at full deflection
-    lookJoyPitchSpeed = 1.1, // rad/sec at full deflection
-    lookJoyDeadzone = 0.06, // 0..1
+    // joystick look feel (↓ mai mic)
+    lookJoyYawSpeed = 1.35,
+    lookJoyPitchSpeed = 1.05,
+    lookJoyDeadzone = 0.06,
   } = {}
 ) {
   let enabled = false;
-
   const keys = { w: false, a: false, s: false, d: false, shift: false };
-  const joystick = { x: 0, y: 0 };
-  const lookJoystick = { x: 0, y: 0 };
+
+  let joystick = { x: 0, y: 0 };
+  let lookJoystick = { x: 0, y: 0 };
 
   let walkables = [];
   let colliders = [];
@@ -55,7 +55,7 @@ export default function createFirstPerson(
   let pointerLocked = false;
 
   let touchLooking = false;
-  const lastTouch = { x: 0, y: 0 };
+  let lastTouch = { x: 0, y: 0 };
 
   const interactRay = new THREE.Raycaster();
   const centerNDC = new THREE.Vector2(0, 0);
@@ -80,16 +80,17 @@ export default function createFirstPerson(
     lookJoystick.x = 0;
     lookJoystick.y = 0;
     keys.w = keys.a = keys.s = keys.d = keys.shift = false;
-    touchLooking = false;
   }
 
   function setForwardPressed(v) {
     keys.w = !!v;
   }
+
   function setJoystick({ x = 0, y = 0 } = {}) {
     joystick.x = x;
     joystick.y = y;
   }
+
   function setLookJoystick({ x = 0, y = 0 } = {}) {
     lookJoystick.x = x;
     lookJoystick.y = y;
@@ -156,7 +157,6 @@ export default function createFirstPerson(
     if (!touchLooking) return;
     const t = e.touches?.[0];
     if (!t) return;
-
     const dx = t.clientX - lastTouch.x;
     const dy = t.clientY - lastTouch.y;
     lastTouch.x = t.clientX;
@@ -198,14 +198,11 @@ export default function createFirstPerson(
     document.addEventListener("pointerlockchange", onPointerLockChange);
     window.addEventListener("mousemove", onMouseMove);
 
-    if (domEl) {
-      domEl.addEventListener("touchstart", onTouchStart, { passive: true });
-      domEl.addEventListener("touchmove", onTouchMove, { passive: true });
-      domEl.addEventListener("touchend", onTouchEnd, { passive: true });
-      domEl.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    domEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    domEl.addEventListener("touchmove", onTouchMove, { passive: true });
+    domEl.addEventListener("touchend", onTouchEnd, { passive: true });
 
-      domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
-    }
+    domEl.addEventListener("pointerdown", requestPointerLock, { passive: true });
   }
 
   function detach() {
@@ -219,13 +216,11 @@ export default function createFirstPerson(
       domEl.removeEventListener("touchstart", onTouchStart);
       domEl.removeEventListener("touchmove", onTouchMove);
       domEl.removeEventListener("touchend", onTouchEnd);
-      domEl.removeEventListener("touchcancel", onTouchEnd);
       domEl.removeEventListener("pointerdown", requestPointerLock);
     }
 
     domEl = null;
     pointerLocked = false;
-    touchLooking = false;
   }
 
   function pushOutFromHit(pos, hit) {
@@ -238,7 +233,7 @@ export default function createFirstPerson(
     const d = toPos.length();
     if (d < 1e-6) return pos;
 
-    const minD = radius + 0.02;
+    const minD = radius + 0.04;
     if (d >= minD) return pos;
 
     toPos.normalize().multiplyScalar(minD - d);
@@ -246,33 +241,37 @@ export default function createFirstPerson(
     return pos;
   }
 
+  function castWall(origin, dir) {
+    wallRay.set(origin, dir.clone().normalize());
+    wallRay.far = wallFar;
+    const hits = wallRay.intersectObjects(colliders, true);
+    return hits.length ? hits[0] : null;
+  }
+
   function collide(pos, moveDir) {
     if (!colliders.length) return pos;
 
-    const dir = moveDir.clone();
-    dir.y = 0;
-    if (dir.lengthSq() < 1e-8) return pos;
-    dir.normalize();
-
     const origin = pos.clone().add(new THREE.Vector3(0, eyeHeight * 0.55, 0));
-    wallRay.set(origin, dir);
-    wallRay.far = wallFar;
 
-    const hits = wallRay.intersectObjects(colliders, true);
-    if (!hits.length) return pos;
+    const fwd = moveDir.clone().setY(0);
+    if (fwd.lengthSq() < 1e-6) return pos;
+    fwd.normalize();
 
-    return pushOutFromHit(pos, hits[0]);
-  }
+    const right = new THREE.Vector3().copy(fwd).cross(up).normalize();
 
-  function getInteractHit({ maxDist = 30, objects = null } = {}) {
-    const targets = objects ? (objects || []).filter(Boolean) : colliders;
-    if (!targets.length) return null;
+    // 3 rays: forward + slight left/right to catch edges
+    const dirs = [
+      fwd,
+      fwd.clone().addScaledVector(right, 0.55).normalize(),
+      fwd.clone().addScaledVector(right, -0.55).normalize(),
+    ];
 
-    interactRay.setFromCamera(centerNDC, camera);
-    interactRay.far = maxDist;
+    for (const d of dirs) {
+      const hit = castWall(origin, d);
+      if (hit) pushOutFromHit(pos, hit);
+    }
 
-    const hits = interactRay.intersectObjects(targets, true);
-    return hits.length ? hits[0] : null;
+    return pos;
   }
 
   function applyLookJoystick(delta) {
@@ -285,13 +284,48 @@ export default function createFirstPerson(
     const ay = Math.abs(ly);
     if (ax < lookJoyDeadzone && ay < lookJoyDeadzone) return;
 
-    const nx = ax < lookJoyDeadzone ? 0 : lx;
-    const ny = ay < lookJoyDeadzone ? 0 : ly;
-
-    yaw -= nx * lookJoyYawSpeed * delta;
-    pitch -= ny * lookJoyPitchSpeed * delta;
+    yaw -= lx * lookJoyYawSpeed * delta;
+    pitch -= ly * lookJoyPitchSpeed * delta;
 
     applyLook();
+  }
+
+  function isSelectableObject(obj) {
+    if (!obj) return false;
+    if (obj.isInstancedMesh && obj.userData?.records) return true;
+    if (obj.userData?.__record) return true;
+    return false;
+  }
+
+  function findSelectableInParents(obj) {
+    let cur = obj;
+    let steps = 0;
+    while (cur && steps++ < 6) {
+      if (isSelectableObject(cur)) return cur;
+      cur = cur.parent;
+    }
+    return null;
+  }
+
+  // IMPORTANT: return the FIRST selectable hit (container), not ground/fence
+  function getInteractHit({ maxDist = 30 } = {}) {
+    if (!colliders.length) return null;
+
+    interactRay.setFromCamera(centerNDC, camera);
+    interactRay.far = maxDist;
+
+    const hits = interactRay.intersectObjects(colliders, true);
+    if (!hits.length) return null;
+
+    for (const h of hits) {
+      const sel = findSelectableInParents(h.object) || (isSelectableObject(h.object) ? h.object : null);
+      if (sel) {
+        // return same hit, but with selectable object fixed
+        return { ...h, object: sel };
+      }
+    }
+
+    return null;
   }
 
   function update(delta) {
@@ -300,7 +334,6 @@ export default function createFirstPerson(
     applyLookJoystick(delta);
 
     const mv = computeDesiredDir();
-
     const maxSpeed = keys.shift ? sprintSpeed : walkSpeed;
 
     if (mv.lengthSq() > 1e-6) {
@@ -337,7 +370,6 @@ export default function createFirstPerson(
   return {
     enable,
     disable,
-
     attach,
     detach,
 
@@ -345,7 +377,6 @@ export default function createFirstPerson(
     removeKeyboard: () => {},
 
     setForwardPressed,
-
     setJoystick,
     setLookJoystick,
 
