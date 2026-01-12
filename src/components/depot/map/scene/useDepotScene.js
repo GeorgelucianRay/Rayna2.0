@@ -120,24 +120,27 @@ export function useDepotScene({ mountRef }) {
     []
   );
 
-  const setFPEnabled = useCallback((enabled) => {
-    const orbit = controlsRef.current;
-    const fp = fpRef.current;
-    if (!orbit || !fp) return;
+  const setFPEnabled = useCallback(
+    (enabled) => {
+      const orbit = controlsRef.current;
+      const fp = fpRef.current;
+      if (!orbit || !fp) return;
 
-    if (enabled) {
-      setOrbitLibre(false);
-      orbit.enabled = false;
-      fp.enable?.();
-      isFPRef.current = true;
-      setIsFP(true);
-    } else {
-      fp.disable?.();
-      orbit.enabled = !buildActiveRef.current;
-      isFPRef.current = false;
-      setIsFP(false);
-    }
-  }, []);
+      if (enabled) {
+        setOrbitLibre(false);
+        orbit.enabled = false;
+        fp.enable?.();
+        isFPRef.current = true;
+        setIsFP(true);
+      } else {
+        fp.disable?.();
+        orbit.enabled = !buildActiveRef.current;
+        isFPRef.current = false;
+        setIsFP(false);
+      }
+    },
+    []
+  );
 
   const setForwardPressed = useCallback((v) => fpRef.current?.setForwardPressed?.(v), []);
   const setJoystick = useCallback((v) => fpRef.current?.setJoystick?.(v), []);
@@ -298,29 +301,32 @@ export function useDepotScene({ mountRef }) {
     [setFPEnabled]
   );
 
-  const zoomBy = useCallback((mult) => {
-    const controls = controlsRef.current;
-    const camera = cameraRef.current;
-    if (!controls || !camera) return;
-    if (isFPRef.current) return;
+  const zoomBy = useCallback(
+    (mult) => {
+      const controls = controlsRef.current;
+      const camera = cameraRef.current;
+      if (!controls || !camera) return;
+      if (isFPRef.current) return;
 
-    setOrbitLibre(false);
+      setOrbitLibre(false);
 
-    const target = controls.target.clone();
-    const dir = camera.position.clone().sub(target);
-    const dist = dir.length();
-    if (dist < 0.0001) return;
+      const target = controls.target.clone();
+      const dir = camera.position.clone().sub(target);
+      const dist = dir.length();
+      if (dist < 0.0001) return;
 
-    const minD = controls.minDistance ?? 4;
-    const maxD = controls.maxDistance ?? Math.max(YARD_WIDTH, YARD_DEPTH);
-    const newDist = THREE.MathUtils.clamp(dist * mult, minD, maxD);
+      const minD = controls.minDistance ?? 4;
+      const maxD = controls.maxDistance ?? Math.max(YARD_WIDTH, YARD_DEPTH);
+      const newDist = THREE.MathUtils.clamp(dist * mult, minD, maxD);
 
-    dir.normalize().multiplyScalar(newDist);
-    camera.position.copy(target.clone().add(dir));
+      dir.normalize().multiplyScalar(newDist);
+      camera.position.copy(target.clone().add(dir));
 
-    controls.update();
-    clampOrbit(camera, controls);
-  }, []);
+      controls.update();
+      clampOrbit(camera, controls);
+    },
+    []
+  );
 
   const zoomIn = useCallback(() => zoomBy(0.85), [zoomBy]);
   const zoomOut = useCallback(() => zoomBy(1.18), [zoomBy]);
@@ -339,62 +345,59 @@ export function useDepotScene({ mountRef }) {
     clampOrbit(camera, controls);
   }, [setFPEnabled]);
 
-  // src/components/depot/map/scene/useDepotScene.js
-// 🔧 Înlocuiește COMPLET funcția selectFromCrosshair cu asta.
+  // ✅ SELECT (FP) + DEBUG (folosește WARN ca să intre în DebugConsole-ul tău)
+  const selectFromCrosshair = useCallback(() => {
+    const fp = fpRef.current;
+    const cam = cameraRef.current;
 
-const selectFromCrosshair = useCallback(() => {
-  const fp = fpRef.current;
-  const cam = cameraRef.current;
-  if (!fp || !cam) {
-    console.log("[SELECT] fp/camera missing", { hasFP: !!fp, hasCam: !!cam });
-    return;
-  }
+    if (!fp || !cam) {
+      console.warn("[SELECT] fp/camera missing", { hasFP: !!fp, hasCam: !!cam });
+      return;
+    }
 
-  const hit = fp.getInteractHit?.({ maxDist: 45 });
+    const hit = fp.getInteractHit?.({ maxDist: 45 });
 
-  if (!hit) {
-    const dir = new THREE.Vector3();
-    cam.getWorldDirection(dir);
-    console.log("[SELECT] no hit", {
-      camPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
-      camDir: { x: dir.x, y: dir.y, z: dir.z },
+    if (!hit) {
+      const dir = new THREE.Vector3();
+      cam.getWorldDirection(dir);
+      console.warn("[SELECT] no hit", {
+        camPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+        camDir: { x: dir.x, y: dir.y, z: dir.z },
+      });
+      return;
+    }
+
+    const obj = hit.object;
+    console.warn("[SELECT] hit raw", {
+      distance: hit.distance,
+      instanceId: hit.instanceId,
+      objectType: obj?.type,
+      objectName: obj?.name,
+      isInstancedMesh: !!obj?.isInstancedMesh,
+      userDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
     });
-    return;
-  }
 
-  const obj = hit.object;
-  console.log("[SELECT] hit raw", {
-    distance: hit.distance,
-    instanceId: hit.instanceId,
-    objectType: obj?.type,
-    objectName: obj?.name,
-    isInstancedMesh: !!obj?.isInstancedMesh,
-    userDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
-  });
+    if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+      const rec = obj.userData.records[hit.instanceId];
+      console.warn("[SELECT] instanced record", rec || null);
+      onContainerSelectedRef.current?.(rec || null);
+      if (rec) showSelectedMarker(rec);
+      return;
+    }
 
-  // instanced containers
-  if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
-    const rec = obj.userData.records[hit.instanceId];
-    console.log("[SELECT] instanced record", rec || null);
-    onContainerSelectedRef.current?.(rec || null);
-    if (rec) showSelectedMarker(rec);
-    return;
-  }
+    if (obj?.userData?.__record) {
+      console.warn("[SELECT] mesh record", obj.userData.__record);
+      onContainerSelectedRef.current?.(obj.userData.__record);
+      showSelectedMarker(obj.userData.__record);
+      return;
+    }
 
-  // mesh container
-  if (obj?.userData?.__record) {
-    console.log("[SELECT] mesh record", obj.userData.__record);
-    onContainerSelectedRef.current?.(obj.userData.__record);
-    showSelectedMarker(obj.userData.__record);
-    return;
-  }
-
-  console.log("[SELECT] hit but no record attached", {
-    objectName: obj?.name,
-    objectType: obj?.type,
-    userData: obj?.userData || null,
-  });
-}, [showSelectedMarker]);
+    console.warn("[SELECT] hit but no record attached", {
+      objectName: obj?.name,
+      objectType: obj?.type,
+      userData: obj?.userData || null,
+    });
+  }, [showSelectedMarker]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -515,10 +518,12 @@ const selectFromCrosshair = useCallback(() => {
       try {
         const data = await fetchContainers();
         setContainers(data?.containers || []);
+
         const layer = createContainersLayerOptimized(data, CFG.ground);
         containersLayerRef.current = layer;
         depotGroup.add(layer);
 
+        // (păstrăm ce aveai deja)
         const fp = fpRef.current;
         if (fp) {
           const interactTargets = [layer, depotGroup];
@@ -539,31 +544,38 @@ const selectFromCrosshair = useCallback(() => {
 
     const colliders = [baseWorld, ...baseWorldSolids, worldGroup, fence, ...landscapeSolids];
 
-const attachCollidersWhenReady = () => {
-  const layer = containersLayerRef.current;
-  const colGroup = layer?.userData?.colliders;
+    // ✅ AICI e locul corect:
+    // - COLLISION = proxy colliders (layer.userData.colliders)
+    // - INTERACT = mesh-urile vizuale (InstancedMesh cu records / Mesh cu __record)
+    const attachCollidersWhenReady = () => {
+      const layer = containersLayerRef.current;
+      if (!layer) return setTimeout(attachCollidersWhenReady, 50);
 
-  if (!layer) return setTimeout(attachCollidersWhenReady, 50);
+      const fp = fpRef.current;
+      if (!fp) return setTimeout(attachCollidersWhenReady, 50);
 
-  // ✅ INTERACT: select-ul trebuie să raycasteze pe mesh-urile vizuale care au records/__record
-  const interactables = [];
-  layer.traverse((o) => {
-    if (o?.isInstancedMesh && o.userData?.records) interactables.push(o);
-    if (o?.isMesh && o.userData?.__record) interactables.push(o);
-  });
-  fpRef.current?.setInteractTargets?.(interactables);
+      // ✅ INTERACT targets (vizuale)
+      const interactables = [];
+      layer.traverse((o) => {
+        if (o?.isInstancedMesh && o.userData?.records) interactables.push(o);
+        if (o?.isMesh && o.userData?.__record) interactables.push(o);
+      });
 
-  // ✅ COLLISION: rămâne pe colGroup (proxy colliders)
-  if (colGroup) {
-    colliders.push(colGroup);
-    fpRef.current?.setColliders?.(colliders);
-    (fpRef.current.setCollisionTargets || fpRef.current.setColliders)?.(colliders);
-  } else {
-    setTimeout(attachCollidersWhenReady, 50);
-  }
-};
+      if (fp.setInteractTargets) fp.setInteractTargets(interactables);
+      if (fp.setInteractables) fp.setInteractables(interactables);
+      if (fp.setRaycastTargets) fp.setRaycastTargets(interactables);
 
-attachCollidersWhenReady();
+      // ✅ COLLISION targets (proxy)
+      const colGroup = layer.userData?.colliders;
+      if (colGroup) {
+        colliders.push(colGroup);
+        fp.setColliders?.(colliders);
+        (fp.setCollisionTargets || fp.setColliders)?.(colliders);
+      } else {
+        setTimeout(attachCollidersWhenReady, 50);
+      }
+    };
+    attachCollidersWhenReady();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
