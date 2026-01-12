@@ -343,96 +343,57 @@ export function useDepotScene({ mountRef }) {
 // 🔧 Înlocuiește COMPLET funcția selectFromCrosshair cu asta.
 
 const selectFromCrosshair = useCallback(() => {
-  const camera = cameraRef.current;
-  const depotGroup = depotGroupRef.current;
-  const layer = containersLayerRef.current;
+  const fp = fpRef.current;
+  const cam = cameraRef.current;
+  if (!fp || !cam) {
+    console.log("[SELECT] fp/camera missing", { hasFP: !!fp, hasCam: !!cam });
+    return;
+  }
 
-  if (!camera) return;
+  const hit = fp.getInteractHit?.({ maxDist: 45 });
 
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  raycaster.far = 120;
-
-  // IMPORTANT: nu raycast pe colliders (poate fi colGroup invizibil),
-  // ci pe layer/depotGroup ca să vedem CE lovește de fapt.
-  const target = layer || depotGroup;
-  if (!target) return;
-
-  target.updateMatrixWorld(true);
-
-  const hits = raycaster.intersectObject(target, true);
-
-  // ✅ DEBUG: spune clar dacă nu lovește nimic
-  if (!hits.length) {
+  if (!hit) {
+    const dir = new THREE.Vector3();
+    cam.getWorldDirection(dir);
     console.log("[SELECT] no hit", {
-      hasLayer: !!layer,
-      hasDepotGroup: !!depotGroup,
-      camPos: camera.position.toArray(),
-      camDir: camera.getWorldDirection(new THREE.Vector3()).toArray(),
+      camPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      camDir: { x: dir.x, y: dir.y, z: dir.z },
     });
     return;
   }
 
-  const hit = hits[0];
   const obj = hit.object;
-
-  // ✅ DEBUG: spune exact ce a lovit
-  console.log("[SELECT] hit", {
+  console.log("[SELECT] hit raw", {
     distance: hit.distance,
-    point: hit.point.toArray(),
     instanceId: hit.instanceId,
-    objectName: obj?.name,
     objectType: obj?.type,
-    isMesh: !!obj?.isMesh,
+    objectName: obj?.name,
     isInstancedMesh: !!obj?.isInstancedMesh,
-    objUserDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
-    parentName: obj?.parent?.name,
-    parentType: obj?.parent?.type,
-    parentUserDataKeys: obj?.parent?.userData ? Object.keys(obj.parent.userData) : [],
+    userDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
   });
 
-  // încearcă să găsească record pe obiect SAU pe părinți
-  let node = obj;
-  for (let i = 0; node && i < 15; i++) {
-    // Instanced: records pe mesh
-    if (node.isInstancedMesh && Array.isArray(node.userData?.records) && hit.instanceId != null) {
-      const rec = node.userData.records[hit.instanceId];
-      console.log("[SELECT] resolved record from mesh.records", rec);
-      onContainerSelectedRef.current?.(rec || null);
-      if (rec) showSelectedMarker(rec);
-      return;
-    }
-
-    // Instanced: records pe părinte
-    if (node.isInstancedMesh && hit.instanceId != null && Array.isArray(node.parent?.userData?.records)) {
-      const rec = node.parent.userData.records[hit.instanceId];
-      console.log("[SELECT] resolved record from parent.records", rec);
-      onContainerSelectedRef.current?.(rec || null);
-      if (rec) showSelectedMarker(rec);
-      return;
-    }
-
-    // Mesh: __record pe mesh
-    if (node.userData?.__record) {
-      console.log("[SELECT] resolved record from __record", node.userData.__record);
-      onContainerSelectedRef.current?.(node.userData.__record);
-      showSelectedMarker(node.userData.__record);
-      return;
-    }
-
-    // Mesh: __record pe părinte
-    if (node.parent?.userData?.__record) {
-      console.log("[SELECT] resolved record from parent.__record", node.parent.userData.__record);
-      onContainerSelectedRef.current?.(node.parent.userData.__record);
-      showSelectedMarker(node.parent.userData.__record);
-      return;
-    }
-
-    node = node.parent;
+  // instanced containers
+  if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
+    const rec = obj.userData.records[hit.instanceId];
+    console.log("[SELECT] instanced record", rec || null);
+    onContainerSelectedRef.current?.(rec || null);
+    if (rec) showSelectedMarker(rec);
+    return;
   }
 
-  // ✅ DEBUG: lovește ceva, dar NU există record mapping
-  console.log("[SELECT] hit but no record mapping found (missing records/__record)");
+  // mesh container
+  if (obj?.userData?.__record) {
+    console.log("[SELECT] mesh record", obj.userData.__record);
+    onContainerSelectedRef.current?.(obj.userData.__record);
+    showSelectedMarker(obj.userData.__record);
+    return;
+  }
+
+  console.log("[SELECT] hit but no record attached", {
+    objectName: obj?.name,
+    objectType: obj?.type,
+    userData: obj?.userData || null,
+  });
 }, [showSelectedMarker]);
 
   useEffect(() => {
