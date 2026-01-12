@@ -15,13 +15,14 @@ import { slotToWorld } from "../threeWorld/slotToWorld";
 
 import createBuildController from "../world/buildController";
 
-// ===== Config curte =====
 const YARD_WIDTH = 90,
   YARD_DEPTH = 60,
   YARD_COLOR = 0x9aa0a6;
+
 const SLOT_LEN = 6.06,
   SLOT_GAP = 0.06,
   STEP = SLOT_LEN + SLOT_GAP;
+
 const ABC_CENTER_OFFSET_X = 5 * STEP;
 
 const CFG = {
@@ -56,19 +57,16 @@ function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
 }
 
 export function useDepotScene({ mountRef }) {
-  // expuse în sus
   const [isFP, setIsFP] = useState(false);
   const [containers, setContainers] = useState([]);
   const [buildActive, setBuildActive] = useState(false);
 
-  // ORBIT LIBRE
   const [orbitLibre, setOrbitLibre] = useState(false);
   const orbitLibreRef = useRef(false);
   useEffect(() => {
     orbitLibreRef.current = orbitLibre;
   }, [orbitLibre]);
 
-  // refs interne
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
   const fpRef = useRef(null);
@@ -77,15 +75,17 @@ export function useDepotScene({ mountRef }) {
 
   const sceneRef = useRef(null);
   const markerRef = useRef(null);
+  const depotGroupRef = useRef(null);
+  const rendererRef = useRef(null);
 
   const clockRef = useRef(new THREE.Clock());
   const isFPRef = useRef(false);
+
   const buildActiveRef = useRef(false);
   useEffect(() => {
     buildActiveRef.current = buildActive;
   }, [buildActive]);
 
-  // margini curte
   const yardPad = 0.5;
   const yardMinX = -YARD_WIDTH / 2 + yardPad;
   const yardMaxX = YARD_WIDTH / 2 - yardPad;
@@ -103,22 +103,13 @@ export function useDepotScene({ mountRef }) {
 
   function clampOrbit(camera, controls) {
     if (!camera || !controls) return;
-    controls.target.x = THREE.MathUtils.clamp(
-      controls.target.x,
-      yardMinX,
-      yardMaxX
-    );
-    controls.target.z = THREE.MathUtils.clamp(
-      controls.target.z,
-      yardMinZ,
-      yardMaxZ
-    );
+    controls.target.x = THREE.MathUtils.clamp(controls.target.x, yardMinX, yardMaxX);
+    controls.target.z = THREE.MathUtils.clamp(controls.target.z, yardMinZ, yardMaxZ);
     if (camera.position.y < 0.5) camera.position.y = 0.5;
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, yardMinX, yardMaxX);
     camera.position.z = THREE.MathUtils.clamp(camera.position.z, yardMinZ, yardMaxZ);
   }
 
-  // FP bounds
   const bounds = useMemo(
     () => ({
       minX: -YARD_WIDTH / 2 + 2,
@@ -129,36 +120,35 @@ export function useDepotScene({ mountRef }) {
     []
   );
 
-  // FP on/off
-  const setFPEnabled = useCallback(
-    (enabled) => {
-      const orbit = controlsRef.current;
-      const fp = fpRef.current;
-      if (!orbit || !fp) return;
+  const setFPEnabled = useCallback((enabled) => {
+    const orbit = controlsRef.current;
+    const fp = fpRef.current;
+    if (!orbit || !fp) return;
 
-      if (enabled) {
-        setOrbitLibre(false);
-        orbit.enabled = false;
-        fp.enable?.();
-        isFPRef.current = true;
-        setIsFP(true);
-      } else {
-        fp.disable?.();
-        orbit.enabled = !buildActiveRef.current;
-        isFPRef.current = false;
-        setIsFP(false);
-      }
-    },
-    []
-  );
+    if (enabled) {
+      setOrbitLibre(false);
+      orbit.enabled = false;
+      fp.enable?.();
+      isFPRef.current = true;
+      setIsFP(true);
+    } else {
+      fp.disable?.();
+      orbit.enabled = !buildActiveRef.current;
+      isFPRef.current = false;
+      setIsFP(false);
+    }
+  }, []);
 
-  const setForwardPressed = useCallback(
-    (v) => fpRef.current?.setForwardPressed?.(v),
-    []
-  );
+  const setForwardPressed = useCallback((v) => fpRef.current?.setForwardPressed?.(v), []);
   const setJoystick = useCallback((v) => fpRef.current?.setJoystick?.(v), []);
+  const setLookJoystick = useCallback((v) => {
+    const fp = fpRef.current;
+    if (!fp) return;
+    if (fp.setLookJoystick) fp.setLookJoystick(v);
+    else if (fp.setLook) fp.setLook(v);
+    else if (fp.setLookDelta) fp.setLookDelta(v);
+  }, []);
 
-  // Build API
   const [buildMode, setBuildMode] = useState("place");
   const buildApi = useMemo(
     () => ({
@@ -189,13 +179,11 @@ export function useDepotScene({ mountRef }) {
     [buildMode]
   );
 
-  // callback select container
   const onContainerSelectedRef = useRef(null);
   const setOnContainerSelected = useCallback((fn) => {
     onContainerSelectedRef.current = fn;
   }, []);
 
-  // ===== Marker vizual (inel) =====
   const showSelectedMarker = useCallback((container) => {
     const scene = sceneRef.current;
     if (!scene || !container) return;
@@ -234,7 +222,6 @@ export function useDepotScene({ mountRef }) {
     ring.userData._pulseT = 0;
   }, []);
 
-  // ===== Focus camera on container (smooth) =====
   const focusCameraOnContainer = useCallback(
     (container, opts = {}) => {
       if (!container || !cameraRef.current || !controlsRef.current) return;
@@ -311,7 +298,6 @@ export function useDepotScene({ mountRef }) {
     [setFPEnabled]
   );
 
-  // ===== Zoom API (GARANTAT) =====
   const zoomBy = useCallback((mult) => {
     const controls = controlsRef.current;
     const camera = cameraRef.current;
@@ -336,7 +322,6 @@ export function useDepotScene({ mountRef }) {
     clampOrbit(camera, controls);
   }, []);
 
-  // valori “logice”: zoomIn apropie (mult < 1), zoomOut depărtează (mult > 1)
   const zoomIn = useCallback(() => zoomBy(0.85), [zoomBy]);
   const zoomOut = useCallback(() => zoomBy(1.18), [zoomBy]);
 
@@ -354,7 +339,6 @@ export function useDepotScene({ mountRef }) {
     clampOrbit(camera, controls);
   }, [setFPEnabled]);
 
-  // ===== Select din centrul ecranului în FP (E / buton mobil) =====
   const selectFromCrosshair = useCallback(() => {
     const fp = fpRef.current;
     if (!fp) return;
@@ -364,7 +348,6 @@ export function useDepotScene({ mountRef }) {
 
     const obj = hit.object;
 
-    // instanced containers
     if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
       const rec = obj.userData.records[hit.instanceId];
       onContainerSelectedRef.current?.(rec || null);
@@ -378,7 +361,6 @@ export function useDepotScene({ mountRef }) {
     }
   }, [showSelectedMarker]);
 
-  // tasta E pentru select în FP
   useEffect(() => {
     const onKey = (e) => {
       if (e.code === "KeyE") selectFromCrosshair();
@@ -391,14 +373,13 @@ export function useDepotScene({ mountRef }) {
     const mount = mountRef.current;
     if (!mount) return;
 
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    rendererRef.current = renderer;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
-    // Scene & Camera
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
@@ -411,7 +392,6 @@ export function useDepotScene({ mountRef }) {
     camera.position.set(20, 8, 20);
     cameraRef.current = camera;
 
-    // Orbit
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
@@ -424,16 +404,13 @@ export function useDepotScene({ mountRef }) {
     controls.target.set(0, 1, 0);
     controlsRef.current = controls;
 
-    // FP (modern)
     fpRef.current = createFirstPerson(camera, bounds, {
       eyeHeight: 1.7,
       stepMax: 0.6,
       slopeMax: Math.tan((40 * Math.PI) / 180),
     });
-    // IMPORTANT: attach la canvas pentru look (mouse/touch + pointer lock)
     fpRef.current?.attach?.(renderer.domElement);
 
-    // Lights / Env
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(5, 10, 5);
@@ -448,7 +425,6 @@ export function useDepotScene({ mountRef }) {
       })
     );
 
-    // Landscape / Base / WorldGroup
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
 
@@ -459,8 +435,8 @@ export function useDepotScene({ mountRef }) {
     worldGroup.name = "worldGroup";
     scene.add(worldGroup);
 
-    // Ground + Fence
     const depotGroup = new THREE.Group();
+    depotGroupRef.current = depotGroup;
 
     const groundNode = createGround(CFG.ground);
     const groundMesh = groundNode.userData?.groundMesh || groundNode;
@@ -485,7 +461,6 @@ export function useDepotScene({ mountRef }) {
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // Build controller
     buildRef.current = createBuildController({
       camera,
       domElement: renderer.domElement,
@@ -501,7 +476,6 @@ export function useDepotScene({ mountRef }) {
     buildRef.current?.setMode(buildMode);
     buildRef.current?.setType?.("road.segment");
 
-    // Containers
     (async () => {
       try {
         const data = await fetchContainers();
@@ -509,12 +483,19 @@ export function useDepotScene({ mountRef }) {
         const layer = createContainersLayerOptimized(data, CFG.ground);
         containersLayerRef.current = layer;
         depotGroup.add(layer);
+
+        const fp = fpRef.current;
+        if (fp) {
+          const interactTargets = [layer, depotGroup];
+          if (fp.setInteractables) fp.setInteractables(interactTargets);
+          if (fp.setInteractTargets) fp.setInteractTargets(interactTargets);
+          if (fp.setRaycastTargets) fp.setRaycastTargets(interactTargets);
+        }
       } catch (e) {
         console.warn("fetchContainers", e);
       }
     })();
 
-    // FP walkables & colliders (SEPARAT!)
     const walkables = [groundMesh, baseWorld, worldGroup, landscape];
     fpRef.current?.setWalkables?.(walkables);
 
@@ -528,7 +509,6 @@ export function useDepotScene({ mountRef }) {
       const colGroup = layer?.userData?.colliders;
       if (colGroup) {
         colliders.push(colGroup);
-        // IMPORTANT: abia acum setăm colliders (include containere)
         fpRef.current?.setColliders?.(colliders);
         (fpRef.current.setCollisionTargets || fpRef.current.setColliders)?.(colliders);
       } else {
@@ -537,14 +517,11 @@ export function useDepotScene({ mountRef }) {
     };
     attachCollidersWhenReady();
 
-    // ===== PICK pe hartă (pointerdown pe canvas) =====
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
     const onPick = (event) => {
       if (buildActiveRef.current) return;
-
-      // dacă atingi UI, nu facem pick
       if (event.target?.closest?.('[data-map-ui="1"]')) return;
 
       const rect = renderer.domElement.getBoundingClientRect();
@@ -561,7 +538,6 @@ export function useDepotScene({ mountRef }) {
         const hit = intersects[0];
         const obj = hit.object;
 
-        // Instanced containers
         if (obj.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
           const rec = obj.userData.records[hit.instanceId];
           onContainerSelectedRef.current?.(rec || null);
@@ -569,7 +545,6 @@ export function useDepotScene({ mountRef }) {
           return;
         }
 
-        // Mesh container
         if (obj.userData?.__record) {
           onContainerSelectedRef.current?.(obj.userData.__record);
           showSelectedMarker(obj.userData.__record);
@@ -583,7 +558,6 @@ export function useDepotScene({ mountRef }) {
 
     renderer.domElement.addEventListener("pointerdown", onPick, { passive: true });
 
-    // ===== Build inputs =====
     const isOverBuildUI = (x, y) => {
       const el = document.elementFromPoint(x, y);
       return !!el?.closest?.('[data-build-ui="true"]');
@@ -602,14 +576,13 @@ export function useDepotScene({ mountRef }) {
 
     const onPointerMove = (e) => handleMove(e.clientX, e.clientY);
     const onPointerDownBuild = (e) => {
-      if (!buildActiveRef.current) return; // IMPORTANT
+      if (!buildActiveRef.current) return;
       handleBuildClick(e.clientX, e.clientY);
     };
 
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerdown", onPointerDownBuild);
 
-    // ===== Loop =====
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
@@ -619,7 +592,6 @@ export function useDepotScene({ mountRef }) {
       const cam = cameraRef.current;
       const ctl = controlsRef.current;
 
-      // marker pulse
       if (markerRef.current?.visible) {
         const ring = markerRef.current;
         ring.userData._pulseT = (ring.userData._pulseT || 0) + delta * 2.2;
@@ -650,17 +622,15 @@ export function useDepotScene({ mountRef }) {
     };
     animate();
 
-    // Resize
     const onResize = () => {
-      const w = mount.clientWidth,
-        h = mount.clientHeight;
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
     window.addEventListener("resize", onResize);
 
-    // Cleanup
     return () => {
       window.removeEventListener("resize", onResize);
 
@@ -675,11 +645,12 @@ export function useDepotScene({ mountRef }) {
 
       markerRef.current = null;
       sceneRef.current = null;
+      depotGroupRef.current = null;
+      rendererRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Orbit enabled/disabled în build
   useEffect(() => {
     const orbit = controlsRef.current;
     if (!orbit) return;
@@ -692,6 +663,8 @@ export function useDepotScene({ mountRef }) {
     setFPEnabled,
     setForwardPressed,
     setJoystick,
+    setLookJoystick,
+    selectFromCrosshair,
 
     buildActive,
     setBuildActive,
@@ -708,9 +681,6 @@ export function useDepotScene({ mountRef }) {
     zoomIn,
     zoomOut,
     recenter,
-
-    // expus ca să-l legi pe un buton mobil "E"
-    selectFromCrosshair,
 
     startOrbitLibre: (opts = {}) => {
       setFPEnabled(false);
