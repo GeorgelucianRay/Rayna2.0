@@ -341,33 +341,62 @@ export function useDepotScene({ mountRef }) {
 
   const selectFromCrosshair = useCallback(() => {
   const camera = cameraRef.current;
-  const layer = containersLayerRef.current;
-  if (!camera || !layer) return;
+  const depotGroup = depotGroupRef.current;
+  if (!camera || !depotGroup) return;
 
-  // Ray din centrul ecranului
+  // asigură matrixWorld up-to-date
+  depotGroup.updateMatrixWorld(true);
+
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  raycaster.far = 60;
+  raycaster.far = 80;
 
-  // IMPORTANT: raycast doar pe layer-ul de containere (vizual, cu records)
-  const hits = raycaster.intersectObject(layer, true);
+  const hits = raycaster.intersectObject(depotGroup, true);
   if (!hits.length) return;
 
   const hit = hits[0];
-  const obj = hit.object;
 
-  // Instanced containers
-  if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
-    const rec = obj.userData.records[hit.instanceId];
-    onContainerSelectedRef.current?.(rec || null);
-    if (rec) showSelectedMarker(rec);
-    return;
-  }
+  // urcăm pe părinți până găsim record data
+  let node = hit.object;
+  let safety = 0;
 
-  // Mesh container
-  if (obj?.userData?.__record) {
-    onContainerSelectedRef.current?.(obj.userData.__record);
-    showSelectedMarker(obj.userData.__record);
+  while (node && safety++ < 12) {
+    // instanced mesh + records (pe mesh)
+    if (node.isInstancedMesh && node.userData?.records && hit.instanceId != null) {
+      const rec = node.userData.records[hit.instanceId];
+      onContainerSelectedRef.current?.(rec || null);
+      if (rec) showSelectedMarker(rec);
+      return;
+    }
+
+    // instanced mesh + records (pe părinte)
+    if (node.isInstancedMesh && hit.instanceId != null) {
+      const recs = node.parent?.userData?.records;
+      if (Array.isArray(recs)) {
+        const rec = recs[hit.instanceId];
+        onContainerSelectedRef.current?.(rec || null);
+        if (rec) showSelectedMarker(rec);
+        return;
+      }
+    }
+
+    // mesh container clasic
+    if (node.userData?.__record) {
+      const rec = node.userData.__record;
+      onContainerSelectedRef.current?.(rec || null);
+      showSelectedMarker(rec);
+      return;
+    }
+
+    // __record pe părinte
+    if (node.parent?.userData?.__record) {
+      const rec = node.parent.userData.__record;
+      onContainerSelectedRef.current?.(rec || null);
+      showSelectedMarker(rec);
+      return;
+    }
+
+    node = node.parent;
   }
 }, [showSelectedMarker]);
 
