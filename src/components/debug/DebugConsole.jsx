@@ -24,30 +24,47 @@ export default function DebugConsole({ enabled = true, initialOpen = false }) {
   const btnRef = useRef(null);
 
   // === Capturăm erorile consolei (error + warn) ===
-  useEffect(() => {
-    if (!enabled) return;
-    const origError = console.error;
-    const origWarn = console.warn;
-    const push = (type, args) => {
-      setLogs(prev => [
-        { id: Date.now() + Math.random(), type, when: new Date().toISOString(), text: args.map(a => {
+  // === Capturăm erorile consolei (error + warn + log) ===
+useEffect(() => {
+  if (!enabled) return;
+
+  const origError = console.error;
+  const origWarn  = console.warn;
+  const origLog   = console.log;
+
+  const push = (type, args) => {
+    setLogs(prev => [
+      {
+        id: Date.now() + Math.random(),
+        type,
+        when: new Date().toISOString(),
+        text: args.map(a => {
           try { return typeof a === 'string' ? a : JSON.stringify(a); }
           catch { return String(a); }
-        }).join(' ') },
-        ...prev
-      ]);
-    };
-    console.error = (...a) => { push('error', a); origError(...a); };
-    console.warn  = (...a) => { push('warn',  a); origWarn(...a); };
+        }).join(' ')
+      },
+      ...prev
+    ]);
+  };
 
-    window.addEventListener('error', (e) => push('error', [e.message || 'WindowError']));
-    window.addEventListener('unhandledrejection', (e) => push('error', [String(e.reason || 'PromiseRejection')]));
+  console.error = (...a) => { push('error', a); origError(...a); };
+  console.warn  = (...a) => { push('warn',  a); origWarn(...a); };
+  console.log   = (...a) => { push('info',  a); origLog(...a); };
 
-    return () => {
-      console.error = origError;
-      console.warn  = origWarn;
-    };
-  }, [enabled]);
+  const onWinError = (e) => push('error', [e.message || 'WindowError']);
+  const onRej = (e) => push('error', [String(e.reason || 'PromiseRejection')]);
+
+  window.addEventListener('error', onWinError);
+  window.addEventListener('unhandledrejection', onRej);
+
+  return () => {
+    console.error = origError;
+    console.warn  = origWarn;
+    console.log   = origLog;
+    window.removeEventListener('error', onWinError);
+    window.removeEventListener('unhandledrejection', onRej);
+  };
+}, [enabled]);
 
   // === Drag & drop pentru buton ===
   useEffect(() => {
@@ -193,15 +210,18 @@ export default function DebugConsole({ enabled = true, initialOpen = false }) {
   };
 
   const rowStyle = (type) => ({
-    padding: '10px 12px',
-    borderRadius: 10,
-    background: type === 'error'
+  padding: '10px 12px',
+  borderRadius: 10,
+  background:
+    type === 'error'
       ? 'linear-gradient(180deg, rgba(239,68,68,.25), rgba(239,68,68,.12))'
-      : 'linear-gradient(180deg, rgba(234,179,8,.22), rgba(234,179,8,.10))',
-    border: '1px solid rgba(255,255,255,.15)',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word'
-  });
+      : type === 'warn'
+        ? 'linear-gradient(180deg, rgba(234,179,8,.22), rgba(234,179,8,.10))'
+        : 'linear-gradient(180deg, rgba(59,130,246,.20), rgba(59,130,246,.08))',
+  border: '1px solid rgba(255,255,255,.15)',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word'
+});
 
   const footerStyle = {
     display: 'flex', gap: 8, justifyContent: 'flex-end',
