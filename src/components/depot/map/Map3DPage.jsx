@@ -13,16 +13,14 @@ export default function Map3DPage() {
   const navigate = useNavigate();
   const mountRef = useRef(null);
 
+  const appBarRef = useRef(null);
+
   const [showBuild, setShowBuild] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState(null);
 
-  // ✅ burger menu open
   const [menuOpen, setMenuOpen] = useState(false);
+  const MENU_HEIGHT = 110; // ✅ panelul tău e doar dock-ul + puțin padding (ajustezi ușor)
 
-  // ✅ înălțime meniu (px) — o poți ajusta
-  const MENU_HEIGHT = 260;
-
-  // ✅ folosit ca CSS var pentru a împinge zoomControls
   const rootStyle = useMemo(
     () => ({ '--menuOffset': menuOpen ? `${MENU_HEIGHT}px` : '0px' }),
     [menuOpen]
@@ -60,11 +58,25 @@ export default function Map3DPage() {
     });
   }, [setOnContainerSelected, showSelectedMarker]);
 
+  // ✅ setăm top-ul panelului exact sub appBar (fără magic numbers)
+  useEffect(() => {
+    const el = appBarRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      document.documentElement.style.setProperty('--appBarBottom', `${r.bottom}px`);
+    });
+    ro.observe(el);
+    const r = el.getBoundingClientRect();
+    document.documentElement.style.setProperty('--appBarBottom', `${r.bottom}px`);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className={styles.root} style={rootStyle}>
       <div ref={mountRef} className={styles.canvasHost} />
 
-      <header className={styles.appBar} data-map-ui="1">
+      <header ref={appBarRef} className={styles.appBar} data-map-ui="1">
         <div className={styles.appBarLeft}>
           <button
             className={styles.appIconBtn}
@@ -97,65 +109,42 @@ export default function Map3DPage() {
             ⟳
           </button>
 
-          {/* ✅ burger: deschide Navbar3D-ul tău (top-down) */}
+          {/* ✅ doar burger */}
           <button
             className={`${styles.appIconBtn} ${menuOpen ? styles.isActive : ''}`}
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setMenuOpen(v => !v)}
             aria-label="Menu"
             title={menuOpen ? 'Închide meniul' : 'Deschide meniul'}
             type="button"
           >
             ☰
           </button>
-
-          {/* păstrez butonul Items dacă încă îl vrei separat (NU stric ce aveai)
-              Dacă nu-l mai vrei, îl poți scoate după ce confirmi.
-          */}
-          <button
-            className={styles.appIconBtn}
-            onClick={() => openWorldItems()}
-            aria-label="Items"
-            title="Items"
-            type="button"
-          >
-            ⋯
-          </button>
         </div>
       </header>
 
-      {/* ✅ PANEL TOP-DOWN: AICI este Navbar3D-ul tău, nu se mai afișează jos */}
-      <div
-        className={`${styles.topMenu} ${menuOpen ? styles.topMenuOpen : ''}`}
-        data-map-ui="1"
-      >
+      {/* ✅ PANEL TOP-DOWN, sub appBar */}
+      <div className={`${styles.topMenu} ${menuOpen ? styles.topMenuOpen : ''}`} data-map-ui="1">
         <Navbar3D
+          variant="panel"
           containers={containers}
+          onRequestClose={() => setMenuOpen(false)}
           onSelectContainer={(c) => {
             setSelectedContainer(c);
             showSelectedMarker?.(c);
             if (isOrbitLibre) stopOrbitLibre();
             setFPEnabled(false);
             focusCameraOnContainer?.(c, { smooth: true });
-            setMenuOpen(false);
           }}
-          onToggleFP={() => {
-            setFPEnabled(!isFP);
-            setMenuOpen(false);
-          }}
+          onToggleFP={() => setFPEnabled(!isFP)}
           onAdd={(data) => console.log('Add from Navbar3D', data)}
           onOpenBuild={() => {
             setShowBuild(true);
             setBuildActive(true);
-            setMenuOpen(false);
           }}
-          onOpenWorldItems={() => {
-            openWorldItems();
-            setMenuOpen(false);
-          }}
+          onOpenWorldItems={() => openWorldItems()}
         />
       </div>
 
-      {/* ✅ Zoom controls: se mută în jos automat via CSS var --menuOffset */}
       <div className={styles.zoomControls} data-map-ui="1">
         <button className={styles.zoomBtn} type="button" onClick={zoomIn} aria-label="Zoom in">
           ＋
@@ -168,8 +157,10 @@ export default function Map3DPage() {
         </button>
       </div>
 
-      {/* ❌ NU mai randez Navbar3D jos (asta era problema ta) */}
-      {/* <Navbar3D ... /> */}
+      {/* ✅ păstrezi Navbar3D original jos DOAR dacă vrei, dar acum nu mai e nevoie.
+          Dacă îl lași, o să ai două meniuri.
+          Eu îl scot pentru că tu vrei să fie în burger.
+      */}
 
       {isFP && (
         <FPControls
