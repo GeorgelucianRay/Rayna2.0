@@ -26,8 +26,8 @@ export default function createFirstPerson(
     maxPitch = 1.2,
 
     // joystick look feel
-    lookJoyYawSpeed = 2.8, // rad/sec at full deflection
-    lookJoyPitchSpeed = 2.2, // rad/sec at full deflection
+    lookJoyYawSpeed = 1.4, // rad/sec at full deflection
+    lookJoyPitchSpeed = 1.1, // rad/sec at full deflection
     lookJoyDeadzone = 0.06, // 0..1
   } = {}
 ) {
