@@ -1,12 +1,12 @@
 // src/components/depot/map/Navbar3D.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBox from './SearchBox';
 import styles from './Map3DStandalone.module.css';
 
-function IconBtn({ title, onClick, children }) {
+function IconBtn({ title, onClick, children, className }) {
   return (
     <button
-      className={styles.dockIconBtn}
+      className={className || styles.dockIconBtn}
       title={title}
       onClick={onClick}
       type="button"
@@ -57,44 +57,106 @@ export default function Navbar3D({
   onAdd,
   onOpenBuild,
   onOpenWorldItems,
+
+  // ✅ NOU
+  variant = 'fab', // 'fab' (cum ai acum) sau 'panel' (pentru burger top-down)
+  onRequestClose,  // opțional: ca să închizi burger-ul după click
 }) {
+  const isPanel = variant === 'panel';
+
   const [dockOpen, setDockOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
+  // ✅ în panel: dock-ul e deschis by default
+  useEffect(() => {
+    if (isPanel) setDockOpen(true);
+  }, [isPanel]);
+
+  const closeAll = () => {
+    setDockOpen(false);
+    setSearchOpen(false);
+    setAddOpen(false);
+    onRequestClose?.();
+  };
+
   return (
-    <>
+    <div className={isPanel ? styles.navPanel : undefined}>
       {searchOpen && (
         <div className={styles.searchDock}>
-          <SearchBox containers={containers} onContainerSelect={onSelectContainer} />
+          <SearchBox
+            containers={containers}
+            onContainerSelect={(c) => {
+              onSelectContainer?.(c);
+              if (isPanel) closeAll();
+            }}
+          />
         </div>
       )}
 
-      <button
-        onClick={() => setDockOpen(v => !v)}
-        className={styles.toolsFab}
-        title="Tools"
-        type="button"
-        aria-label="Tools"
-      >
-        🛠️
-      </button>
+      {/* ✅ FAB îl afișăm doar în modul "fab" (jos) */}
+      {!isPanel && (
+        <button
+          onClick={() => setDockOpen(v => !v)}
+          className={styles.toolsFab}
+          title="Tools"
+          type="button"
+          aria-label="Tools"
+        >
+          🛠️
+        </button>
+      )}
 
-      {dockOpen && (
-        <div className={styles.toolsDock}>
-          <IconBtn title="Căutare" onClick={() => { setSearchOpen(v => !v); setDockOpen(false); }}>🔍</IconBtn>
-          <IconBtn title="Walk / FP" onClick={() => { onToggleFP?.(); setDockOpen(false); }}>👤</IconBtn>
-          <IconBtn title="Build" onClick={() => { onOpenBuild?.(); setDockOpen(false); }}>🧱</IconBtn>
-          <IconBtn title="Items" onClick={() => { onOpenWorldItems?.(); setDockOpen(false); }}>📋</IconBtn>
-          <IconBtn title="Adaugă" onClick={() => { setAddOpen(true); setDockOpen(false); }}>＋</IconBtn>
+      {/* ✅ Dock: în panel e mereu “în flow” (nu absolute jos) */}
+      {(dockOpen || isPanel) && (
+        <div className={isPanel ? styles.toolsDockPanel : styles.toolsDock}>
+          <IconBtn
+            title="Căutare"
+            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
+            onClick={() => setSearchOpen(v => !v)}
+          >
+            🔍
+          </IconBtn>
+
+          <IconBtn
+            title="Walk / FP"
+            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
+            onClick={() => { onToggleFP?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
+          >
+            👤
+          </IconBtn>
+
+          <IconBtn
+            title="Build"
+            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
+            onClick={() => { onOpenBuild?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
+          >
+            🧱
+          </IconBtn>
+
+          <IconBtn
+            title="Items"
+            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
+            onClick={() => { onOpenWorldItems?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
+          >
+            📋
+          </IconBtn>
+
+          <IconBtn
+            title="Adaugă"
+            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
+            onClick={() => { setAddOpen(true); if (!isPanel) setDockOpen(false); }}
+          >
+            ＋
+          </IconBtn>
         </div>
       )}
 
       <AddItemModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSubmit={(data) => { onAdd?.(data); setAddOpen(false); }}
+        onSubmit={(data) => { onAdd?.(data); setAddOpen(false); if (isPanel) closeAll(); }}
       />
-    </>
+    </div>
   );
 }
