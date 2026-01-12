@@ -443,3 +443,74 @@
   .appIconBtn{ width: 40px; height: 40px; border-radius: 13px; }
   .toolsFab{ width: 52px; height: 52px; border-radius: 26px; }
 }
+/* ===== Map modal (pentru lista Programación) ===== */
+.mapModalOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 2300;
+  background: rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.mapModalCard{
+  width: min(820px, 96vw);
+  max-height: min(78vh, 720px);
+  overflow: hidden;
+  border-radius: 16px;
+
+  background: rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 22px 70px rgba(0,0,0,0.55);
+
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.mapModalHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.mapModalTitle{
+  font-weight: 900;
+  color: rgba(255,255,255,0.95);
+}
+
+.mapModalClose{
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mapModalBody{
+  overflow: auto;
+  padding: 12px;
+}
+
+/* ===== Sfere pentru + și - ===== */
+.iconSphereGreen{
+  border-radius: 999px !important;
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), rgba(16,185,129,0.95)) !important;
+  border: 1px solid rgba(16,185,129,0.55) !important;
+  color: #04130b !important;
+  font-weight: 900;
+}
+
+.iconSphereRed{
+  border-radius: 999px !important;
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), rgba(239,68,68,0.95)) !important;
+  border: 1px solid rgba(239,68,68,0.55) !important;
+  color: #1b0707 !important;
+  font-weight: 900;
+}
