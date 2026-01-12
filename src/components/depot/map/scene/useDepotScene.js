@@ -347,57 +347,80 @@ export function useDepotScene({ mountRef }) {
 
   // ✅ SELECT (FP) + DEBUG (folosește WARN ca să intre în DebugConsole-ul tău)
   const selectFromCrosshair = useCallback(() => {
-    const fp = fpRef.current;
-    const cam = cameraRef.current;
+  const fp = fpRef.current;
+  const cam = cameraRef.current;
 
-    if (!fp || !cam) {
-      console.warn("[SELECT] fp/camera missing", { hasFP: !!fp, hasCam: !!cam });
-      return;
+  if (!fp || !cam) {
+    console.warn("[SELECT] fp/camera missing", { hasFP: !!fp, hasCam: !!cam });
+    return;
+  }
+
+  const hit = fp.getInteractHit?.({ maxDist: 45 });
+
+  if (!hit) {
+    const dir = new THREE.Vector3();
+    cam.getWorldDirection(dir);
+    console.warn("[SELECT] no hit", {
+      camPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      camDir: { x: dir.x, y: dir.y, z: dir.z },
+    });
+    return;
+  }
+
+  const obj = hit.object;
+
+  console.warn("[SELECT] hit raw", {
+    distance: hit.distance,
+    instanceId: hit.instanceId,
+    objectType: obj?.type,
+    objectName: obj?.name,
+    isInstancedMesh: !!obj?.isInstancedMesh,
+    userDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
+  });
+
+  // ✅ helper: caută userData pe lanțul de părinți
+  const findUp = (start, predicate) => {
+    let cur = start;
+    while (cur) {
+      if (predicate(cur)) return cur;
+      cur = cur.parent;
     }
+    return null;
+  };
 
-    const hit = fp.getInteractHit?.({ maxDist: 45 });
+  // ✅ Instanced containers: caută records și pe părinți
+  if (obj?.isInstancedMesh && hit.instanceId != null) {
+    const holder = findUp(obj, (o) => Array.isArray(o?.userData?.records));
+    const rec = holder?.userData?.records?.[hit.instanceId];
 
-    if (!hit) {
-      const dir = new THREE.Vector3();
-      cam.getWorldDirection(dir);
-      console.warn("[SELECT] no hit", {
-        camPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
-        camDir: { x: dir.x, y: dir.y, z: dir.z },
-      });
-      return;
-    }
-
-    const obj = hit.object;
-    console.warn("[SELECT] hit raw", {
-      distance: hit.distance,
-      instanceId: hit.instanceId,
-      objectType: obj?.type,
-      objectName: obj?.name,
-      isInstancedMesh: !!obj?.isInstancedMesh,
-      userDataKeys: obj?.userData ? Object.keys(obj.userData) : [],
+    console.warn("[SELECT] instanced holder", {
+      found: !!holder,
+      holderType: holder?.type,
+      holderName: holder?.name,
+      holderKeys: holder?.userData ? Object.keys(holder.userData) : [],
+      rec: rec || null,
     });
 
-    if (obj?.isInstancedMesh && obj.userData?.records && hit.instanceId != null) {
-      const rec = obj.userData.records[hit.instanceId];
-      console.warn("[SELECT] instanced record", rec || null);
-      onContainerSelectedRef.current?.(rec || null);
-      if (rec) showSelectedMarker(rec);
-      return;
-    }
+    onContainerSelectedRef.current?.(rec || null);
+    if (rec) showSelectedMarker(rec);
+    return;
+  }
 
-    if (obj?.userData?.__record) {
-      console.warn("[SELECT] mesh record", obj.userData.__record);
-      onContainerSelectedRef.current?.(obj.userData.__record);
-      showSelectedMarker(obj.userData.__record);
-      return;
-    }
+  // ✅ Mesh container: caută __record și pe părinți
+  const recordHolder = findUp(obj, (o) => !!o?.userData?.__record);
+  if (recordHolder?.userData?.__record) {
+    console.warn("[SELECT] mesh record", recordHolder.userData.__record);
+    onContainerSelectedRef.current?.(recordHolder.userData.__record);
+    showSelectedMarker(recordHolder.userData.__record);
+    return;
+  }
 
-    console.warn("[SELECT] hit but no record attached", {
-      objectName: obj?.name,
-      objectType: obj?.type,
-      userData: obj?.userData || null,
-    });
-  }, [showSelectedMarker]);
+  console.warn("[SELECT] hit but no record attached", {
+    objectName: obj?.name,
+    objectType: obj?.type,
+    userData: obj?.userData || null,
+  });
+}, [showSelectedMarker]);
 
   useEffect(() => {
     const onKey = (e) => {
