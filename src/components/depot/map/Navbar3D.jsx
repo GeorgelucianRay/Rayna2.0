@@ -1,12 +1,12 @@
 // src/components/depot/map/Navbar3D.jsx
-import React, { useState, useEffect } from 'react';
-import SearchBox from './SearchBox';
-import styles from './Map3DStandalone.module.css';
+import React, { useMemo, useState } from "react";
+import SearchBox from "./SearchBox";
+import styles from "./Map3DStandalone.module.css";
 
-function IconBtn({ title, onClick, children, className }) {
+function IconBtn({ title, onClick, className = "", children }) {
   return (
     <button
-      className={className || styles.dockIconBtn}
+      className={`${styles.dockIconBtnPanel} ${className}`}
       title={title}
       onClick={onClick}
       type="button"
@@ -17,33 +17,51 @@ function IconBtn({ title, onClick, children, className }) {
   );
 }
 
-function AddItemModal({ open, onClose, onSubmit }) {
-  const [form, setForm] = useState({ name: '' });
+function OverlayModal({ open, title, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className={styles.mapModalOverlay} role="dialog" aria-modal="true">
+      <div className={styles.mapModalCard}>
+        <div className={styles.mapModalHead}>
+          <strong className={styles.mapModalTitle}>{title}</strong>
+          <button className={styles.mapModalClose} onClick={onClose} type="button" aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div className={styles.mapModalBody}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function AddItemModal({ open, onClose, onSubmit, mode = "entrada" }) {
+  const [form, setForm] = useState({ name: "" });
   if (!open) return null;
 
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
       <div className={styles.modalCard}>
         <div className={styles.modalHead}>
-          <h3 className={styles.modalTitle}>Adaugă</h3>
+          <h3 className={styles.modalTitle}>{mode === "salida" ? "Salida" : "Entrada"} • Container</h3>
           <button className={styles.modalClose} onClick={onClose} type="button">✕</button>
         </div>
 
         <label className={styles.modalField}>
-          <span>Nume exemplu</span>
+          <span>Container / Nume</span>
           <input
             value={form.name}
-            onChange={e => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
             className={styles.modalInput}
+            placeholder="ex: MSCU1234567"
           />
         </label>
 
         <button
-          onClick={() => onSubmit?.(form)}
+          onClick={() => onSubmit?.({ ...form, mode })}
           className={styles.modalPrimary}
           type="button"
         >
-          Salvează
+          {mode === "salida" ? "Confirmă salida" : "Confirmă entrada"}
         </button>
       </div>
     </div>
@@ -54,109 +72,89 @@ export default function Navbar3D({
   containers = [],
   onSelectContainer,
   onToggleFP,
-  onAdd,
+  onAdd,            // primește { name, mode: "entrada" | "salida" }
   onOpenBuild,
   onOpenWorldItems,
-
-  // ✅ NOU
-  variant = 'fab', // 'fab' (cum ai acum) sau 'panel' (pentru burger top-down)
-  onRequestClose,  // opțional: ca să închizi burger-ul după click
 }) {
-  const isPanel = variant === 'panel';
+  const [panelOpen, setPanelOpen] = useState(false);
 
-  const [dockOpen, setDockOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);   // MODAL listă (programación)
   const [addOpen, setAddOpen] = useState(false);
+  const [addMode, setAddMode] = useState("entrada"); // "entrada" | "salida"
 
-  // ✅ în panel: dock-ul e deschis by default
-  useEffect(() => {
-    if (isPanel) setDockOpen(true);
-  }, [isPanel]);
-
-  const closeAll = () => {
-    setDockOpen(false);
-    setSearchOpen(false);
-    setAddOpen(false);
-    onRequestClose?.();
-  };
+  const listTitle = useMemo(() => "Programación • Containers", []);
 
   return (
-    <div className={isPanel ? `${styles.navPanel} ${searchOpen ? styles.navPanelWithSearch : ''}` : undefined}>
-      {searchOpen && (
-  <div className={isPanel ? styles.searchDockPanel : styles.searchDock}>
-    <SearchBox
-      containers={containers}
-      onContainerSelect={(c) => {
-        onSelectContainer?.(c);
-        if (isPanel) closeAll();
-      }}
-    />
-  </div>
-      )}
+    <>
+      {/* Panelul top-down (burger) — aici pui dock-ul tău în interior */}
+      <div className={`${styles.topMenu} ${panelOpen ? styles.topMenuOpen : ""}`} data-map-ui="1">
+        <div className={`${styles.navPanel} ${styles.navPanelWithSearch}`}>
+          <div className={styles.toolsDockPanel}>
+            <IconBtn
+              title="Programación"
+              onClick={() => { setListOpen(true); setPanelOpen(false); }}
+            >
+              📅
+            </IconBtn>
 
-      {/* ✅ FAB îl afișăm doar în modul "fab" (jos) */}
-      {!isPanel && (
-        <button
-          onClick={() => setDockOpen(v => !v)}
-          className={styles.toolsFab}
-          title="Tools"
-          type="button"
-          aria-label="Tools"
-        >
-          🛠️
-        </button>
-      )}
+            <IconBtn
+              title="Walk / FP"
+              onClick={() => { onToggleFP?.(); setPanelOpen(false); }}
+            >
+              👤
+            </IconBtn>
 
-      {/* ✅ Dock: în panel e mereu “în flow” (nu absolute jos) */}
-      {(dockOpen || isPanel) && (
-        <div className={isPanel ? styles.toolsDockPanel : styles.toolsDock}>
-          <IconBtn
-            title="Căutare"
-            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
-            onClick={() => setSearchOpen(v => !v)}
-          >
-            🔍
-          </IconBtn>
+            <IconBtn
+              title="Build"
+              onClick={() => { onOpenBuild?.(); setPanelOpen(false); }}
+            >
+              🧱
+            </IconBtn>
 
-          <IconBtn
-            title="Walk / FP"
-            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
-            onClick={() => { onToggleFP?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
-          >
-            👤
-          </IconBtn>
+            <IconBtn
+              title="Items"
+              onClick={() => { onOpenWorldItems?.(); setPanelOpen(false); }}
+            >
+              📋
+            </IconBtn>
 
-          <IconBtn
-            title="Build"
-            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
-            onClick={() => { onOpenBuild?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
-          >
-            🧱
-          </IconBtn>
+            {/* + Entrada (verde) */}
+            <IconBtn
+              title="Entrada (+)"
+              className={styles.iconSphereGreen}
+              onClick={() => { setAddMode("entrada"); setAddOpen(true); setPanelOpen(false); }}
+            >
+              +
+            </IconBtn>
 
-          <IconBtn
-            title="Items"
-            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
-            onClick={() => { onOpenWorldItems?.(); if (isPanel) closeAll(); else setDockOpen(false); }}
-          >
-            📋
-          </IconBtn>
-
-          <IconBtn
-            title="Adaugă"
-            className={isPanel ? styles.dockIconBtnPanel : styles.dockIconBtn}
-            onClick={() => { setAddOpen(true); if (!isPanel) setDockOpen(false); }}
-          >
-            ＋
-          </IconBtn>
+            {/* - Salida (roșu) */}
+            <IconBtn
+              title="Salida (-)"
+              className={styles.iconSphereRed}
+              onClick={() => { setAddMode("salida"); setAddOpen(true); setPanelOpen(false); }}
+            >
+              −
+            </IconBtn>
+          </div>
         </div>
-      )}
+      </div>
 
+      {/* MODAL LISTĂ (Programación) — în interiorul hărții */}
+      <OverlayModal
+        open={listOpen}
+        title={listTitle}
+        onClose={() => setListOpen(false)}
+      >
+        <SearchBox containers={containers} onContainerSelect={(c) => { onSelectContainer?.(c); setListOpen(false); }} />
+      </OverlayModal>
+
+      {/* MODAL + / - */}
       <AddItemModal
         open={addOpen}
+        mode={addMode}
         onClose={() => setAddOpen(false)}
-        onSubmit={(data) => { onAdd?.(data); setAddOpen(false); if (isPanel) closeAll(); }}
+        onSubmit={(data) => { onAdd?.(data); setAddOpen(false); }}
       />
-    </div>
+    </>
   );
 }
