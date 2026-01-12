@@ -1,19 +1,19 @@
 // src/components/threeWorld/createContainersABC.js
-import * as THREE from 'three';
-import { slotToWorld } from './slotToWorld';
+import * as THREE from "three";
+import { slotToWorld } from "./slotToWorld";
 
 /* ===== Dimensiuni containere ===== */
 const SIZE_BY_TIPO = {
-  '20':        { L: 6.06,  H: 2.59, W: 2.44 },
-  '20opentop': { L: 6.06,  H: 2.59, W: 2.44 },
-  '40alto':    { L: 12.19, H: 2.89, W: 2.44 },
-  '40bajo':    { L: 12.19, H: 2.59, W: 2.44 },
-  '40opentop': { L: 12.19, H: 2.59, W: 2.44 },
-  '45':        { L: 13.72, H: 2.89, W: 2.44 },
+  "20": { L: 6.06, H: 2.59, W: 2.44 },
+  "20opentop": { L: 6.06, H: 2.59, W: 2.44 },
+  "40alto": { L: 12.19, H: 2.89, W: 2.44 },
+  "40bajo": { L: 12.19, H: 2.59, W: 2.44 },
+  "40opentop": { L: 12.19, H: 2.59, W: 2.44 },
+  "45": { L: 13.72, H: 2.89, W: 2.44 },
 };
 
 /* ===== Texturi ===== */
-const TEXROOT = '/textures/contenedores';
+const TEXROOT = "/textures/contenedores";
 const loader = new THREE.TextureLoader();
 const tcache = new Map();
 
@@ -21,7 +21,7 @@ function loadTex(path) {
   if (tcache.has(path)) return tcache.get(path);
   const t = loader.load(path);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 2; // mai mic → GPU mai ușor
+  t.anisotropy = 2;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
   tcache.set(path, t);
@@ -36,94 +36,111 @@ function brandTex(brand, which) {
     `${dir}/${brand}_40_${which}_texture.jpg`,
     `${dir}/${brand}_40_${which}.jpg`,
   ]) {
-    try { return loadTex(p); } catch {}
+    try {
+      return loadTex(p);
+    } catch {}
   }
   return null;
 }
 
-function normBrand(name = '') {
+function normBrand(name = "") {
   const s = name.toLowerCase();
-  if (s.includes('maersk') || s === 'msk') return 'maersk';
-  if (s.includes('evergreen')) return 'evergreen';
-  if (s.includes('hapag') || s.includes('hlag')) return 'hapag';
-  if (s.includes('messina')) return 'messina';
-  if (s.includes('one')) return 'one';
-  if (s.includes('arkas') || s.includes('arcas')) return 'arkas';
-  if (s.includes('msc')) return 'msc';
-  if (s.includes('roto')) return 'roto';
-  return 'neutru';
+  if (s.includes("maersk") || s === "msk") return "maersk";
+  if (s.includes("evergreen")) return "evergreen";
+  if (s.includes("hapag") || s.includes("hlag")) return "hapag";
+  if (s.includes("messina")) return "messina";
+  if (s.includes("one")) return "one";
+  if (s.includes("arkas") || s.includes("arcas")) return "arkas";
+  if (s.includes("msc")) return "msc";
+  if (s.includes("roto")) return "roto";
+  return "neutru";
 }
 
-/**
- * Materiale optimizate (MeshLambertMaterial)
- * – aceleași texturi, dar CPU/GPU cost redus ~60%
- * – umbre dezactivate pentru performanță
- */
+/** Materiale optimizate (MeshLambertMaterial) */
 function makeMaterialsCapsOnX(brand) {
-  const sideT  = brandTex(brand, 'side');  const side  = sideT?.clone()  ?? null;
-  const topT   = brandTex(brand, 'top');   const top   = topT?.clone()   ?? null;
-  const frontT = brandTex(brand, 'front'); const front = frontT?.clone() ?? null;
-  const backT  = brandTex(brand, 'back');  const back  = backT?.clone()  ?? null;
+  const sideT = brandTex(brand, "side");
+  const side = sideT?.clone() ?? null;
+  const topT = brandTex(brand, "top");
+  const top = topT?.clone() ?? null;
+  const frontT = brandTex(brand, "front");
+  const front = frontT?.clone() ?? null;
+  const backT = brandTex(brand, "back");
+  const back = backT?.clone() ?? null;
 
-  if (side)  { side.wrapS = side.wrapT = THREE.ClampToEdgeWrapping; side.center.set(0.5, 0.5); }
-  if (top)   { top.wrapS  = top.wrapT  = THREE.ClampToEdgeWrapping; top.center.set(0.5, 0.5); }
-  if (front) { front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping; }
-  if (back)  { back.wrapS  = back.wrapT  = THREE.ClampToEdgeWrapping; }
+  if (side) {
+    side.wrapS = side.wrapT = THREE.ClampToEdgeWrapping;
+    side.center.set(0.5, 0.5);
+  }
+  if (top) {
+    top.wrapS = top.wrapT = THREE.ClampToEdgeWrapping;
+    top.center.set(0.5, 0.5);
+  }
+  if (front) {
+    front.wrapS = front.wrapT = THREE.ClampToEdgeWrapping;
+  }
+  if (back) {
+    back.wrapS = back.wrapT = THREE.ClampToEdgeWrapping;
+  }
 
-  // folosim MeshLambertMaterial în loc de MeshStandardMaterial (mult mai ușor)
-  const mSide   = new THREE.MeshLambertMaterial({ map: side, color: 0xffffff });
-  const mTop    = new THREE.MeshLambertMaterial({ map: top, color: 0xffffff });
+  const mSide = new THREE.MeshLambertMaterial({ map: side, color: 0xffffff });
+  const mTop = new THREE.MeshLambertMaterial({ map: top, color: 0xffffff });
   const mBottom = new THREE.MeshLambertMaterial({ color: 0x8a8f95 });
-  const mFront  = new THREE.MeshLambertMaterial({ map: front, color: 0xffffff });
-  const mBack   = new THREE.MeshLambertMaterial({ map: back, color: 0xffffff });
+  const mFront = new THREE.MeshLambertMaterial({ map: front, color: 0xffffff });
+  const mBack = new THREE.MeshLambertMaterial({ map: back, color: 0xffffff });
 
-  // mapare: caps pe ±X, laterale pe ±Z
+  // BoxGeometry: [right(+X), left(-X), top(+Y), bottom(-Y), front(+Z), back(-Z)]
+  // aici tu vrei capace pe ±X => folosim front/back pe ±X, laterale pe ±Z
   return [mFront, mBack, mTop, mBottom, mSide, mSide];
 }
 
 /* ===== Parser poziții ===== */
 function parsePos(p) {
-  const s = String(p || '').trim().toUpperCase();
+  const s = String(p || "").trim().toUpperCase();
   const m = s.match(/^([A-C])(\d{1,2})([A-Z])?$/);
-  return m ? { band: m[1], index: +m[2], level: m[3] || 'A' } : null;
+  return m ? { band: m[1], index: +m[2], level: m[3] || "A" } : null;
 }
 
 /* ===== Principal ===== */
 export default function createContainersABC(data, layout) {
   const layer = new THREE.Group();
+
   const list = (data?.containers || [])
-    .map(r => ({ rec: r, pos: parsePos(r.pos ?? r.posicion) }))
-    .filter(x => x.pos);
+    .map((r) => ({ rec: r, pos: parsePos(r.pos ?? r.posicion) }))
+    .filter((x) => x.pos);
+
   if (!list.length) return layer;
 
   const groups = new Map();
   for (const { rec, pos } of list) {
-    const tipo = (rec.tipo || '40bajo').toLowerCase();
-    const dims = SIZE_BY_TIPO[tipo] || SIZE_BY_TIPO['40bajo'];
-    const brand = normBrand(rec.naviera || '');
+    const tipo = (rec.tipo || "40bajo").toLowerCase();
+    const dims = SIZE_BY_TIPO[tipo] || SIZE_BY_TIPO["40bajo"];
+    const brand = normBrand(rec.naviera || "");
     const key = `${tipo}|${brand}`;
     if (!groups.has(key)) groups.set(key, { dims, brand, items: [] });
-    groups.get(key).items.push(pos);
+
+    // IMPORTANT: păstrăm rec + slot ca să putem face records[] pentru select
+    groups.get(key).items.push({ slot: pos, rec });
   }
 
-  groups.forEach(g => {
+  groups.forEach((g) => {
     const geom = new THREE.BoxGeometry(g.dims.L, g.dims.H, g.dims.W);
     const mats = makeMaterialsCapsOnX(g.brand);
 
-    // UN singur InstancedMesh pentru toate containerele acelui brand/tip
     const mesh = new THREE.InstancedMesh(geom, mats, g.items.length);
-
-    // performanță: fără umbre
     mesh.castShadow = false;
     mesh.receiveShadow = false;
-    mesh.frustumCulled = true; // GPU nu desenează obiecte în afara camerei
+    mesh.frustumCulled = true;
+
+    // ✅ SELECT: atașăm record-urile direct pe InstancedMesh
+    mesh.userData.records = g.items.map((it) => it.rec);
+    mesh.userData.__isContainerInstances = true;
 
     const M = new THREE.Matrix4();
     const P = new THREE.Vector3();
     const Q = new THREE.Quaternion();
     const S = new THREE.Vector3(1, 1, 1);
 
-    g.items.forEach((slot, i) => {
+    g.items.forEach(({ slot }, i) => {
       const wp = slotToWorld(
         { lane: slot.band, index: slot.index, tier: slot.level },
         { ...layout, abcNumbersReversed: true }
@@ -133,6 +150,8 @@ export default function createContainersABC(data, layout) {
       M.compose(P, Q, S);
       mesh.setMatrixAt(i, M);
     });
+
+    mesh.instanceMatrix.needsUpdate = true;
 
     layer.add(mesh);
   });
