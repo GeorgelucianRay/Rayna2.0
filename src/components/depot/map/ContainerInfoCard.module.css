@@ -98,3 +98,31 @@
   color: rgba(255,255,255,0.95);
   font-weight: 900;
 }
+.actionsRow{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+.btnPrimary{
+  flex:1;
+  height:44px;
+  border-radius:12px;
+  border:0;
+  font-weight:900;
+  background:#00e5ff;
+  color:#0a0c10;
+}
+.btnGhost{
+  flex:1;
+  height:44px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-weight:900;
+  opacity:.65;
+}
+.btnPrimary:disabled,
+.btnGhost:disabled{
+  opacity:.45;
+}
