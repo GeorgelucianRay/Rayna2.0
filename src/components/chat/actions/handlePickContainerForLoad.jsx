@@ -317,7 +317,7 @@ if (base === "45") {
 } else if (base === "40") {
   if (special === "hc") {
     // prinde 40HC, 40 Alto, High Cube
-    q = q.or("ilike.tipo.%40%HC%,ilike.tipo.%40%ALTO%,ilike.tipo.%HIGH%CUBE%");
+    q = q.or("tipo.ilike.%40%HC%,tipo.ilike.%40%ALTO%,tipo.ilike.%HIGH%CUBE%");
   } else if (special === "ot") {
     q = q.ilike("tipo", "%40%OT%");
   } else if (special === "bajo") {
