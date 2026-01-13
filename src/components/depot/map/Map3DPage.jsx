@@ -1,3 +1,4 @@
+// src/components/depot/map/Map3DPage.jsx
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Map3DStandalone.module.css";
@@ -12,20 +13,6 @@ import AddContainerWizardModal from "../modals/AddContainerWizardModal";
 import SalidaContainerWizardModal from "../modals/SalidaContainerWizardModal";
 
 import { supabase } from "../../../supabaseClient";
-
-// încearcă întâi contenedores, apoi containers (fallback)
-const TABLES_TRY = ["contenedores", "containers"];
-
-// helper: rulează o operație supabase pe primul tabel care merge
-async function tryTables(run) {
-  let lastErr = null;
-  for (const table of TABLES_TRY) {
-    const res = await run(table);
-    if (!res?.error) return { table, ...res };
-    lastErr = res.error;
-  }
-  return { data: null, error: lastErr };
-}
 
 export default function Map3DPage() {
   const navigate = useNavigate();
@@ -62,7 +49,7 @@ export default function Map3DPage() {
     startOrbitLibre,
     stopOrbitLibre,
 
-    // ✅ NOU (din patch-ul de mai sus)
+    // ✅ trebuie să existe în useDepotScene (patch-ul tău)
     refreshContainers,
   } = useDepotScene({ mountRef });
 
@@ -74,7 +61,8 @@ export default function Map3DPage() {
   }, [setOnContainerSelected, showSelectedMarker]);
 
   /**
-   * ✅ validatePosition pentru wizard
+   * ✅ validatePosition pentru wizard (+)
+   * Verifică dacă poziția există deja în lista curentă de pe hartă (din DB).
    */
   const validatePosition = useCallback(
     async (pos, tipo, ignoreId = null) => {
@@ -104,25 +92,20 @@ export default function Map3DPage() {
     [containers]
   );
 
-  // ✅ ADD (Entrada) — insert în Supabase + refresh layer
+  // ✅ ADD (Entrada) — insert în contenedores / contenedores_rotos + refresh map
   const handleAddContainer = useCallback(
-    async (payload /*, isBroken */) => {
+    async (payload, isBroken) => {
       try {
-        // insert
-        const ins = await tryTables((table) =>
-          supabase.from(table).insert(payload).select().single()
-        );
+        const table = isBroken ? "contenedores_rotos" : "contenedores";
 
-        if (ins.error) {
-          console.error(ins.error);
-          alert("Eroare Supabase la ADD (insert). Verifică numele tabelului/coloanelor.");
+        const { error } = await supabase.from(table).insert(payload);
+        if (error) {
+          console.error(error);
+          alert("Eroare la ADD (insert). Verifică tabela/coloanele.");
           return;
         }
 
-        // refresh map
         await refreshContainers?.();
-
-        // închide modal
         setAddModalOpen(false);
       } catch (e) {
         console.error(e);
@@ -132,30 +115,121 @@ export default function Map3DPage() {
     [refreshContainers]
   );
 
-  // ✅ SALIDA — delete din Supabase + refresh layer
-  // payload vine din SalidaContainerWizardModal:
-  // { camion, containers:[{id, matricula_contenedor, tipo, posicion}, ...], multi }
+  // ✅ SALIDA — MUTĂ din contenedores/rotos -> contenedores_salidos (apoi șterge din sursă)
   const handleSalida = useCallback(
     async (payload) => {
       try {
-        const mats = (payload?.containers || [])
-          .map((x) => String(x?.matricula_contenedor || "").trim().toUpperCase())
-          .filter(Boolean);
+        const truck = String(payload?.camion || "")
+          .trim()
+          .toUpperCase();
 
-        if (!mats.length) {
+        const list = payload?.containers || [];
+
+        if (!truck || truck.length < 4) {
+          alert("Introduce matrícula camion válida.");
+          return;
+        }
+        if (!list.length) {
           alert("Nu ai selectat containere.");
           return;
         }
 
-        // cel mai simplu și sigur (fără să știm schema ta): le scoatem din tabel -> dispar din hartă
-        const del = await tryTables((table) =>
-          supabase.from(table).delete().in("matricula_contenedor", mats)
-        );
+        // preferă source_table din wizard; fallback: dacă are "detalles" => rotos
+        const detectTable = (c) => {
+          const st = c?.source_table || c?.__table || c?.tabla || null;
+          if (st === "contenedores" || st === "contenedores_rotos") return st;
 
-        if (del.error) {
-          console.error(del.error);
-          alert("Eroare Supabase la SALIDA (delete). Verifică numele tabelului/coloanelor.");
-          return;
+          const hasDetalles = String(c?.detalles || "").trim().length > 0;
+          return hasDetalles ? "contenedores_rotos" : "contenedores";
+        };
+
+        for (const it of list) {
+          const sourceTable = detectTable(it);
+
+          // 1) Citește rândul complet din sursă (după id dacă există, altfel după matricula)
+          let row = null;
+
+          if (it?.id != null) {
+            const { data, error } = await supabase
+              .from(sourceTable)
+              .select("*")
+              .eq("id", it.id)
+              .maybeSingle();
+
+            if (error) {
+              console.error(error);
+              alert(`Eroare citire din ${sourceTable}.`);
+              return;
+            }
+            row = data;
+          } else {
+            const mat = String(it?.matricula_contenedor || "")
+              .trim()
+              .toUpperCase();
+
+            const { data, error } = await supabase
+              .from(sourceTable)
+              .select("*")
+              .eq("matricula_contenedor", mat)
+              .maybeSingle();
+
+            if (error) {
+              console.error(error);
+              alert(`Eroare citire din ${sourceTable}.`);
+              return;
+            }
+            row = data;
+          }
+
+          if (!row) {
+            alert(`Containerul nu a fost găsit în ${sourceTable}.`);
+            return;
+          }
+
+          // 2) Insert în contenedores_salidos (coloane reale din schema ta)
+          const insertSalida = {
+            matricula_contenedor: row.matricula_contenedor,
+            naviera: row.naviera ?? null,
+            tipo: row.tipo ?? null,
+            posicion: row.posicion ?? null,
+            matricula_camion: truck,
+            detalles: row.detalles ?? null,
+            estado: row.estado ?? null,
+
+            empresa_descarga: row.empresa_descarga ?? null,
+            fecha: row.fecha ?? null,
+            hora: row.hora ?? null,
+
+            // specifice salidos
+            desde_programados: false,
+            fecha_programada: null,
+            hora_programada: null,
+            fecha_salida: new Date().toISOString(),
+          };
+
+          const { error: insErr } = await supabase
+            .from("contenedores_salidos")
+            .insert(insertSalida);
+
+          if (insErr) {
+            console.error(insErr);
+            alert("Eroare insert în contenedores_salidos.");
+            return;
+          }
+
+          // 3) Delete din sursă
+          const { error: delErr } = await supabase
+            .from(sourceTable)
+            .delete()
+            .eq("id", row.id);
+
+          if (delErr) {
+            console.error(delErr);
+            alert(
+              `Eroare delete din ${sourceTable}. (salida a fost inserată deja)`
+            );
+            return;
+          }
         }
 
         await refreshContainers?.();
@@ -245,7 +319,6 @@ export default function Map3DPage() {
             openWorldItems();
             setMenuOpen(false);
           }}
-          // + / −
           onOpenAddModal={() => {
             setMenuOpen(false);
             setAddModalOpen(true);
