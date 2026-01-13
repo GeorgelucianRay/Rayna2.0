@@ -11,7 +11,7 @@ import BuildPalette from "./build/BuildPalette";
 
 import AddContainerWizardModal from "../modals/AddContainerWizardModal";
 import SalidaContainerWizardModal from "../modals/SalidaContainerWizardModal";
-import AsignarContainerModal from "../modals/AsignarContainerModal";
+import AssignProgramadoModal from "../modals/AssignProgramadoModal";
 
 import { supabase } from "../../../supabaseClient";
 
@@ -472,14 +472,14 @@ export default function Map3DPage() {
         slotMap={null}
       />
       {/* ✅ ASIGNAR Modal */}
-<AsignarContainerModal
+<AssignProgramadoModal
   isOpen={asignarOpen}
   onClose={() => {
     setAsignarOpen(false);
     setAsignarContainer(null);
   }}
   container={asignarContainer}
-  onAsignar={(payload) => handleAsignar(payload, asignarContainer)}
+  onAsignar={handleAsignar}
 />
 
       {/* SALIDA Wizard */}
