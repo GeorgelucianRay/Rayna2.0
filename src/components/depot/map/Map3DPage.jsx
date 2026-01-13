@@ -118,63 +118,58 @@ export default function Map3DPage() {
     },
     [refreshContainers]
   );
-  // ✅ ASIGNAR — insert în contenedores_programados + refresh
-  const handleAsignar = useCallback(
-    async (payload, container) => {
-      try {
-        if (!container?.matricula_contenedor) {
-          alert("Nu există container selectat.");
-          return;
-        }
-
-        const base = {
-          // payload vine din AsignarContainerModal:
-          // { matricula_contenedor, matricula_camion, empresa_descarga, fecha, hora }
-          ...payload,
-
-          // completăm cu info din containerul selectat (din depozit)
-          naviera: container?.naviera || null,
-          tipo: container?.tipo || null,
-          posicion: container?.posicion || null,
-          detalles: container?.detalles || null,
-        };
-
-        // încearcă "asignado"
-        let ins = await supabase
-          .from("contenedores_programados")
-          .insert({ ...base, estado: "asignado" })
-          .select()
-          .single();
-
-        // fallback dacă enum prog_estado nu acceptă "asignado"
-        if (ins?.error) {
-          const msg = String(ins.error?.message || "").toLowerCase();
-          const looksEnum = msg.includes("enum") || msg.includes("prog_estado");
-          if (looksEnum) {
-            ins = await supabase
-              .from("contenedores_programados")
-              .insert({ ...base, estado: "programado" })
-              .select()
-              .single();
-          }
-        }
-
-        if (ins?.error) {
-          console.error(ins.error);
-          alert("Eroare la ASIGNAR (contenedores_programados).");
-          return;
-        }
-
-        await refreshContainers?.();
-        setAsignarOpen(false);
-        setAsignarContainer(null);
-      } catch (e) {
-        console.error(e);
-        alert("Eroare la ASIGNAR.");
+ // ✅ ASIGNAR — MUTĂ din contenedores/rotos -> contenedores_programados
+const handleAsignar = useCallback(
+  async (payload, container) => {
+    try {
+      if (!container?.matricula_contenedor) {
+        alert("Nu există container selectat.");
+        return;
       }
-    },
-    [refreshContainers]
-  );
+
+      // 1) INSERT în contenedores_programados
+      const { error: insErr } = await supabase
+        .from("contenedores_programados")
+        .insert({
+          ...payload,
+          estado: "programado", // sau "asignado" dacă enum-ul tău acceptă
+        });
+
+      if (insErr) {
+        console.error(insErr);
+        alert("Eroare la INSERT în contenedores_programados.");
+        return;
+      }
+
+      // 2) DELETE din sursa (în depozit)
+      // dacă ai container.__table / source_table folosește-l, altfel default contenedores
+      const sourceTable =
+        container?.__table ||
+        container?.source_table ||
+        (container?.__source === "rotos" ? "contenedores_rotos" : "contenedores");
+
+      // prefer delete by id dacă există
+      const q = supabase.from(sourceTable).delete();
+      const del = container?.id != null
+        ? await q.eq("id", container.id)
+        : await q.eq("matricula_contenedor", String(container.matricula_contenedor).toUpperCase());
+
+      if (del.error) {
+        console.error(del.error);
+        alert(`S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`);
+        return;
+      }
+
+      await refreshContainers?.();
+      setAsignarOpen(false);
+      setAsignarContainer(null);
+    } catch (e) {
+      console.error(e);
+      alert("Eroare la ASIGNAR.");
+    }
+  },
+  [refreshContainers]
+);
 
   // ✅ SALIDA — MUTĂ din contenedores/rotos -> contenedores_salidos (apoi șterge din sursă)
   const handleSalida = useCallback(
