@@ -11,6 +11,7 @@ import BuildPalette from "./build/BuildPalette";
 
 import AddContainerWizardModal from "../modals/AddContainerWizardModal";
 import SalidaContainerWizardModal from "../modals/SalidaContainerWizardModal";
+import AsignarContainerModal from "../modals/AsignarContainerModal";
 
 import { supabase } from "../../../supabaseClient";
 
@@ -24,6 +25,9 @@ export default function Map3DPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [exitModalOpen, setExitModalOpen] = useState(false);
+
+  const [asignarOpen, setAsignarOpen] = useState(false);
+  const [asignarContainer, setAsignarContainer] = useState(null);
 
   const {
     isFP,
@@ -133,6 +137,7 @@ export default function Map3DPage() {
           alert("Nu ai selectat containere.");
           return;
         }
+        
 
         // preferă source_table din wizard; fallback: dacă are "detalles" => rotos
         const detectTable = (c) => {
@@ -142,6 +147,56 @@ export default function Map3DPage() {
           const hasDetalles = String(c?.detalles || "").trim().length > 0;
           return hasDetalles ? "contenedores_rotos" : "contenedores";
         };
+// ✅ ADD HERE: ASIGNAR -> insert în contenedores_programados
+const handleAsignar = useCallback(
+  async (payload, container) => {
+    try {
+      const base = {
+        ...payload, // matricula_contenedor, matricula_camion, empresa_descarga, fecha, hora
+        naviera: container?.naviera || null,
+        tipo: container?.tipo || null,
+        posicion: container?.posicion || null,
+        detalles: container?.detalles || null,
+      };
+
+      // 1) încerc "asignado"
+      let ins = await supabase
+        .from("contenedores_programados")
+        .insert({ ...base, estado: "asignado" })
+        .select()
+        .single();
+
+      // 2) fallback dacă enum prog_estado nu acceptă "asignado"
+      if (ins?.error) {
+        const msg = String(ins.error?.message || "").toLowerCase();
+        const looksEnum = msg.includes("enum") || msg.includes("prog_estado");
+        if (looksEnum) {
+          ins = await supabase
+            .from("contenedores_programados")
+            .insert({ ...base, estado: "programado" })
+            .select()
+            .single();
+        }
+      }
+
+      if (ins?.error) {
+        console.error(ins.error);
+        alert("Eroare la ASIGNAR (contenedores_programados).");
+        return;
+      }
+
+      // dacă fetchContainers include și programados, refresh ajută
+      await refreshContainers?.();
+
+      setAsignarOpen(false);
+      setAsignarContainer(null);
+    } catch (e) {
+      console.error(e);
+      alert("Eroare la ASIGNAR.");
+    }
+  },
+  [refreshContainers]
+);
 
         for (const it of list) {
           const sourceTable = detectTable(it);
@@ -388,9 +443,17 @@ export default function Map3DPage() {
       )}
 
       <ContainerInfoCard
-        container={selectedContainer}
-        onClose={() => setSelectedContainer(null)}
-      />
+  container={selectedContainer}
+  onClose={() => setSelectedContainer(null)}
+  onAsignar={(c) => {
+    setAsignarContainer(c);
+    setAsignarOpen(true);
+  }}
+  onProgramar={(c) => {
+    // ⏳ îl facem după
+    console.log("PROGRAMAR TODO", c);
+  }}
+/>
 
       {/* ADD Wizard */}
       <AddContainerWizardModal
@@ -400,6 +463,16 @@ export default function Map3DPage() {
         validatePosition={validatePosition}
         slotMap={null}
       />
+      {/* ✅ ASIGNAR Modal */}
+<AsignarContainerModal
+  isOpen={asignarOpen}
+  onClose={() => {
+    setAsignarOpen(false);
+    setAsignarContainer(null);
+  }}
+  container={asignarContainer}
+  onAsignar={handleAsignar}
+/>
 
       {/* SALIDA Wizard */}
       <SalidaContainerWizardModal
