@@ -118,6 +118,63 @@ export default function Map3DPage() {
     },
     [refreshContainers]
   );
+  // ✅ ASIGNAR — insert în contenedores_programados + refresh
+  const handleAsignar = useCallback(
+    async (payload, container) => {
+      try {
+        if (!container?.matricula_contenedor) {
+          alert("Nu există container selectat.");
+          return;
+        }
+
+        const base = {
+          // payload vine din AsignarContainerModal:
+          // { matricula_contenedor, matricula_camion, empresa_descarga, fecha, hora }
+          ...payload,
+
+          // completăm cu info din containerul selectat (din depozit)
+          naviera: container?.naviera || null,
+          tipo: container?.tipo || null,
+          posicion: container?.posicion || null,
+          detalles: container?.detalles || null,
+        };
+
+        // încearcă "asignado"
+        let ins = await supabase
+          .from("contenedores_programados")
+          .insert({ ...base, estado: "asignado" })
+          .select()
+          .single();
+
+        // fallback dacă enum prog_estado nu acceptă "asignado"
+        if (ins?.error) {
+          const msg = String(ins.error?.message || "").toLowerCase();
+          const looksEnum = msg.includes("enum") || msg.includes("prog_estado");
+          if (looksEnum) {
+            ins = await supabase
+              .from("contenedores_programados")
+              .insert({ ...base, estado: "programado" })
+              .select()
+              .single();
+          }
+        }
+
+        if (ins?.error) {
+          console.error(ins.error);
+          alert("Eroare la ASIGNAR (contenedores_programados).");
+          return;
+        }
+
+        await refreshContainers?.();
+        setAsignarOpen(false);
+        setAsignarContainer(null);
+      } catch (e) {
+        console.error(e);
+        alert("Eroare la ASIGNAR.");
+      }
+    },
+    [refreshContainers]
+  );
 
   // ✅ SALIDA — MUTĂ din contenedores/rotos -> contenedores_salidos (apoi șterge din sursă)
   const handleSalida = useCallback(
@@ -147,56 +204,7 @@ export default function Map3DPage() {
           const hasDetalles = String(c?.detalles || "").trim().length > 0;
           return hasDetalles ? "contenedores_rotos" : "contenedores";
         };
-// ✅ ADD HERE: ASIGNAR -> insert în contenedores_programados
-const handleAsignar = useCallback(
-  async (payload, container) => {
-    try {
-      const base = {
-        ...payload, // matricula_contenedor, matricula_camion, empresa_descarga, fecha, hora
-        naviera: container?.naviera || null,
-        tipo: container?.tipo || null,
-        posicion: container?.posicion || null,
-        detalles: container?.detalles || null,
-      };
 
-      // 1) încerc "asignado"
-      let ins = await supabase
-        .from("contenedores_programados")
-        .insert({ ...base, estado: "asignado" })
-        .select()
-        .single();
-
-      // 2) fallback dacă enum prog_estado nu acceptă "asignado"
-      if (ins?.error) {
-        const msg = String(ins.error?.message || "").toLowerCase();
-        const looksEnum = msg.includes("enum") || msg.includes("prog_estado");
-        if (looksEnum) {
-          ins = await supabase
-            .from("contenedores_programados")
-            .insert({ ...base, estado: "programado" })
-            .select()
-            .single();
-        }
-      }
-
-      if (ins?.error) {
-        console.error(ins.error);
-        alert("Eroare la ASIGNAR (contenedores_programados).");
-        return;
-      }
-
-      // dacă fetchContainers include și programados, refresh ajută
-      await refreshContainers?.();
-
-      setAsignarOpen(false);
-      setAsignarContainer(null);
-    } catch (e) {
-      console.error(e);
-      alert("Eroare la ASIGNAR.");
-    }
-  },
-  [refreshContainers]
-);
 
         for (const it of list) {
           const sourceTable = detectTable(it);
@@ -471,7 +479,7 @@ const handleAsignar = useCallback(
     setAsignarContainer(null);
   }}
   container={asignarContainer}
-  onAsignar={handleAsignar}
+  onAsignar={(payload) => handleAsignar(payload, asignarContainer)}
 />
 
       {/* SALIDA Wizard */}
