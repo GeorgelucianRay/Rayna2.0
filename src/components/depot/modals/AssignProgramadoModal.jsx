@@ -16,7 +16,7 @@ export default function AssignProgramadoModal({
   const [truck, setTruck] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [fecha, setFecha] = useState(""); // yyyy-mm-dd
-  const [hora, setHora] = useState("");   // hh:mm
+  // ✅ scos: hora
 
   const inTruckRef = useRef(null);
 
@@ -25,7 +25,7 @@ export default function AssignProgramadoModal({
     setTruck("");
     setEmpresa(container?.empresa_descarga || "");
     setFecha(container?.fecha ? String(container.fecha) : "");
-    setHora(container?.hora ? String(container.hora).slice(0,5) : "");
+    // ✅ scos: setHora(...)
     setTimeout(() => inTruckRef.current?.focus?.(), 80);
   }, [isOpen, container]);
 
@@ -44,7 +44,7 @@ export default function AssignProgramadoModal({
       // opționale (există în tabelul tău)
       empresa_descarga: empresa ? String(empresa) : null,
       fecha: fecha || null,
-      hora: hora || null,
+      // ✅ scos: hora
 
       // dacă vrei să copiezi și astea în programados (există coloane)
       naviera: container?.naviera || null,
@@ -114,15 +114,15 @@ export default function AssignProgramadoModal({
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <span className={hud.label}>Fecha (opcional)</span>
-              <input className={hud.input} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            </div>
-            <div>
-              <span className={hud.label}>Hora (opțional)</span>
-              <input className={hud.input} type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-            </div>
+          {/* ✅ doar Fecha */}
+          <div>
+            <span className={hud.label}>Fecha (opcional)</span>
+            <input
+              className={hud.input}
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+            />
           </div>
 
           <div className={hud.actions}>
