@@ -12,6 +12,7 @@ import BuildPalette from "./build/BuildPalette";
 import AddContainerWizardModal from "../modals/AddContainerWizardModal";
 import SalidaContainerWizardModal from "../modals/SalidaContainerWizardModal";
 import AssignProgramadoModal from "../modals/AssignProgramadoModal";
+import ProgramarWizardModal from "../modals/ProgramarWizardModal";
 
 import { supabase } from "../../../supabaseClient";
 
@@ -28,6 +29,8 @@ export default function Map3DPage() {
 
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [asignarContainer, setAsignarContainer] = useState(null);
+  const [programarOpen, setProgramarOpen] = useState(false);
+const [programarContainer, setProgramarContainer] = useState(null);
 
   const {
     isFP,
@@ -163,6 +166,30 @@ const handleAsignar = useCallback(
     } catch (e) {
       console.error(e);
       alert("Eroare la ASIGNAR.");
+    }
+  },
+  [refreshContainers]
+);
+// ✅ PROGRAMAR — INSERT în contenedores_programados (NU mută din contenedores)
+const handleProgramar = useCallback(
+  async (payload) => {
+    try {
+      const { error } = await supabase
+        .from("contenedores_programados")
+        .insert(payload);
+
+      if (error) {
+        console.error(error);
+        alert(`Eroare PROGRAMAR: ${error.message}`);
+        return;
+      }
+
+      await refreshContainers?.();
+      setProgramarOpen(false);
+      setProgramarContainer(null);
+    } catch (e) {
+      console.error(e);
+      alert("Eroare la PROGRAMAR.");
     }
   },
   [refreshContainers]
@@ -450,9 +477,9 @@ const handleAsignar = useCallback(
     setAsignarOpen(true);
   }}
   onProgramar={(c) => {
-    // ⏳ îl facem după
-    console.log("PROGRAMAR TODO", c);
-  }}
+  setProgramarContainer(c);
+  setProgramarOpen(true);
+}}
 />
 
       {/* ADD Wizard */}
@@ -472,6 +499,15 @@ const handleAsignar = useCallback(
   }}
   container={asignarContainer}
   onAssign={(payload) => handleAsignar(payload, asignarContainer)}
+/>
+<ProgramarWizardModal
+  isOpen={programarOpen}
+  onClose={() => {
+    setProgramarOpen(false);
+    setProgramarContainer(null);
+  }}
+  container={programarContainer}
+  onProgramar={handleProgramar}
 />
 
       {/* SALIDA Wizard */}
