@@ -135,3 +135,20 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   letter-spacing:.04em;
 }
+/* --- FIX iOS overlap: inputs in grid must shrink correctly --- */
+.ios input,
+.ios select,
+.ios textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
+}
+
+/* iOS date/time can behave weird; normalize */
+.ios input[type="date"],
+.ios input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
