@@ -130,10 +130,7 @@ const handleAsignar = useCallback(
       // 1) INSERT în contenedores_programados
       const { error: insErr } = await supabase
         .from("contenedores_programados")
-        .insert({
-          ...payload,
-          estado: "programado", // sau "asignado" dacă enum-ul tău acceptă
-        });
+        .insert(payload);
 
       if (insErr) {
         console.error(insErr);
@@ -474,7 +471,7 @@ const handleAsignar = useCallback(
     setAsignarContainer(null);
   }}
   container={asignarContainer}
-  onAsignar={handleAsignar}
+  onAssign={(payload) => handleAsignar(payload, asignarContainer)}
 />
 
       {/* SALIDA Wizard */}
