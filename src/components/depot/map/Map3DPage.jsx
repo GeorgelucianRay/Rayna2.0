@@ -170,17 +170,40 @@ const handleAsignar = useCallback(
   },
   [refreshContainers]
 );
-// ✅ PROGRAMAR — INSERT în contenedores_programados (NU mută din contenedores)
 const handleProgramar = useCallback(
-  async (payload) => {
+  async (payload, container) => {
     try {
-      const { error } = await supabase
+      if (!container?.matricula_contenedor) {
+        alert("Nu există container selectat.");
+        return;
+      }
+
+      // 1) INSERT în contenedores_programados
+      const { error: insErr } = await supabase
         .from("contenedores_programados")
         .insert(payload);
 
-      if (error) {
-        console.error(error);
-        alert(`Eroare PROGRAMAR: ${error.message}`);
+      if (insErr) {
+        console.error(insErr);
+        alert(`Eroare PROGRAMAR (insert): ${insErr.message}`);
+        return;
+      }
+
+      // 2) DELETE din sursa (Depot)
+      const sourceTable =
+        container?.__table ||
+        container?.source_table ||
+        (container?.__source === "rotos" ? "contenedores_rotos" : "contenedores");
+
+      const q = supabase.from(sourceTable).delete();
+
+      const del = container?.id != null
+        ? await q.eq("id", container.id)
+        : await q.eq("matricula_contenedor", String(container.matricula_contenedor).trim().toUpperCase());
+
+      if (del.error) {
+        console.error(del.error);
+        alert(`S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`);
         return;
       }
 
@@ -507,7 +530,7 @@ const handleProgramar = useCallback(
     setProgramarContainer(null);
   }}
   container={programarContainer}
-  onProgramar={handleProgramar}
+  onProgramar={(payload) => handleProgramar(payload, programarContainer)}
 />
 
       {/* SALIDA Wizard */}
