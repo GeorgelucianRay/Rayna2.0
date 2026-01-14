@@ -20,7 +20,8 @@ export default function ContainerInfoCard({
   const statusClass = styles[__source] || styles.enDeposito;
 
   const canAsignar = __source !== "programados"; // (în programados deja e asignat/programat)
-
+  const canProgramar = __source !== "programados";
+  
   return (
     <div className={styles.card}>
       <button className={styles.closeButton} onClick={onClose}>✕</button>
@@ -49,14 +50,14 @@ export default function ContainerInfoCard({
         </button>
 
         <button
-          type="button"
-          className={styles.btnGhost}
-          onClick={() => onProgramar?.(container)}
-          disabled
-          title="Îl implementăm după"
-        >
-          Programar
-        </button>
+  type="button"
+  className={styles.btnGhost}
+  onClick={() => onProgramar?.(container)}
+  disabled={!canProgramar}
+  title={!canProgramar ? "Deja este în programados" : "Programar contenedor"}
+>
+  Programar
+</button>
       </div>
     </div>
   );
