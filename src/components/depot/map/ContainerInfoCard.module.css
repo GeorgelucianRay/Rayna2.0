@@ -60,24 +60,46 @@
   text-transform: uppercase;
 }
 
-/* mapping pentru __source */
-.enDeposito{
+/* =========================
+   BADGE CULORI (cerute)
+   ========================= */
+
+/* Depozit - verde */
+.depozit{
   background: rgba(16,185,129,0.14);
   border-color: rgba(16,185,129,0.35);
   color: rgba(255,255,255,0.95);
 }
 
-.programados{
-  background: rgba(59,130,246,0.14);
-  border-color: rgba(59,130,246,0.35);
+/* Programado - roșu */
+.programado{
+  background: rgba(239,68,68,0.14);
+  border-color: rgba(239,68,68,0.35);
   color: rgba(255,255,255,0.95);
 }
 
+/* Asignado - albastru deschis */
+.asignado{
+  background: rgba(56,189,248,0.14);
+  border-color: rgba(56,189,248,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+/* Pendiente - galben */
+.pendiente{
+  background: rgba(250,204,21,0.14);
+  border-color: rgba(250,204,21,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+/* Rotos - (opțional separat) */
 .rotos{
   background: rgba(239,68,68,0.14);
   border-color: rgba(239,68,68,0.35);
   color: rgba(255,255,255,0.95);
 }
+
+/* ========================= */
 
 .details{
   margin-top: 10px;
@@ -98,11 +120,13 @@
   color: rgba(255,255,255,0.95);
   font-weight: 900;
 }
+
 .actionsRow{
   display:flex;
   gap:10px;
   margin-top:12px;
 }
+
 .btnPrimary{
   flex:1;
   height:44px;
@@ -112,6 +136,7 @@
   background:#00e5ff;
   color:#0a0c10;
 }
+
 .btnGhost{
   flex:1;
   height:44px;
@@ -122,40 +147,8 @@
   font-weight:900;
   opacity:.65;
 }
+
 .btnPrimary:disabled,
 .btnGhost:disabled{
   opacity:.45;
-}
-/* Badge generic (folosești tot .status) */
-
-/* CULORI cerute */
-.depozit{
-  background: rgba(16,185,129,0.14);
-  border-color: rgba(16,185,129,0.35);
-  color: rgba(255,255,255,0.95);
-}
-
-.programado{
-  background: rgba(239,68,68,0.14);
-  border-color: rgba(239,68,68,0.35);
-  color: rgba(255,255,255,0.95);
-}
-
-.asignado{
-  background: rgba(56,189,248,0.14);   /* albastru deschis */
-  border-color: rgba(56,189,248,0.35);
-  color: rgba(255,255,255,0.95);
-}
-
-.pendiente{
-  background: rgba(250,204,21,0.14);   /* galben */
-  border-color: rgba(250,204,21,0.35);
-  color: rgba(255,255,255,0.95);
-}
-
-/* opțional: rotos separat, dacă vrei să rămână roșu “damage” */
-.rotos{
-  background: rgba(239,68,68,0.14);
-  border-color: rgba(239,68,68,0.35);
-  color: rgba(255,255,255,0.95);
 }
