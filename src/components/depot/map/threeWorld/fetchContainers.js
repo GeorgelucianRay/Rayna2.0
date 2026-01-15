@@ -1,47 +1,103 @@
-import { supabase } from '../../../../supabaseClient';
+import { supabase } from "../../../../supabaseClient";
+
+function norm(s) {
+  return String(s ?? "").trim();
+}
+function up(s) {
+  return norm(s).toUpperCase();
+}
+function lower(s) {
+  return norm(s).toLowerCase();
+}
 
 /**
- * Aduce TOATE containerele cu debugging detaliat
+ * Returnează TOATE containerele (depozit + programados + rotos),
+ * cu metadate standardizate pentru:
+ * - __source: "enDeposito" | "programados" | "rotos"
+ * - source_table / __table: numele tabelei sursă
+ * - estado (pentru programados): "programado" | "asignado" | "pendiente"
+ *
+ * IMPORTANT:
+ * - NU filtrăm după posicion aici (altfel pierzi "pendiente").
+ * - Render-ul 3D poate să ignore cele fără posicion.
  */
 export default async function fetchContainers() {
-  console.log("🚀 Starting to fetch containers for 3D map...");
-  console.log("Timestamp:", new Date().toISOString());
-
   try {
-    // Am eliminat coloana 'pos' care nu exista in baza de date
-    const colsBase = 'id, matricula_contenedor, naviera, tipo, posicion';
+    // Coloane minime + cele necesare pentru status & salida
+    const colsBase =
+      "id, matricula_contenedor, naviera, tipo, posicion, detalles, estado, empresa_descarga, fecha, hora, matricula_camion";
 
-    console.log("📡 Fetching from Supabase tables...");
-    
     const [resDep, resProg, resRot] = await Promise.all([
-      supabase.from('contenedores').select(colsBase),
-      supabase.from('contenedores_programados').select(colsBase),
-      supabase.from('contenedores_rotos').select(colsBase),
+      supabase.from("contenedores").select(colsBase),
+      supabase.from("contenedores_programados").select(colsBase),
+      supabase.from("contenedores_rotos").select(colsBase),
     ]);
 
-    if (resDep.error) console.error('❌ Supabase error (contenedores):', resDep.error.message);
-    if (resProg.error) console.error('❌ Supabase error (programados):', resProg.error.message);
-    if (resRot.error) console.error('❌ Supabase error (rotos):', resRot.error.message);
-    
-    const combined = [
-      ...((resDep.data || []).map(r => ({ ...r, __source: 'enDeposito' }))),
-      ...((resProg.data || []).map(r => ({ ...r, __source: 'programados' }))),
-      ...((resRot.data || []).map(r => ({ ...r, __source: 'rotos' }))),
-    ];
+    if (resDep.error) throw resDep.error;
+    if (resProg.error) throw resProg.error;
+    if (resRot.error) throw resRot.error;
 
-    console.log(`📦 Total combined records: ${combined.length}`);
-    
-    // Folosim 'posicion' pentru a filtra
-    const finalContainers = combined.filter(r => r.posicion && String(r.posicion).trim().length > 0);
-    
-    console.log('📊 Final summary:');
-    console.log(`  ✅ Valid containers to be rendered: ${finalContainers.length}`);
-    console.log(`  ⚠️ Skipped (no position): ${combined.length - finalContainers.length}`);
-    
-    return { containers: finalContainers };
+    const decorate = (rows, { source, table }) =>
+      (rows || []).map((r) => ({
+        ...r,
 
+        // normalize fields used in UI
+        matricula_contenedor: up(r?.matricula_contenedor),
+        posicion: norm(r?.posicion) || null,
+
+        // provenance
+        __source: source,
+        source_table: table,
+        __table: table,
+      }));
+
+    const dep = decorate(resDep.data, {
+      source: "enDeposito",
+      table: "contenedores",
+    });
+
+    const rot = decorate(resRot.data, {
+      source: "rotos",
+      table: "contenedores_rotos",
+    });
+
+    // programados: determinăm "estado" dacă nu e setat corect în DB
+    const prog = decorate(resProg.data, {
+      source: "programados",
+      table: "contenedores_programados",
+    }).map((r) => {
+      // 1) dacă există estado în DB, îl respectăm
+      let est = lower(r?.estado);
+
+      // 2) dacă nu există, îl deducem:
+      //    - dacă are camion => asignado
+      //    - dacă are fecha+hora => programado
+      //    - altfel => pendiente
+      if (!est) {
+        const hasTruck = up(r?.matricula_camion).length >= 4;
+        const hasDateTime = !!norm(r?.fecha) && !!norm(r?.hora);
+        est = hasTruck ? "asignado" : hasDateTime ? "programado" : "pendiente";
+      }
+
+      // normalizare finală (siguranță)
+      if (!["programado", "asignado", "pendiente"].includes(est)) {
+        est = "programado";
+      }
+
+      return { ...r, estado: est };
+    });
+
+    // IMPORTANT: nu filtrăm după poziție aici
+    const containers = [...dep, ...prog, ...rot];
+
+    return {
+      containers,
+      depot: dep,
+      programados: prog,
+      rotos: rot,
+    };
   } catch (err) {
-    console.error('❌ Critical error in fetchContainers:', err);
-    return { containers: [] };
+    console.error("❌ fetchContainers error:", err);
+    return { containers: [], depot: [], programados: [], rotos: [] };
   }
 }
