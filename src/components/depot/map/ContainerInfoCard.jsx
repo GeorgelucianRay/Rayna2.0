@@ -1,23 +1,8 @@
-// src/components/depot/map/ContainerInfoCard.jsx
 import React, { useMemo } from "react";
 import styles from "./ContainerInfoCard.module.css";
 
-function pickStatus(container) {
-  // sursa de pe hartă (depozit / rotos / programados etc.)
-  const src = String(container?.__source || container?.__from || "").toLowerCase();
-
-  // statusul din tabel (programados are de obicei estado: programado/asignado/pendiente)
-  const estado = String(container?.estado || "").toLowerCase();
-
-  // 1) dacă e în programados, culoarea trebuie să depindă de "estado"
-  if (src === "programados" || src === "programado" || src === "contenedores_programados") {
-    if (estado === "asignado") return { key: "asignado", label: "ASIGNADO" };
-    if (estado === "pendiente") return { key: "pendiente", label: "PENDIENTE" };
-    return { key: "programado", label: "PROGRAMADO" }; // default
-  }
-
-  // 2) dacă nu e programados, este în depozit (verde) - inclusiv rotos dacă vrei tot verde
-  return { key: "depozit", label: "DEPÓSITO" };
+function up(s = "") {
+  return String(s || "").trim().toUpperCase();
 }
 
 export default function ContainerInfoCard({
@@ -28,31 +13,61 @@ export default function ContainerInfoCard({
 }) {
   if (!container) return null;
 
-  const status = useMemo(() => pickStatus(container), [container]);
+  const {
+    matricula_contenedor,
+    naviera,
+    tipo,
+    posicion,
+    __source, // 'enDeposito', 'programados', 'rotos'
+    estado,   // 'programado' | 'asignado' | 'pendiente' (când e din programados)
+  } = container;
 
-  // butoane: în programados nu mai vrei asignar/programar (de regulă)
-  const src = String(container?.__source || container?.__from || "").toLowerCase();
-  const isInProgramados = src === "programados" || src === "contenedores_programados";
-  const canAsignar = !isInProgramados;
-  const canProgramar = !isInProgramados;
+  // ✅ decide ce badge folosim (clasele din CSS-ul nou)
+  const badgeKey = useMemo(() => {
+    if (__source === "rotos") return "rotos";
+    if (__source === "enDeposito") return "depozit";
+
+    // programados: folosim estado
+    const est = String(estado || "").trim().toLowerCase();
+    if (est === "asignado") return "asignado";
+    if (est === "pendiente") return "pendiente";
+    return "programado"; // default
+  }, [__source, estado]);
+
+  // ✅ text în badge (tu ai acum "PROGRAMADO" în UI)
+  const badgeText = useMemo(() => {
+    if (__source === "rotos") return "ROTOS";
+    if (__source === "enDeposito") return "DEPOZIT";
+
+    const est = String(estado || "").trim().toLowerCase();
+    if (est === "asignado") return "ASIGNADO";
+    if (est === "pendiente") return "PENDIENTE";
+    return "PROGRAMADO";
+  }, [__source, estado]);
+
+  // ✅ reguli butoane (nu te bloca singur)
+  // - "Asignar" doar dacă NU e deja asignado (și nu e rotos)
+  // - "Programar" doar dacă e din depozit și nu e rotos (tu poți ajusta)
+  const canAsignar = __source !== "rotos" && !(__source === "programados" && badgeKey === "asignado");
+  const canProgramar = __source !== "rotos" && __source !== "programados";
 
   return (
     <div className={styles.card}>
       <button className={styles.closeButton} onClick={onClose}>✕</button>
 
       <div className={styles.header}>
-        <h3 className={styles.title}>{container?.matricula_contenedor || "N/A"}</h3>
+        <h3 className={styles.title}>{up(matricula_contenedor) || "N/A"}</h3>
 
-        {/* ETICHETA COLORATĂ */}
-        <span className={`${styles.badge} ${styles[status.key]}`}>
-          {status.label}
+        {/* ✅ AICI e fixul: styles[badgeKey] -> depozit/programado/asignado/pendiente/rotos */}
+        <span className={`${styles.status} ${styles[badgeKey] || ""}`}>
+          {badgeText}
         </span>
       </div>
 
       <div className={styles.details}>
-        <p><strong>Naviera:</strong> {container?.naviera || "N/A"}</p>
-        <p><strong>Tip:</strong> {container?.tipo || "N/A"}</p>
-        <p><strong>Poziție:</strong> {container?.posicion || container?.pos || "N/A"}</p>
+        <p><strong>Naviera:</strong> {naviera || "N/A"}</p>
+        <p><strong>Tip:</strong> {tipo || "N/A"}</p>
+        <p><strong>Poziție:</strong> {posicion || "N/A"}</p>
       </div>
 
       <div className={styles.actionsRow}>
@@ -61,7 +76,7 @@ export default function ContainerInfoCard({
           className={styles.btnPrimary}
           onClick={() => onAsignar?.(container)}
           disabled={!canAsignar}
-          title={!canAsignar ? "Deja este în programados" : "Asignar a camión"}
+          title={!canAsignar ? "Deja asignado" : "Asignar a camión"}
         >
           Asignar
         </button>
