@@ -55,7 +55,7 @@ export default function AssignProgramadoModal({
       // IMPORTANT:
       // în schema ta "estado" e enum prog_estado default 'programado'
       // dacă enum-ul tău are și 'asignado', schimbă linia asta în 'asignado'
-      estado: "programado",
+      estado: "asignado",
     };
 
     try {
