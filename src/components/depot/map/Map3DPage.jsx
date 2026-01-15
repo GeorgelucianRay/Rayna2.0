@@ -240,13 +240,17 @@ const handleProgramar = useCallback(
 
         // preferă source_table din wizard; fallback: dacă are "detalles" => rotos
         const detectTable = (c) => {
-          const st = c?.source_table || c?.__table || c?.tabla || null;
-          if (st === "contenedores" || st === "contenedores_rotos") return st;
+  const st = c?.source_table || c?.__table || c?.tabla || null;
+  if (st === "contenedores" || st === "contenedores_rotos" || st === "contenedores_programados") return st;
 
-          const hasDetalles = String(c?.detalles || "").trim().length > 0;
-          return hasDetalles ? "contenedores_rotos" : "contenedores";
-        };
+  // dacă vine din map/list: __source / __from
+  if (c?.__source === "programados" || c?.__from === "programados") return "contenedores_programados";
+  if (c?.__source === "rotos" || c?.__from === "rotos") return "contenedores_rotos";
 
+  // fallback vechi
+  const hasDetalles = String(c?.detalles || "").trim().length > 0;
+  return hasDetalles ? "contenedores_rotos" : "contenedores";
+};
 
         for (const it of list) {
           const sourceTable = detectTable(it);
@@ -291,42 +295,51 @@ const handleProgramar = useCallback(
             return;
           }
 
-          // 2) Insert în contenedores_salidos (coloane reale din schema ta)
-          const insertSalida = {
-            matricula_contenedor: row.matricula_contenedor,
-            naviera: row.naviera ?? null,
-            tipo: row.tipo ?? null,
-            posicion: row.posicion ?? null,
-            matricula_camion: truck,
-            detalles: row.detalles ?? null,
-            estado: row.estado ?? null,
+          // ✅ dacă sursa e programados
+const fromProgramados = sourceTable === "contenedores_programados";
 
-            empresa_descarga: row.empresa_descarga ?? null,
-            fecha: row.fecha ?? null,
-            hora: row.hora ?? null,
+// 2) Insert în contenedores_salidos (coloane reale din schema ta)
+const insertSalida = {
+  matricula_contenedor: row.matricula_contenedor,
+  naviera: row.naviera ?? null,
+  tipo: row.tipo ?? null,
+  posicion: row.posicion ?? null,
+  matricula_camion: truck,
+  detalles: row.detalles ?? null,
+  estado: row.estado ?? null,
 
-            // specifice salidos
-            desde_programados: false,
-            fecha_programada: null,
-            hora_programada: null,
-            fecha_salida: new Date().toISOString(),
-          };
+  empresa_descarga: row.empresa_descarga ?? null,
+  fecha: row.fecha ?? null,
+  hora: row.hora ?? null,
+
+  // specifice salidos
+  desde_programados: fromProgramados,
+  fecha_programada: fromProgramados ? (row.fecha ?? null) : null,
+  hora_programada: fromProgramados ? (row.hora ?? null) : null,
+  fecha_salida: new Date().toISOString(),
+};
+// specifice salidos
+desde_programados: fromProgramados,
+fecha_programada: fromProgramados ? (row.fecha ?? null) : null,
+hora_programada: fromProgramados ? (row.hora ?? null) : null,
+fecha_salida: new Date().toISOString(),
 
           const { error: insErr } = await supabase
             .from("contenedores_salidos")
             .insert(insertSalida);
 
-          if (insErr) {
-            console.error(insErr);
-            alert("Eroare insert în contenedores_salidos.");
-            return;
-          }
-
           // 3) Delete din sursă
-          const { error: delErr } = await supabase
-            .from(sourceTable)
-            .delete()
-            .eq("id", row.id);
+          let delQ = supabase.from(sourceTable).delete();
+
+const delRes = row?.id != null
+  ? await delQ.eq("id", row.id)
+  : await delQ.eq("matricula_contenedor", String(row.matricula_contenedor).trim().toUpperCase());
+
+if (delRes.error) {
+  console.error(delRes.error);
+  alert(`Eroare delete din ${sourceTable}. (salida a fost inserată deja)`);
+  return;
+}
 
           if (delErr) {
             console.error(delErr);
