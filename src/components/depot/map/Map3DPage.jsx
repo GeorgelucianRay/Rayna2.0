@@ -132,9 +132,10 @@ export default function Map3DPage() {
         }
 
         // 1) INSERT în contenedores_programados
-        const { error: insErr } = await supabase
-          .from("contenedores_programados")
-          .insert(payload);
+const payloadFinal = { ...payload, estado: "programado" };
+const { error: insErr } = await supabase
+  .from("contenedores_programados")
+  .insert(payloadFinal);
 
         if (insErr) {
           console.error(insErr);
@@ -188,9 +189,10 @@ export default function Map3DPage() {
         }
 
         // 1) INSERT în contenedores_programados
-        const { error: insErr } = await supabase
-          .from("contenedores_programados")
-          .insert(payload);
+const payloadFinal = { ...payload, estado: "asignado" };
+const { error: insErr } = await supabase
+  .from("contenedores_programados")
+  .insert(payloadFinal);
 
         if (insErr) {
           console.error(insErr);
