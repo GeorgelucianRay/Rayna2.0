@@ -1,81 +1,124 @@
 // src/components/depot/map/world/prefabs/Tree.js
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 const LOADER = new GLTFLoader();
-let TEMPLATE = null;
 
-function loadOnce() {
-  if (TEMPLATE) return Promise.resolve(TEMPLATE);
-  return new Promise((resolve, reject) => {
-    LOADER.load('/models/trees/maple_tree.glb', (gltf) => {
-      TEMPLATE = gltf.scene || gltf.scenes?.[0];
-      resolve(TEMPLATE);
-    }, undefined, reject);
+// Cache “template” + metadate (o singură dată)
+let CACHE = null; // { scene, height, minY, hasSkinned }
+
+function isSkinnedScene(root) {
+  let skinned = false;
+  root.traverse((o) => {
+    if (o.isSkinnedMesh) skinned = true;
   });
+  return skinned;
+}
+
+function optimizeMaterialsOnce(root) {
+  root.traverse((c) => {
+    if (!c.isMesh) return;
+
+    // IMPORTANT: pe mobil, shadows sunt cost foarte mare
+    c.castShadow = false;
+    c.receiveShadow = false;
+
+    const m = c.material;
+    if (!m) return;
+
+    // Dacă materialul are alpha map (frunze), NU folosi transparent=true (overdraw mare).
+    // Mai bine alphaTest + transparent=false (mult mai rapid).
+    if ("map" in m) {
+      // păstrează textura, doar “întunecă” ușor culoarea (global)
+      if (m.color) m.color = new THREE.Color(0.8, 0.8, 0.8);
+
+      // performanță: evită transparent
+      m.transparent = false;
+      m.alphaTest = 0.5;
+
+      // performance: DoubleSide dublează shading-ul; evită dacă nu e obligatoriu
+      // Dacă vezi “dispariții” la frunze, poți reveni la DoubleSide,
+      // dar costă. Încearcă întâi FrontSide:
+      m.side = THREE.FrontSide;
+
+      // “mat” = mai ieftin și mai natural
+      if ("roughness" in m) m.roughness = 1.0;
+      if ("metalness" in m) m.metalness = 0.0;
+
+      // depthWrite true e ok cu alphaTest; cu transparent ar fi problematic
+      m.depthWrite = true;
+    }
+
+    // Bonus: pe obiecte statice, frustum culling trebuie să rămână ON
+    c.frustumCulled = true;
+  });
+}
+
+async function loadOnce() {
+  if (CACHE) return CACHE;
+
+  const gltf = await new Promise((resolve, reject) => {
+    LOADER.load("/models/trees/maple_tree.glb", resolve, undefined, reject);
+  });
+
+  const scene = gltf.scene || gltf.scenes?.[0];
+  if (!scene) throw new Error("GLB has no scene");
+
+  // Clone template o dată ca să nu modifici originalul loader-ului
+  const template = scene.clone(true);
+
+  // Optimizări aplicate o singură dată (se moștenesc în clone)
+  optimizeMaterialsOnce(template);
+
+  // Pre-calculează bounding box o singură dată
+  const box = new THREE.Box3().setFromObject(template);
+  const height = Math.max(0.001, box.max.y - box.min.y);
+  const minY = box.min.y;
+
+  const hasSkinned = isSkinnedScene(template);
+
+  CACHE = { scene: template, height, minY, hasSkinned };
+  return CACHE;
 }
 
 /**
  * Creează un copac GLB, scalat automat la înălțimea dorită.
- * @param {object} o
- * @param {number} o.targetHeight  Înălțime țintă în metri (default 4)
- * @param {number} o.y             Offset pe verticală (default 0)
+ * - Foarte optimizat: fără Box3 per instanță, fără transparent, fără shadows
  */
 export function makeTree({ targetHeight = 4, y = 0 } = {}) {
   const group = new THREE.Group();
 
-  // placeholder mic până încarcă modelul
+  // Placeholder foarte ieftin
   const stump = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6),
     new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 1 })
   );
-  stump.position.y = 0.25;
+  stump.position.y = 0.25 + y;
+  stump.castShadow = false;
+  stump.receiveShadow = false;
   group.add(stump);
 
-  loadOnce().then((tpl) => {
-    const model = cloneSkeleton(tpl);
+  loadOnce()
+    .then(({ scene, height, minY, hasSkinned }) => {
+      // Dacă nu e skinned/animated, clone simplu e mult mai ieftin decât SkeletonUtils
+      const model = hasSkinned ? cloneSkeleton(scene) : scene.clone(true);
 
-    model.traverse((c) => {
-  if (!c.isMesh) return;
-  c.castShadow = true;
-  c.receiveShadow = true;
+      // Scale rapid (fără Box3)
+      const scale = targetHeight / height;
+      model.scale.setScalar(scale);
 
-  if (c.material && ('map' in c.material)) {
-    const m = c.material;
-    m.transparent = true;
-    m.alphaTest = 0.5;
-    m.depthWrite = true;
-    m.side = THREE.DoubleSide;
+      // Așază baza pe sol: minY * scale
+      // (minY e de obicei negativ dacă modelul “intră” în pământ)
+      model.position.y = y - minY * scale + 0.05;
 
-    // 🔽 întunecăm puțin culoarea
-    m.color = new THREE.Color(0.8, 0.8, 0.8); // 80% din intensitatea originală
-    // (sau încearcă: new THREE.Color(0.7, 0.75, 0.7) pentru ton mai “verde natural”)
-    
-    // opțional – mai mat (reduce reflexia)
-    if ('roughness' in m) m.roughness = 1.0;
-    if ('metalness' in m) m.metalness = 0.0;
-  }
-});
-
-    // centrează pe sol și scalează la targetHeight
-    const box = new THREE.Box3().setFromObject(model);
-    const height = Math.max(0.001, box.max.y - box.min.y);
-    const scale = targetHeight / height;
-
-    model.scale.setScalar(scale);
-
-    // recalculează și așază baza pe y=0+y
-    const box2 = new THREE.Box3().setFromObject(model);
-    const dy = box2.min.y;
-    model.position.y = (model.position.y || 0) - dy + y;
-
-    // curăță placeholderul și adaugă modelul
-    group.clear();
-    group.add(model);
-  }).catch((err) => {
-    console.error('[makeTree] GLB load failed:', err);
-  });
+      // Înlocuiește placeholder
+      group.clear();
+      group.add(model);
+    })
+    .catch((err) => {
+      console.error("[makeTree] GLB load failed:", err);
+    });
 
   return group;
 }
