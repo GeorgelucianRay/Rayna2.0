@@ -29,8 +29,9 @@ export default function Map3DPage() {
 
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [asignarContainer, setAsignarContainer] = useState(null);
+
   const [programarOpen, setProgramarOpen] = useState(false);
-const [programarContainer, setProgramarContainer] = useState(null);
+  const [programarContainer, setProgramarContainer] = useState(null);
 
   const {
     isFP,
@@ -56,7 +57,6 @@ const [programarContainer, setProgramarContainer] = useState(null);
     startOrbitLibre,
     stopOrbitLibre,
 
-    // ✅ trebuie să existe în useDepotScene (patch-ul tău)
     refreshContainers,
   } = useDepotScene({ mountRef });
 
@@ -68,7 +68,7 @@ const [programarContainer, setProgramarContainer] = useState(null);
   }, [setOnContainerSelected, showSelectedMarker]);
 
   /**
-   * ✅ validatePosition pentru wizard (+)
+   * validatePosition pentru wizard (+)
    * Verifică dacă poziția există deja în lista curentă de pe hartă (din DB).
    */
   const validatePosition = useCallback(
@@ -121,111 +121,124 @@ const [programarContainer, setProgramarContainer] = useState(null);
     },
     [refreshContainers]
   );
- // ✅ ASIGNAR — MUTĂ din contenedores/rotos -> contenedores_programados
-const handleAsignar = useCallback(
-  async (payload, container) => {
-    try {
-      if (!container?.matricula_contenedor) {
-        alert("Nu există container selectat.");
-        return;
+
+  // ✅ ASIGNAR — MUTĂ din contenedores/rotos -> contenedores_programados
+  const handleAsignar = useCallback(
+    async (payload, container) => {
+      try {
+        if (!container?.matricula_contenedor) {
+          alert("Nu există container selectat.");
+          return;
+        }
+
+        // 1) INSERT în contenedores_programados
+        const { error: insErr } = await supabase
+          .from("contenedores_programados")
+          .insert(payload);
+
+        if (insErr) {
+          console.error(insErr);
+          alert("Eroare la INSERT în contenedores_programados.");
+          return;
+        }
+
+        // 2) DELETE din sursa (Depot)
+        const sourceTable =
+          container?.__table ||
+          container?.source_table ||
+          (container?.__source === "rotos"
+            ? "contenedores_rotos"
+            : "contenedores");
+
+        const q = supabase.from(sourceTable).delete();
+        const del =
+          container?.id != null
+            ? await q.eq("id", container.id)
+            : await q.eq(
+                "matricula_contenedor",
+                String(container.matricula_contenedor).trim().toUpperCase()
+              );
+
+        if (del.error) {
+          console.error(del.error);
+          alert(
+            `S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`
+          );
+          return;
+        }
+
+        await refreshContainers?.();
+        setAsignarOpen(false);
+        setAsignarContainer(null);
+      } catch (e) {
+        console.error(e);
+        alert("Eroare la ASIGNAR.");
       }
+    },
+    [refreshContainers]
+  );
 
-      // 1) INSERT în contenedores_programados
-      const { error: insErr } = await supabase
-        .from("contenedores_programados")
-        .insert(payload);
+  // ✅ PROGRAMAR — MUTĂ din contenedores/rotos -> contenedores_programados
+  const handleProgramar = useCallback(
+    async (payload, container) => {
+      try {
+        if (!container?.matricula_contenedor) {
+          alert("Nu există container selectat.");
+          return;
+        }
 
-      if (insErr) {
-        console.error(insErr);
-        alert("Eroare la INSERT în contenedores_programados.");
-        return;
+        // 1) INSERT în contenedores_programados
+        const { error: insErr } = await supabase
+          .from("contenedores_programados")
+          .insert(payload);
+
+        if (insErr) {
+          console.error(insErr);
+          alert(`Eroare PROGRAMAR (insert): ${insErr.message}`);
+          return;
+        }
+
+        // 2) DELETE din sursa (Depot)
+        const sourceTable =
+          container?.__table ||
+          container?.source_table ||
+          (container?.__source === "rotos"
+            ? "contenedores_rotos"
+            : "contenedores");
+
+        const q = supabase.from(sourceTable).delete();
+        const del =
+          container?.id != null
+            ? await q.eq("id", container.id)
+            : await q.eq(
+                "matricula_contenedor",
+                String(container.matricula_contenedor).trim().toUpperCase()
+              );
+
+        if (del.error) {
+          console.error(del.error);
+          alert(
+            `S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`
+          );
+          return;
+        }
+
+        await refreshContainers?.();
+        setProgramarOpen(false);
+        setProgramarContainer(null);
+      } catch (e) {
+        console.error(e);
+        alert("Eroare la PROGRAMAR.");
       }
+    },
+    [refreshContainers]
+  );
 
-      // 2) DELETE din sursa (în depozit)
-      // dacă ai container.__table / source_table folosește-l, altfel default contenedores
-      const sourceTable =
-        container?.__table ||
-        container?.source_table ||
-        (container?.__source === "rotos" ? "contenedores_rotos" : "contenedores");
-
-      // prefer delete by id dacă există
-      const q = supabase.from(sourceTable).delete();
-      const del = container?.id != null
-        ? await q.eq("id", container.id)
-        : await q.eq("matricula_contenedor", String(container.matricula_contenedor).toUpperCase());
-
-      if (del.error) {
-        console.error(del.error);
-        alert(`S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`);
-        return;
-      }
-
-      await refreshContainers?.();
-      setAsignarOpen(false);
-      setAsignarContainer(null);
-    } catch (e) {
-      console.error(e);
-      alert("Eroare la ASIGNAR.");
-    }
-  },
-  [refreshContainers]
-);
-const handleProgramar = useCallback(
-  async (payload, container) => {
-    try {
-      if (!container?.matricula_contenedor) {
-        alert("Nu există container selectat.");
-        return;
-      }
-
-      // 1) INSERT în contenedores_programados
-      const { error: insErr } = await supabase
-        .from("contenedores_programados")
-        .insert(payload);
-
-      if (insErr) {
-        console.error(insErr);
-        alert(`Eroare PROGRAMAR (insert): ${insErr.message}`);
-        return;
-      }
-
-      // 2) DELETE din sursa (Depot)
-      const sourceTable =
-        container?.__table ||
-        container?.source_table ||
-        (container?.__source === "rotos" ? "contenedores_rotos" : "contenedores");
-
-      const q = supabase.from(sourceTable).delete();
-
-      const del = container?.id != null
-        ? await q.eq("id", container.id)
-        : await q.eq("matricula_contenedor", String(container.matricula_contenedor).trim().toUpperCase());
-
-      if (del.error) {
-        console.error(del.error);
-        alert(`S-a inserat în programados, dar a eșuat DELETE din ${sourceTable}.`);
-        return;
-      }
-
-      await refreshContainers?.();
-      setProgramarOpen(false);
-      setProgramarContainer(null);
-    } catch (e) {
-      console.error(e);
-      alert("Eroare la PROGRAMAR.");
-    }
-  },
-  [refreshContainers]
-);
-
-  // ✅ SALIDA — MUTĂ din contenedores/rotos -> contenedores_salidos (apoi șterge din sursă)
+  // ✅ SALIDA — MUTĂ din contenedores/rotos/programados -> contenedores_salidos (apoi șterge din sursă)
   const handleSalida = useCallback(
     async (payload) => {
       try {
-        const truck = String(payload?.camion || "")
-          .trim()
-          .toUpperCase();
-
+        const truck = String(payload?.camion || "").trim().toUpperCase();
         const list = payload?.containers || [];
 
         if (!truck || truck.length < 4) {
@@ -236,26 +249,42 @@ const handleProgramar = useCallback(
           alert("Nu ai selectat containere.");
           return;
         }
-        
 
-        // preferă source_table din wizard; fallback: dacă are "detalles" => rotos
         const detectTable = (c) => {
-  const st = c?.source_table || c?.__table || c?.tabla || null;
-  if (st === "contenedores" || st === "contenedores_rotos" || st === "contenedores_programados") return st;
+          const st = c?.source_table || c?.__table || c?.tabla || null;
+          if (
+            st === "contenedores" ||
+            st === "contenedores_rotos" ||
+            st === "contenedores_programados"
+          ) {
+            return st;
+          }
 
-  // dacă vine din map/list: __source / __from
-  if (c?.__source === "programados" || c?.__from === "programados") return "contenedores_programados";
-  if (c?.__source === "rotos" || c?.__from === "rotos") return "contenedores_rotos";
+          if (c?.__source === "programados" || c?.__from === "programados") {
+            return "contenedores_programados";
+          }
+          if (c?.__source === "rotos" || c?.__from === "rotos") {
+            return "contenedores_rotos";
+          }
 
-  // fallback vechi
-  const hasDetalles = String(c?.detalles || "").trim().length > 0;
-  return hasDetalles ? "contenedores_rotos" : "contenedores";
-};
+          // fallback dacă vine fără __source dar are estado
+          if (
+            c?.estado &&
+            (c.estado === "programado" ||
+              c.estado === "asignado" ||
+              c.estado === "pendiente")
+          ) {
+            return "contenedores_programados";
+          }
+
+          const hasDetalles = String(c?.detalles || "").trim().length > 0;
+          return hasDetalles ? "contenedores_rotos" : "contenedores";
+        };
 
         for (const it of list) {
           const sourceTable = detectTable(it);
 
-          // 1) Citește rândul complet din sursă (după id dacă există, altfel după matricula)
+          // 1) Citește rândul complet din sursă
           let row = null;
 
           if (it?.id != null) {
@@ -295,60 +324,58 @@ const handleProgramar = useCallback(
             return;
           }
 
-          // ✅ dacă sursa e programados
-const fromProgramados = sourceTable === "contenedores_programados";
+          // 2) Insert în contenedores_salidos
+          const fromProgramados = sourceTable === "contenedores_programados";
 
-// 2) Insert în contenedores_salidos (coloane reale din schema ta)
-const insertSalida = {
-  matricula_contenedor: row.matricula_contenedor,
-  naviera: row.naviera ?? null,
-  tipo: row.tipo ?? null,
-  posicion: row.posicion ?? null,
-  matricula_camion: truck,
-  detalles: row.detalles ?? null,
-  estado: row.estado ?? null,
+          const insertSalida = {
+            matricula_contenedor: row.matricula_contenedor,
+            naviera: row.naviera ?? null,
+            tipo: row.tipo ?? null,
+            posicion: row.posicion ?? null,
+            matricula_camion: truck,
+            detalles: row.detalles ?? null,
+            estado: row.estado ?? null,
 
-  empresa_descarga: row.empresa_descarga ?? null,
-  fecha: row.fecha ?? null,
-  hora: row.hora ?? null,
+            empresa_descarga: row.empresa_descarga ?? null,
+            fecha: row.fecha ?? null,
+            hora: row.hora ?? null,
 
-  // specifice salidos
-  desde_programados: fromProgramados,
-  fecha_programada: fromProgramados ? (row.fecha ?? null) : null,
-  hora_programada: fromProgramados ? (row.hora ?? null) : null,
-  fecha_salida: new Date().toISOString(),
-};
-// specifice salidos
-desde_programados: fromProgramados,
-fecha_programada: fromProgramados ? (row.fecha ?? null) : null,
-hora_programada: fromProgramados ? (row.hora ?? null) : null,
-fecha_salida: new Date().toISOString(),
+            // specifice salidos
+            desde_programados: fromProgramados,
+            fecha_programada: fromProgramados ? (row.fecha ?? null) : null,
+            hora_programada: fromProgramados ? (row.hora ?? null) : null,
+            fecha_salida: new Date().toISOString(),
+          };
 
           const { error: insErr } = await supabase
             .from("contenedores_salidos")
             .insert(insertSalida);
 
+          if (insErr) {
+            console.error(insErr);
+            alert("Eroare insert în contenedores_salidos.");
+            return;
+          }
+
           // 3) Delete din sursă
           let delQ = supabase.from(sourceTable).delete();
 
-const delRes = row?.id != null
-  ? await delQ.eq("id", row.id)
-  : await delQ.eq("matricula_contenedor", String(row.matricula_contenedor).trim().toUpperCase());
+          const delRes =
+            row?.id != null
+              ? await delQ.eq("id", row.id)
+              : await delQ.eq(
+                  "matricula_contenedor",
+                  String(row.matricula_contenedor).trim().toUpperCase()
+                );
 
-if (delRes.error) {
-  console.error(delRes.error);
-  alert(`Eroare delete din ${sourceTable}. (salida a fost inserată deja)`);
-  return;
-}
-
-          if (delErr) {
-            console.error(delErr);
+          if (delRes.error) {
+            console.error(delRes.error);
             alert(
               `Eroare delete din ${sourceTable}. (salida a fost inserată deja)`
             );
             return;
           }
-        }
+        } // ✅ închide for
 
         await refreshContainers?.();
         setExitModalOpen(false);
@@ -506,17 +533,17 @@ if (delRes.error) {
       )}
 
       <ContainerInfoCard
-  container={selectedContainer}
-  onClose={() => setSelectedContainer(null)}
-  onAsignar={(c) => {
-    setAsignarContainer(c);
-    setAsignarOpen(true);
-  }}
-  onProgramar={(c) => {
-  setProgramarContainer(c);
-  setProgramarOpen(true);
-}}
-/>
+        container={selectedContainer}
+        onClose={() => setSelectedContainer(null)}
+        onAsignar={(c) => {
+          setAsignarContainer(c);
+          setAsignarOpen(true);
+        }}
+        onProgramar={(c) => {
+          setProgramarContainer(c);
+          setProgramarOpen(true);
+        }}
+      />
 
       {/* ADD Wizard */}
       <AddContainerWizardModal
@@ -526,25 +553,28 @@ if (delRes.error) {
         validatePosition={validatePosition}
         slotMap={null}
       />
-      {/* ✅ ASIGNAR Modal */}
-<AssignProgramadoModal
-  isOpen={asignarOpen}
-  onClose={() => {
-    setAsignarOpen(false);
-    setAsignarContainer(null);
-  }}
-  container={asignarContainer}
-  onAssign={(payload) => handleAsignar(payload, asignarContainer)}
-/>
-<ProgramarWizardModal
-  isOpen={programarOpen}
-  onClose={() => {
-    setProgramarOpen(false);
-    setProgramarContainer(null);
-  }}
-  container={programarContainer}
-  onProgramar={(payload) => handleProgramar(payload, programarContainer)}
-/>
+
+      {/* ASIGNAR Modal */}
+      <AssignProgramadoModal
+        isOpen={asignarOpen}
+        onClose={() => {
+          setAsignarOpen(false);
+          setAsignarContainer(null);
+        }}
+        container={asignarContainer}
+        onAssign={(payload) => handleAsignar(payload, asignarContainer)}
+      />
+
+      {/* PROGRAMAR Modal */}
+      <ProgramarWizardModal
+        isOpen={programarOpen}
+        onClose={() => {
+          setProgramarOpen(false);
+          setProgramarContainer(null);
+        }}
+        container={programarContainer}
+        onProgramar={(payload) => handleProgramar(payload, programarContainer)}
+      />
 
       {/* SALIDA Wizard */}
       <SalidaContainerWizardModal
