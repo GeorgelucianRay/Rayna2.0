@@ -521,17 +521,19 @@ const { error: insErr } = await supabase
 
       {showBuild && (
         <BuildPalette
-          open={showBuild}
-          onClose={() => {
-            setShowBuild(false);
-            setBuildActive(false);
-          }}
-          buildController={buildApi.controller}
-          buildActive={buildApi.active}
-          setBuildActive={setBuildActive}
-          buildMode={buildApi.mode}
-          setBuildMode={buildApi.setMode}
-        />
+  open={showBuild}
+  onClose={() => {
+    setShowBuild(false);
+    setBuildActive(false);
+  }}
+  buildController={buildApi.controller}
+  buildActive={buildApi.active}
+  setBuildActive={setBuildActive}
+  buildMode={buildApi.mode}
+  setBuildMode={buildApi.setMode}
+  isFP={isFP}
+  setFPEnabled={setFPEnabled}
+/>
       )}
 
       <ContainerInfoCard
