@@ -126,3 +126,36 @@
 .btnGhost:disabled{
   opacity:.45;
 }
+/* Badge generic (folosești tot .status) */
+
+/* CULORI cerute */
+.depozit{
+  background: rgba(16,185,129,0.14);
+  border-color: rgba(16,185,129,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+.programado{
+  background: rgba(239,68,68,0.14);
+  border-color: rgba(239,68,68,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+.asignado{
+  background: rgba(56,189,248,0.14);   /* albastru deschis */
+  border-color: rgba(56,189,248,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+.pendiente{
+  background: rgba(250,204,21,0.14);   /* galben */
+  border-color: rgba(250,204,21,0.35);
+  color: rgba(255,255,255,0.95);
+}
+
+/* opțional: rotos separat, dacă vrei să rămână roșu “damage” */
+.rotos{
+  background: rgba(239,68,68,0.14);
+  border-color: rgba(239,68,68,0.35);
+  color: rgba(255,255,255,0.95);
+}
