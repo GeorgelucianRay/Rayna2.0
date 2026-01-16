@@ -669,14 +669,6 @@ export function useDepotScene({ mountRef }) {
       }
     }
 
-    // TREES (instanced, lazy mount)
-let disposed = false;
-
-(async () => {
-  try {
-    const tg = await createTreesGroupInstanced({ targetHeight: 4, name: "trees.instanced" });
-    if (disposed) return;
-
     // NU-l punem in scena imediat -> il montam doar cand e nevoie (distanta)
     treesGroupRef.current = tg;
     treesVisibleRef.current = false;
