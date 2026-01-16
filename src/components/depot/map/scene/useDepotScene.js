@@ -66,7 +66,7 @@ export function useDepotScene({ mountRef }) {
   const [buildMode, setBuildMode] = useState("place"); // place | select | remove
 
   // ------------------------------------------------------------
-  // 4) First person rig
+  // 4) First person rig  ✅ (Sursa adevărului pentru FP movement)
   // ------------------------------------------------------------
   const fpRig = useFirstPersonRig({
     cameraRef,
@@ -77,7 +77,7 @@ export function useDepotScene({ mountRef }) {
   });
 
   // ------------------------------------------------------------
-  // 5) Camera modes (FP + OrbitLibre + clamp)
+  // 5) Camera modes (Orbit/OrbitLibre/clamp) - FP state e folosit doar pt UI/consistență
   // ------------------------------------------------------------
   const camModes = useCameraModes({
     controlsRef,
@@ -173,9 +173,10 @@ export function useDepotScene({ mountRef }) {
     buildControllerRef.current?.setMode?.(buildMode);
   }, [buildMode]);
 
+  // ✅ IMPORTANT: FP truth trebuie să fie fpRig.isFPRef, nu camModes.isFPRef
   const buildBridge = useBuildBridge({
     getBuildController: () => buildControllerRef.current,
-    getIsFP: () => camModes.isFPRef.current,
+    getIsFP: () => fpRig.isFPRef.current,
     getCamera: () => cameraRef.current,
   });
 
@@ -274,14 +275,15 @@ export function useDepotScene({ mountRef }) {
     (e) => {
       if (!buildBridge.buildHotkeys.isBuildKey(e)) return;
 
-      if (buildActiveRef.current && camModes.isFPRef.current) {
+      // ✅ IMPORTANT: verifică FP din fpRig, nu din camModes
+      if (buildActiveRef.current && fpRig.isFPRef.current) {
         buildBridge.fpPlace?.();
         return;
       }
 
       selection.selectFromCrosshair?.();
     },
-    [buildBridge, camModes.isFPRef, selection]
+    [buildBridge, fpRig.isFPRef, selection]
   );
 
   useKeybinds({ enabled: true, onKeyDown });
@@ -297,13 +299,16 @@ export function useDepotScene({ mountRef }) {
       raf = requestAnimationFrame(tick);
       const delta = clock.getDelta();
 
-      camModes.tickCamera?.(delta);
-
-      if (camModes.isFPRef.current) {
-        fpRig.updateFP?.(delta);
+      // ✅ Orbit tick only when NOT FP (altfel OrbitControls se bate cu FP)
+      if (!fpRig.isFPRef.current) {
+        camModes.tickCamera?.(delta);
       }
 
-      if (buildActiveRef.current && camModes.isFPRef.current) {
+      // ✅ FP movement tick (intern se oprește dacă FP e OFF)
+      fpRig.updateFP?.(delta);
+
+      // ✅ Build preview din crosshair când build + FP
+      if (buildActiveRef.current && fpRig.isFPRef.current) {
         buildBridge.fpPreviewTick?.();
       }
 
@@ -321,27 +326,27 @@ export function useDepotScene({ mountRef }) {
     const cam = cameraRef.current;
     const ctl = controlsRef.current;
     if (!cam || !ctl) return;
-    if (camModes.isFPRef.current) return;
+    if (fpRig.isFPRef.current) return;
 
     const dir = new THREE.Vector3().subVectors(cam.position, ctl.target).normalize();
     const dist = cam.position.distanceTo(ctl.target);
     const next = Math.max(ctl.minDistance || 2, dist * 0.88);
     cam.position.copy(ctl.target).addScaledVector(dir, next);
     ctl.update();
-  }, [cameraRef, controlsRef, camModes.isFPRef]);
+  }, [cameraRef, controlsRef, fpRig.isFPRef]);
 
   const zoomOut = useCallback(() => {
     const cam = cameraRef.current;
     const ctl = controlsRef.current;
     if (!cam || !ctl) return;
-    if (camModes.isFPRef.current) return;
+    if (fpRig.isFPRef.current) return;
 
     const dir = new THREE.Vector3().subVectors(cam.position, ctl.target).normalize();
     const dist = cam.position.distanceTo(ctl.target);
     const next = Math.min(ctl.maxDistance || 200, dist * 1.12);
     cam.position.copy(ctl.target).addScaledVector(dir, next);
     ctl.update();
-  }, [cameraRef, controlsRef, camModes.isFPRef]);
+  }, [cameraRef, controlsRef, fpRig.isFPRef]);
 
   const recenter = useCallback(() => {
     const cam = cameraRef.current;
@@ -363,9 +368,6 @@ export function useDepotScene({ mountRef }) {
       const pos = c.posicion || c.pos;
       if (!pos || typeof pos !== "string") return;
 
-      // daca ai slotToWorld deja in proiect, poti face conversie exacta;
-      // aici pastram siguranta: daca record-ul are userData.worldPos, foloseste-l.
-      // altfel: doar recentram usor la target curent.
       const target = new THREE.Vector3(0, 1, 0);
       if (c.worldPos && Array.isArray(c.worldPos) && c.worldPos.length >= 3) {
         target.set(Number(c.worldPos[0]) || 0, 1, Number(c.worldPos[2]) || 0);
@@ -407,18 +409,32 @@ export function useDepotScene({ mountRef }) {
 
   // Placeholder compat (Map3DPage le cheama)
   const openWorldItems = useCallback(() => {
-    // Daca ai un modal separat, leaga-l aici.
-    // Nu aruncam eroare ca sa nu-ti blocheze UI.
     console.warn("[useDepotScene] openWorldItems not wired yet.");
   }, []);
+
+  // ------------------------------------------------------------
+  // 13.5) OrbitLibre safe wrappers (oprește FP înainte)
+  // ------------------------------------------------------------
+  const startOrbitLibreSafe = useCallback(
+    (opts) => {
+      // orbit libre nu are sens în FP; evităm conflictele de input
+      fpRig.setFPEnabled?.(false);
+      camModes.startOrbitLibre?.(opts);
+    },
+    [fpRig, camModes]
+  );
+
+  const stopOrbitLibreSafe = useCallback(() => {
+    camModes.stopOrbitLibre?.();
+  }, [camModes]);
 
   // ------------------------------------------------------------
   // 14) Return EXACT cum cere Map3DPage
   // ------------------------------------------------------------
   return {
-    // FP
-    isFP: camModes.isFP,
-    setFPEnabled: camModes.setFPEnabled,
+    // FP  ✅ IMPORTANT: setFPEnabled din fpRig, altfel joystick nu mișcă
+    isFP: fpRig.isFP,
+    setFPEnabled: fpRig.setFPEnabled,
     setForwardPressed: fpRig.setForwardPressed,
     setJoystick: fpRig.setJoystick,
     setLookJoystick: fpRig.setLookJoystick,
@@ -447,7 +463,7 @@ export function useDepotScene({ mountRef }) {
 
     // OrbitLibre
     isOrbitLibre: camModes.orbitLibre,
-    startOrbitLibre: camModes.startOrbitLibre,
-    stopOrbitLibre: camModes.stopOrbitLibre,
+    startOrbitLibre: startOrbitLibreSafe,
+    stopOrbitLibre: stopOrbitLibreSafe,
   };
 }
