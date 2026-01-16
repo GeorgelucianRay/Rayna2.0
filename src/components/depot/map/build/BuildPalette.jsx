@@ -549,6 +549,8 @@ const backdrop = {
   justifyContent: "center",
   padding: 12,
   backdropFilter: "blur(2px)",
+
+  pointerEvents: "none", // ✅ ADD
 };
 
 const panel = {
@@ -561,6 +563,8 @@ const panel = {
   border: "1px solid #1f2a44",
   boxShadow: "0 10px 30px rgba(0,0,0,.6)",
   padding: 12,
+
+  pointerEvents: "auto", // ✅ ADD
 };
 
 const hdr = {
