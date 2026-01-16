@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { useTreesLayer } from "./useTreesLayer";
+import { createTreesGroup } from "./trees/createTreesGroup";
 import createGround from "../threeWorld/createGround";
 import createFence from "../threeWorld/createFence";
 import createContainersLayerOptimized from "../threeWorld/createContainersLayerOptimized";
