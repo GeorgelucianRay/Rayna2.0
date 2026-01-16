@@ -17,12 +17,8 @@ import useKeybinds from "./events/useKeybinds";
 import useBuildBridge from "./build/useBuildBridge";
 import createBuildController from "../world/buildController";
 
-export default function useDepotScene() {
-  // ------------------------------------------------------------
-  // 0) Mount
-  // ------------------------------------------------------------
-  const mountRef = useRef(null);
-
+// IMPORTANT: Map3DPage face `import { useDepotScene } from "./scene/useDepotScene";`
+export function useDepotScene({ mountRef }) {
   // ------------------------------------------------------------
   // 1) Config + yard
   // ------------------------------------------------------------
@@ -33,16 +29,17 @@ export default function useDepotScene() {
   const clampOrbitFn = useMemo(() => makeOrbitClamp(), []);
 
   const yardBounds = useMemo(() => {
+    const pad = 0.5;
     return {
-      yardMinX: -YARD_WIDTH / 2 + 0.5,
-      yardMaxX: YARD_WIDTH / 2 - 0.5,
-      yardMinZ: -YARD_DEPTH / 2 + 0.5,
-      yardMaxZ: YARD_DEPTH / 2 - 0.5,
+      yardMinX: -YARD_WIDTH / 2 + pad,
+      yardMaxX: YARD_WIDTH / 2 - pad,
+      yardMinZ: -YARD_DEPTH / 2 + pad,
+      yardMaxZ: YARD_DEPTH / 2 - pad,
     };
   }, []);
 
   // ------------------------------------------------------------
-  // 2) Base world (renderer/scene/camera/orbit + ground/fence + groups + LOOP)
+  // 2) Base world (renderer/scene/camera/orbit + ground/fence + LOOP render)
   // ------------------------------------------------------------
   const world = useWorldBase({ mountRef, cfg, yard });
 
@@ -58,7 +55,7 @@ export default function useDepotScene() {
   } = world;
 
   // ------------------------------------------------------------
-  // 3) Build state
+  // 3) Build state (compat cu Map3DPage)
   // ------------------------------------------------------------
   const [buildActive, setBuildActive] = useState(false);
   const buildActiveRef = useRef(false);
@@ -66,11 +63,10 @@ export default function useDepotScene() {
     buildActiveRef.current = !!buildActive;
   }, [buildActive]);
 
-  const [buildMode, setBuildMode] = useState("place"); // "place" | "select" | "remove"
+  const [buildMode, setBuildMode] = useState("place"); // place | select | remove
 
   // ------------------------------------------------------------
-  // 4) First person rig (createFirstPerson + attach)
-  //     NOTE: nu folosim rig.setFPEnabled aici, pentru ca useCameraModes controleaza enable/disable.
+  // 4) First person rig
   // ------------------------------------------------------------
   const fpRig = useFirstPersonRig({
     cameraRef,
@@ -81,7 +77,7 @@ export default function useDepotScene() {
   });
 
   // ------------------------------------------------------------
-  // 5) Camera modes (FP enable/disable + orbitLibre + clamp)
+  // 5) Camera modes (FP + OrbitLibre + clamp)
   // ------------------------------------------------------------
   const camModes = useCameraModes({
     controlsRef,
@@ -93,7 +89,7 @@ export default function useDepotScene() {
   });
 
   // ------------------------------------------------------------
-  // 6) Containers layer (fetch + rebuild layer + attach FP targets/colliders)
+  // 6) Containers layer (fetch + layer + attach FP targets/colliders)
   // ------------------------------------------------------------
   const containersLayer = useContainersLayer({
     depotGroupRef,
@@ -102,17 +98,28 @@ export default function useDepotScene() {
     collidersRef: baseCollidersRef,
   });
 
-  // auto refresh la mount (cand exista depotGroup)
+  const [containers, setContainers] = useState([]);
+  const refreshContainers = useCallback(async () => {
+    const list = await containersLayer.refreshContainers?.();
+    const next = Array.isArray(list) ? list : containersLayer.containers || [];
+    setContainers(next);
+    return next;
+  }, [containersLayer]);
+
+  // refresh at mount
   useEffect(() => {
     if (!depotGroupRef.current) return;
-    containersLayer.refreshContainers?.();
+    refreshContainers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [depotGroupRef.current]);
 
   // ------------------------------------------------------------
-  // 7) Selection (highlight + marker + FP select)
+  // 7) Selection (FP crosshair + marker + highlight)
   // ------------------------------------------------------------
   const onSelectedRef = useRef(null);
+  const setOnContainerSelected = useCallback((fn) => {
+    onSelectedRef.current = fn;
+  }, []);
 
   const selection = useSelection({
     sceneRef,
@@ -122,16 +129,11 @@ export default function useDepotScene() {
     onSelectedRef,
   });
 
-  const setOnContainerSelected = useCallback((fn) => {
-    onSelectedRef.current = fn;
-  }, []);
-
   // ------------------------------------------------------------
-  // 8) Build controller + bridge
+  // 8) Build controller + bridge (compat cu BuildPalette din Map3DPage)
   // ------------------------------------------------------------
   const buildControllerRef = useRef(null);
 
-  // create build controller when we have camera + dom + worldGroup + ground
   useEffect(() => {
     const cam = cameraRef.current;
     const dom = rendererRef.current?.domElement || null;
@@ -149,7 +151,7 @@ export default function useDepotScene() {
       grid: 1,
     });
 
-    // initial sync
+    // sync initial
     buildControllerRef.current.setEnabled?.(!!buildActiveRef.current);
     buildControllerRef.current.setMode?.(buildMode);
     buildControllerRef.current.mountExistingFromStore?.();
@@ -163,7 +165,6 @@ export default function useDepotScene() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraRef.current, rendererRef.current, worldGroupRef.current, groundMeshRef.current]);
 
-  // keep build controller synced
   useEffect(() => {
     buildControllerRef.current?.setEnabled?.(!!buildActive);
   }, [buildActive]);
@@ -178,8 +179,17 @@ export default function useDepotScene() {
     getCamera: () => cameraRef.current,
   });
 
+  const buildApi = useMemo(() => {
+    return {
+      controller: buildControllerRef.current,
+      active: buildActive,
+      mode: buildMode,
+      setMode: setBuildMode,
+    };
+  }, [buildActive, buildMode]);
+
   // ------------------------------------------------------------
-  // 9) Orbit pick (cand build nu e activ): raycast pe containersLayerRef
+  // 9) Orbit picking (cand build e OFF): raycast pe containersLayerRef
   // ------------------------------------------------------------
   const pickRaycasterRef = useRef(new THREE.Raycaster());
   const pickNdcRef = useRef(new THREE.Vector2());
@@ -206,9 +216,7 @@ export default function useDepotScene() {
       const ray = pickRaycasterRef.current;
       ray.setFromCamera(pickNdcRef.current, cam);
 
-      // Intersectăm DOAR layer-ul de containere (mai rapid și mai sigur)
       const hits = ray.intersectObject(layer, true);
-
       if (!hits.length) {
         onSelectedRef.current?.(null);
         selection.clearHighlight?.();
@@ -218,7 +226,6 @@ export default function useDepotScene() {
       const hit = hits[0];
       const obj = hit.object;
 
-      // instanced holder (records)
       const instHolder = selection.findUp(obj, (o) => !!o?.isInstancedMesh && !!o?.userData?.records);
       if (instHolder?.isInstancedMesh && hit.instanceId != null) {
         const rec = instHolder.userData.records?.[hit.instanceId] || null;
@@ -232,7 +239,6 @@ export default function useDepotScene() {
         return;
       }
 
-      // mesh __record
       const recordHolder = selection.findUp(obj, (o) => !!o?.userData?.__record);
       if (recordHolder?.userData?.__record) {
         const rec = recordHolder.userData.__record;
@@ -260,9 +266,9 @@ export default function useDepotScene() {
   });
 
   // ------------------------------------------------------------
-  // 11) Keybinds:
-  // - daca buildActive + FP => E/Enter = build place/select/remove (fpPlace)
-  // - altfel => E = select container din crosshair (selection.selectFromCrosshair)
+  // 11) Keybinds: E/Enter
+  // - buildActive + FP => build action
+  // - altfel => select container from crosshair
   // ------------------------------------------------------------
   const onKeyDown = useCallback(
     (e) => {
@@ -273,7 +279,6 @@ export default function useDepotScene() {
         return;
       }
 
-      // fallback: select container din crosshair (FP) / nu afecteaza orbit
       selection.selectFromCrosshair?.();
     },
     [buildBridge, camModes.isFPRef, selection]
@@ -282,11 +287,7 @@ export default function useDepotScene() {
   useKeybinds({ enabled: true, onKeyDown });
 
   // ------------------------------------------------------------
-  // 12) TICK LOOP (fara render; render e deja in useWorldBase)
-  // - FP update
-  // - orbitLibre tick + clamp
-  // - build fp preview tick
-  // - marker pulse
+  // 12) Tick loop (FARA render; render e deja in useWorldBase)
   // ------------------------------------------------------------
   useEffect(() => {
     let raf = 0;
@@ -296,61 +297,157 @@ export default function useDepotScene() {
       raf = requestAnimationFrame(tick);
       const delta = clock.getDelta();
 
-      // orbit / orbitLibre tick (nu randam aici)
       camModes.tickCamera?.(delta);
 
-      // FP update (doar daca e FP)
       if (camModes.isFPRef.current) {
-        fpRig.fpRef.current?.update?.(delta);
+        fpRig.updateFP?.(delta);
       }
 
-      // build preview in FP (crosshair)
       if (buildActiveRef.current && camModes.isFPRef.current) {
         buildBridge.fpPreviewTick?.();
       }
 
-      // marker pulse
       selection.tickMarkerPulse?.(delta);
     };
 
     tick();
     return () => cancelAnimationFrame(raf);
-  }, [camModes, fpRig.fpRef, buildBridge, selection]);
+  }, [camModes, fpRig, buildBridge, selection]);
 
   // ------------------------------------------------------------
-  // 13) Public API pentru componenta/UI
+  // 13) UX helpers cerute de Map3DPage
+  // ------------------------------------------------------------
+  const zoomIn = useCallback(() => {
+    const cam = cameraRef.current;
+    const ctl = controlsRef.current;
+    if (!cam || !ctl) return;
+    if (camModes.isFPRef.current) return;
+
+    const dir = new THREE.Vector3().subVectors(cam.position, ctl.target).normalize();
+    const dist = cam.position.distanceTo(ctl.target);
+    const next = Math.max(ctl.minDistance || 2, dist * 0.88);
+    cam.position.copy(ctl.target).addScaledVector(dir, next);
+    ctl.update();
+  }, [cameraRef, controlsRef, camModes.isFPRef]);
+
+  const zoomOut = useCallback(() => {
+    const cam = cameraRef.current;
+    const ctl = controlsRef.current;
+    if (!cam || !ctl) return;
+    if (camModes.isFPRef.current) return;
+
+    const dir = new THREE.Vector3().subVectors(cam.position, ctl.target).normalize();
+    const dist = cam.position.distanceTo(ctl.target);
+    const next = Math.min(ctl.maxDistance || 200, dist * 1.12);
+    cam.position.copy(ctl.target).addScaledVector(dir, next);
+    ctl.update();
+  }, [cameraRef, controlsRef, camModes.isFPRef]);
+
+  const recenter = useCallback(() => {
+    const cam = cameraRef.current;
+    const ctl = controlsRef.current;
+    if (!cam || !ctl) return;
+
+    ctl.target.set(0, 1, 0);
+    cam.position.set(20, 8, 20);
+    ctl.update();
+  }, [cameraRef, controlsRef]);
+
+  const focusCameraOnContainer = useCallback(
+    (c, { smooth = true } = {}) => {
+      const cam = cameraRef.current;
+      const ctl = controlsRef.current;
+      if (!cam || !ctl) return;
+      if (!c) return;
+
+      const pos = c.posicion || c.pos;
+      if (!pos || typeof pos !== "string") return;
+
+      // daca ai slotToWorld deja in proiect, poti face conversie exacta;
+      // aici pastram siguranta: daca record-ul are userData.worldPos, foloseste-l.
+      // altfel: doar recentram usor la target curent.
+      const target = new THREE.Vector3(0, 1, 0);
+      if (c.worldPos && Array.isArray(c.worldPos) && c.worldPos.length >= 3) {
+        target.set(Number(c.worldPos[0]) || 0, 1, Number(c.worldPos[2]) || 0);
+      }
+
+      const startTarget = ctl.target.clone();
+      const startPos = cam.position.clone();
+
+      const endTarget = target.clone();
+      const endPos = target.clone().add(new THREE.Vector3(10, 7, 10));
+
+      if (!smooth) {
+        ctl.target.copy(endTarget);
+        cam.position.copy(endPos);
+        ctl.update();
+        return;
+      }
+
+      let raf = 0;
+      const t0 = performance.now();
+      const dur = 420;
+
+      const step = () => {
+        const t = (performance.now() - t0) / dur;
+        const k = t >= 1 ? 1 : t;
+
+        ctl.target.lerpVectors(startTarget, endTarget, k);
+        cam.position.lerpVectors(startPos, endPos, k);
+        ctl.update();
+
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+
+      raf = requestAnimationFrame(step);
+      return () => cancelAnimationFrame(raf);
+    },
+    [cameraRef, controlsRef]
+  );
+
+  // Placeholder compat (Map3DPage le cheama)
+  const openWorldItems = useCallback(() => {
+    // Daca ai un modal separat, leaga-l aici.
+    // Nu aruncam eroare ca sa nu-ti blocheze UI.
+    console.warn("[useDepotScene] openWorldItems not wired yet.");
+  }, []);
+
+  // ------------------------------------------------------------
+  // 14) Return EXACT cum cere Map3DPage
   // ------------------------------------------------------------
   return {
-    // mount target
-    mountRef,
-
-    // base refs (optional)
-    rendererRef,
-    sceneRef,
-    cameraRef,
-    controlsRef,
-    depotGroupRef,
-    worldGroupRef,
-
-    // containers
-    containers: containersLayer.containers,
-    refreshContainers: containersLayer.refreshContainers,
-
-    // selection callback
-    setOnContainerSelected,
-
-    // camera modes
+    // FP
     isFP: camModes.isFP,
     setFPEnabled: camModes.setFPEnabled,
-    orbitLibre: camModes.orbitLibre,
+    setForwardPressed: fpRig.setForwardPressed,
+    setJoystick: fpRig.setJoystick,
+    setLookJoystick: fpRig.setLookJoystick,
+    selectFromCrosshair: selection.selectFromCrosshair,
+
+    // Build
+    setBuildActive,
+    buildApi,
+
+    // Containers
+    containers,
+    refreshContainers,
+
+    // World items / selection wiring
+    openWorldItems,
+    setOnContainerSelected,
+    focusCameraOnContainer,
+
+    // Marker
+    showSelectedMarker: selection.showSelectedMarker,
+
+    // Zoom / recenter
+    zoomIn,
+    zoomOut,
+    recenter,
+
+    // OrbitLibre
+    isOrbitLibre: camModes.orbitLibre,
     startOrbitLibre: camModes.startOrbitLibre,
     stopOrbitLibre: camModes.stopOrbitLibre,
-
-    // build
-    buildActive,
-    setBuildActive,
-    buildMode,
-    setBuildMode,
-    buildController: buildControllerRef.current,
   };
 }
