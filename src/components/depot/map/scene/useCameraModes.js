@@ -1,38 +1,35 @@
 // src/components/depot/map/scene/useCameraModes.js
-import { useCallback, useEffect, useRef, useState } from "react";
+// ASCII quotes only
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 /**
- * Gestionează:
- * - FP enable/disable
- * - Orbit enable/disable
- * - OrbitLibre start/stop (auto orbit)
- *
- * IMPORTANT:
- * - Build active NU trebuie să oprească FP (Minecraft-style).
- * - Build active trebuie doar să dezactiveze OrbitControls când nu ești în FP.
+ * CameraModes:
+ * - NU controleaza FP enable/disable (asta e treaba useFirstPersonRig)
+ * - controleaza OrbitControls enabled/disabled in functie de:
+ *    - isFPExtern (din useFirstPersonRig)
+ *    - buildActive
+ * - controleaza OrbitLibre (auto orbit) doar cand NU esti in FP
  */
 export function useCameraModes({
   controlsRef,
   cameraRef,
-  fpRef,
 
   yardBounds, // { yardMinX, yardMaxX, yardMinZ, yardMaxZ }
   clampOrbitFn, // (camera, controls) => void
 
   // Build state (din useDepotScene)
   buildActive,
-}) {
-  const [isFP, setIsFP] = useState(false);
 
-  // OrbitLibre
+  // ✅ SOURCE OF TRUTH for FP (din useFirstPersonRig)
+  getIsFP, // () => boolean
+}) {
+  // UI mirror only (optional)
   const [orbitLibre, setOrbitLibre] = useState(false);
   const orbitLibreRef = useRef(false);
   useEffect(() => {
     orbitLibreRef.current = orbitLibre;
   }, [orbitLibre]);
-
-  const isFPRef = useRef(false);
 
   // config auto-orbit
   const autoOrbitRef = useRef({
@@ -47,52 +44,33 @@ export function useCameraModes({
     clockwise: true,
   });
 
-  // -------------- FP enable/disable --------------
-  const setFPEnabled = useCallback(
-    (enabled) => {
-      const orbit = controlsRef.current;
-      const fp = fpRef.current;
-      if (!orbit || !fp) return;
-
-      if (enabled) {
-        // când intri în FP: oprești orbit libre și orbit controls
-        setOrbitLibre(false);
-        orbit.enabled = false;
-        fp.enable?.();
-        isFPRef.current = true;
-        setIsFP(true);
-      } else {
-        fp.disable?.();
-        isFPRef.current = false;
-        setIsFP(false);
-
-        // orbit re-enabled doar dacă build nu e activ
-        orbit.enabled = !buildActive;
-      }
-    },
-    [controlsRef, fpRef, buildActive]
-  );
-
-  // -------------- Orbit enabled state --------------
-  // Regula:
-  // - dacă FP: orbit off
-  // - dacă buildActive: orbit off (dar FP poate rămâne on)
-  // - altfel: orbit on
+  // ------------------------------------------------------------
+  // Orbit enabled state:
+  // - FP => orbit OFF
+  // - buildActive => orbit OFF
+  // - altfel => orbit ON
+  // ------------------------------------------------------------
   useEffect(() => {
     const orbit = controlsRef.current;
     if (!orbit) return;
 
-    const shouldEnableOrbit = !isFPRef.current && !buildActive;
+    const isFP = !!getIsFP?.();
+    const shouldEnableOrbit = !isFP && !buildActive;
+
     orbit.enabled = shouldEnableOrbit;
 
+    // daca orbit e oprit, opreste orbit libre
     if (!orbit.enabled) setOrbitLibre(false);
-  }, [controlsRef, buildActive]);
+  }, [controlsRef, buildActive, getIsFP]);
 
-  // -------------- OrbitLibre start/stop --------------
+  // ------------------------------------------------------------
+  // OrbitLibre start/stop
+  // ------------------------------------------------------------
   const startOrbitLibre = useCallback(
     (opts = {}) => {
-      // În orbit libre: nu FP, nu build (ca să nu se bată cu input / preview)
-      setFPEnabled(false);
+      // orbit libre are sens doar cand NU esti in FP
+      const isFP = !!getIsFP?.();
+      if (isFP) return;
 
       const p = autoOrbitRef.current;
       if (opts.speed != null) p.speed = opts.speed;
@@ -106,22 +84,23 @@ export function useCameraModes({
 
       setOrbitLibre(true);
     },
-    [setFPEnabled, controlsRef]
+    [getIsFP, controlsRef]
   );
 
   const stopOrbitLibre = useCallback(() => setOrbitLibre(false), []);
 
-  // -------------- Animate tick: orbit / orbitLibre / clamp --------------
+  // ------------------------------------------------------------
+  // Animate tick: orbit / orbitLibre / clamp
+  // ------------------------------------------------------------
   const tickCamera = useCallback(
     (delta) => {
       const cam = cameraRef.current;
       const ctl = controlsRef.current;
       if (!cam || !ctl) return;
 
-      if (isFPRef.current) {
-        // FP update e în altă parte (useDepotScene), aici nu facem nimic
-        return;
-      }
+      // ✅ In FP nu atingem deloc OrbitControls/camera
+      const isFP = !!getIsFP?.();
+      if (isFP) return;
 
       if (orbitLibreRef.current) {
         const p = autoOrbitRef.current;
@@ -138,22 +117,21 @@ export function useCameraModes({
         ctl.update();
       }
 
-      // clamp la margini (yard)
       clampOrbitFn?.(cam, ctl);
     },
-    [cameraRef, controlsRef, clampOrbitFn]
+    [cameraRef, controlsRef, clampOrbitFn, getIsFP]
   );
 
-  // Public API
+  // (optional) UI helper: isFP computed
+  const isFP = useMemo(() => !!getIsFP?.(), [getIsFP]);
+
   return {
+    // expose isFP doar pentru UI/compat
     isFP,
-    isFPRef,
 
     orbitLibre,
     startOrbitLibre,
     stopOrbitLibre,
-
-    setFPEnabled,
 
     tickCamera,
   };
