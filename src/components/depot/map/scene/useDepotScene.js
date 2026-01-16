@@ -80,13 +80,13 @@ export function useDepotScene({ mountRef }) {
   // 5) Camera modes (Orbit/OrbitLibre/clamp) - FP state e folosit doar pt UI/consistență
   // ------------------------------------------------------------
   const camModes = useCameraModes({
-    controlsRef,
-    cameraRef,
-    fpRef: fpRig.fpRef,
-    yardBounds,
-    clampOrbitFn,
-    buildActive,
-  });
+  controlsRef,
+  cameraRef,
+  yardBounds,
+  clampOrbitFn,
+  buildActive,
+  getIsFP: () => fpRig.isFPRef.current,
+});
 
   // ------------------------------------------------------------
   // 6) Containers layer (fetch + layer + attach FP targets/colliders)
