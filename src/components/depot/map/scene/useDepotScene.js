@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { createTreesGroup } from "./trees/createTreesGroup";
+import { createTreesGroupInstanced } from "./trees/createTreesGroup.instanced";
 
 import createGround from "../threeWorld/createGround";
 import createFence from "../threeWorld/createFence";
@@ -82,6 +82,9 @@ export function useDepotScene({ mountRef }) {
   const rendererRef = useRef(null);
   const depotGroupRef = useRef(null);
   const containersLayerRef = useRef(null);
+    // TREES (lazy instanced)
+  const treesGroupRef = useRef(null);
+  const treesVisibleRef = useRef(false);
 
   // Build controller ref
   const buildRef = useRef(null);
@@ -628,15 +631,60 @@ export function useDepotScene({ mountRef }) {
     const baseWorld = createBaseWorld();
     scene.add(baseWorld);
 
-    // world group (build props)
-    const worldGroup = new THREE.Group();
-    worldGroup.name = "worldGroup";
-    scene.add(worldGroup);
+        // TREES (instanced, lazy load - NU adauga in scena imediat)
+    let disposed = false;
 
-    // TREES (static)
-    const treesGroup = createTreesGroup({ targetHeight: 4, name: "trees.static" });
-    worldGroup.add(treesGroup);
+    (async () => {
+      try {
+        const tg = await createTreesGroupInstanced({
+          targetHeight: 4,
+          name: "trees.instanced",
+        });
+        if (disposed) return;
 
+        treesGroupRef.current = tg;
+        treesVisibleRef.current = false; // inca nu e montat
+      } catch (e) {
+        console.warn("[trees] createTreesGroupInstanced failed:", e);
+      }
+    })();
+        // TREES toggle (nu tine copacii in scena daca esti departe)
+    function updateTreesVisibility() {
+      const cam = cameraRef.current;
+      const tg = treesGroupRef.current;
+      if (!cam || !tg) return;
+
+      // distanta in plan XZ fata de centru (0,0)
+      const dist = Math.hypot(cam.position.x, cam.position.z);
+
+      const SHOW_AT = 85;
+      const HIDE_AT = 105;
+
+      if (!treesVisibleRef.current && dist < SHOW_AT) {
+        worldGroup.add(tg);
+        treesVisibleRef.current = true;
+      } else if (treesVisibleRef.current && dist > HIDE_AT) {
+        worldGroup.remove(tg);
+        treesVisibleRef.current = false;
+      }
+    }
+
+    // TREES (instanced, lazy mount)
+let disposed = false;
+
+(async () => {
+  try {
+    const tg = await createTreesGroupInstanced({ targetHeight: 4, name: "trees.instanced" });
+    if (disposed) return;
+
+    // NU-l punem in scena imediat -> il montam doar cand e nevoie (distanta)
+    treesGroupRef.current = tg;
+    treesVisibleRef.current = false;
+  } catch (e) {
+    console.warn("[trees] failed to create instanced trees:", e);
+  }
+})();
+    
     // depot group
     const depotGroup = new THREE.Group();
     depotGroupRef.current = depotGroup;
@@ -783,10 +831,17 @@ export function useDepotScene({ mountRef }) {
     renderer.domElement.addEventListener("pointermove", onPointerMoveBuild, { passive: true });
     renderer.domElement.addEventListener("pointerup", onPointerUpBuild, { passive: true });
 
+    let treesCheckAcc = 0;
     // Animate loop
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
+            // TREES visibility check (de 4 ori pe secunda)
+      treesCheckAcc += delta;
+      if (treesCheckAcc > 0.25) {
+        treesCheckAcc = 0;
+        updateTreesVisibility();
+      }
 
       if (markerRef.current?.visible) {
         const ring = markerRef.current;
@@ -844,9 +899,14 @@ export function useDepotScene({ mountRef }) {
 
       clearHighlight();
 
+            // TREES cleanup
+      disposed = true;
       try {
-        worldGroup.remove(treesGroup);
+        const tg = treesGroupRef.current;
+        if (tg) worldGroup.remove(tg);
       } catch {}
+      treesGroupRef.current = null;
+      treesVisibleRef.current = false;
 
       buildRef.current?.dispose?.();
       buildRef.current = null;
