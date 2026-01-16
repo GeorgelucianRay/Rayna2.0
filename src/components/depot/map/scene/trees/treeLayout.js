@@ -1,14 +1,10 @@
-// ASCII quotes only
+// src/components/depot/map/scene/trees/treeLayout.js
 
-export const TREE_LAYOUT_VERSION = 1;
+// Linie 1: x = 47, z din 28 pana la -28, pas 3
+// Linie 2: z = -32, x din 43 pana la -48, pas 3 (+ capatul -48)
 
-// Layout curatat:
-// - pastram X=47 cu Z din 3 in 3 (28 ... -28)
-// - pastram Z=-32 cu X din 3 in 3 (46 ... -48)
-// - scoatem toate [40,*,23] si [-27,*, -30]
-// - corectam Y la [-38,*, -32] in 0.05
 export const TREE_PROPS = [
-  // Column: X=47
+  // x = 47 (vertical)
   { x: 47, y: 0.05, z: 28, rotY: 0 },
   { x: 47, y: 0.05, z: 25, rotY: 0 },
   { x: 47, y: 0.05, z: 22, rotY: 0 },
@@ -30,8 +26,7 @@ export const TREE_PROPS = [
   { x: 47, y: 0.05, z: -25, rotY: 0 },
   { x: 47, y: 0.05, z: -28, rotY: 0 },
 
-  // Row: Z=-32
-  { x: 46, y: 0.05, z: -32, rotY: 0 },
+  // z = -32 (horizontal)
   { x: 43, y: 0.05, z: -32, rotY: 0 },
   { x: 40, y: 0.05, z: -32, rotY: 0 },
   { x: 37, y: 0.05, z: -32, rotY: 0 },
@@ -59,8 +54,7 @@ export const TREE_PROPS = [
   { x: -29, y: 0.05, z: -32, rotY: 0 },
   { x: -32, y: 0.05, z: -32, rotY: 0 },
   { x: -35, y: 0.05, z: -32, rotY: 0 },
-  { x: -38, y: 0.05, z: -32, rotY: 0 }, // corectat din -0.05
   { x: -41, y: 0.05, z: -32, rotY: 0 },
   { x: -44, y: 0.05, z: -32, rotY: 0 },
-  { x: -48, y: 0.05, z: -32, rotY: 0 }
+  { x: -48, y: 0.05, z: -32, rotY: 0 },
 ];
