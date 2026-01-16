@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { createTreesGroup } from "./trees/createTreesGroup";
+
 import createGround from "../threeWorld/createGround";
 import createFence from "../threeWorld/createFence";
 import createContainersLayerOptimized from "../threeWorld/createContainersLayerOptimized";
@@ -107,7 +108,6 @@ export function useDepotScene({ mountRef }) {
   const buildActiveRef = useRef(false);
   useEffect(() => {
     buildActiveRef.current = buildActive;
-    // keep controller enabled in sync
     buildRef.current?.setEnabled?.(!!buildActive);
   }, [buildActive]);
 
@@ -147,27 +147,24 @@ export function useDepotScene({ mountRef }) {
   });
 
   // ---------------- API: FP enable/disable ----------------
-  const setFPEnabled = useCallback(
-    (enabled) => {
-      const orbit = controlsRef.current;
-      const fp = fpRef.current;
-      if (!orbit || !fp) return;
+  const setFPEnabled = useCallback((enabled) => {
+    const orbit = controlsRef.current;
+    const fp = fpRef.current;
+    if (!orbit || !fp) return;
 
-      if (enabled) {
-        setOrbitLibre(false);
-        orbit.enabled = false;
-        fp.enable?.();
-        isFPRef.current = true;
-        setIsFP(true);
-      } else {
-        fp.disable?.();
-        orbit.enabled = true; // IMPORTANT: build does NOT disable orbit anymore
-        isFPRef.current = false;
-        setIsFP(false);
-      }
-    },
-    []
-  );
+    if (enabled) {
+      setOrbitLibre(false);
+      orbit.enabled = false;
+      fp.enable?.();
+      isFPRef.current = true;
+      setIsFP(true);
+    } else {
+      fp.disable?.();
+      orbit.enabled = true;
+      isFPRef.current = false;
+      setIsFP(false);
+    }
+  }, []);
 
   const setForwardPressed = useCallback((v) => fpRef.current?.setForwardPressed?.(v), []);
   const setJoystick = useCallback((v) => fpRef.current?.setJoystick?.(v), []);
@@ -293,7 +290,6 @@ export function useDepotScene({ mountRef }) {
       const mesh = obj;
       const index = hit.instanceId;
 
-      // restore old
       const cur = selectedInstanceRef.current;
       if (cur?.mesh && cur.index != null && cur.originalColor && cur.mesh.setColorAt) {
         try {
@@ -302,7 +298,6 @@ export function useDepotScene({ mountRef }) {
         } catch {}
       }
 
-      // compute instance position
       const tmpM = new THREE.Matrix4();
       const tmpP = new THREE.Vector3();
       const tmpQ = new THREE.Quaternion();
@@ -458,13 +453,11 @@ export function useDepotScene({ mountRef }) {
 
   // ---------------- FP SELECT (Minecraft action first) ----------------
   const selectFromCrosshair = useCallback(() => {
-    // 1) If build is ON => run build primary action (place/select/remove) using camera ray
     if (buildActiveRef.current && buildRef.current) {
       buildRef.current.actionPrimary?.();
       return;
     }
 
-    // 2) Otherwise, keep your existing container select logic
     const fp = fpRef.current;
     const cam = cameraRef.current;
     if (!fp || !cam) return;
@@ -533,7 +526,6 @@ export function useDepotScene({ mountRef }) {
       containersLayerRef.current = layer;
       depotGroup.add(layer);
 
-      // attach FP targets/colliders
       const fp = fpRef.current;
       if (fp) {
         const attach = () => {
@@ -603,7 +595,7 @@ export function useDepotScene({ mountRef }) {
     controls.minDistance = 4;
     controls.maxDistance = Math.max(YARD_WIDTH, YARD_DEPTH);
     controls.target.set(0, 1, 0);
-    controls.enabled = true; // IMPORTANT
+    controls.enabled = true;
     controlsRef.current = controls;
 
     // FP
@@ -640,10 +632,10 @@ export function useDepotScene({ mountRef }) {
     const worldGroup = new THREE.Group();
     worldGroup.name = "worldGroup";
     scene.add(worldGroup);
-    
-    // ---------------- TREES (static) ----------------
-const treesGroup = createTreesGroup({ targetHeight: 4, name: "trees.static" });
-worldGroup.add(treesGroup);
+
+    // TREES (static)
+    const treesGroup = createTreesGroup({ targetHeight: 4, name: "trees.static" });
+    worldGroup.add(treesGroup);
 
     // depot group
     const depotGroup = new THREE.Group();
@@ -672,7 +664,7 @@ worldGroup.add(treesGroup);
     depotGroup.add(groundNode, fence);
     scene.add(depotGroup);
 
-    // Build controller (camera-ray based, Minecraft action)
+    // Build controller
     buildRef.current = createBuildController({
       camera,
       worldGroup,
@@ -696,15 +688,12 @@ worldGroup.add(treesGroup);
     // initial containers load
     loadContainersLayer();
 
-    // ---------------- ORBIT PICK (only when build is OFF) ----------------
+    // ORBIT PICK
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
     const onPick = (event) => {
-      // If build is ON, we do NOT pick containers with orbit click.
-      // Build uses tap (below). FP uses "E/Select".
       if (buildActiveRef.current) return;
-
       if (event.target?.closest?.('[data-map-ui="1"]')) return;
       if (event.target?.closest?.('[data-build-ui="true"]')) return;
 
@@ -751,9 +740,7 @@ worldGroup.add(treesGroup);
 
     renderer.domElement.addEventListener("pointerdown", onPick, { passive: true });
 
-    // ---------------- BUILD TAP (orbit-friendly) ----------------
-    // We treat only a "tap/click" (small movement) as build action,
-    // so orbit drag keeps working.
+    // BUILD TAP
     const TAP_MAX_MOVE = 7;
     const tapState = { down: false, x0: 0, y0: 0, moved: 0 };
 
@@ -764,7 +751,7 @@ worldGroup.add(treesGroup);
 
     const onPointerDownBuild = (e) => {
       if (!buildActiveRef.current) return;
-      if (isFPRef.current) return; // In FP, build uses E/Select
+      if (isFPRef.current) return;
       if (isOverBuildUI(e.clientX, e.clientY)) return;
 
       tapState.down = true;
@@ -778,7 +765,6 @@ worldGroup.add(treesGroup);
       const dx = (e.clientX - tapState.x0) || 0;
       const dy = (e.clientY - tapState.y0) || 0;
       tapState.moved = Math.max(tapState.moved, Math.hypot(dx, dy));
-      // (optional) preview-at-pointer is not used anymore; controller is camera-ray based
     };
 
     const onPointerUpBuild = (e) => {
@@ -788,11 +774,8 @@ worldGroup.add(treesGroup);
       if (!buildActiveRef.current) return;
       if (isFPRef.current) return;
       if (isOverBuildUI(e.clientX, e.clientY)) return;
-
-      // if it was a drag => ignore, orbit did its job
       if (tapState.moved > TAP_MAX_MOVE) return;
 
-      // tap = build action (place/select/remove via camera ray)
       buildRef.current?.actionPrimary?.();
     };
 
@@ -800,12 +783,11 @@ worldGroup.add(treesGroup);
     renderer.domElement.addEventListener("pointermove", onPointerMoveBuild, { passive: true });
     renderer.domElement.addEventListener("pointerup", onPointerUpBuild, { passive: true });
 
-    // ---------------- Animate loop ----------------
+    // Animate loop
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
 
-      // pulse ring marker
       if (markerRef.current?.visible) {
         const ring = markerRef.current;
         ring.userData._pulseT = (ring.userData._pulseT || 0) + delta * 2.2;
@@ -850,36 +832,34 @@ worldGroup.add(treesGroup);
     window.addEventListener("resize", onResize);
 
     return () => {
-  window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onResize);
 
-  renderer.domElement.removeEventListener("pointerdown", onPick);
+      renderer.domElement.removeEventListener("pointerdown", onPick);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDownBuild);
+      renderer.domElement.removeEventListener("pointermove", onPointerMoveBuild);
+      renderer.domElement.removeEventListener("pointerup", onPointerUpBuild);
 
-  renderer.domElement.removeEventListener("pointerdown", onPointerDownBuild);
-  renderer.domElement.removeEventListener("pointermove", onPointerMoveBuild);
-  renderer.domElement.removeEventListener("pointerup", onPointerUpBuild);
+      fpRef.current?.detach?.();
+      fpRef.current?.disable?.();
 
-  fpRef.current?.detach?.();
-  fpRef.current?.disable?.();
+      clearHighlight();
 
-  clearHighlight();
+      try {
+        worldGroup.remove(treesGroup);
+      } catch {}
 
-  // ✅ AICI (cleanup trees)
-  try {
-    worldGroup.remove(treesGroup);
-  } catch {}
+      buildRef.current?.dispose?.();
+      buildRef.current = null;
 
-  buildRef.current?.dispose?.();
-  buildRef.current = null;
+      renderer.dispose();
 
-  renderer.dispose();
-
-  markerRef.current = null;
-  sceneRef.current = null;
-  depotGroupRef.current = null;
-  rendererRef.current = null;
-  selectedLightRef.current = null;
-  containersLayerRef.current = null;
-};
+      markerRef.current = null;
+      sceneRef.current = null;
+      depotGroupRef.current = null;
+      rendererRef.current = null;
+      selectedLightRef.current = null;
+      containersLayerRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -891,9 +871,8 @@ worldGroup.add(treesGroup);
     if (!orbit.enabled) setOrbitLibre(false);
   }, [isFP]);
 
-  // ---------------- Public API ----------------
+  // Public API
   return {
-    // FP
     isFP,
     setFPEnabled,
     setForwardPressed,
@@ -901,29 +880,24 @@ worldGroup.add(treesGroup);
     setLookJoystick,
     selectFromCrosshair,
 
-    // Build
     buildActive,
     setBuildActive,
     buildApi,
 
-    // containers
     containers,
     setOnContainerSelected,
     focusCameraOnContainer,
     showSelectedMarker,
 
-    // view
     zoomIn,
     zoomOut,
     recenter,
 
-    // IMPORTANT: call after supabase updates
     refreshContainers: loadContainersLayer,
 
-    // orbit libre
     startOrbitLibre: (opts = {}) => {
       setFPEnabled(false);
-      // NOTE: do NOT force build OFF anymore; user can keep build ON if they want
+
       const p = autoOrbitRef.current;
       if (opts.speed) p.speed = opts.speed;
       if (opts.radius) p.radius = opts.radius;
@@ -937,7 +911,6 @@ worldGroup.add(treesGroup);
     stopOrbitLibre: () => setOrbitLibre(false),
     isOrbitLibre: orbitLibre,
 
-    // placeholder
     openWorldItems: () => console.log("[WorldItems] open (TODO Modal)"),
   };
 }
