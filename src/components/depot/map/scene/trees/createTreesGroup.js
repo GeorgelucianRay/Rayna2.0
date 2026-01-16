@@ -1,24 +1,51 @@
-// src/components/depot/map/scene/trees/createTreesGroup.js
+// src/components/depot/map/scene/trees/createTreesGroup.instanced.js
 // ASCII quotes only
 import * as THREE from "three";
-import { makeTree } from "../../world/prefabs/Tree";
 import { TREE_PROPS } from "./treeLayout";
+import { loadTreeTemplateForInstancing } from "../../world/prefabs/TreeInstancing";
 
-// IMPORTANT:
-// - makeTree este async intern (incarca GLB o singura data, apoi clone)
-// - aici doar cream group + plasam instantele
-export function createTreesGroup({ targetHeight = 4, name = "trees.static" } = {}) {
+// Creeaza un grup cu InstancedMesh-uri (mult mai rapid decat clone per copac)
+export async function createTreesGroupInstanced({
+  targetHeight = 4,
+  name = "trees.instanced",
+  yDefault = 0.05,
+} = {}) {
   const g = new THREE.Group();
   g.name = name;
 
-  for (let i = 0; i < TREE_PROPS.length; i++) {
+  // 1) Load template meshes (o singura data)
+  const template = await loadTreeTemplateForInstancing({ targetHeight });
+
+  // template.parts = [{ geometry, material }]
+  const count = TREE_PROPS.length;
+
+  // 2) Creeaza InstancedMesh pt fiecare part
+  const instanced = template.parts.map((part, partIndex) => {
+    const im = new THREE.InstancedMesh(part.geometry, part.material, count);
+    im.name = "treePart_" + partIndex;
+    im.castShadow = false;
+    im.receiveShadow = false;
+    im.frustumCulled = true;
+    return im;
+  });
+
+  // 3) Set matrix per instanta (toate part-urile primesc aceeasi matrice)
+  const tmpObj = new THREE.Object3D();
+
+  for (let i = 0; i < count; i++) {
     const p = TREE_PROPS[i];
+    tmpObj.position.set(p.x ?? 0, 0, p.z ?? 0);
+    tmpObj.rotation.set(0, p.rotY ?? 0, 0);
+    tmpObj.updateMatrix();
 
-    const t = makeTree({ targetHeight, y: p.y ?? 0.05 });
-    t.position.set(p.x ?? 0, 0, p.z ?? 0);
-    t.rotation.y = p.rotY ?? 0;
+    for (let k = 0; k < instanced.length; k++) {
+      instanced[k].setMatrixAt(i, tmpObj.matrix);
+    }
+  }
 
-    g.add(t);
+  for (let k = 0; k < instanced.length; k++) {
+    instanced[k].instanceMatrix.needsUpdate = true;
+    g.add(instanced[k]);
   }
 
   return g;
