@@ -33,15 +33,25 @@ export async function createTreesGroupInstanced({
   const tmpObj = new THREE.Object3D();
 
   for (let i = 0; i < count; i++) {
-    const p = TREE_PROPS[i];
-    tmpObj.position.set(p.x ?? 0, 0, p.z ?? 0);
-    tmpObj.rotation.set(0, p.rotY ?? 0, 0);
-    tmpObj.updateMatrix();
+  const p = TREE_PROPS[i];
 
-    for (let k = 0; k < instanced.length; k++) {
-      instanced[k].setMatrixAt(i, tmpObj.matrix);
-    }
+  tmpObj.position.set(
+    p.x ?? 0,
+    (template.yOffset ?? 0) + (p.y ?? yDefault),
+    p.z ?? 0
+  );
+
+  tmpObj.rotation.set(0, p.rotY ?? 0, 0);
+
+  // IMPORTANT: scale la inaltimea ceruta
+  tmpObj.scale.setScalar(template.scale ?? 1);
+
+  tmpObj.updateMatrix();
+
+  for (let k = 0; k < instanced.length; k++) {
+    instanced[k].setMatrixAt(i, tmpObj.matrix);
   }
+}
 
   for (let k = 0; k < instanced.length; k++) {
     instanced[k].instanceMatrix.needsUpdate = true;
