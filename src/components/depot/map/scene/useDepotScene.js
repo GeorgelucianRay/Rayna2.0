@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { useTreesLayer } from "./useTreesLayer";
 import createGround from "../threeWorld/createGround";
 import createFence from "../threeWorld/createFence";
 import createContainersLayerOptimized from "../threeWorld/createContainersLayerOptimized";
@@ -639,6 +640,10 @@ export function useDepotScene({ mountRef }) {
     const worldGroup = new THREE.Group();
     worldGroup.name = "worldGroup";
     scene.add(worldGroup);
+    
+    // ---------------- TREES (static) ----------------
+const treesGroup = createTreesGroup({ targetHeight: 4, name: "trees.static" });
+worldGroup.add(treesGroup);
 
     // depot group
     const depotGroup = new THREE.Group();
@@ -845,31 +850,36 @@ export function useDepotScene({ mountRef }) {
     window.addEventListener("resize", onResize);
 
     return () => {
-      window.removeEventListener("resize", onResize);
+  window.removeEventListener("resize", onResize);
 
-      renderer.domElement.removeEventListener("pointerdown", onPick);
+  renderer.domElement.removeEventListener("pointerdown", onPick);
 
-      renderer.domElement.removeEventListener("pointerdown", onPointerDownBuild);
-      renderer.domElement.removeEventListener("pointermove", onPointerMoveBuild);
-      renderer.domElement.removeEventListener("pointerup", onPointerUpBuild);
+  renderer.domElement.removeEventListener("pointerdown", onPointerDownBuild);
+  renderer.domElement.removeEventListener("pointermove", onPointerMoveBuild);
+  renderer.domElement.removeEventListener("pointerup", onPointerUpBuild);
 
-      fpRef.current?.detach?.();
-      fpRef.current?.disable?.();
+  fpRef.current?.detach?.();
+  fpRef.current?.disable?.();
 
-      clearHighlight();
+  clearHighlight();
 
-      buildRef.current?.dispose?.();
-      buildRef.current = null;
+  // ✅ AICI (cleanup trees)
+  try {
+    worldGroup.remove(treesGroup);
+  } catch {}
 
-      renderer.dispose();
+  buildRef.current?.dispose?.();
+  buildRef.current = null;
 
-      markerRef.current = null;
-      sceneRef.current = null;
-      depotGroupRef.current = null;
-      rendererRef.current = null;
-      selectedLightRef.current = null;
-      containersLayerRef.current = null;
-    };
+  renderer.dispose();
+
+  markerRef.current = null;
+  sceneRef.current = null;
+  depotGroupRef.current = null;
+  rendererRef.current = null;
+  selectedLightRef.current = null;
+  containersLayerRef.current = null;
+};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
