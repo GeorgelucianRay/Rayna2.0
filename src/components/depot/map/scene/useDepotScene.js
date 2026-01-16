@@ -1,378 +1,356 @@
 // src/components/depot/map/scene/useDepotScene.js
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// ASCII quotes only
 import * as THREE from "three";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-// config + utils
-import { CFG, makeBounds } from "./sceneConfig";
-import { collectMeshes } from "./meshUtils";
+import { CFG, YARD_WIDTH, YARD_DEPTH, makeBounds, makeOrbitClamp } from "./sceneConfig";
 
-// core mounts
-import useThreeMount from "./useThreeMount";
-import useWorldBase from "./useWorldBase";
-import useResize from "./useResize";
+import { useWorldBase } from "./useWorldBase";
+import { useContainersLayer } from "./useContainersLayer";
+import { useSelection } from "./useSelection";
+import { useFirstPersonRig } from "./useFirstPersonRig";
+import { useCameraModes } from "./useCameraModes";
 
-// rigs / modes
-import useFirstPersonRig from "./useFirstPersonRig";
-import useCameraModes from "./useCameraModes";
-
-// selection + containers
-import useContainersLayer from "./useContainersLayer";
-import useSelection from "./useSelection";
-
-// build integration
-import useBuildBridge from "./build/useBuildBridge";
-
-// events + guards
-import useKeybinds from "./events/useKeybinds";
 import usePointerHandlers from "./events/usePointerHandlers";
-import { isOverMapUI, isOverBuildUI } from "./utils/domGuards";
+import useKeybinds from "./events/useKeybinds";
 
-export function useDepotScene({ mountRef }) {
-  // ---------------------------
-  // React state (UI-facing)
-  // ---------------------------
-  const [containers, setContainers] = useState([]);
-  const [isFP, setIsFP] = useState(false);
+import useBuildBridge from "./build/useBuildBridge";
+import createBuildController from "../world/buildController";
 
+export default function useDepotScene() {
+  // ------------------------------------------------------------
+  // 0) Mount
+  // ------------------------------------------------------------
+  const mountRef = useRef(null);
+
+  // ------------------------------------------------------------
+  // 1) Config + yard
+  // ------------------------------------------------------------
+  const cfg = CFG;
+
+  const yard = useMemo(() => ({ width: YARD_WIDTH, depth: YARD_DEPTH }), []);
+  const bounds = useMemo(() => makeBounds(), []);
+  const clampOrbitFn = useMemo(() => makeOrbitClamp(), []);
+
+  const yardBounds = useMemo(() => {
+    return {
+      yardMinX: -YARD_WIDTH / 2 + 0.5,
+      yardMaxX: YARD_WIDTH / 2 - 0.5,
+      yardMinZ: -YARD_DEPTH / 2 + 0.5,
+      yardMaxZ: YARD_DEPTH / 2 - 0.5,
+    };
+  }, []);
+
+  // ------------------------------------------------------------
+  // 2) Base world (renderer/scene/camera/orbit + ground/fence + groups + LOOP)
+  // ------------------------------------------------------------
+  const world = useWorldBase({ mountRef, cfg, yard });
+
+  const {
+    rendererRef,
+    sceneRef,
+    cameraRef,
+    controlsRef,
+    depotGroupRef,
+    worldGroupRef,
+    groundMeshRef,
+    baseCollidersRef,
+  } = world;
+
+  // ------------------------------------------------------------
+  // 3) Build state
+  // ------------------------------------------------------------
   const [buildActive, setBuildActive] = useState(false);
   const buildActiveRef = useRef(false);
   useEffect(() => {
-    buildActiveRef.current = buildActive;
+    buildActiveRef.current = !!buildActive;
   }, [buildActive]);
 
-  const [buildMode, setBuildMode] = useState("place");
+  const [buildMode, setBuildMode] = useState("place"); // "place" | "select" | "remove"
 
-  const [orbitLibre, setOrbitLibre] = useState(false);
-  const orbitLibreRef = useRef(false);
-  useEffect(() => {
-    orbitLibreRef.current = orbitLibre;
-  }, [orbitLibre]);
-
-  // ---------------------------
-  // Shared refs (Three objects)
-  // ---------------------------
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const rendererRef = useRef(null);
-
-  const depotGroupRef = useRef(null);
-  const worldGroupRef = useRef(null);
-
-  const controlsRef = useRef(null); // OrbitControls
-  const fpRef = useRef(null);       // FirstPerson rig controller
-  const buildRef = useRef(null);    // Build controller bridge
-
-  const markerRef = useRef(null);
-  const selectedLightRef = useRef(null);
-
-  const collidersRef = useRef([]);          // base colliders (static)
-  const containersLayerRef = useRef(null);  // last containers layer group
-
-  const clockRef = useRef(new THREE.Clock());
-  const isFPRef = useRef(false);
-
-  // bounds
-  const bounds = useMemo(() => makeBounds(), []);
-
-  // ---------------------------
-  // 1) Three mount (renderer/scene/camera)
-  // ---------------------------
-  const three = useThreeMount({
-    mountRef,
-    sceneRef,
-    cameraRef,
-    rendererRef,
-  });
-
-  // ---------------------------
-  // 2) Base world (ground, fence, sky, landscape, baseWorld etc.)
-  // ---------------------------
-  const world = useWorldBase({
-    CFG,
-    sceneRef,
-    cameraRef,
-    rendererRef,
-    depotGroupRef,
-    worldGroupRef,
-  });
-
-  // world should expose at least:
-  // world.groundMesh
-  // world.fence
-  // world.baseWorld
-  // world.landscape
-  // world.depotGroup
-  // world.worldGroup
-  // world.walkables (optional)
-  // world.raycastTargets (optional, for build)
-
-  // ---------------------------
-  // 3) First Person rig
-  // ---------------------------
-  const fp = useFirstPersonRig({
-    cameraRef,
-    rendererRef,
-    bounds,
-    // these may be optional in your implementation:
-    collidersRef,
-    setIsFP,
-    isFPRef,
-  });
-  // expect: fp.enable(), fp.disable(), fp.update(delta)
-  // + joystick setters, select ray helpers, etc.
-
-  // ---------------------------
-  // 4) Camera modes (Orbit vs FP, OrbitLibre, zoom/recenter)
-  // ---------------------------
-  const cameraModes = useCameraModes({
+  // ------------------------------------------------------------
+  // 4) First person rig (createFirstPerson + attach)
+  //     NOTE: nu folosim rig.setFPEnabled aici, pentru ca useCameraModes controleaza enable/disable.
+  // ------------------------------------------------------------
+  const fpRig = useFirstPersonRig({
     cameraRef,
     rendererRef,
     controlsRef,
-    fpRef,
-    isFPRef,
-    setIsFP,
-    buildActiveRef,
-    setBuildActive,
-    orbitLibreRef,
-    setOrbitLibre,
     bounds,
-    CFG,
+    buildActiveRef,
   });
 
-  // expect from cameraModes:
-  // setFPEnabled(enabled)
-  // zoomIn/zoomOut/recenter
-  // startOrbitLibre(opts)/stopOrbitLibre()
-  // isOrbitLibre boolean handled outside (we store orbitLibre state here)
-
-  // ---------------------------
-  // 5) Build bridge (Build controller tied to world + FP crosshair)
-  // ---------------------------
-  const build = useBuildBridge({
+  // ------------------------------------------------------------
+  // 5) Camera modes (FP enable/disable + orbitLibre + clamp)
+  // ------------------------------------------------------------
+  const camModes = useCameraModes({
+    controlsRef,
     cameraRef,
-    rendererRef,
-    worldGroupRef,
-    groundMeshRef: world?.groundMeshRef, // or world.groundMesh
-    getGroundMesh: () => world?.groundMesh || world?.groundMeshRef?.current,
-    buildRef,
-    buildMode,
-    setBuildMode,
+    fpRef: fpRig.fpRef,
+    yardBounds,
+    clampOrbitFn,
     buildActive,
-    setBuildActive,
-    // optional: allow build to use FP ray (“minecraft select”)
-    fpRef,
   });
 
-  // build should expose:
-  // buildApi (controller getter, setMode, setType, rotateStep, actionPrimary, nudgeSelected etc.)
-  // and ensure buildRef.current is set
-
-  // ---------------------------
-  // 6) Containers layer (fetch + attach colliders + interact targets)
-  // ---------------------------
+  // ------------------------------------------------------------
+  // 6) Containers layer (fetch + rebuild layer + attach FP targets/colliders)
+  // ------------------------------------------------------------
   const containersLayer = useContainersLayer({
-    CFG,
     depotGroupRef,
-    containersLayerRef,
-    collidersRef,
-    fpRef,
-    setContainers,
+    cfg,
+    fpRef: fpRig.fpRef,
+    collidersRef: baseCollidersRef,
   });
 
-  // expect:
-  // refreshContainers(): reload + rebuild layer, sets containers state
-
-  // initial load
+  // auto refresh la mount (cand exista depotGroup)
   useEffect(() => {
     if (!depotGroupRef.current) return;
-    containersLayer?.refreshContainers?.();
+    containersLayer.refreshContainers?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [depotGroupRef.current]);
 
-  // ---------------------------
-  // 7) Selection (orbit pick + FP select + highlight + marker)
-  // ---------------------------
+  // ------------------------------------------------------------
+  // 7) Selection (highlight + marker + FP select)
+  // ------------------------------------------------------------
+  const onSelectedRef = useRef(null);
+
   const selection = useSelection({
-    CFG,
+    sceneRef,
     cameraRef,
-    rendererRef,
-    depotGroupRef,
-    containersLayerRef,
-    markerRef,
-    selectedLightRef,
-    isFPRef,
-    buildActiveRef,
-    onIsUIHit: (evt) => {
-      const x = evt?.clientX ?? 0;
-      const y = evt?.clientY ?? 0;
-      if (isOverMapUI(evt?.target)) return true;
-      if (isOverBuildUI(x, y)) return true;
-      return false;
-    },
+    fpRef: fpRig.fpRef,
+    cfg,
+    onSelectedRef,
   });
 
-  // expect:
-  // setOnContainerSelected(fn)
-  // selectFromCrosshair()
-  // showSelectedMarker(container)
-  // focusCameraOnContainer(container, opts)
-  // clearHighlight()
+  const setOnContainerSelected = useCallback((fn) => {
+    onSelectedRef.current = fn;
+  }, []);
 
-  // ---------------------------
-  // 8) Pointer handlers (route events between orbit pick / build)
-  // ---------------------------
-  usePointerHandlers({
-    rendererRef,
-    // guard functions
-    isOverMapUI,
-    isOverBuildUI,
-    // state refs
-    isFPRef,
-    buildActiveRef,
-    // actions
-    onOrbitPick: selection?.onOrbitPick, // optional, if selection provides handler
-    onBuildPointerMove: build?.onPointerMove, // optional
-    onBuildPointerDown: build?.onPointerDown, // optional
-  });
+  // ------------------------------------------------------------
+  // 8) Build controller + bridge
+  // ------------------------------------------------------------
+  const buildControllerRef = useRef(null);
 
-  // ---------------------------
-  // 9) Keybinds (E = select / build primary etc.)
-  // ---------------------------
-  useKeybinds({
-    enabled: true,
-    isFPRef,
-    buildActiveRef,
-    // if build is active and you want minecraft-like action:
-    onBuildPrimary: () => buildRef.current?.actionPrimary?.(),
-    // if FP selection:
-    onSelect: () => selection?.selectFromCrosshair?.(),
-  });
-
-  // ---------------------------
-  // 10) Resize
-  // ---------------------------
-  useResize({
-    mountRef,
-    cameraRef,
-    rendererRef,
-  });
-
-  // ---------------------------
-  // 11) Animation loop (single)
-  // ---------------------------
+  // create build controller when we have camera + dom + worldGroup + ground
   useEffect(() => {
-    const renderer = rendererRef.current;
-    const scene = sceneRef.current;
-    const camera = cameraRef.current;
-    if (!renderer || !scene || !camera) return;
+    const cam = cameraRef.current;
+    const dom = rendererRef.current?.domElement || null;
+    const wg = worldGroupRef.current;
+    const ground = groundMeshRef.current;
 
+    if (!cam || !wg || !ground) return;
+    if (buildControllerRef.current) return;
+
+    buildControllerRef.current = createBuildController({
+      camera: cam,
+      domElement: dom,
+      worldGroup: wg,
+      groundMesh: ground,
+      grid: 1,
+    });
+
+    // initial sync
+    buildControllerRef.current.setEnabled?.(!!buildActiveRef.current);
+    buildControllerRef.current.setMode?.(buildMode);
+    buildControllerRef.current.mountExistingFromStore?.();
+
+    return () => {
+      try {
+        buildControllerRef.current?.dispose?.();
+      } catch {}
+      buildControllerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraRef.current, rendererRef.current, worldGroupRef.current, groundMeshRef.current]);
+
+  // keep build controller synced
+  useEffect(() => {
+    buildControllerRef.current?.setEnabled?.(!!buildActive);
+  }, [buildActive]);
+
+  useEffect(() => {
+    buildControllerRef.current?.setMode?.(buildMode);
+  }, [buildMode]);
+
+  const buildBridge = useBuildBridge({
+    getBuildController: () => buildControllerRef.current,
+    getIsFP: () => camModes.isFPRef.current,
+    getCamera: () => cameraRef.current,
+  });
+
+  // ------------------------------------------------------------
+  // 9) Orbit pick (cand build nu e activ): raycast pe containersLayerRef
+  // ------------------------------------------------------------
+  const pickRaycasterRef = useRef(new THREE.Raycaster());
+  const pickNdcRef = useRef(new THREE.Vector2());
+
+  const onPick = useCallback(
+    (e) => {
+      const cam = cameraRef.current;
+      const renderer = rendererRef.current;
+      const layer = containersLayer.containersLayerRef.current;
+
+      if (!cam || !renderer || !layer) {
+        onSelectedRef.current?.(null);
+        selection.clearHighlight?.();
+        return;
+      }
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const x = e.clientX ?? 0;
+      const y = e.clientY ?? 0;
+
+      pickNdcRef.current.x = ((x - rect.left) / rect.width) * 2 - 1;
+      pickNdcRef.current.y = -((y - rect.top) / rect.height) * 2 + 1;
+
+      const ray = pickRaycasterRef.current;
+      ray.setFromCamera(pickNdcRef.current, cam);
+
+      // Intersectăm DOAR layer-ul de containere (mai rapid și mai sigur)
+      const hits = ray.intersectObject(layer, true);
+
+      if (!hits.length) {
+        onSelectedRef.current?.(null);
+        selection.clearHighlight?.();
+        return;
+      }
+
+      const hit = hits[0];
+      const obj = hit.object;
+
+      // instanced holder (records)
+      const instHolder = selection.findUp(obj, (o) => !!o?.isInstancedMesh && !!o?.userData?.records);
+      if (instHolder?.isInstancedMesh && hit.instanceId != null) {
+        const rec = instHolder.userData.records?.[hit.instanceId] || null;
+        onSelectedRef.current?.(rec);
+        if (rec) {
+          selection.highlightContainer?.({ ...hit, object: instHolder });
+          selection.showSelectedMarker?.(rec);
+        } else {
+          selection.clearHighlight?.();
+        }
+        return;
+      }
+
+      // mesh __record
+      const recordHolder = selection.findUp(obj, (o) => !!o?.userData?.__record);
+      if (recordHolder?.userData?.__record) {
+        const rec = recordHolder.userData.__record;
+        onSelectedRef.current?.(rec);
+        selection.highlightContainer?.({ ...hit, object: recordHolder });
+        selection.showSelectedMarker?.(rec);
+        return;
+      }
+
+      onSelectedRef.current?.(null);
+      selection.clearHighlight?.();
+    },
+    [cameraRef, rendererRef, containersLayer.containersLayerRef, selection]
+  );
+
+  // ------------------------------------------------------------
+  // 10) Pointer handlers (build priority, else pick)
+  // ------------------------------------------------------------
+  usePointerHandlers({
+    canvasEl: rendererRef.current?.domElement || null,
+    getBuildActive: () => buildActiveRef.current,
+    onBuildMove: buildBridge.onBuildMove,
+    onBuildClick: buildBridge.onBuildClick,
+    onPick,
+  });
+
+  // ------------------------------------------------------------
+  // 11) Keybinds:
+  // - daca buildActive + FP => E/Enter = build place/select/remove (fpPlace)
+  // - altfel => E = select container din crosshair (selection.selectFromCrosshair)
+  // ------------------------------------------------------------
+  const onKeyDown = useCallback(
+    (e) => {
+      if (!buildBridge.buildHotkeys.isBuildKey(e)) return;
+
+      if (buildActiveRef.current && camModes.isFPRef.current) {
+        buildBridge.fpPlace?.();
+        return;
+      }
+
+      // fallback: select container din crosshair (FP) / nu afecteaza orbit
+      selection.selectFromCrosshair?.();
+    },
+    [buildBridge, camModes.isFPRef, selection]
+  );
+
+  useKeybinds({ enabled: true, onKeyDown });
+
+  // ------------------------------------------------------------
+  // 12) TICK LOOP (fara render; render e deja in useWorldBase)
+  // - FP update
+  // - orbitLibre tick + clamp
+  // - build fp preview tick
+  // - marker pulse
+  // ------------------------------------------------------------
+  useEffect(() => {
     let raf = 0;
+    const clock = new THREE.Clock();
+
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const delta = clockRef.current.getDelta();
+      const delta = clock.getDelta();
 
-      // update preview if build wants continuous updates
-      if (buildActiveRef.current) {
-        buildRef.current?.updatePreview?.();
+      // orbit / orbitLibre tick (nu randam aici)
+      camModes.tickCamera?.(delta);
+
+      // FP update (doar daca e FP)
+      if (camModes.isFPRef.current) {
+        fpRig.fpRef.current?.update?.(delta);
       }
 
-      // pulse marker if selection module uses it
-      selection?.animateMarker?.(delta);
-
-      // FP update
-      if (isFPRef.current) {
-        fpRef.current?.update?.(delta);
-      } else {
-        // Orbit update
-        controlsRef.current?.update?.();
-        cameraModes?.tickOrbitLibre?.(delta);
+      // build preview in FP (crosshair)
+      if (buildActiveRef.current && camModes.isFPRef.current) {
+        buildBridge.fpPreviewTick?.();
       }
 
-      renderer.render(scene, camera);
+      // marker pulse
+      selection.tickMarkerPulse?.(delta);
     };
 
     tick();
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [camModes, fpRig.fpRef, buildBridge, selection]);
 
-  // ---------------------------
-  // Exposed API (Map3DPage expects this)
-  // ---------------------------
-  const setFPEnabled = useCallback(
-    (enabled) => cameraModes?.setFPEnabled?.(enabled),
-    [cameraModes]
-  );
-
-  const buildApi = useMemo(() => {
-    return {
-      get mode() {
-        return buildMode;
-      },
-      setMode: (m) => {
-        setBuildMode(m);
-        buildRef.current?.setMode?.(m);
-      },
-      rotateStep: (dir) => buildRef.current?.rotateStep?.(dir),
-      setType: (t) => buildRef.current?.setType?.(t),
-      get controller() {
-        return buildRef.current;
-      },
-      get active() {
-        return buildActiveRef.current;
-      },
-    };
-  }, [buildMode]);
-
-  // keep orbit controls enabled/disabled when build toggles
-  useEffect(() => {
-    const orbit = controlsRef.current;
-    if (!orbit) return;
-    orbit.enabled = !buildActive && !isFPRef.current;
-    if (!orbit.enabled) setOrbitLibre(false);
-  }, [buildActive]);
-
+  // ------------------------------------------------------------
+  // 13) Public API pentru componenta/UI
+  // ------------------------------------------------------------
   return {
-    // camera / FP
-    isFP,
-    setFPEnabled,
-    setForwardPressed: (v) => fpRef.current?.setForwardPressed?.(v),
-    setJoystick: (v) => fpRef.current?.setJoystick?.(v),
-    setLookJoystick: (v) => {
-      const fpRig = fpRef.current;
-      if (!fpRig) return;
-      if (fpRig.setLookJoystick) fpRig.setLookJoystick(v);
-      else if (fpRig.setLook) fpRig.setLook(v);
-      else if (fpRig.setLookDelta) fpRig.setLookDelta(v);
-    },
-    selectFromCrosshair: () => selection?.selectFromCrosshair?.(),
+    // mount target
+    mountRef,
 
-    // build
-    setBuildActive,
-    buildActive,
-    buildApi,
+    // base refs (optional)
+    rendererRef,
+    sceneRef,
+    cameraRef,
+    controlsRef,
+    depotGroupRef,
+    worldGroupRef,
 
     // containers
-    containers,
+    containers: containersLayer.containers,
+    refreshContainers: containersLayer.refreshContainers,
 
-    // selection helpers
-    setOnContainerSelected: (fn) => selection?.setOnContainerSelected?.(fn),
-    focusCameraOnContainer: (c, opts) => selection?.focusCameraOnContainer?.(c, opts),
-    showSelectedMarker: (c) => selection?.showSelectedMarker?.(c),
+    // selection callback
+    setOnContainerSelected,
 
-    // orbit controls
-    zoomIn: () => cameraModes?.zoomIn?.(),
-    zoomOut: () => cameraModes?.zoomOut?.(),
-    recenter: () => cameraModes?.recenter?.(),
+    // camera modes
+    isFP: camModes.isFP,
+    setFPEnabled: camModes.setFPEnabled,
+    orbitLibre: camModes.orbitLibre,
+    startOrbitLibre: camModes.startOrbitLibre,
+    stopOrbitLibre: camModes.stopOrbitLibre,
 
-    // refresh containers after DB changes
-    refreshContainers: () => containersLayer?.refreshContainers?.(),
-
-    // orbit libre
-    startOrbitLibre: (opts = {}) => cameraModes?.startOrbitLibre?.(opts),
-    stopOrbitLibre: () => cameraModes?.stopOrbitLibre?.(),
-    isOrbitLibre: orbitLibre,
+    // build
+    buildActive,
+    setBuildActive,
+    buildMode,
+    setBuildMode,
+    buildController: buildControllerRef.current,
   };
 }
-
-export default useDepotScene;
