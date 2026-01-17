@@ -82,7 +82,8 @@ export function useDepotScene({ mountRef }) {
   const rendererRef = useRef(null);
   const depotGroupRef = useRef(null);
   const containersLayerRef = useRef(null);
-    // TREES (lazy instanced)
+
+  // TREES (lazy instanced)
   const treesGroupRef = useRef(null);
   const treesVisibleRef = useRef(false);
 
@@ -276,64 +277,67 @@ export function useDepotScene({ mountRef }) {
     ring.userData._pulseT = 0;
   }, []);
 
-  const highlightContainer = useCallback((hit) => {
-    const scene = sceneRef.current;
-    if (!scene || !hit?.object) return;
+  const highlightContainer = useCallback(
+    (hit) => {
+      const scene = sceneRef.current;
+      if (!scene || !hit?.object) return;
 
-    if (!selectedLightRef.current) {
-      const light = new THREE.PointLight(0x22d3ee, 2.2, 12);
-      light.castShadow = false;
-      scene.add(light);
-      selectedLightRef.current = light;
-    }
+      if (!selectedLightRef.current) {
+        const light = new THREE.PointLight(0x22d3ee, 2.2, 12);
+        light.castShadow = false;
+        scene.add(light);
+        selectedLightRef.current = light;
+      }
 
-    const obj = hit.object;
+      const obj = hit.object;
 
-    if (obj?.isInstancedMesh && hit.instanceId != null) {
-      const mesh = obj;
-      const index = hit.instanceId;
+      if (obj?.isInstancedMesh && hit.instanceId != null) {
+        const mesh = obj;
+        const index = hit.instanceId;
 
-      const cur = selectedInstanceRef.current;
-      if (cur?.mesh && cur.index != null && cur.originalColor && cur.mesh.setColorAt) {
+        const cur = selectedInstanceRef.current;
+        if (cur?.mesh && cur.index != null && cur.originalColor && cur.mesh.setColorAt) {
+          try {
+            cur.mesh.setColorAt(cur.index, cur.originalColor);
+            if (cur.mesh.instanceColor) cur.mesh.instanceColor.needsUpdate = true;
+          } catch {}
+        }
+
+        const tmpM = new THREE.Matrix4();
+        const tmpP = new THREE.Vector3();
+        const tmpQ = new THREE.Quaternion();
+        const tmpS = new THREE.Vector3();
+        mesh.getMatrixAt(index, tmpM);
+        tmpM.decompose(tmpP, tmpQ, tmpS);
+
+        selectedLightRef.current.visible = true;
+        selectedLightRef.current.position.set(tmpP.x, tmpP.y + 2.8, tmpP.z);
+
+        if (!mesh.instanceColor) {
+          mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(mesh.count * 3), 3);
+          for (let i = 0; i < mesh.count; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+        }
+
+        const original = new THREE.Color();
         try {
-          cur.mesh.setColorAt(cur.index, cur.originalColor);
-          if (cur.mesh.instanceColor) cur.mesh.instanceColor.needsUpdate = true;
-        } catch {}
+          mesh.getColorAt(index, original);
+        } catch {
+          original.set(1, 1, 1);
+        }
+        mesh.setColorAt(index, new THREE.Color(0.2, 1, 1));
+        mesh.instanceColor.needsUpdate = true;
+
+        selectedInstanceRef.current = { mesh, index, originalColor: original };
+        return;
       }
 
-      const tmpM = new THREE.Matrix4();
-      const tmpP = new THREE.Vector3();
-      const tmpQ = new THREE.Quaternion();
-      const tmpS = new THREE.Vector3();
-      mesh.getMatrixAt(index, tmpM);
-      tmpM.decompose(tmpP, tmpQ, tmpS);
-
+      const worldPos = new THREE.Vector3();
+      obj.getWorldPosition(worldPos);
       selectedLightRef.current.visible = true;
-      selectedLightRef.current.position.set(tmpP.x, tmpP.y + 2.8, tmpP.z);
-
-      if (!mesh.instanceColor) {
-        mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(mesh.count * 3), 3);
-        for (let i = 0; i < mesh.count; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
-      }
-
-      const original = new THREE.Color();
-      try {
-        mesh.getColorAt(index, original);
-      } catch {
-        original.set(1, 1, 1);
-      }
-      mesh.setColorAt(index, new THREE.Color(0.2, 1, 1));
-      mesh.instanceColor.needsUpdate = true;
-
-      selectedInstanceRef.current = { mesh, index, originalColor: original };
-      return;
-    }
-
-    const worldPos = new THREE.Vector3();
-    obj.getWorldPosition(worldPos);
-    selectedLightRef.current.visible = true;
-    selectedLightRef.current.position.set(worldPos.x, worldPos.y + 2.8, worldPos.z);
-  }, []);
+      selectedLightRef.current.position.set(worldPos.x, worldPos.y + 2.8, worldPos.z);
+    },
+    [findUp]
+  );
 
   // ---------------- Focus camera ----------------
   const focusCameraOnContainer = useCallback(
@@ -631,7 +635,12 @@ export function useDepotScene({ mountRef }) {
     const baseWorld = createBaseWorld();
     scene.add(baseWorld);
 
-        // TREES (instanced, lazy load - NU adauga in scena imediat)
+    // world group (build props + trees)
+    const worldGroup = new THREE.Group();
+    worldGroup.name = "worldGroup";
+    scene.add(worldGroup);
+
+    // TREES (instanced, lazy load - NU adauga in scena imediat)
     let disposed = false;
 
     (async () => {
@@ -648,13 +657,13 @@ export function useDepotScene({ mountRef }) {
         console.warn("[trees] createTreesGroupInstanced failed:", e);
       }
     })();
-        // TREES toggle (nu tine copacii in scena daca esti departe)
+
+    // TREES toggle (nu tine copacii in scena daca esti departe)
     function updateTreesVisibility() {
       const cam = cameraRef.current;
       const tg = treesGroupRef.current;
       if (!cam || !tg) return;
 
-      // distanta in plan XZ fata de centru (0,0)
       const dist = Math.hypot(cam.position.x, cam.position.z);
 
       const SHOW_AT = 85;
@@ -669,14 +678,6 @@ export function useDepotScene({ mountRef }) {
       }
     }
 
-    // NU-l punem in scena imediat -> il montam doar cand e nevoie (distanta)
-    treesGroupRef.current = tg;
-    treesVisibleRef.current = false;
-  } catch (e) {
-    console.warn("[trees] failed to create instanced trees:", e);
-  }
-})();
-    
     // depot group
     const depotGroup = new THREE.Group();
     depotGroupRef.current = depotGroup;
@@ -824,11 +825,13 @@ export function useDepotScene({ mountRef }) {
     renderer.domElement.addEventListener("pointerup", onPointerUpBuild, { passive: true });
 
     let treesCheckAcc = 0;
+
     // Animate loop
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
-            // TREES visibility check (de 4 ori pe secunda)
+
+      // TREES visibility check (de 4 ori pe secunda)
       treesCheckAcc += delta;
       if (treesCheckAcc > 0.25) {
         treesCheckAcc = 0;
@@ -891,7 +894,7 @@ export function useDepotScene({ mountRef }) {
 
       clearHighlight();
 
-            // TREES cleanup
+      // TREES cleanup
       disposed = true;
       try {
         const tg = treesGroupRef.current;
