@@ -1,0 +1,572 @@
+/* src/components/nomina/NominaDashboard.module.css
+   Responsive Stitch-like dashboard (mobile / tablet / desktop)
+*/
+
+:global(:root) {
+  --nd-bg: #0f1414;
+  --nd-text: rgba(255,255,255,.92);
+  --nd-soft: rgba(255,255,255,.60);
+  --nd-muted: rgba(255,255,255,.35);
+
+  --nd-primary: #00eaff;
+
+  --nd-stroke: rgba(255,255,255,.10);
+  --nd-stroke-2: rgba(255,255,255,.06);
+
+  --nd-glass: rgba(40, 40, 40, 0.70);
+  --nd-glass-strong: rgba(15, 20, 20, 0.85);
+
+  --nd-shadow: 0 12px 30px rgba(0,0,0,.35);
+  --nd-inset:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -1px 0 rgba(0,0,0,.30);
+
+  --nd-r-xl: 18px;
+  --nd-r-lg: 14px;
+  --nd-r-md: 12px;
+
+  /* Layout tokens */
+  --nd-max: 1180px;         /* desktop max width */
+  --nd-pad: 14px;           /* default padding */
+  --nd-gap: 16px;
+}
+
+:global(*::-webkit-scrollbar) { display: none; }
+
+/* ========= WRAP (full width + centered) ========= */
+.wrap{
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100dvh;
+  color: var(--nd-text);
+  padding-bottom: 92px; /* for bottom bar on mobile */
+}
+
+/* ========= HEADER ========= */
+.header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--nd-glass-strong);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--nd-stroke-2);
+}
+
+/* header inner container for large screens */
+.headerInner{
+  max-width: var(--nd-max);
+  margin: 0 auto;
+}
+
+.headerTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px var(--nd-pad) 10px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brandIcon{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display:grid;
+  place-items:center;
+  background: rgba(0,234,255,.10);
+  border: 1px solid rgba(0,234,255,.22);
+  color: var(--nd-primary);
+  flex: 0 0 auto;
+}
+
+.brandTitle{
+  font-weight: 900;
+  letter-spacing: .2px;
+  line-height: 1.1;
+}
+
+.brandSub{
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--nd-primary);
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.headerBtns{
+  display:flex;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.circleBtn{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display:grid;
+  place-items:center;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--nd-stroke);
+  color: var(--nd-text);
+  cursor:pointer;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.circleBtn:hover{
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+}
+.circleBtn:active{ transform: scale(.98); }
+
+/* Month tabs */
+.monthTabs{
+  display:flex;
+  gap: 18px;
+  padding: 0 var(--nd-pad);
+  overflow-x: auto;
+  scroll-behavior: smooth;
+}
+
+.monthTab{
+  appearance:none;
+  border:0;
+  background: transparent;
+  padding: 12px 0 12px;
+  color: rgba(255,255,255,.38);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  border-bottom: 3px solid transparent;
+  cursor:pointer;
+  white-space: nowrap;
+}
+
+.monthTabActive{
+  color: var(--nd-primary);
+  border-bottom-color: var(--nd-primary);
+}
+
+/* ========= HINT ========= */
+.hint{
+  margin: 12px auto 0;
+  width: fit-content;
+  max-width: calc(100% - (var(--nd-pad) * 2));
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255,255,255,.86);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ========= MAIN CONTAINER ========= */
+.main{
+  max-width: var(--nd-max);
+  margin: 0 auto;
+  padding: var(--nd-pad);
+  display: grid;
+  gap: var(--nd-gap);
+}
+
+/* On desktop/tablet: 2 columns */
+@media (min-width: 900px){
+  .main{
+    grid-template-columns: 1.05fr 0.95fr;
+    align-items: start;
+  }
+}
+
+/* If very wide: give more breathing room */
+@media (min-width: 1200px){
+  :global(:root){ --nd-pad: 18px; --nd-gap: 18px; }
+}
+
+/* ========= SECTION ========= */
+.section{
+  display:grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sectionHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.sectionTitle{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: var(--nd-text);
+}
+
+.sectionIcon{
+  width: 28px;
+  height: 28px;
+  display:grid;
+  place-items:center;
+  color: var(--nd-primary);
+}
+
+.subtleRight{
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.45);
+  text-align: right;
+}
+
+/* ========= GLASS CARDS ========= */
+.glassCard{
+  background: var(--nd-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--nd-stroke);
+  border-radius: var(--nd-r-xl);
+  box-shadow: var(--nd-shadow), var(--nd-inset);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.glassCardPad{
+  background: var(--nd-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--nd-stroke);
+  border-radius: var(--nd-r-xl);
+  box-shadow: var(--nd-shadow), var(--nd-inset);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.glassCardPad::after{
+  content:"";
+  position:absolute;
+  top:-50px;
+  right:-50px;
+  width: 160px;
+  height: 160px;
+  background: rgba(0,234,255,.08);
+  filter: blur(28px);
+  border-radius: 999px;
+  pointer-events:none;
+}
+
+/* ========= SUMMARY ========= */
+.summaryHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.kicker{
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.45);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.bigNumber{
+  font-size: clamp(28px, 4.2vw, 40px);
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.chipBtn{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(0,234,255,.14);
+  border: 1px solid rgba(0,234,255,.30);
+  color: var(--nd-primary);
+  font-weight: 900;
+  font-size: 12px;
+  cursor:pointer;
+  transition: transform .12s ease, filter .12s ease;
+  white-space: nowrap;
+}
+.chipBtn:active{ transform: scale(.98); }
+
+.summaryBody{
+  margin-top: 10px;
+  min-width: 0;
+}
+
+/* ========= FORMS ========= */
+.grid2{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 520px){
+  .grid2{ grid-template-columns: 1fr 1fr; }
+}
+
+.field{ display:grid; gap: 8px; }
+
+.label{
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.input{
+  width: 100%;
+  height: 46px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.92);
+  outline: none;
+  box-shadow: var(--nd-inset);
+}
+.input:focus{
+  border-color: rgba(0,234,255,.50);
+  box-shadow: 0 0 0 3px rgba(0,234,255,.18), var(--nd-inset);
+}
+
+.actionsRow{
+  display:flex;
+  justify-content:flex-end;
+  margin-top: 12px;
+}
+
+.primaryBtn{
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,234,255,.55);
+  background: var(--nd-primary);
+  color: #0b1111;
+  font-weight: 950;
+  letter-spacing: .02em;
+  cursor:pointer;
+  transition: transform .12s ease, filter .12s ease;
+}
+.primaryBtn:active{ transform: scale(.99); }
+
+.linkLike{
+  appearance:none;
+  border:0;
+  background: transparent;
+  color: var(--nd-primary);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.miniNote{
+  margin-top: 10px;
+  color: rgba(255,255,255,.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ========= CALENDAR BLOCK ========= */
+.calendarHint{
+  color: rgba(255,255,255,.45);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+/* Prevent calendar from overflowing grid on desktop */
+:global(.NominaCalendar),
+:global(.nominaCalendar){
+  max-width: 100%;
+}
+
+/* Selector bar */
+.selectorBar{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.select{
+  flex: 1 1 220px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.92);
+  padding: 10px 12px;
+  outline:none;
+  box-shadow: var(--nd-inset);
+}
+.select:focus{
+  border-color: rgba(0,234,255,.50);
+  box-shadow: 0 0 0 3px rgba(0,234,255,.18), var(--nd-inset);
+}
+
+.secondaryBtn{
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  font-weight: 900;
+  cursor:pointer;
+  white-space: nowrap;
+}
+.secondaryBtn:active{ transform: scale(.99); }
+
+/* ========= CONTRACT SETTINGS ========= */
+.cardHeaderRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(255,255,255,.05);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.cardHeaderTitle{
+  font-weight: 950;
+  letter-spacing: .2px;
+}
+
+.cardBody{
+  padding: 14px;
+  display:grid;
+  gap: 12px;
+}
+
+.kvRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-wrap: wrap;
+}
+.kvRow:last-child{ border-bottom: 0; }
+
+.kvLabel{
+  font-weight: 800;
+  color: rgba(255,255,255,.86);
+  font-size: 13px;
+}
+.kvHint{
+  margin-top: 2px;
+  color: rgba(255,255,255,.40);
+  font-size: 11px;
+}
+
+.kvValue{
+  font-weight: 950;
+  color: var(--nd-primary);
+  white-space: nowrap;
+}
+
+.inlineConfig{
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+
+/* ========= META ========= */
+.meta{
+  display:grid;
+  gap: 4px;
+  text-align: center;
+  padding: 4px 0 2px;
+  color: rgba(255,255,255,.25);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+/* ========= BOTTOM ACTION BAR =========
+   On desktop it should not cover content; make it "sticky-ish" below,
+   on mobile keep fixed.
+*/
+.bottomBar{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 12px 14px;
+  background: var(--nd-glass-strong);
+  border-top: 1px solid rgba(255,255,255,.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.bottomBtn{
+  width: 100%;
+  height: 54px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #ffffff;
+  color: #0f1414;
+  font-weight: 950;
+  letter-spacing: .01em;
+  box-shadow: 0 16px 34px rgba(0,0,0,.35);
+  cursor: pointer;
+  transition: transform .12s ease, filter .12s ease;
+}
+.bottomBtn:active{ transform: scale(.99); }
+
+/* Desktop: bottom bar becomes sticky inside max width */
+@media (min-width: 900px){
+  .wrap{ padding-bottom: 18px; } /* no need big bottom padding */
+  .bottomBar{
+    position: sticky;
+    bottom: 0;
+    padding: 12px 0 18px;
+    background: transparent;
+    border-top: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    max-width: var(--nd-max);
+    margin: 0 auto;
+  }
+  .bottomBtn{
+    border-radius: 18px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 380px){
+  .monthTabs{ gap: 14px; }
+}

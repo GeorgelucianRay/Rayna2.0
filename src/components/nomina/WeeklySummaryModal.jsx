@@ -1,211 +1,304 @@
-// src/components/nomina/WeeklySummaryModal.jsx
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { useAuth } from '../../AuthContext';
-import styles from './WeeklySummaryModal.module.css';
+import React, { useEffect, useMemo, useState } from "react";
+import styles from "./WeeklySummaryModal.module.css";
 
-export function WeeklySummaryModal({
+const BackIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M7 3v2M17 3v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M4 8h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
+const VerifiedIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const MealIcon = ({ on }) => (
+  <span className={`${styles.mealDot} ${on ? styles.mealOn : styles.mealOff}`} />
+);
+
+function formatRangeES(monday, sunday) {
+  const opts = { day: "2-digit", month: "short" };
+  const a = monday.toLocaleDateString("es-ES", opts).toUpperCase();
+  const b = sunday.toLocaleDateString("es-ES", opts).toUpperCase();
+  return `${a} — ${b}`;
+}
+
+function weekNumberISO(date) {
+  // ISO week number
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+export default function WeeklySummaryModal({
   isOpen,
   onClose,
-  weeks,
+  weeks = [],
   initialIndex = 0,
   onChangeWeek,
 }) {
-  // Obținem profilul utilizatorului (chiar dacă nu există săptămână)
-  const { profile } = useAuth() || {};
+  const [weekIdx, setWeekIdx] = useState(initialIndex || 0);
 
-  // Starea indexului săptămânii curente
-  const [weekIndex, setWeekIndex] = useState(initialIndex);
-  const weekData = weeks?.[weekIndex] || null;
-
-  // Resetează indexul la schimbarea săptămânilor sau la deschidere
   useEffect(() => {
-    setWeekIndex(initialIndex);
-  }, [initialIndex, weeks]);
+    setWeekIdx(initialIndex || 0);
+  }, [initialIndex, isOpen]);
 
-  // Derivăm valorile de afișat din profil și săptămâna selectată
-  const chofer = useMemo(() => (
-    profile?.nombre_completo ||
-    profile?.full_name ||
-    profile?.username ||
-    '—'
-  ), [profile]);
+  const week = weeks?.[weekIdx];
 
-  const camion = useMemo(() => (
-    profile?.camioane?.matricula ||
-    profile?.matricula ||
-    profile?.camion ||
-    '—'
-  ), [profile]);
+  const monday = week?.monday ? new Date(week.monday) : null;
+  const sunday = week?.friday ? new Date(week.friday) : null;
 
-  const rangoSemana = useMemo(() => {
-    if (!weekData) return '';
-    const fmt = (d) =>
-      d.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-    return `${fmt(weekData.monday)} — ${fmt(weekData.friday)}`;
-  }, [weekData]);
+  const rangeText = useMemo(() => {
+    if (!monday || !sunday) return "";
+    return formatRangeES(monday, sunday);
+  }, [monday, sunday]);
 
-  // Export în PDF – se execută doar dacă există date pentru săptămână
-  const handleGeneratePDF = useCallback(async () => {
-    if (!weekData) return;
-    try {
-      const { default: jsPDF } = await import('jspdf');
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-      const W = doc.internal.pageSize.getWidth();
-      const M = 14;
-      let y = M;
+  const wNum = useMemo(() => (monday ? weekNumberISO(monday) : null), [monday]);
 
-      // Titlu
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text('PARTE SEMANAL', M, y);
-      doc.setDrawColor(34, 197, 94);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(M - 2, y - 8, W - 2 * (M - 2), 12, 2.5, 2.5, 'S');
-      y += 14;
+  const dayCards = useMemo(() => {
+    const days = Array.isArray(week?.days) ? week.days : [];
+    // KPIs pe zi, adaptate la datele tale:
+    return days.map((d) => {
+      const km = Number(d.km_dia || 0);
+      const drops = Array.isArray(d.curse) ? d.curse.length : 0;
+      const pickups = Number(d.contenedores || 0);
 
-      // Informații meta
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(12);
-      doc.text(`Chofer: ${chofer}`, M, y); y += 6;
-      doc.text(`Camión: ${camion}`, M, y); y += 6;
-      doc.text(`Semana: ${rangoSemana}`, M, y); y += 10;
+      const anyLogged =
+        km > 0 ||
+        drops > 0 ||
+        pickups > 0 ||
+        !!d.des || !!d.cen || !!d.pro ||
+        Number(d.festivo || 0) > 0;
 
-      // Coloanele tabelului
-      const cols = [
-        { key: 'dia',     label: 'Día',        w: 28 },
-        { key: 'D',       label: 'D',          w: 10 },
-        { key: 'C',       label: 'C',          w: 10 },
-        { key: 'P',       label: 'P',          w: 10 },
-        { key: 'festivo', label: 'Festivo (€)',w: 22 },
-        { key: 'km_i',    label: 'KM ini.',    w: 22 },
-        { key: 'km_f',    label: 'KM fin.',    w: 22 },
-        { key: 'km_d',    label: 'KM día',     w: 20 },
-        { key: 'conts',   label: 'Cont.',      w: 16 },
-        { key: 'obs',     label: 'Obs.',       w: 24 },
-      ];
-      const headerH = 8;
-      let x = M;
+      return {
+        date: d.date ? new Date(d.date) : null,
+        labelTop: d.date
+          ? new Date(d.date).toLocaleDateString("es-ES", { weekday: "long" })
+          : "Día",
+        labelDay: d.date ? new Date(d.date).getDate() : "",
+        km,
+        drops,
+        pickups,
+        des: !!d.des,
+        cen: !!d.cen,
+        pro: !!d.pro,
+        logged: anyLogged,
+      };
+    });
+  }, [week]);
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      cols.forEach(c => {
-        doc.roundedRect(x, y, c.w, headerH, 1.5, 1.5, 'S');
-        doc.text(c.label, x + 1.5, y + 5.5);
-        x += c.w;
-      });
-      y += headerH;
+  const totals = useMemo(() => {
+    const days = Array.isArray(week?.days) ? week.days : [];
+    const totalKm = days.reduce((s, d) => s + (Number(d.km_dia || 0) || 0), 0);
+    const activeDays = dayCards.reduce((s, d) => s + (d.logged ? 1 : 0), 0);
 
-      // Rândurile pentru fiecare zi (luni–vineri)
-      const rowH = 8;
-      weekData.days.forEach((d) => {
-        x = M;
-        const vals = {
-          dia: d.label,
-          D: d.des ? 'X' : '',
-          C: d.cen ? 'X' : '',
-          P: d.pro ? 'X' : '',
-          festivo: d.festivo ? String(d.festivo) : '',
-          km_i: d.km_iniciar || '',
-          km_f: d.km_final || '',
-          km_d: d.km_dia || '',
-          conts: d.contenedores || '',
-          obs: ''
-        };
+    const totalDrops = dayCards.reduce((s, d) => s + (d.drops || 0), 0);
+    const totalPickups = dayCards.reduce((s, d) => s + (d.pickups || 0), 0);
 
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        cols.forEach(c => {
-          doc.roundedRect(x, y, c.w, rowH, 1.2, 1.2, 'S');
-          const txt = String(vals[c.key] ?? '');
-          if (c.key === 'dia' || c.key === 'obs') {
-            doc.text(txt, x + 1.6, y + 5.3);
-          } else {
-            doc.text(txt, x + c.w / 2, y + 5.3, { align: 'center' });
-          }
-          x += c.w;
-        });
-        y += rowH;
-      });
+    // Bonus estimat (exemplu): 0.03€/km + 1€/carrera + 0.5€/contenedor
+    const estBonus = totalKm * 0.03 + totalDrops * 1 + totalPickups * 0.5;
 
-      // Rezumat la final
-      y += 4;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(`KM inicial (Lunes): ${weekData.kmInitMonday}`, M, y); y += 6;
-      doc.text(`KM final (Viernes): ${weekData.kmFinalFriday}`, M, y); y += 6;
-      doc.text(`KM totales semana: ${weekData.kmWeekTotal}`, M, y);
+    return {
+      totalKm: Math.round(totalKm),
+      activeDays,
+      totalDrops,
+      totalPickups,
+      estBonus: Math.round(estBonus * 100) / 100,
+    };
+  }, [week, dayCards]);
 
-      doc.save(`parte-semanal_${weekData.monday.toISOString().slice(0,10)}.pdf`);
-    } catch (err) {
-      console.error('PDF semanal error:', err);
-      alert('No se pudo generar el PDF.');
-    }
-  }, [chofer, camion, rangoSemana, weekData]);
+  if (!isOpen) return null;
 
-  // Dacă modalul nu e deschis sau nu există date, nu rendăm nimic
-  if (!isOpen || !weekData) return null;
+  const goWeek = (dir) => {
+    const next = Math.max(0, Math.min((weeks?.length || 1) - 1, weekIdx + dir));
+    setWeekIdx(next);
+    onChangeWeek?.(next);
+  };
 
-  // UI pentru modal
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.titleBar}>
-          <h2>PARTE SEMANAL</h2>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">✕</button>
-        </div>
+    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.shell} onClick={(e) => e.stopPropagation()}>
+        {/* Sticky top bar */}
+        <header className={styles.topbar}>
+          <div className={styles.topbarInner}>
+            <button className={styles.iconBtn} type="button" onClick={onClose} aria-label="Volver">
+              <BackIcon />
+            </button>
 
-        {/* Meta */}
-        <div className={styles.meta}>
-          <div><span>Chofer:</span> {chofer}</div>
-          <div><span>Camión:</span> {camion}</div>
-          <div><span>Semana:</span> {rangoSemana}</div>
-        </div>
+            <div className={styles.centerTitle}>
+              <div className={styles.title}>Parte semanal</div>
+              <div className={styles.subtitle}>
+                {rangeText || "—"}
+              </div>
+            </div>
 
-        {/* Tabel */}
-        <div className={styles.tableWrap}>
-          <div className={`${styles.row} ${styles.header}`}>
-            <div className={styles.cDia}>Día</div>
-            <div className={styles.cTiny}>D</div>
-            <div className={styles.cTiny}>C</div>
-            <div className={styles.cTiny}>P</div>
-            <div className={styles.cSm}>Festivo (€)</div>
-            <div className={styles.cSm}>KM ini.</div>
-            <div className={styles.cSm}>KM fin.</div>
-            <div className={styles.cSm}>KM día</div>
-            <div className={styles.cXs}>Cont.</div>
-            <div className={styles.cObs}>Obs.</div>
+            <button
+              className={styles.iconBtn}
+              type="button"
+              onClick={() => goWeek(1)}
+              aria-label="Siguiente semana"
+              title="Siguiente semana"
+            >
+              <CalendarIcon />
+            </button>
           </div>
 
-          {weekData.days.map((d, i) => (
-            <div key={i} className={styles.row}>
-              <div className={styles.cDia}>{d.label}</div>
-              <div className={styles.cTiny}>{d.des ? 'X' : ''}</div>
-              <div className={styles.cTiny}>{d.cen ? 'X' : ''}</div>
-              <div className={styles.cTiny}>{d.pro ? 'X' : ''}</div>
-              <div className={styles.cSm}>{d.festivo || ''}</div>
-              <div className={styles.cSm}>{d.km_iniciar || ''}</div>
-              <div className={styles.cSm}>{d.km_final || ''}</div>
-              <div className={styles.cSm}>{d.km_dia || ''}</div>
-              <div className={styles.cXs}>{d.contenedores || ''}</div>
-              <div className={styles.cObs}></div>
+          <div className={styles.weekRow}>
+            <div className={styles.sectionKicker}>Actividad diaria</div>
+            <div className={styles.weekChip}>
+              {wNum ? `SEMANA ${wNum}` : "SEMANA"}
             </div>
-          ))}
-        </div>
 
-        {/* Statistici */}
-        <div className={styles.stats}>
-          <div>KM inicial (Lunes): <b>{weekData.kmInitMonday}</b></div>
-          <div>KM final (Viernes): <b>{weekData.kmFinalFriday}</b></div>
-          <div>KM totales semana: <b className={styles.km}>{weekData.kmWeekTotal}</b></div>
-        </div>
+            <div className={styles.weekNav}>
+              <button className={styles.weekNavBtn} type="button" onClick={() => goWeek(-1)} disabled={weekIdx === 0}>
+                Anterior
+              </button>
+              <button
+                className={styles.weekNavBtn}
+                type="button"
+                onClick={() => goWeek(1)}
+                disabled={weekIdx >= (weeks?.length || 1) - 1}
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </header>
 
-        <div className={styles.actions}>
-          <button className={styles.pdfBtn} onClick={handleGeneratePDF}>📄 Generar PDF</button>
-        </div>
+        {/* Main scroll */}
+        <main className={styles.content}>
+          {/* Day slider */}
+          <div className={styles.slider} aria-label="Días de la semana">
+            {dayCards.map((d, i) => {
+              const active = d.logged && d.km > 0;
+              return (
+                <div key={i} className={styles.slide}>
+                  <div className={`${styles.dayCard} ${active ? styles.dayCardActive : ""}`}>
+                    {active && (
+                      <div className={styles.verifiedBadge} title="Registrado">
+                        <VerifiedIcon />
+                      </div>
+                    )}
+
+                    <div className={styles.dayTop}>
+                      <div className={styles.dayName}>
+                        {d.labelTop} {String(d.labelDay).padStart(2, "0")}
+                      </div>
+                      <div className={styles.kmRow}>
+                        <div className={styles.kmValue}>{Math.round(d.km)}</div>
+                        <div className={styles.kmUnit}>KM</div>
+                      </div>
+                    </div>
+
+                    <div className={styles.dayMid}>
+                      <div className={styles.metric}>
+                        <div className={styles.metricIcon}>🚚</div>
+                        <div>
+                          <div className={styles.metricLabel}>Carreras</div>
+                          <div className={styles.metricValue}>
+                            {d.drops} salidas / {d.pickups} cont.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.mealsRow}>
+                        <div className={styles.mealsLeft}>
+                          <MealIcon on={d.des} />
+                          <MealIcon on={d.pro} />
+                          <MealIcon on={d.cen} />
+                        </div>
+                        <div className={styles.mealsRight}>
+                          {d.logged ? "Registrado" : "Sin datos"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Weekly insights / details */}
+          <div className={styles.block}>
+            <div className={styles.blockTitle}>Detalles logísticos</div>
+
+            <div className={styles.list}>
+              <div className={styles.item}>
+                <div className={`${styles.itemIcon} ${styles.itemIconViolet}`}>🛡️</div>
+                <div className={styles.itemBody}>
+                  <div className={styles.itemTitle}>Estado de cumplimiento</div>
+                  <div className={styles.itemSub}>Revisado por el sistema</div>
+                </div>
+                <div className={styles.itemRight}>
+                  <span className={styles.greenDot} />
+                </div>
+              </div>
+
+              <div className={styles.item}>
+                <div className={`${styles.itemIcon} ${styles.itemIconPrimary}`}>🧭</div>
+                <div className={styles.itemBody}>
+                  <div className={styles.itemTitle}>Resumen de la semana</div>
+                  <div className={styles.itemSub}>
+                    {totals.totalDrops} carreras · {totals.totalPickups} contenedores
+                  </div>
+                </div>
+                <div className={styles.itemRight}>
+                  <span className={styles.chev}>›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* spacer for bottom panel on mobile */}
+          <div className={styles.bottomSpacer} />
+        </main>
+
+        {/* Glass bottom panel */}
+        <footer className={styles.bottomPanel}>
+          <div className={styles.bottomInner}>
+            <div className={styles.kpiGrid}>
+              <div className={styles.kpi}>
+                <div className={styles.kpiLabel}>Distancia total</div>
+                <div className={styles.kpiValue}>
+                  {totals.totalKm} <span className={styles.kpiUnit}>KM</span>
+                </div>
+              </div>
+
+              <div className={styles.kpi}>
+                <div className={styles.kpiLabel}>Días activos</div>
+                <div className={`${styles.kpiValue} ${styles.kpiViolet}`}>
+                  {String(totals.activeDays).padStart(2, "0")}{" "}
+                  <span className={styles.kpiUnit}>DÍAS</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.bonusCard}>
+              <div>
+                <div className={styles.bonusKicker}>Bonus estimado</div>
+                <div className={styles.bonusHint}>Rendimiento + kilometraje</div>
+              </div>
+              <div className={styles.bonusAmount}>
+                {totals.estBonus.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}
+              </div>
+            </div>
+
+            <button className={styles.confirmBtn} type="button" onClick={onClose}>
+              Confirmar registros <span className={styles.sendIcon}>↗</span>
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   );

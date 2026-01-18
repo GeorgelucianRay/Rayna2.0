@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { createTreesGroupInstanced } from "./trees/createTreesGroup.instanced";
+import { createTreesBillboardGroup } from "./trees/createTreesBillboardGroup";
+import { createGrassGroupInstanced } from "./grass/createGrassGroup.instanced";
 
 import createGround from "../threeWorld/createGround";
 import createFence from "../threeWorld/createFence";
@@ -57,6 +58,13 @@ function collectMeshes(root, { excludeNameIncludes = [] } = {}) {
   return out;
 }
 
+function isTypingTarget(e) {
+  const el = e?.target;
+  if (!el) return false;
+  const tag = (el.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+}
+
 export function useDepotScene({ mountRef }) {
   // ---------------- UI state ----------------
   const [isFP, setIsFP] = useState(false);
@@ -66,7 +74,7 @@ export function useDepotScene({ mountRef }) {
   const [buildActive, setBuildActive] = useState(false);
   const [buildMode, setBuildMode] = useState("place");
 
-  // Orbit libre
+  // Orbit libre (auto orbit)
   const [orbitLibre, setOrbitLibre] = useState(false);
   const orbitLibreRef = useRef(false);
   useEffect(() => {
@@ -83,9 +91,11 @@ export function useDepotScene({ mountRef }) {
   const depotGroupRef = useRef(null);
   const containersLayerRef = useRef(null);
 
-  // TREES (lazy instanced)
+  // foliage
   const treesGroupRef = useRef(null);
   const treesVisibleRef = useRef(false);
+  const grassGroupRef = useRef(null);
+  const grassVisibleRef = useRef(false);
 
   // Build controller ref
   const buildRef = useRef(null);
@@ -134,11 +144,18 @@ export function useDepotScene({ mountRef }) {
 
   function clampOrbit(camera, controls) {
     if (!camera || !controls) return;
-    controls.target.x = THREE.MathUtils.clamp(controls.target.x, yardMinX, yardMaxX);
-    controls.target.z = THREE.MathUtils.clamp(controls.target.z, yardMinZ, yardMaxZ);
+
+    const oldT = controls.target.clone();
+    const clampedT = oldT.clone();
+    clampedT.x = THREE.MathUtils.clamp(clampedT.x, yardMinX, yardMaxX);
+    clampedT.z = THREE.MathUtils.clamp(clampedT.z, yardMinZ, yardMaxZ);
+
+    const offset = camera.position.clone().sub(oldT);
+
+    controls.target.copy(clampedT);
+    camera.position.copy(clampedT.clone().add(offset));
+
     if (camera.position.y < 0.5) camera.position.y = 0.5;
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, yardMinX, yardMaxX);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, yardMinZ, yardMaxZ);
   }
 
   const autoOrbitRef = useRef({
@@ -151,24 +168,78 @@ export function useDepotScene({ mountRef }) {
   });
 
   // ---------------- API: FP enable/disable ----------------
-  const setFPEnabled = useCallback((enabled) => {
+ const setFPEnabled = useCallback(
+  (enabled) => {
     const orbit = controlsRef.current;
     const fp = fpRef.current;
+    const renderer = rendererRef.current;
+    const canvas = renderer?.domElement;
+
     if (!orbit || !fp) return;
 
     if (enabled) {
       setOrbitLibre(false);
-      orbit.enabled = false;
-      fp.enable?.();
+
+      // setează flag-ul ÎNAINTE, ca să fie consistent
       isFPRef.current = true;
       setIsFP(true);
+
+      orbit.enabled = false;
+      fp.enable?.();
+
+      // Cere pointer lock o singură dată, la intrarea în FP
+      // (în mod normal e chemat dintr-un click pe buton => user gesture)
+      if (canvas && document.pointerLockElement !== canvas) {
+        try {
+          Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
+        } catch {}
+      }
     } else {
-      fp.disable?.();
-      orbit.enabled = true;
+      // IMPORTANT: scoate flag-ul ÎNAINTE, ca să nu mai “fure” click-uri
       isFPRef.current = false;
       setIsFP(false);
+
+      // ieși sigur din lock (dacă ești în el)
+      try {
+        if (document.pointerLockElement) {
+          document.exitPointerLock?.();
+        }
+      } catch {}
+
+      fp.disable?.();
+      orbit.enabled = true;
     }
-  }, []);
+  },
+  [setOrbitLibre]
+);
+
+
+  // keep state consistent if pointer lock is lost (ESC)
+ useEffect(() => {
+  const onPLChange = () => {
+    // dacă eram în FP și s-a pierdut lock-ul -> ieșim din FP ca să nu rămână “stuck”
+    if (isFPRef.current && document.pointerLockElement == null) {
+      setFPEnabled(false);
+    }
+  };
+
+  document.addEventListener("pointerlockchange", onPLChange);
+  return () => document.removeEventListener("pointerlockchange", onPLChange);
+}, [setFPEnabled]);
+// ------------- HARD GATE: dacă nu suntem în FP, NU permitem pointer lock -------------
+useEffect(() => {
+  const onPLChangeForceExit = () => {
+    // dacă NU suntem în FP dar apare pointer lock => ieșim imediat
+    if (!isFPRef.current && document.pointerLockElement) {
+      try { document.exitPointerLock?.(); } catch {}
+    }
+  };
+
+  document.addEventListener("pointerlockchange", onPLChangeForceExit);
+  return () => document.removeEventListener("pointerlockchange", onPLChangeForceExit);
+}, []);
+
+
 
   const setForwardPressed = useCallback((v) => fpRef.current?.setForwardPressed?.(v), []);
   const setJoystick = useCallback((v) => fpRef.current?.setJoystick?.(v), []);
@@ -277,67 +348,65 @@ export function useDepotScene({ mountRef }) {
     ring.userData._pulseT = 0;
   }, []);
 
-  const highlightContainer = useCallback(
-    (hit) => {
-      const scene = sceneRef.current;
-      if (!scene || !hit?.object) return;
+  const highlightContainer = useCallback((hit) => {
+    const scene = sceneRef.current;
+    if (!scene || !hit?.object) return;
 
-      if (!selectedLightRef.current) {
-        const light = new THREE.PointLight(0x22d3ee, 2.2, 12);
-        light.castShadow = false;
-        scene.add(light);
-        selectedLightRef.current = light;
-      }
+    if (!selectedLightRef.current) {
+      const light = new THREE.PointLight(0x22d3ee, 2.2, 12);
+      light.castShadow = false;
+      scene.add(light);
+      selectedLightRef.current = light;
+    }
 
-      const obj = hit.object;
+    const obj = hit.object;
 
-      if (obj?.isInstancedMesh && hit.instanceId != null) {
-        const mesh = obj;
-        const index = hit.instanceId;
+    if (obj?.isInstancedMesh && hit.instanceId != null) {
+      const mesh = obj;
+      const index = hit.instanceId;
 
-        const cur = selectedInstanceRef.current;
-        if (cur?.mesh && cur.index != null && cur.originalColor && cur.mesh.setColorAt) {
-          try {
-            cur.mesh.setColorAt(cur.index, cur.originalColor);
-            if (cur.mesh.instanceColor) cur.mesh.instanceColor.needsUpdate = true;
-          } catch {}
-        }
-
-        const tmpM = new THREE.Matrix4();
-        const tmpP = new THREE.Vector3();
-        const tmpQ = new THREE.Quaternion();
-        const tmpS = new THREE.Vector3();
-        mesh.getMatrixAt(index, tmpM);
-        tmpM.decompose(tmpP, tmpQ, tmpS);
-
-        selectedLightRef.current.visible = true;
-        selectedLightRef.current.position.set(tmpP.x, tmpP.y + 2.8, tmpP.z);
-
-        if (!mesh.instanceColor) {
-          mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(mesh.count * 3), 3);
-          for (let i = 0; i < mesh.count; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
-        }
-
-        const original = new THREE.Color();
+      const cur = selectedInstanceRef.current;
+      if (cur?.mesh && cur.index != null && cur.originalColor && cur.mesh.setColorAt) {
         try {
-          mesh.getColorAt(index, original);
-        } catch {
-          original.set(1, 1, 1);
-        }
-        mesh.setColorAt(index, new THREE.Color(0.2, 1, 1));
-        mesh.instanceColor.needsUpdate = true;
-
-        selectedInstanceRef.current = { mesh, index, originalColor: original };
-        return;
+          cur.mesh.setColorAt(cur.index, cur.originalColor);
+          if (cur.mesh.instanceColor) cur.mesh.instanceColor.needsUpdate = true;
+        } catch {}
       }
 
-      const worldPos = new THREE.Vector3();
-      obj.getWorldPosition(worldPos);
+      const tmpM = new THREE.Matrix4();
+      const tmpP = new THREE.Vector3();
+      const tmpQ = new THREE.Quaternion();
+      const tmpS = new THREE.Vector3();
+      mesh.getMatrixAt(index, tmpM);
+      tmpM.decompose(tmpP, tmpQ, tmpS);
+
       selectedLightRef.current.visible = true;
-      selectedLightRef.current.position.set(worldPos.x, worldPos.y + 2.8, worldPos.z);
-    },
-    [findUp]
-  );
+      selectedLightRef.current.position.set(tmpP.x, tmpP.y + 2.8, tmpP.z);
+
+      if (!mesh.instanceColor) {
+        mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(mesh.count * 3), 3);
+        for (let i = 0; i < mesh.count; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+      }
+
+      const original = new THREE.Color();
+      try {
+        mesh.getColorAt(index, original);
+      } catch {
+        original.set(1, 1, 1);
+      }
+
+      mesh.setColorAt(index, new THREE.Color(0.2, 1, 1));
+      mesh.instanceColor.needsUpdate = true;
+
+      selectedInstanceRef.current = { mesh, index, originalColor: original };
+      return;
+    }
+
+    const worldPos = new THREE.Vector3();
+    obj.getWorldPosition(worldPos);
+    selectedLightRef.current.visible = true;
+    selectedLightRef.current.position.set(worldPos.x, worldPos.y + 2.8, worldPos.z);
+  }, []);
 
   // ---------------- Focus camera ----------------
   const focusCameraOnContainer = useCallback(
@@ -458,7 +527,7 @@ export function useDepotScene({ mountRef }) {
     clampOrbit(camera, controls);
   }, [setFPEnabled]);
 
-  // ---------------- FP SELECT (Minecraft action first) ----------------
+  // ---------------- FP SELECT ----------------
   const selectFromCrosshair = useCallback(() => {
     if (buildActiveRef.current && buildRef.current) {
       buildRef.current.actionPrimary?.();
@@ -506,13 +575,14 @@ export function useDepotScene({ mountRef }) {
 
   useEffect(() => {
     const onKey = (e) => {
+      if (isTypingTarget(e)) return;
       if (e.code === "KeyE") selectFromCrosshair();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectFromCrosshair]);
 
-  // ---------------- Containers layer (refresh) ----------------
+  // ---------------- Containers layer ----------------
   const loadContainersLayer = useCallback(async () => {
     const depotGroup = depotGroupRef.current;
     if (!depotGroup) return null;
@@ -574,6 +644,8 @@ export function useDepotScene({ mountRef }) {
     const mount = mountRef.current;
     if (!mount) return;
 
+    let alive = true;
+
     // renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     rendererRef.current = renderer;
@@ -581,6 +653,9 @@ export function useDepotScene({ mountRef }) {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
+
+    renderer.domElement.style.touchAction = "none";
+    renderer.domElement.style.cursor = "grab";
 
     // scene
     const scene = new THREE.Scene();
@@ -604,6 +679,19 @@ export function useDepotScene({ mountRef }) {
     controls.target.set(0, 1, 0);
     controls.enabled = true;
     controlsRef.current = controls;
+    // ------------- IMPORTANT: dacă NU suntem în FP, orice pointer lock trebuie anulat
+// rulează în CAPTURE înainte de OrbitControls handlers
+const canvas = renderer.domElement;
+
+const onPointerDownExitLock = () => {
+  if (!isFPRef.current && document.pointerLockElement) {
+    try { document.exitPointerLock?.(); } catch {}
+  }
+};
+
+// capture=true ca să ruleze înainte de OrbitControls
+canvas.addEventListener("pointerdown", onPointerDownExitLock, true);
+
 
     // FP
     fpRef.current = createFirstPerson(camera, bounds, {
@@ -635,46 +723,81 @@ export function useDepotScene({ mountRef }) {
     const baseWorld = createBaseWorld();
     scene.add(baseWorld);
 
-    // world group (build props + trees)
+    // world group (build props + foliage)
     const worldGroup = new THREE.Group();
     worldGroup.name = "worldGroup";
     scene.add(worldGroup);
 
-    // TREES (instanced, lazy load - NU adauga in scena imediat)
-    let disposed = false;
+    // foliage lazy load
+    let disposedFoliage = false;
 
     (async () => {
       try {
-        const tg = await createTreesGroupInstanced({
-          targetHeight: 4,
-          name: "trees.instanced",
+        const tg = await createTreesBillboardGroup({
+          name: "trees.billboard",
+          url: "/textures/trees/tree_cutout.png",
+          width: 4,
+          height: 6,
+          alphaTest: 0.5,
         });
-        if (disposed) return;
-
+        if (disposedFoliage || !alive) return;
         treesGroupRef.current = tg;
-        treesVisibleRef.current = false; // inca nu e montat
+        treesVisibleRef.current = false;
       } catch (e) {
-        console.warn("[trees] createTreesGroupInstanced failed:", e);
+        console.warn("[trees] createTreesBillboardGroup failed:", e);
       }
     })();
 
-    // TREES toggle (nu tine copacii in scena daca esti departe)
-    function updateTreesVisibility() {
+    (async () => {
+      try {
+        const gg = await createGrassGroupInstanced({
+          name: "grass.instanced",
+          bladesPerTree: 35,
+          spread: 4.0,
+          y: 0.02,
+          castShadow: false,
+          receiveShadow: false,
+        });
+        if (disposedFoliage || !alive) return;
+        grassGroupRef.current = gg;
+        grassVisibleRef.current = false;
+      } catch (e) {
+        console.warn("[grass] createGrassGroupInstanced failed:", e);
+      }
+    })();
+
+    function updateFoliageVisibility() {
       const cam = cameraRef.current;
-      const tg = treesGroupRef.current;
-      if (!cam || !tg) return;
+      if (!cam) return;
 
       const dist = Math.hypot(cam.position.x, cam.position.z);
 
-      const SHOW_AT = 85;
-      const HIDE_AT = 105;
+      // TREES
+      const tg = treesGroupRef.current;
+      if (tg) {
+        const SHOW_AT = 85;
+        const HIDE_AT = 105;
+        if (!treesVisibleRef.current && dist < SHOW_AT) {
+          worldGroup.add(tg);
+          treesVisibleRef.current = true;
+        } else if (treesVisibleRef.current && dist > HIDE_AT) {
+          worldGroup.remove(tg);
+          treesVisibleRef.current = false;
+        }
+      }
 
-      if (!treesVisibleRef.current && dist < SHOW_AT) {
-        worldGroup.add(tg);
-        treesVisibleRef.current = true;
-      } else if (treesVisibleRef.current && dist > HIDE_AT) {
-        worldGroup.remove(tg);
-        treesVisibleRef.current = false;
+      // GRASS
+      const gg = grassGroupRef.current;
+      if (gg) {
+        const SHOW_GRASS_AT = 95;
+        const HIDE_GRASS_AT = 115;
+        if (!grassVisibleRef.current && dist < SHOW_GRASS_AT) {
+          worldGroup.add(gg);
+          grassVisibleRef.current = true;
+        } else if (grassVisibleRef.current && dist > HIDE_GRASS_AT) {
+          worldGroup.remove(gg);
+          grassVisibleRef.current = false;
+        }
       }
     }
 
@@ -729,14 +852,48 @@ export function useDepotScene({ mountRef }) {
     // initial containers load
     loadContainersLayer();
 
-    // ORBIT PICK
+    // ---------------- ORBIT PICK (click only; ignore drags) ----------------
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    const onPick = (event) => {
+    const PICK_MAX_MOVE = 6;
+    const pickState = { down: false, x0: 0, y0: 0, moved: 0 };
+
+    const shouldIgnoreUI = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      return !!el?.closest?.('[data-map-ui="1"]') || !!el?.closest?.('[data-build-ui="true"]');
+    };
+
+    const onPickDown = (e) => {
+      // user interaction stops auto-orbit
+      if (orbitLibreRef.current) setOrbitLibre(false);
+
       if (buildActiveRef.current) return;
-      if (event.target?.closest?.('[data-map-ui="1"]')) return;
-      if (event.target?.closest?.('[data-build-ui="true"]')) return;
+      if (isFPRef.current) return;
+      if (shouldIgnoreUI(e.clientX, e.clientY)) return;
+
+      pickState.down = true;
+      pickState.x0 = e.clientX;
+      pickState.y0 = e.clientY;
+      pickState.moved = 0;
+    };
+
+    const onPickMove = (e) => {
+      if (!pickState.down) return;
+      pickState.moved = Math.max(
+        pickState.moved,
+        Math.hypot((e.clientX - pickState.x0) || 0, (e.clientY - pickState.y0) || 0)
+      );
+    };
+
+    const onPickUp = (event) => {
+      if (!pickState.down) return;
+      pickState.down = false;
+
+      if (buildActiveRef.current) return;
+      if (isFPRef.current) return;
+      if (pickState.moved > PICK_MAX_MOVE) return;
+      if (shouldIgnoreUI(event.clientX, event.clientY)) return;
 
       const rect = renderer.domElement.getBoundingClientRect();
       const x = event.clientX ?? 0;
@@ -779,21 +936,21 @@ export function useDepotScene({ mountRef }) {
       clearHighlight();
     };
 
-    renderer.domElement.addEventListener("pointerdown", onPick, { passive: true });
+    renderer.domElement.addEventListener("mousedown", onPickDown, { passive: true });
+    renderer.domElement.addEventListener("mousemove", onPickMove, { passive: true });
+    renderer.domElement.addEventListener("mouseup", onPickUp, { passive: true });
 
-    // BUILD TAP
+    // ---------------- BUILD TAP ----------------
     const TAP_MAX_MOVE = 7;
     const tapState = { down: false, x0: 0, y0: 0, moved: 0 };
 
-    const isOverBuildUI = (x, y) => {
-      const el = document.elementFromPoint(x, y);
-      return !!el?.closest?.('[data-build-ui="true"]') || !!el?.closest?.('[data-map-ui="1"]');
-    };
-
     const onPointerDownBuild = (e) => {
+      // user interaction stops auto-orbit
+      if (orbitLibreRef.current) setOrbitLibre(false);
+
       if (!buildActiveRef.current) return;
       if (isFPRef.current) return;
-      if (isOverBuildUI(e.clientX, e.clientY)) return;
+      if (shouldIgnoreUI(e.clientX, e.clientY)) return;
 
       tapState.down = true;
       tapState.x0 = e.clientX;
@@ -814,28 +971,29 @@ export function useDepotScene({ mountRef }) {
 
       if (!buildActiveRef.current) return;
       if (isFPRef.current) return;
-      if (isOverBuildUI(e.clientX, e.clientY)) return;
+      if (shouldIgnoreUI(e.clientX, e.clientY)) return;
       if (tapState.moved > TAP_MAX_MOVE) return;
 
       buildRef.current?.actionPrimary?.();
     };
 
-    renderer.domElement.addEventListener("pointerdown", onPointerDownBuild, { passive: true });
-    renderer.domElement.addEventListener("pointermove", onPointerMoveBuild, { passive: true });
-    renderer.domElement.addEventListener("pointerup", onPointerUpBuild, { passive: true });
-
-    let treesCheckAcc = 0;
+    renderer.domElement.addEventListener("mousedown", onPointerDownBuild, { passive: true });
+    renderer.domElement.addEventListener("mousemove", onPointerMoveBuild, { passive: true });
+    renderer.domElement.addEventListener("mouseup", onPointerUpBuild, { passive: true });
 
     // Animate loop
+    let foliageAcc = 0;
+
     const animate = () => {
+      if (!alive) return;
       requestAnimationFrame(animate);
+
       const delta = clockRef.current.getDelta();
 
-      // TREES visibility check (de 4 ori pe secunda)
-      treesCheckAcc += delta;
-      if (treesCheckAcc > 0.25) {
-        treesCheckAcc = 0;
-        updateTreesVisibility();
+      foliageAcc += delta;
+      if (foliageAcc > 0.25) {
+        foliageAcc = 0;
+        updateFoliageVisibility();
       }
 
       if (markerRef.current?.visible) {
@@ -847,23 +1005,32 @@ export function useDepotScene({ mountRef }) {
       }
 
       const cam = cameraRef.current;
-      const ctl = controlsRef.current;
+      if (!cam) return;
 
       if (isFPRef.current) {
         fpRef.current?.update?.(delta);
       } else {
-        if (orbitLibreRef.current && cam && ctl) {
+        const ctl = controlsRef.current;
+        if (!ctl) return;
+
+        if (orbitLibreRef.current) {
           const p = autoOrbitRef.current;
           p.angle += (p.clockwise ? 1 : -1) * p.speed * delta;
+
           const cx = Math.cos(p.angle) * p.radius;
           const cz = Math.sin(p.angle) * p.radius;
+
           ctl.target.copy(p.target);
           cam.position.set(cx, p.height, cz);
           cam.lookAt(p.target);
+
           ctl.update();
         } else {
-          ctl?.update();
+          // ensure orbit is usable
+          ctl.enabled = true;
+          ctl.update();
         }
+
         clampOrbit(cam, ctl);
       }
 
@@ -882,31 +1049,67 @@ export function useDepotScene({ mountRef }) {
     window.addEventListener("resize", onResize);
 
     return () => {
+      alive = false;
+
+      try {
+        document.exitPointerLock?.();
+      } catch {}
+
       window.removeEventListener("resize", onResize);
 
-      renderer.domElement.removeEventListener("pointerdown", onPick);
-      renderer.domElement.removeEventListener("pointerdown", onPointerDownBuild);
-      renderer.domElement.removeEventListener("pointermove", onPointerMoveBuild);
-      renderer.domElement.removeEventListener("pointerup", onPointerUpBuild);
+      renderer.domElement.removeEventListener("mousedown", onPickDown);
+      renderer.domElement.removeEventListener("mousemove", onPickMove);
+      renderer.domElement.removeEventListener("mouseup", onPickUp);
 
+      renderer.domElement.removeEventListener("mousedown", onPointerDownBuild);
+      renderer.domElement.removeEventListener("mousemove", onPointerMoveBuild);
+      renderer.domElement.removeEventListener("mouseup", onPointerUpBuild);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDownExitLock, true);
+
+
+      // stop FP
       fpRef.current?.detach?.();
       fpRef.current?.disable?.();
+      isFPRef.current = false;
 
       clearHighlight();
 
-      // TREES cleanup
-      disposed = true;
+      // foliage cleanup
+      disposedFoliage = true;
       try {
         const tg = treesGroupRef.current;
         if (tg) worldGroup.remove(tg);
       } catch {}
+      try {
+        const gg = grassGroupRef.current;
+        if (gg) worldGroup.remove(gg);
+      } catch {}
+
       treesGroupRef.current = null;
       treesVisibleRef.current = false;
+      grassGroupRef.current = null;
+      grassVisibleRef.current = false;
 
+      // build cleanup
       buildRef.current?.dispose?.();
       buildRef.current = null;
 
-      renderer.dispose();
+      // controls cleanup
+      try {
+        controls.dispose?.();
+      } catch {}
+
+      // renderer cleanup
+      try {
+        renderer.dispose();
+      } catch {}
+
+      // detach canvas
+      try {
+        if (renderer.domElement?.parentNode === mount) {
+          mount.removeChild(renderer.domElement);
+        }
+      } catch {}
 
       markerRef.current = null;
       sceneRef.current = null;
@@ -914,6 +1117,9 @@ export function useDepotScene({ mountRef }) {
       rendererRef.current = null;
       selectedLightRef.current = null;
       containersLayerRef.current = null;
+      controlsRef.current = null;
+      cameraRef.current = null;
+      fpRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

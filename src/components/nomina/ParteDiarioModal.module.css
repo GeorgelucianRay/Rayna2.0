@@ -1,0 +1,503 @@
+/* ==========================
+   ParteDiarioModal - UI ca mockup
+   ========================== */
+
+:root{
+  --primary:#21A8D4;
+  --bg:#15181D;
+  --glass: rgba(44,48,56,0.30);
+  --glass2: rgba(44,48,56,0.40);
+  --stroke: rgba(255,255,255,0.08);
+  --stroke2: rgba(255,255,255,0.10);
+  --txt: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.55);
+  --muted2: rgba(255,255,255,0.40);
+  --r: 14px;
+  --r2: 18px;
+}
+
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display:flex;
+  align-items:stretch;
+  justify-content:center;
+  padding:0;
+}
+
+.modalShell{
+  width:100%;
+  height:100%;
+  background:transparent;
+  display:flex;
+  flex-direction:column;
+}
+
+/* Desktop: modal ca dialog centrat */
+@media (min-width: 820px){
+  .modalOverlay{
+    padding:18px;
+    align-items:center;
+  }
+  .modalShell{
+    max-width: 860px;
+    height: min(92dvh, 920px);
+    border-radius: 22px;
+    overflow:hidden;
+    background: rgba(21,24,29,0.65);
+    border:1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 35px 90px rgba(0,0,0,0.60);
+  }
+}
+
+/* top bar */
+.topBar{
+  position:sticky;
+  top:0;
+  z-index:5;
+  height:56px;
+  padding: 10px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background: rgba(21,24,29,0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.iconBtn{
+  width:42px;height:42px;
+  border-radius: 999px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: var(--txt);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.topTitle{
+  font-size:16px;
+  font-weight:700;
+  color: var(--txt);
+  letter-spacing: -0.01em;
+}
+
+.doneBtn{
+  background: transparent;
+  border:0;
+  color: var(--primary);
+  font-weight:800;
+  font-size:13px;
+  letter-spacing: 0.06em;
+}
+
+/* progress */
+.progressWrap{
+  padding: 10px 14px 12px;
+  background: rgba(21,24,29,0.65);
+}
+
+.progressHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  margin-bottom:8px;
+}
+
+.stepLabel{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing: 0.16em;
+  font-weight:800;
+  color: var(--muted2);
+}
+
+.stepName{
+  font-size:12px;
+  font-weight:700;
+  color: var(--primary);
+}
+
+.progressTrack{
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  overflow:hidden;
+}
+
+.progressFill{
+  height:100%;
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 15px rgba(33,168,212,0.30);
+}
+
+/* scroll body */
+.bodyScroll{
+  flex:1;
+  overflow:auto;
+  padding: 14px;
+  padding-bottom: 110px; /* loc pt butonul fix */
+}
+
+/* glass cards */
+.glassPanel{
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border:1px solid var(--stroke);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.sectionHead{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom: 12px;
+}
+
+.sectionHeadRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.sectionIcon{
+  width:34px;
+  height:34px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 16px;
+}
+
+.sectionTitle{
+  margin:0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.70);
+}
+
+.helpText{
+  font-size: 12px;
+  color: rgba(255,255,255,0.42);
+  margin-top: 8px;
+  line-height: 1.35;
+}
+.helpTextTiny{
+  font-size: 10px;
+  color: rgba(255,255,255,0.38);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* fields */
+.fieldBlock{ display:flex; flex-direction:column; gap:8px; }
+.fieldLabel{
+  font-size: 11px;
+  color: rgba(255,255,255,0.50);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.grid2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 420px){
+  .grid2{ grid-template-columns: 1fr; }
+}
+
+.input{
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: var(--txt);
+  padding: 0 12px;
+  outline:none;
+}
+.select{
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: var(--txt);
+  padding: 0 12px;
+  outline:none;
+}
+
+.inputCard{
+  background: rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.bigInput{
+  width:100%;
+  background:transparent;
+  border:0;
+  outline:none;
+  color: var(--txt);
+  font-size: 20px;
+  font-weight: 700;
+}
+.smallInput{
+  width:100%;
+  background:transparent;
+  border:0;
+  outline:none;
+  color: rgba(255,255,255,0.75);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* footer row in section */
+.sectionFooterRow{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top:1px solid rgba(255,255,255,0.06);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.muted{ font-size: 12px; color: rgba(255,255,255,0.40); }
+.kmValue{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+/* meals */
+.mealsGrid{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 380px){
+  .mealsGrid{ grid-template-columns: 1fr; }
+}
+.mealBtn{
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  padding: 14px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  color: rgba(255,255,255,0.70);
+  opacity: .65;
+}
+.mealBtnOn{
+  opacity: 1;
+  background: rgba(33,168,212,0.18);
+  border-color: rgba(33,168,212,0.40);
+  box-shadow: 0 0 15px rgba(33,168,212,0.30);
+  color: var(--txt);
+}
+.mealIcon{ font-size: 18px; color: var(--primary); }
+.mealText{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* stepper contenedores */
+.stepper{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.10);
+}
+.stepBtn{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border:0;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.85);
+  font-weight: 900;
+  font-size: 18px;
+}
+.stepValue{
+  width: 44px;
+  text-align:center;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--txt);
+}
+.stepBtnPrimary{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border:0;
+  background: var(--primary);
+  color: white;
+  font-weight: 900;
+  font-size: 18px;
+  box-shadow: 0 0 15px rgba(33,168,212,0.30);
+}
+
+/* rutas list (curse) */
+.routesHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom: 10px;
+}
+.addChip{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: rgba(33,168,212,0.10);
+  border:1px solid rgba(33,168,212,0.18);
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.curseList{ display:flex; flex-direction:column; gap: 10px; }
+
+.cursaCard{
+  display:grid;
+  grid-template-columns: 1fr 44px;
+  gap: 10px;
+  align-items:start;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 12px;
+}
+.cursaGrid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 820px){
+  .cursaGrid{
+    grid-template-columns: 1.2fr 1.2fr 0.9fr 0.7fr;
+    align-items:end;
+  }
+}
+
+.inputWithBtn{
+  display:grid;
+  grid-template-columns: 1fr 46px;
+  gap: 10px;
+  align-items:center;
+}
+
+.iconSquare{
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: var(--primary);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.trashBtn{
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.70);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.splitRow{ margin-top: 10px; }
+
+/* bottom CTA */
+.bottomBar{
+  position: fixed;
+  left:0; right:0; bottom:0;
+  padding: 14px 14px 22px;
+  background: linear-gradient(to top, rgba(21,24,29,1), rgba(21,24,29,0.90), rgba(21,24,29,0));
+}
+@media (min-width: 820px){
+  .bottomBar{
+    position: sticky;
+    bottom: 0;
+    border-top:1px solid rgba(255,255,255,0.06);
+    background: rgba(21,24,29,0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 14px;
+  }
+}
+
+.primaryCta{
+  width:100%;
+  height: 54px;
+  border-radius: 16px;
+  border:0;
+  background: var(--primary);
+  color: white;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  box-shadow: 0 14px 30px rgba(33,168,212,0.20);
+}
+.arrow{ font-weight: 900; }
+
+/* GPS modal uses same overlay; card style */
+.modalCard{
+  width:100%;
+  max-width: 820px;
+  border-radius: 18px;
+  background: rgba(21,24,29,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  overflow:hidden;
+  box-shadow: 0 35px 90px rgba(0,0,0,0.60);
+}
+.routeList{ display:flex; flex-direction:column; gap: 10px; padding: 14px; }
+.routeRow{
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px;
+  padding: 12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color: var(--txt);
+}
+.routeTitle{ font-weight: 900; }
+.routeSub{ font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.routeChevron{ color: rgba(255,255,255,0.35); font-size: 18px; }

@@ -1,200 +1,564 @@
-/* ================= Rayna 2.0 — HomepageSofer.module.css ================= */
-/* Requiere variables :root ya definidas (text, glass, stroke, radios, sombras) */
+/* src/components/HomepageSofer.module.css */
+/* ================= Rayna 2.0 — Stitch-like (copy fidel) ================= */
 
-/* -------- Página / contenedor -------- */
-.homepage-background {} /* llega desde <Layout>, lo dejamos por si aplicas fondo */
+:global(:root){
+  --text-strong:#eaf3ff;
+  --text-soft:#b7c7e6;
 
-.announcementsCard{
-  margin:14px;
-  padding:16px;
-  border-radius:var(--radius-lg);
-  background:var(--glass-strong);
-  border:1px solid var(--stroke);
-  color:var(--text-strong);
-  box-shadow:var(--shadow-inset), var(--shadow-outer);
-}
+  --stroke:rgba(255,255,255,.22);
+  --stroke-soft:rgba(255,255,255,.14);
 
-/* -------- Anuncios -------- */
-.announcementsHeader{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:10px; margin-bottom:10px;
-}
-.announcementsHeaderTitle{
-  display:flex; align-items:center; gap:10px;
-  color:var(--text-strong);
-}
-.announcementsTitle{
-  margin:0;
-  font-weight:800;
-  letter-spacing:.2px;
-}
-.announcementsContent{
-  white-space:pre-wrap;
-  color:var(--text-strong);
-  line-height:1.45;
-  background:var(--glass);
-  border:1px solid var(--stroke-soft);
-  border-radius:var(--radius-md);
-  padding:12px;
-  box-shadow:var(--shadow-inset);
+  --glass:rgba(255,255,255,.06);
+  --glass-strong:rgba(255,255,255,.10);
+
+  --green:#3be476;
+  --blue:#60a5fa;
+
+  --radius-xl:26px;
+  --radius-lg:18px;
+  --radius-md:12px;
+
+  --shadow-outer:0 12px 36px rgba(0,0,0,.35);
+  --shadow-inset:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.25);
 }
 
-/* Editor (admin) */
-.textarea{
-  width:100%;
-  min-height:120px;
-  resize:vertical;
-  border-radius:var(--radius-md);
-  border:1px solid var(--stroke);
-  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-  color:var(--text-strong);
-  padding:12px;
-  outline:none;
-  box-shadow:var(--shadow-inset);
-}
-.textarea::placeholder{ color:var(--text-soft); }
-
-/* Botones */
-.saveBtn{
-  padding:10px 14px; border-radius:28px;
-  border:1px solid rgba(255,255,255,.75);
-  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
-  color:#062012; font-weight:800; letter-spacing:.2px;
-  box-shadow:0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
-  cursor:pointer;
-  transition:transform .12s ease, box-shadow .2s ease, filter .2s ease;
-}
-.saveBtn:hover{ transform:translateY(-1px); }
-.saveBtn:disabled{ opacity:.6; cursor:not-allowed; }
-
-.secondaryBtn{
-  padding:10px 14px; border-radius:28px;
-  border:1px solid var(--stroke);
-  background:var(--glass);
-  color:var(--text-strong); font-weight:700;
-  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
-  cursor:pointer;
-}
-.secondaryBtn:disabled{ opacity:.6; cursor:not-allowed; }
-
-/* -------- Bloques de enlaces externos -------- */
-.externalLinksContainer{
-  display:grid;
-  gap:12px;
-  margin:14px;
+/* ---------- Page container ---------- */
+.page{
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 14px;
+  padding-bottom: 92px;
+  display: grid;
+  gap: 16px;
 }
 
-/* Fila de cámaras (solo texto) */
-.linksRow{
-  display:flex; flex-wrap:wrap; gap:10px;
+/* ---------- Common ---------- */
+.section{
+  display: grid;
+  gap: 10px;
 }
 
-.socialLink{
-  position:relative;
-  display:inline-flex; align-items:center;
-  gap:8px;
-  padding:12px 14px;
-  border-radius:16px;
-  background:var(--glass);
-  border:1px solid var(--stroke);
-  color:var(--text-strong);
-  text-decoration:none;
-  font-weight:700;
-  box-shadow:0 8px 18px rgba(0,0,0,.25), var(--shadow-inset);
-  transition:transform .12s ease, filter .12s ease, box-shadow .2s ease;
-}
-.socialLink:hover{ transform:translateY(-1px); }
-
-/* Cámara (sin icono, estilo pastilla) */
-.cameraLink{
-  background:var(--glass-strong);
-  border-color:var(--stroke);
-}
-.cameraLink > a{
-  color:var(--text-strong);
-  text-decoration:none;
+.sectionHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-/* Botón eliminar (admin) */
-.deleteBtn{
-  position:absolute; top:-8px; right:-8px;
-  width:24px; height:24px; border-radius:50%;
-  border:1px solid rgba(255,255,255,.75);
-  background: radial-gradient(100% 100% at 50% 20%, #ff9d9d, #e53935);
-  color:#fff; line-height:1;
-  display:grid; place-items:center;
-  box-shadow:0 8px 18px rgba(229,57,53,.35), var(--shadow-inset);
-  cursor:pointer;
+.sectionTitle{
+  margin: 0;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: .2px;
+  font-size: 14px;
 }
 
-/* Fila social (Instagram / TikTok / WhatsApp) */
-.socialLinksRow{
-  display:flex; flex-wrap:wrap; gap:10px;
+.sectionTitleRow{
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: .2px;
+  font-size: 14px;
 }
 
-/* Variantes cromáticas sutiles por marca (sin logos extra, solo borde/brillo) */
-.instagramLink{
-  border-color: rgba(255, 99, 132, .55);
-  box-shadow:0 10px 24px rgba(255, 99, 132, .22), var(--shadow-inset);
-}
-.tiktokLink{
-  border-color: rgba(0, 242, 234, .5);
-  box-shadow:0 10px 24px rgba(0, 242, 234, .18), var(--shadow-inset);
-}
-.whatsappLink{
-  border-color: rgba(37, 211, 102, .55);
-  box-shadow:0 10px 24px rgba(37, 211, 102, .22), var(--shadow-inset);
+.linkBtn{
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
-/* -------- Panel admin: añadir cámara -------- */
-.adminPanel{
-  margin:14px;
-  padding:14px;
-  border-radius:var(--radius-lg);
-  background:var(--glass);
-  border:1px solid var(--stroke);
-  color:var(--text-strong);
-  box-shadow:var(--shadow-inset), var(--shadow-outer);
+.glassCard{
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
+  color: var(--text-strong);
 }
-.adminPanelTitle{
-  margin:0 0 10px 0;
-  font-weight:800;
+
+/* ---------- Live dots ---------- */
+.liveDot{
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, .14);
 }
-.formRow{
-  display:grid;
-  grid-template-columns:1fr 1fr auto;
-  gap:10px;
+
+.liveMiniDot{
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+/* ================= CAMS ================= */
+.camsGrid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+
+.camShell{
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.28), var(--shadow-inset);
+  overflow: hidden;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+/* slotul #6 centrat */
+.camCenter{
+  grid-column: 1 / -1;
+  max-width: 320px;
+  justify-self: center;
+}
+
+.camCard{
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.camPreview{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+  background-size: cover;
+  background-position: center;
+}
+
+.camNoise{
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(110% 90% at 10% 20%, rgba(96,165,250,.25), transparent 60%),
+    radial-gradient(120% 90% at 90% 80%, rgba(59,228,118,.14), transparent 55%),
+    linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  opacity: .85;
+  filter: saturate(1.2);
+}
+
+.camTag{
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.10);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.camFooterRow{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.camLabel{
+  font-size: 11px;
+  color: var(--text-soft);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camActions{
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* --- admin icons --- */
+.cardActions{
+  display: inline-flex;
+  gap: 6px;
+}
+
+.iconBtnInfo, .iconBtnDanger{
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.20);
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.iconBtnDanger{
+  border-color: rgba(239,68,68,.25);
+  color: rgba(255,170,170,.95);
+}
+
+/* ================= QUICK ACTIONS ================= */
+.quickGrid{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 10px;
+}
+
+.quickBtn{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.24), var(--shadow-inset);
+  color: var(--text-strong);
+  padding: 10px 8px;
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  cursor: pointer;
+  transition: transform .12s ease, filter .12s ease;
+}
+.quickBtn:active{ transform: scale(.98); }
+
+.quickIcon{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(96,165,250,.10);
+  border: 1px solid rgba(96,165,250,.18);
+  font-size: 18px;
+}
+
+.quickText{
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(234,243,255,.85);
+  text-align: center;
+}
+
+/* ================= ANNOUNCEMENTS ================= */
+.headActions{
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.primaryPill{
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.20);
+  background: linear-gradient(180deg, rgba(96,165,250,.92), rgba(96,165,250,.70));
+  color: #07111f;
+  font-weight: 900;
+  letter-spacing: .02em;
+  box-shadow: 0 12px 26px rgba(96,165,250,.24), var(--shadow-inset);
+  cursor: pointer;
+}
+.primaryPill:active{ transform: scale(.98); }
+
+.ghostPill{
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--glass);
+  color: var(--text-strong);
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
+  cursor: pointer;
+}
+.ghostPill:active{ transform: scale(.98); }
+
+.announceCard{
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.30), var(--shadow-inset);
+}
+
+.announceIconWrap{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(96,165,250,.10);
+  border: 1px solid rgba(96,165,250,.18);
+  color: var(--blue);
+  flex: 0 0 auto;
+}
+
+.announceBody{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.announceTopRow{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.announceTitle{
+  margin: 0;
+  color: var(--text-strong);
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.announceBadge{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  color: var(--blue);
+  background: rgba(96,165,250,.10);
+  border: 1px solid rgba(96,165,250,.18);
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.announceText{
+  margin: 8px 0 0 0;
+  color: rgba(234,243,255,.86);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* ================= LINKS GRID ================= */
+.linksGrid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+
+.linkCard{
+  position: relative;
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25), var(--shadow-inset);
+  overflow: hidden;
+  padding: 10px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.linkAnchor{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-strong);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.linkIcon{
+  display: inline-flex;
+  color: rgba(234,243,255,.92);
+}
+
+.linkTitle{
+  font-weight: 800;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- edit row inside cards --- */
+.editRow{
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .input{
-  width:100%;
-  padding:12px 14px;
-  border-radius:20px;
-  border:1px solid var(--stroke);
-  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-  color:var(--text-strong);
-  outline:none;
-  box-shadow:var(--shadow-inset);
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: var(--text-strong);
+  outline: none;
+  box-shadow: var(--shadow-inset);
 }
-.input::placeholder{ color:var(--text-soft); }
 
-.addBtn{
-  padding:12px 18px; border-radius:26px;
-  border:1px solid rgba(255,255,255,.75);
-  background:linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
-  color:#062012; font-weight:800;
-  box-shadow:0 12px 26px rgba(20,180,90,.38), var(--shadow-inset);
+.saveBtnSm, .cancelBtnSm{
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.saveBtnSm{
+  background: linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color: #062012;
+  border-color: rgba(255,255,255,.50);
+  box-shadow: 0 12px 26px rgba(20,180,90,.22), var(--shadow-inset);
+}
+.saveBtnSm:disabled{ opacity: .65; cursor: not-allowed; }
+
+.cancelBtnSm{
+  background: rgba(255,255,255,.06);
+  color: var(--text-strong);
+}
+
+/* ================= ADMIN ADD CARD ================= */
+.addCard{
+  margin-top: 2px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-inset), var(--shadow-outer);
+}
+
+.addCardHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom: 12px;
+}
+
+.addTitle{
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+
+.addSubtitle{
+  margin: 4px 0 0 0;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.addForm{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field{
+  position: relative;
+  grid-column: span 1;
+}
+
+.fieldWide{
+  position: relative;
+  grid-column: 1 / -1;
+}
+
+.iconLeft{
+  position:absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: .85;
+}
+
+.inputBase{
+  width:100%;
+  padding: 14px 14px 14px 40px;
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: var(--text-strong);
+  outline: none;
+  box-shadow: var(--shadow-inset);
+}
+
+.selectBase{
+  appearance: none;
+}
+
+.floatingLabel{
+  position:absolute;
+  left: 40px;
+  top: 8px;
+  font-size: 11px;
+  color: rgba(183,199,230,.9);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.hint{
+  display:block;
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.actionsRow{
+  grid-column: 1 / -1;
+  display:flex;
+  gap: 10px;
+  justify-content:flex-end;
+  flex-wrap: wrap;
+}
+
+.btnGhost{
+  padding:10px 14px;
+  border-radius: 999px;
+  border:1px solid var(--stroke);
+  background: var(--glass);
+  color: var(--text-strong);
+  font-weight: 900;
+  box-shadow:0 6px 16px rgba(0,0,0,.25), var(--shadow-inset);
   cursor:pointer;
 }
-.addBtn:disabled{ opacity:.6; cursor:not-allowed; }
 
-/* -------- Responsivo -------- */
-@media (max-width:880px){
-  .formRow{ grid-template-columns:1fr; }
+.btnPrimary{
+  padding:10px 16px;
+  border-radius: 999px;
+  border:1px solid rgba(255,255,255,.50);
+  background: linear-gradient(180deg, rgba(59,228,118,.95), rgba(59,228,118,.82));
+  color:#062012;
+  font-weight: 900;
+  box-shadow:0 12px 26px rgba(20,180,90,.25), var(--shadow-inset);
+  cursor:pointer;
 }
-@media (max-width:560px){
-  .announcementsCard, .externalLinksContainer, .adminPanel{ margin:12px; }
-  .socialLink{ width:100%; justify-content:center; }
-  .linksRow > .socialLink,
-  .socialLinksRow > .socialLink{ flex:1 1 100%; }
+.btnPrimary:disabled{ opacity: .65; cursor: not-allowed; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px){
+  .linksGrid{ grid-template-columns: 1fr; }
+  .editRow{ grid-template-columns: 1fr; }
 }
