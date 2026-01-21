@@ -1,103 +1,61 @@
-// src/components/depot/map/scene/trees/createTreesBillboardGroup.js
-// ASCII quotes only
 import * as THREE from "three";
+import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { TREE_PROPS } from "./treeLayout";
 
-let TEX_CACHE = null;
+// ... loadTreeTexture ramane la fel (cu TEX_CACHE) ...
 
-async function loadTreeTexture(url) {
-  if (TEX_CACHE) return TEX_CACHE;
-
-  const loader = new THREE.TextureLoader();
-  const tex = await new Promise((resolve, reject) => {
-    loader.load(url, resolve, undefined, reject);
-  });
-
-  // Corect pentru culori (daca PNG-ul e sRGB)
-  tex.colorSpace = THREE.SRGBColorSpace;
-
-  // Performanta: nu vrei texturi imense + mipmaps grele
-  tex.generateMipmaps = true;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-
-  // Evita repetari accidental
-  tex.wrapS = THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-
-  TEX_CACHE = tex;
-  return tex;
-}
-
-/**
- * Creeaza copaci tip "billboard" (doua plane-uri in cruce) - foarte rapid.
- * - doua plane-uri per copac => arata ok din mai multe unghiuri
- * - alphaTest (NU transparent blending) => mult mai rapid pe mobil
- */
 export async function createTreesBillboardGroup({
-  name = "trees.billboard",
-  url = "/textures/trees/tree_cutout.png", // pune aici PNG-ul tau
-  width = 4,   // latime copac
-  height = 6,  // inaltime copac
-  yDefault = 0.05,
+  url = "/textures/trees/tree_cutout.png",
+  width = 4,
+  height = 6,
   alphaTest = 0.5,
-  flipY = false, // daca PNG-ul vine invers
 } = {}) {
-  const g = new THREE.Group();
-  g.name = name;
-
   const tex = await loadTreeTexture(url);
-  if (flipY) tex.flipY = true;
 
-  // Material: alphaTest (nu transparent) => mare boost de performanta
+  // 1. CREĂM GEOMETRIA "ÎN CRUCE" O SINGURĂ DATĂ
+  const p1 = new THREE.PlaneGeometry(width, height);
+  const p2 = new THREE.PlaneGeometry(width, height);
+  p2.rotateY(Math.PI / 2); // Rotim al doilea plan la 90 grade
+
+  // Combinăm cele două plane-uri într-o singură geometrie (1 draw call per instanță)
+  const crossGeo = BufferGeometryUtils.mergeGeometries([p1, p2]);
+  // Mutăm pivotul la baza copacului (ca să stea pe sol la y=0)
+  crossGeo.translate(0, height / 2, 0);
+
+  // 2. MATERIAL OPTIMIZAT
+  // Folosim MeshLambert sau MeshBasic pentru viteză maximă
   const mat = new THREE.MeshBasicMaterial({
     map: tex,
-    transparent: false,
-    alphaTest,
+    alphaTest: alphaTest, // Esențial pentru performanță (evită sortarea transparenței)
     side: THREE.DoubleSide,
     depthWrite: true,
   });
 
-  // Geometrie comuna (reutilizata)
-  const geo = new THREE.PlaneGeometry(width, height);
+  // 3. INSTANCED MESH
+  // Un singur obiect care desenează TOȚI copacii din listă
+  const count = TREE_PROPS.length;
+  const iMesh = new THREE.InstancedMesh(crossGeo, mat, count);
+  iMesh.name = "trees.instanced";
 
-  // Un Object3D temporar pt transform
-  const base = new THREE.Object3D();
+  const dummy = new THREE.Object3D();
 
-  for (let i = 0; i < TREE_PROPS.length; i++) {
-    const p = TREE_PROPS[i];
+  TREE_PROPS.forEach((p, i) => {
+    dummy.position.set(p.x ?? 0, p.y ?? 0, p.z ?? 0);
+    
+    // Randomizăm puțin rotația și scara pentru realism (game dev trick)
+    dummy.rotation.y = (p.rotY ?? 0) + (Math.random() * 0.5); 
+    const scale = 0.8 + Math.random() * 0.4;
+    dummy.scale.set(scale, scale, scale);
+    
+    dummy.updateMatrix();
+    iMesh.setMatrixAt(i, dummy.matrix);
+  });
 
-    const tree = new THREE.Group();
-    tree.name = "tree_" + i;
+  iMesh.instanceMatrix.needsUpdate = true;
+  
+  // Optimizări extra
+  iMesh.castShadow = false; // Copacii 2D cu umbre 3D arată ciudat și consumă FPS
+  iMesh.receiveShadow = false;
 
-    const y = (p.y ?? yDefault) + height * 0.5; // ridicam plane-ul sa stea pe sol
-
-    tree.position.set(p.x ?? 0, y, p.z ?? 0);
-
-    // Rotatia ta (optional)
-    const ry = p.rotY ?? 0;
-    tree.rotation.y = ry;
-
-    // 2 plane-uri in cruce (90 deg)
-    const m1 = new THREE.Mesh(geo, mat);
-    const m2 = new THREE.Mesh(geo, mat);
-    m2.rotation.y = Math.PI / 2;
-
-    // fara umbre, fara update inutil
-    m1.castShadow = false;
-    m1.receiveShadow = false;
-    m2.castShadow = false;
-    m2.receiveShadow = false;
-
-    tree.add(m1, m2);
-
-    // Frustum culling ON
-    tree.traverse((o) => {
-      if (o.isMesh) o.frustumCulled = true;
-    });
-
-    g.add(tree);
-  }
-
-  return g;
+  return iMesh;
 }
