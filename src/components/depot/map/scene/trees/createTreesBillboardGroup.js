@@ -1,8 +1,18 @@
 import * as THREE from "three";
-import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { TREE_PROPS } from "./treeLayout";
 
-// ... loadTreeTexture ramane la fel (cu TEX_CACHE) ...
+let TEX_CACHE = null;
+
+async function loadTreeTexture(url) {
+  if (TEX_CACHE) return TEX_CACHE;
+  const loader = new THREE.TextureLoader();
+  const tex = await new Promise((resolve, reject) => {
+    loader.load(url, resolve, undefined, reject);
+  });
+  tex.colorSpace = THREE.SRGBColorSpace;
+  TEX_CACHE = tex;
+  return tex;
+}
 
 export async function createTreesBillboardGroup({
   url = "/textures/trees/tree_cutout.png",
@@ -12,50 +22,42 @@ export async function createTreesBillboardGroup({
 } = {}) {
   const tex = await loadTreeTexture(url);
 
-  // 1. CREĂM GEOMETRIA "ÎN CRUCE" O SINGURĂ DATĂ
-  const p1 = new THREE.PlaneGeometry(width, height);
-  const p2 = new THREE.PlaneGeometry(width, height);
-  p2.rotateY(Math.PI / 2); // Rotim al doilea plan la 90 grade
+  // 1. Geometrie simpla (un singur plan)
+  const geo = new THREE.PlaneGeometry(width, height);
+  geo.translate(0, height / 2, 0); // Aliniem baza la sol
 
-  // Combinăm cele două plane-uri într-o singură geometrie (1 draw call per instanță)
-  const crossGeo = BufferGeometryUtils.mergeGeometries([p1, p2]);
-  // Mutăm pivotul la baza copacului (ca să stea pe sol la y=0)
-  crossGeo.translate(0, height / 2, 0);
-
-  // 2. MATERIAL OPTIMIZAT
-  // Folosim MeshLambert sau MeshBasic pentru viteză maximă
   const mat = new THREE.MeshBasicMaterial({
     map: tex,
-    alphaTest: alphaTest, // Esențial pentru performanță (evită sortarea transparenței)
+    alphaTest: alphaTest,
     side: THREE.DoubleSide,
     depthWrite: true,
   });
 
-  // 3. INSTANCED MESH
-  // Un singur obiect care desenează TOȚI copacii din listă
+  // 2. InstancedMesh - Dublam numarul de instante (pentru cruce)
   const count = TREE_PROPS.length;
-  const iMesh = new THREE.InstancedMesh(crossGeo, mat, count);
-  iMesh.name = "trees.instanced";
-
+  const iMesh = new THREE.InstancedMesh(geo, mat, count * 2); 
+  
   const dummy = new THREE.Object3D();
 
   TREE_PROPS.forEach((p, i) => {
-    dummy.position.set(p.x ?? 0, p.y ?? 0, p.z ?? 0);
-    
-    // Randomizăm puțin rotația și scara pentru realism (game dev trick)
-    dummy.rotation.y = (p.rotY ?? 0) + (Math.random() * 0.5); 
+    const baseX = p.x ?? 0;
+    const baseZ = p.z ?? 0;
+    const baseRot = p.rotY ?? 0;
     const scale = 0.8 + Math.random() * 0.4;
+
+    // Instanta 1: Planul A
+    dummy.position.set(baseX, 0, baseZ);
+    dummy.rotation.y = baseRot;
     dummy.scale.set(scale, scale, scale);
-    
     dummy.updateMatrix();
-    iMesh.setMatrixAt(i, dummy.matrix);
+    iMesh.setMatrixAt(i * 2, dummy.matrix);
+
+    // Instanta 2: Planul B (rotit la 90 grade fata de primul)
+    dummy.rotation.y = baseRot + Math.PI / 2;
+    dummy.updateMatrix();
+    iMesh.setMatrixAt(i * 2 + 1, dummy.matrix);
   });
 
   iMesh.instanceMatrix.needsUpdate = true;
-  
-  // Optimizări extra
-  iMesh.castShadow = false; // Copacii 2D cu umbre 3D arată ciudat și consumă FPS
-  iMesh.receiveShadow = false;
-
   return iMesh;
 }
