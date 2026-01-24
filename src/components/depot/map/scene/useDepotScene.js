@@ -116,6 +116,9 @@ export function useDepotScene({ mountRef }) {
 
   // time
   const clockRef = useRef(new THREE.Clock());
+  const dprRef = useRef(null);
+const fpsRef = useRef({ acc: 0, frames: 0, last: performance.now() });
+
 
   // runtime flags
   const isFPRef = useRef(false);
@@ -647,7 +650,39 @@ useEffect(() => {
     let alive = true;
 
     // renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+// 1) Renderer: pe mobil scazi costul de shading + AA
+const renderer = new THREE.WebGLRenderer({
+  antialias: !isIOS,            // iOS: OFF (AA cost enorm)
+  alpha: true,
+  powerPreference: "high-performance",
+  precision: isIOS ? "mediump" : "highp",
+  depth: true,
+  stencil: false,
+});
+rendererRef.current = renderer;
+
+// 2) Pixel ratio: asta e diferența majoră pe iPhone
+const DPR = Math.min(window.devicePixelRatio || 1, isIOS ? 1.25 : 2);
+renderer.setPixelRatio(DPR);
+dprRef.current = DPR;
+
+
+renderer.setSize(mount.clientWidth, mount.clientHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+// 3) Shadows: pe iPhone OFF
+renderer.shadowMap.enabled = false;
+
+// 4) Tone mapping: evită operații scumpe
+renderer.toneMapping = THREE.NoToneMapping;
+
+// 5) Canvas settings
+mount.appendChild(renderer.domElement);
+renderer.domElement.style.touchAction = "none";
+renderer.domElement.style.cursor = "grab";
+
     rendererRef.current = renderer;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -708,14 +743,20 @@ canvas.addEventListener("pointerdown", onPointerDownExitLock, true);
     scene.add(dir);
 
     // sky + landscape + base world
-    scene.add(
-      createSky({
-        scene,
-        renderer,
-        hdrPath: "/textures/lume/golden_gate_hills_1k.hdr",
-        exposure: 1.1,
-      })
-    );
+    if (!isIOS) {
+  scene.add(
+    createSky({
+      scene,
+      renderer,
+      hdrPath: "/textures/lume/golden_gate_hills_1k.hdr",
+      exposure: 1.1,
+    })
+  );
+} else {
+  // fallback foarte ieftin pe iPhone (cerul rămâne, dar nu HDR)
+  scene.background = new THREE.Color(0xbfd9ff);
+}
+
 
     const landscape = createLandscape({ ground: CFG.ground });
     scene.add(landscape);
@@ -749,22 +790,25 @@ canvas.addEventListener("pointerdown", onPointerDownExitLock, true);
     })();
 
     (async () => {
-      try {
-        const gg = await createGrassGroupInstanced({
-          name: "grass.instanced",
-          bladesPerTree: 35,
-          spread: 4.0,
-          y: 0.02,
-          castShadow: false,
-          receiveShadow: false,
-        });
-        if (disposedFoliage || !alive) return;
-        grassGroupRef.current = gg;
-        grassVisibleRef.current = false;
-      } catch (e) {
-        console.warn("[grass] createGrassGroupInstanced failed:", e);
-      }
-    })();
+  try {
+    const gg = await createGrassGroupInstanced({
+      name: "grass.instanced",
+      bladesPerTree: isIOS ? 12 : 35,
+      spread: isIOS ? 3.0 : 4.0,
+      y: 0.02,
+      castShadow: false,
+      receiveShadow: false,
+    });
+
+    if (disposedFoliage || !alive) return;
+
+    grassGroupRef.current = gg;
+    grassVisibleRef.current = false;
+  } catch (e) {
+    console.warn("[grass] createGrassGroupInstanced failed:", e);
+  }
+})();
+
 
     function updateFoliageVisibility() {
       const cam = cameraRef.current;
@@ -989,6 +1033,39 @@ canvas.addEventListener("pointerdown", onPointerDownExitLock, true);
       requestAnimationFrame(animate);
 
       const delta = clockRef.current.getDelta();
+      // Dynamic resolution (mobile-safe)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+if (isIOS && rendererRef.current) {
+  const r = rendererRef.current;
+  const st = fpsRef.current;
+  st.acc += delta;
+  st.frames += 1;
+
+  // la fiecare ~1s evaluăm FPS-ul
+  if (st.acc >= 1.0) {
+    const fps = st.frames / st.acc;
+
+    // praguri simple
+    const minD = 0.85;
+    const maxD = 1.35;
+
+    let dpr = dprRef.current ?? 1.0;
+    if (fps < 28) dpr *= 0.90;       // prea greu -> scade rez
+    else if (fps > 45) dpr *= 1.05;  // ok -> crește ușor
+
+    dpr = Math.min(maxD, Math.max(minD, dpr));
+
+    if (Math.abs(dpr - (dprRef.current ?? dpr)) > 0.03) {
+      dprRef.current = dpr;
+      r.setPixelRatio(dpr);
+      r.setSize(mount.clientWidth, mount.clientHeight, false);
+    }
+
+    st.acc = 0;
+    st.frames = 0;
+  }
+}
+
 
       foliageAcc += delta;
       if (foliageAcc > 0.25) {
