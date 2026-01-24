@@ -7,11 +7,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 🔴 rămâne cum ți-ai dorit: utilizatorul e întrebat la update
       registerType: 'prompt',
       injectRegister: 'auto',
 
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      // ✅ Actualizat: includem fișierele din noul folder icons
+      includeAssets: ['icons/ios/32.png', 'icons/ios/180.png', 'icons/android/android-launchericon-512-512.png'],
+      
       manifest: {
         name: 'Rayna2.0',
         short_name: 'Rayna',
@@ -21,55 +22,58 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         scope: '/',
-        // (opțional) schimbă versiunea când faci release ca să grăbești update-urile
-        // version: '1.0.8',
         icons: [
-          { src: '192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: '512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          // ✅ Android Icons
+          {
+            src: 'icons/android/android-launchericon-192-192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/android/android-launchericon-512-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/android/android-launchericon-512-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          // ✅ Windows Icons (Am adăugat una principală de Windows din lista ta)
+          {
+            src: 'icons/windows11/Square150x150Logo.scale-100.png',
+            sizes: '150x150',
+            type: 'image/png'
+          }
         ]
       },
 
       workbox: {
-        // ✅ precache corect al bundle-ului din dist (elimină warning-ul)
         globDirectory: 'dist',
+        // ✅ Ne asigurăm că Workbox scanează și folderul icons
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6MB
-
-        // ✅ SPA fallback → nu mai ai ecran alb offline/cold-start
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: '/index.html',
-
-        // ✅ curățăm cache-urile vechi la update
         cleanupOutdatedCaches: true,
-
-        // (în mod normal, cu `prompt` lași aceste două pe false,
-        // dar le poți porni dacă vrei ca noul SW să preia instant)
-        // clientsClaim: true,
-        // skipWaiting: true,
-
-        // 🔴 runtimeCaching păstrat exact cum l-ai cerut
         runtimeCaching: [
           {
-            // .glb (modele glTF)
             urlPattern: ({ url }) => url.pathname.endsWith('.glb'),
-            handler: 'NetworkFirst', // pentru a evita 404 din cache când modelul se schimbă
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'glb-models',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 zile
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
           {
-            // .wasm (de ex. DRACO)
             urlPattern: ({ url }) => url.pathname.endsWith('.wasm'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'wasm-decoders',
-              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30 zile
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],
-
-        // 🔴 păstrăm denylist-ul pentru a nu servi app-shell pe rutele către modele
         navigateFallbackDenylist: [/^\/models\//],
       },
 
