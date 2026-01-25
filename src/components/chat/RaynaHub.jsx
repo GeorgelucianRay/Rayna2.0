@@ -30,9 +30,13 @@ function ensureErrorBus() {
       logs: [],
       push(level, title, data) {
         this.logs.push({ level, title, data, ts: Date.now() });
-        try { window.dispatchEvent(new CustomEvent("rayna-log")); } catch {}
+        try {
+          window.dispatchEvent(new CustomEvent("rayna-log"));
+        } catch {}
       },
-      clear() { this.logs = []; },
+      clear() {
+        this.logs = [];
+      },
     };
   }
   if (!window.__raynaLog) {
@@ -44,7 +48,11 @@ function ensureErrorBus() {
   }
   if (!window.__raynaReportError) {
     window.__raynaReportError = (err, meta = {}) => {
-      const payload = { message: err?.message || String(err), stack: err?.stack || null, ...meta };
+      const payload = {
+        message: err?.message || String(err),
+        stack: err?.stack || null,
+        ...meta,
+      };
       window.__raynaBus.push("error", meta?.title || "Unhandled error", payload);
       console.error("🛑 Rayna error:", payload);
     };
@@ -81,24 +89,65 @@ function pickScene({ intentType, userText }) {
   const t = String(intentType || "").toLowerCase();
   const u = String(userText || "").toLowerCase();
 
-  if (u.includes("depot") || u.includes("conten") || u.includes("container") || u.includes("contenedor") ||
-      u.includes("slot") || u.includes("patio") || u.includes("terminal") || u.includes("tcb"))
+  if (
+    u.includes("depot") ||
+    u.includes("conten") ||
+    u.includes("container") ||
+    u.includes("contenedor") ||
+    u.includes("slot") ||
+    u.includes("patio") ||
+    u.includes("terminal") ||
+    u.includes("tcb")
+  )
     return SCENE_BY_INTENT.depot;
 
-  if (u.includes("archivo") || u.includes("document") || u.includes("acta") || u.includes("contrato") ||
-      u.includes("factura") || u.includes("pdf") || u.includes("nomina") || u.includes("nómina") || u.includes("albaran"))
+  if (
+    u.includes("archivo") ||
+    u.includes("document") ||
+    u.includes("acta") ||
+    u.includes("contrato") ||
+    u.includes("factura") ||
+    u.includes("pdf") ||
+    u.includes("nomina") ||
+    u.includes("nómina") ||
+    u.includes("albaran")
+  )
     return SCENE_BY_INTENT.archivo;
 
-  if (u.includes("mecanic") || u.includes("mecánico") || u.includes("taller") || u.includes("repar") ||
-      u.includes("averia") || u.includes("avería") || u.includes("service") || u.includes("itv"))
+  if (
+    u.includes("mecanic") ||
+    u.includes("mecánico") ||
+    u.includes("taller") ||
+    u.includes("repar") ||
+    u.includes("averia") ||
+    u.includes("avería") ||
+    u.includes("service") ||
+    u.includes("itv")
+  )
     return SCENE_BY_INTENT.mecanic;
 
-  if (u.includes("sofer") || u.includes("șofer") || u.includes("chofer") || u.includes("conduc") ||
-      u.includes("tahograf") || u.includes("tacografo") || u.includes("descanso") || u.includes("conducción"))
+  if (
+    u.includes("sofer") ||
+    u.includes("șofer") ||
+    u.includes("chofer") ||
+    u.includes("conduc") ||
+    u.includes("tahograf") ||
+    u.includes("tacografo") ||
+    u.includes("descanso") ||
+    u.includes("conducción")
+  )
     return SCENE_BY_INTENT.soferi;
 
-  if (u.includes("dispecer") || u.includes("dispatch") || u.includes("oficina") || u.includes("ruta") ||
-      u.includes("plan") || u.includes("program") || u.includes("cliente") || u.includes("email"))
+  if (
+    u.includes("dispecer") ||
+    u.includes("dispatch") ||
+    u.includes("oficina") ||
+    u.includes("ruta") ||
+    u.includes("plan") ||
+    u.includes("program") ||
+    u.includes("cliente") ||
+    u.includes("email")
+  )
     return SCENE_BY_INTENT.office;
 
   if (t.includes("depot")) return SCENE_BY_INTENT.depot;
@@ -111,11 +160,31 @@ function pickScene({ intentType, userText }) {
 }
 
 /* ---------- Icons ---------- */
-const IconClose = () => <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>;
-const IconStories = () => <span className="material-symbols-outlined" style={{ fontSize: 18 }}>auto_stories</span>;
-const IconReport = () => <span className="material-symbols-outlined" style={{ fontSize: 18 }}>report_problem</span>;
-const IconAttach = () => <span className="material-symbols-outlined" style={{ fontSize: 22 }}>attach_file</span>;
-const IconSend = () => <span className="material-symbols-outlined" style={{ fontSize: 18 }}>send</span>;
+const IconClose = () => (
+  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+    close
+  </span>
+);
+const IconStories = () => (
+  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+    auto_stories
+  </span>
+);
+const IconReport = () => (
+  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+    report_problem
+  </span>
+);
+const IconAttach = () => (
+  <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+    attach_file
+  </span>
+);
+const IconSend = () => (
+  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+    send
+  </span>
+);
 
 /* ---------- helpers: preload image (important for clean fade) ---------- */
 function preloadImage(url) {
@@ -127,29 +196,35 @@ function preloadImage(url) {
   });
 }
 
-/* =========================
-   AI FALLBACK (Groq via /api/rayna-chat)
-   - keep tokens low
-   ========================= */
-const shortenForAI = (s, max = 220) => {
-  const t = String(s || "").trim().replace(/\s+/g, " ");
-  return t.length > max ? t.slice(0, max) : t;
-};
-
-async function callAiFallback({ text, lang }) {
+/* ---------- AI fallback: call /api/rayna-chat (dev middleware sau Vercel) ---------- */
+async function callAiFallback({ text, lang, maxTokens = 240 }) {
   const r = await fetch("/api/rayna-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, lang }),
+    body: JSON.stringify({
+      text,
+      lang,
+      mode: "short",
+      maxTokens,
+    }),
   });
 
+  const raw = await r.text().catch(() => "");
+
   if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err?.message || "AI request failed");
+    window.__raynaLog?.("AI/Fallback:HTTP_ERROR", { status: r.status, raw }, "error");
+    throw new Error(`AI request failed (${r.status}): ${raw.slice(0, 1500)}`);
   }
-  return r.json();
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    window.__raynaLog?.("AI/Fallback:BAD_JSON", { raw }, "error");
+    throw new Error(`AI returned invalid JSON: ${raw.slice(0, 500)}`);
+  }
 }
 
+/* ---------- log fallback NLU -> AI in Supabase ---------- */
 async function logNluAiFallback({
   supabase,
   profile,
@@ -168,24 +243,22 @@ async function logNluAiFallback({
   try {
     const userId = profile?.id || profile?.user_id || null;
 
-    await supabase.from("nlu_ai_fallback_logs").insert([{
-      user_id: userId,
-      role,
-      lang,
-
-      user_text: userText,
-
-      nlu_text: nluText || null,
-      nlu_intent: nluIntent || null,
-      nlu_meta: nluMeta || null,
-
-      ai_model: aiModel || null,
-      ai_answer: aiAnswer || null,
-      ai_usage: aiUsage || null,
-      latency_ms: latencyMs ?? null,
-
-      route: route || null,
-    }]);
+    await supabase.from("nlu_ai_fallback_logs").insert([
+      {
+        user_id: userId,
+        role,
+        lang,
+        user_text: userText,
+        nlu_text: nluText || null,
+        nlu_intent: nluIntent || null,
+        nlu_meta: nluMeta || null,
+        ai_model: aiModel || null,
+        ai_answer: aiAnswer || null,
+        ai_usage: aiUsage || null,
+        latency_ms: latencyMs ?? null,
+        route: route || "raynahub.send.ai_fallback",
+      },
+    ]);
   } catch {
     // nu blocăm chat-ul dacă logging-ul pică
   }
@@ -221,9 +294,7 @@ function TypingText({ text = "", speed = 14, enabled = true, onDone }) {
       }
 
       const ch = full[i - 1];
-      const pause =
-        ch === "." || ch === "!" || ch === "?" ? 140 :
-        ch === "," || ch === ";" ? 80 : 0;
+      const pause = ch === "." || ch === "!" || ch === "?" ? 140 : ch === "," || ch === ";" ? 80 : 0;
 
       timerRef.current = window.setTimeout(tick, speed + pause);
     };
@@ -237,6 +308,101 @@ function TypingText({ text = "", speed = 14, enabled = true, onDone }) {
   }, [text, speed, enabled, onDone]);
 
   return <>{out}</>;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Limit guard: dacă user cere “lista cu 20”, tăiem listările de containere
+   (când textul conține coduri tip ABCD1234567).
+   ───────────────────────────────────────────────────────────── */
+
+function parseRequestedLimit(userText) {
+  const t = String(userText || "").toLowerCase();
+
+  const m =
+    t.match(/(?:lista|listă|top|arata|arată|dami|dă-mi|give|show)\s*(?:cu|de|about|)\s*(\d{1,3})\b/) ||
+    t.match(/\b(\d{1,3})\s*(?:containere|contenedores|containers|items|rezultate|results)\b/) ||
+    t.match(/\b(?:limit|límite|limita)\s*[:=]?\s*(\d{1,3})\b/);
+
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(n, 200);
+}
+
+function countContainerLikeTokens(s) {
+  const re = /\b[A-Z]{4}\s?\d{7}\b/g;
+  const hits = String(s || "").toUpperCase().match(re);
+  return hits ? hits.length : 0;
+}
+
+function trimContainerListText(text, limit) {
+  if (!limit) return text;
+  const raw = String(text || "");
+  const total = countContainerLikeTokens(raw);
+  if (!total || total <= limit) return raw;
+
+  const lines = raw.split("\n");
+  const kept = [];
+  let seen = 0;
+
+  for (const line of lines) {
+    const c = countContainerLikeTokens(line);
+    if (seen >= limit && c > 0) continue;
+    kept.push(line);
+    seen += c;
+  }
+
+  const after = kept.join("\n");
+  if (countContainerLikeTokens(after) > limit) {
+    const re = /\b([A-Z]{4}\s?\d{7})\b/g;
+    let idx = 0;
+    let m;
+    while ((m = re.exec(after.toUpperCase()))) {
+      idx += 1;
+      if (idx > limit) {
+        const cutPos = m.index;
+        return `${after.slice(0, cutPos).trim()}\n\n(Am afișat ${limit} rezultate, conform cererii.)`;
+      }
+    }
+  }
+
+  return `${after.trim()}\n\n(Am afișat ${limit} rezultate, conform cererii.)`;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Intent sanity: dacă user cere depot/container, NU acceptăm “greeting”.
+   ───────────────────────────────────────────────────────────── */
+
+function isDepotRequest(text) {
+  const t = String(text || "").toLowerCase();
+  return (
+    t.includes("container") ||
+    t.includes("contenedor") ||
+    t.includes("conten") ||
+    t.includes("depot") ||
+    t.includes("patio") ||
+    t.includes("terminal") ||
+    t.includes("slot") ||
+    t.includes("tcb")
+  );
+}
+
+function isGreetingIntent(intentType) {
+  const t = String(intentType || "").toLowerCase();
+  return (
+    t.includes("greet") ||
+    t.includes("greeting") ||
+    t.includes("salut") ||
+    t.includes("saludo") ||
+    t.includes("hello") ||
+    t === "hola"
+  );
+}
+
+function shouldRejectIntentForText(intentType, userText) {
+  if (!intentType) return false;
+  if (isDepotRequest(userText) && isGreetingIntent(intentType)) return true;
+  return false;
 }
 
 export default function RaynaHub() {
@@ -262,7 +428,7 @@ export default function RaynaHub() {
     navigate(target, { replace: true });
   }, [profile?.role, navigate, location]);
 
-  const [messages, setMessages] = useState([]);
+  const [messages, _setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -276,35 +442,57 @@ export default function RaynaHub() {
 
   const nluInitRef = useRef(false);
 
-  // scene logic
-  const [sceneImg, setSceneImg] = useState(SCENE_BY_INTENT.default);
-
   // crossfade layers (A/B)
   const [bgA, setBgA] = useState(SCENE_BY_INTENT.default);
   const [bgB, setBgB] = useState(SCENE_BY_INTENT.default);
   const [showA, setShowA] = useState(true);
 
   // typing control: once a bot message finished typing, keep it static
-  const typedDoneRef = useRef(new Set()); // stores message indices that are done
+  const typedDoneRef = useRef(new Set());
 
-  const setSceneWithFade = useCallback(async (nextUrl) => {
-    if (!nextUrl) return;
+  // limit cerut de user (ex: “lista cu 20”)
+  const requestedLimitRef = useRef(null);
 
-    const current = showA ? bgA : bgB;
-    if (current === nextUrl) {
-      setSceneImg(nextUrl);
-      return;
-    }
+  // setMessages “guarded”: taie listele de containere la limita cerută
+  const setMessages = useCallback(
+    (updater) => {
+      _setMessages((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
 
-    await preloadImage(nextUrl);
+        const lim = requestedLimitRef.current;
+        if (!lim || !Array.isArray(next) || next.length === 0) return next;
 
-    if (showA) setBgB(nextUrl);
-    else setBgA(nextUrl);
+        const last = next[next.length - 1];
+        if (!last || last.from === "user") return next;
 
-    requestAnimationFrame(() => setShowA((s) => !s));
+        const botText = last.reply_text ?? last.text ?? "";
+        if (!botText) return next;
 
-    setSceneImg(nextUrl);
-  }, [showA, bgA, bgB]);
+        const trimmed = trimContainerListText(botText, lim);
+        if (trimmed === botText) return next;
+
+        const patched = { ...last, reply_text: trimmed };
+        return next.slice(0, -1).concat(patched);
+      });
+    },
+    [_setMessages]
+  );
+
+  const setSceneWithFade = useCallback(
+    async (nextUrl) => {
+      if (!nextUrl) return;
+      const current = showA ? bgA : bgB;
+      if (current === nextUrl) return;
+
+      await preloadImage(nextUrl);
+
+      if (showA) setBgB(nextUrl);
+      else setBgA(nextUrl);
+
+      requestAnimationFrame(() => setShowA((s) => !s));
+    },
+    [showA, bgA, bgB]
+  );
 
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles,
@@ -318,8 +506,16 @@ export default function RaynaHub() {
 
   // Global error hooks → către bus
   useEffect(() => {
-    const onUR = (ev) => { try { window.__raynaReportError(ev.reason || ev, { phase: "unhandledrejection" }); } catch {} };
-    const onOE = (msg, src, line, col, err) => { try { window.__raynaReportError(err || msg, { phase: "window.onerror", src, line, col }); } catch {} };
+    const onUR = (ev) => {
+      try {
+        window.__raynaReportError(ev.reason || ev, { phase: "unhandledrejection" });
+      } catch {}
+    };
+    const onOE = (msg, src, line, col, err) => {
+      try {
+        window.__raynaReportError(err || msg, { phase: "window.onerror", src, line, col });
+      } catch {}
+    };
     window.addEventListener("unhandledrejection", onUR);
     const prev = window.onerror;
     window.onerror = onOE;
@@ -343,13 +539,13 @@ export default function RaynaHub() {
     })();
 
     const greetText =
-      (STR?.greeting && (typeof STR.greeting[uiLang] === "function" ? STR.greeting[uiLang](firstName) : STR.greeting[uiLang])) ||
+      (STR?.greeting &&
+        (typeof STR.greeting[uiLang] === "function" ? STR.greeting[uiLang](firstName) : STR.greeting[uiLang])) ||
       FBGREET(uiLang, firstName);
 
     pushBot(setMessages, greetText, { lang: uiLang });
-
     setSceneWithFade(SCENE_BY_INTENT.office);
-  }, [loading, profile, setSceneWithFade]); // eslint-disable-line
+  }, [loading, profile, setSceneWithFade, messages.length, setMessages]); // eslint-disable-line
 
   // Warm-up semantic
   useEffect(() => {
@@ -379,6 +575,13 @@ export default function RaynaHub() {
 
     window.__raynaLastUserText = userTextLocal;
 
+    // memorize limit (ex: "lista cu 20")
+    const reqLim = parseRequestedLimit(userTextLocal);
+    if (reqLim) {
+      requestedLimitRef.current = reqLim;
+      window.__raynaLog("ListLimit/Requested", { limit: reqLim, text: userTextLocal });
+    }
+
     try {
       const detected = normalizeLang(detectLanguage(userTextLocal));
       langRef.current = detected || langRef.current || "es";
@@ -386,17 +589,23 @@ export default function RaynaHub() {
       setMessages((m) => [...m, { from: "user", text: userTextLocal }]);
       setText("");
 
-      // change scene immediately based on text
       setSceneWithFade(pickScene({ intentType: null, userText: userTextLocal }));
 
+      // depot shortcircuit by container code (ABCD1234567)
       const code = extractContainerCode(userTextLocal);
       if (code) {
         window.__raynaLog("Depot/ShortCircuit", { code });
         setSceneWithFade(SCENE_BY_INTENT.depot);
-        await handleDepotChat({ userText: userTextLocal, profile, setMessages });
+        await handleDepotChat({
+          userText: userTextLocal,
+          profile,
+          setMessages,
+          limit: requestedLimitRef.current,
+        });
         return;
       }
 
+      // awaiting handlers
       const wasHandled = await handleAwaiting({
         awaiting,
         setAwaiting,
@@ -413,8 +622,23 @@ export default function RaynaHub() {
       if (wasHandled) return;
 
       const preNLU = shortenForNLU(userTextLocal);
+      const wantsDepot = isDepotRequest(userTextLocal);
+
+      // 1) NLU
       let det = detectIntent(preNLU, intentsData);
 
+      // reject wrong intent (greeting) for depot-like text
+      if (det?.intent?.type && shouldRejectIntentForText(det.intent.type, userTextLocal)) {
+        window.__raynaLog("NLU/RejectIntent", { intent: det.intent.type, text: userTextLocal }, "info");
+        det = null;
+      }
+
+      // inject limit in slots
+      if (requestedLimitRef.current && det?.intent?.type) {
+        det = { ...det, slots: { ...(det.slots || {}), limit: det?.slots?.limit ?? requestedLimitRef.current } };
+      }
+
+      // 2) semantic fallback
       if (!det?.intent?.type) {
         let addedNLULoading = false;
 
@@ -443,7 +667,17 @@ export default function RaynaHub() {
         }
 
         if (sem?.kind === "intent") {
-          det = { intent: sem.intent, slots: {}, lang: langRef.current };
+          const candidate = sem.intent;
+          if (shouldRejectIntentForText(candidate?.type, userTextLocal)) {
+            window.__raynaLog("SEM/RejectIntent", { intent: candidate?.type, text: userTextLocal }, "info");
+            det = null;
+          } else {
+            det = {
+              intent: candidate,
+              slots: { limit: requestedLimitRef.current || undefined },
+              lang: langRef.current,
+            };
+          }
         } else if (sem?.kind === "kb") {
           const answer =
             typeof sem.answer === "object"
@@ -456,6 +690,20 @@ export default function RaynaHub() {
         }
       }
 
+      // 3) OVERRIDE: dacă user cere depot/containere și intentul nu e depot/container → force AI
+      const intentType = det?.intent?.type || "";
+      const looksNonDepotIntent =
+        !!intentType &&
+        !String(intentType).toLowerCase().includes("depot") &&
+        !String(intentType).toLowerCase().includes("container") &&
+        !String(intentType).toLowerCase().includes("conten");
+
+      if (wantsDepot && (!det?.intent?.type || looksNonDepotIntent)) {
+        window.__raynaLog("Route/ForceAIForDepot", { intent: intentType || null, text: userTextLocal }, "info");
+        det = null;
+      }
+
+      // 4) normal route intent
       if (det?.intent?.type) {
         setSceneWithFade(pickScene({ intentType: det.intent.type, userText: userTextLocal }));
 
@@ -470,42 +718,31 @@ export default function RaynaHub() {
           runAction,
           lang: langRef.current,
         });
+
         return;
       }
 
-      /* =========================
-         AI fallback (NEW)
-         - only when NLU + semantic did not produce intent/kb
-         - low tokens: shortenForAI()
-         ========================= */
-      const started = performance.now();
-      pushBot(setMessages, "…", { _tag: "ai-loading", lang: langRef.current });
-
+      // 5) AI fallback
       try {
-        const aiRes = await callAiFallback({
-          text: shortenForAI(userTextLocal, 220),
-          lang: langRef.current,
+        window.__raynaLog("AI/Fallback:START", { lang: langRef.current, text: userTextLocal });
+
+        pushBot(setMessages, "Conecto con IA…", { lang: langRef.current, _tag: "ai-status" });
+
+        const t0 = performance.now();
+        const aiRes = await callAiFallback({ text: userTextLocal, lang: langRef.current, maxTokens: 300 });
+        const t1 = performance.now();
+
+        setMessages((m) => m.filter((x) => x._tag !== "ai-status"));
+
+        const aiAnswer = aiRes?.answer || aiRes?.text || aiRes?.content || aiRes?.message || "";
+        if (!String(aiAnswer || "").trim()) throw new Error("AI returned empty answer");
+
+        window.__raynaLog("AI/Fallback:OK", {
+          model: aiRes?.model,
+          usage: aiRes?.usage,
+          latencyMs: Math.round(t1 - t0),
         });
 
-        const latencyMs = Math.round(performance.now() - started);
-
-        // remove loading bubble
-        setMessages((m) => m.filter((b) => b._tag !== "ai-loading"));
-
-        // accept multiple response shapes safely
-        const aiText =
-          (aiRes && typeof aiRes === "object" && (aiRes.text || aiRes.answer || aiRes.message)) ||
-          (typeof aiRes === "string" ? aiRes : "") ||
-          "";
-
-        const finalText = String(aiText || "").trim() || ((STR?.dontUnderstand && STR.dontUnderstand[langRef.current]) || FBDONT(langRef.current));
-
-        // scene for AI answer (based on user text)
-        setSceneWithFade(pickScene({ intentType: "ai", userText: userTextLocal }));
-
-        pushBot(setMessages, finalText, { lang: langRef.current });
-
-        // log to supabase for later NLU improvements
         await logNluAiFallback({
           supabase,
           profile,
@@ -513,31 +750,39 @@ export default function RaynaHub() {
           lang: langRef.current,
           userText: userTextLocal,
           nluText: preNLU,
-          nluIntent: det?.intent?.type || null,
-          nluMeta: det || null,
-          aiModel: aiRes?.model || aiRes?.meta?.model || null,
-          aiAnswer: finalText,
-          aiUsage: aiRes?.usage || aiRes?.meta?.usage || null,
-          latencyMs,
-          route: "ai-fallback",
+          nluIntent: null,
+          nluMeta: { stage: "ai_fallback", requested_limit: requestedLimitRef.current || null },
+          aiModel: aiRes?.model || null,
+          aiAnswer,
+          aiUsage: aiRes?.usage || null,
+          latencyMs: Math.round(t1 - t0),
+          route: "raynahub.send.ai_fallback",
         });
 
+        setSceneWithFade(pickScene({ intentType: "ai", userText: userTextLocal }));
+        pushBot(setMessages, aiAnswer, { lang: langRef.current, _tag: "ai" });
         return;
-      } catch (errAi) {
-        setMessages((m) => m.filter((b) => b._tag !== "ai-loading"));
-        window.__raynaLog?.("AI/Fallback failed", { message: errAi?.message || String(errAi) }, "error");
-        // fall back to classic dont-understand
+      } catch (aiErr) {
+        setMessages((m) => m.filter((x) => x._tag !== "ai-status"));
+        window.__raynaLog("AI/Fallback:FAIL", { message: aiErr?.message || String(aiErr) }, "error");
       }
 
+      // final fallback
       const dont = (STR?.dontUnderstand && STR.dontUnderstand[langRef.current]) || FBDONT(langRef.current);
       pushBot(setMessages, dont, { lang: langRef.current });
     } catch (err) {
       window.__raynaReportError?.(err, { phase: "send", userText: userTextLocal, title: "Chat send()" });
-      setMessages((m) => [...m, { from: "bot", reply_text: "Ups, algo ha fallado procesando tu mensaje. Intenta de nuevo." }]);
+      setMessages((m) => [
+        ...m,
+        {
+          from: "bot",
+          reply_text: "Ups, algo ha fallado procesando tu mensaje. Intenta de nuevo.",
+        },
+      ]);
     }
   };
 
-  // Face disponibil window.__raynaOpenMap(pos) pentru cardul din chat.
+  // window.__raynaOpenMap(pos)
   useEffect(() => {
     window.__raynaOpenMap = (pos) => {
       const query = `?focus=${encodeURIComponent(pos || "")}`;
@@ -548,7 +793,9 @@ export default function RaynaHub() {
       }
       navigate(`/mapa${query}`);
     };
-    return () => { delete window.__raynaOpenMap; };
+    return () => {
+      delete window.__raynaOpenMap;
+    };
   }, [navigate, location]);
 
   // last bot index (for typing only last bot message)
@@ -560,10 +807,13 @@ export default function RaynaHub() {
   }, [messages]);
 
   const renderBot = (m, i) => {
-    const label = "Rayna System";
+    const isAi = m?._tag === "ai";
+    const label = isAi ? "Rayna AI" : "Rayna System";
 
     const isLastBot = i === lastBotIndex;
     const typingAllowed = isLastBot && !typedDoneRef.current.has(i);
+
+    const botText = m.reply_text ?? m.text ?? "";
 
     return (
       <div key={i} className={styles.rowLeft}>
@@ -574,10 +824,10 @@ export default function RaynaHub() {
           <div className={styles.msgLabel}>{label}</div>
           <div className={styles.bubbleAi}>
             <TypingText
-              text={m.reply_text}
+              text={botText}
               speed={14}
               enabled={typingAllowed}
-              onDone={() => { typedDoneRef.current.add(i); }}
+              onDone={() => typedDoneRef.current.add(i)}
             />
             {m.render ? <div className={styles.renderWrap}>{m.render()}</div> : null}
           </div>
@@ -617,7 +867,7 @@ export default function RaynaHub() {
           }}
         />
 
-        {/* OPTIONAL veil (recommended) */}
+        {/* veil */}
         <div className={styles.bgVeil} />
 
         <header className={styles.header}>
@@ -626,7 +876,9 @@ export default function RaynaHub() {
               <img
                 src={RAYNA_AVATAR}
                 alt="Rayna"
-                onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                onError={(e) => {
+                  e.currentTarget.style.visibility = "hidden";
+                }}
               />
             </div>
             <div className={styles.headerTitles}>
@@ -641,13 +893,22 @@ export default function RaynaHub() {
         </header>
 
         <div className={styles.chips}>
-          <button type="button" className={`${styles.chip} ${styles.chipPrimary}`} onClick={quickAprender} aria-label="Abrir Aprender">
-            <span className={styles.chipIcon}><IconStories /></span>
+          <button
+            type="button"
+            className={`${styles.chip} ${styles.chipPrimary}`}
+            onClick={quickAprender}
+            aria-label="Abrir Aprender"
+          >
+            <span className={styles.chipIcon}>
+              <IconStories />
+            </span>
             <span className={styles.chipText}>Aprender</span>
           </button>
 
           <button type="button" className={styles.chip} onClick={quickReport} aria-label="Reclamar un error">
-            <span className={styles.chipIcon}><IconReport /></span>
+            <span className={styles.chipIcon}>
+              <IconReport />
+            </span>
             <span className={styles.chipText}>Reclamar</span>
           </button>
         </div>
@@ -659,7 +920,12 @@ export default function RaynaHub() {
 
         <footer className={styles.inputWrap}>
           <div className={styles.inputPill}>
-            <button className={styles.attachBtn} type="button" aria-label="Adjuntar (en desarrollo)" title="Adjuntar (en desarrollo)">
+            <button
+              className={styles.attachBtn}
+              type="button"
+              aria-label="Adjuntar (en desarrollo)"
+              title="Adjuntar (en desarrollo)"
+            >
               <IconAttach />
             </button>
 
