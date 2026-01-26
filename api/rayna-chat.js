@@ -36,12 +36,14 @@ export default async function handler(req, res) {
         hint: "Set GROQ_API_KEY in Vercel env (prod) or in .env.local (vercel dev). Restart dev server.",
       });
     }
-    if (!key.startsWith("sk_gsk_")) {
-      return res.status(500).json({
-        error: "GROQ_API_KEY looks invalid",
-        hint: "Key must start with sk_gsk_. Remove duplicates like sk_gsk_gsk_ and spaces/quotes.",
-      });
-    }
+   // Verificare corectă pentru Groq (cheile încep cu gsk_):
+if (!key.startsWith("gsk_")) {
+  return res.status(500).json({
+    error: "GROQ_API_KEY looks invalid",
+    hint: "Groq keys start with gsk_ (not sk_gsk_)",
+  });
+}
+
 
     const { text, lang } = req.body || {};
     const userText = clampUserText(text);

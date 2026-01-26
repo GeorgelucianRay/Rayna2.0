@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
 
+      // ─────────────────────────────────────────────────────────────
+      // DEV ONLY: /api/rayna-chat → Gemini (server-side middleware în Vite)
+      // ─────────────────────────────────────────────────────────────
       {
         name: "rayna-dev-api",
         configureServer(server) {
@@ -56,14 +59,14 @@ export default defineConfig(({ mode }) => {
               // IMPORTANT: citește cheia la runtime din env + process.env
               // (Vite loadEnv populates "env", dar uneori ai și process.env setat din shell)
               const keyRaw =
-                (process.env.GROQ_API_KEY ||
-                  process.env.VITE_GROQ_API_KEY ||
-                  env.GROQ_API_KEY ||
-                  env.VITE_GROQ_API_KEY ||
+                (process.env.GEMINI_API_KEY ||
+                  process.env.VITE_GEMINI_API_KEY || // fallback (nu recomand pentru client, dar aici e server-side)
+                  env.GEMINI_API_KEY ||
+                  env.VITE_GEMINI_API_KEY ||
                   "").trim();
 
-              // log sigur (nu expune cheia)
-              console.log("[rayna-dev-api] key check", {
+              // log sigur (nu expune cheia completă)
+              console.log("[rayna-dev-api] gemini key check", {
                 hasKey: !!keyRaw,
                 len: keyRaw.length,
                 starts: keyRaw.slice(0, 7),
@@ -73,7 +76,7 @@ export default defineConfig(({ mode }) => {
               if (!keyRaw) {
                 res.statusCode = 500;
                 res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ message: "Missing GROQ_API_KEY" }));
+                res.end(JSON.stringify({ message: "Missing GEMINI_API_KEY" }));
                 return;
               }
 
@@ -84,46 +87,60 @@ export default defineConfig(({ mode }) => {
                 return;
               }
 
-              const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              const model = "gemini-1.5-flash";
+
+              const system =
+                lang === "ro"
+                  ? "Ești Rayna, asistent logistic. Răspunde scurt și concret. Dacă lipsesc date, pune o singură întrebare. Nu inventa."
+                  : lang === "ca"
+                    ? "Ets Rayna, assistent de logística. Respon curt i directe. Si falten dades, fes una sola pregunta. No inventis."
+                    : "Eres Rayna, asistente de logística. Responde corto y directo. Si faltan datos, haz una sola pregunta. No inventes.";
+
+              // Gemini endpoint (cheia e în query, așa cere API-ul)
+              const geminiUrl =
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+                encodeURIComponent(keyRaw);
+
+              const geminiRes = await fetch(geminiUrl, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${keyRaw}`,
                 },
                 body: JSON.stringify({
-                  model: "llama-3.1-8b-instant",
-                  temperature: 0.2,
-                  max_tokens: Math.min(Number.isFinite(maxTokens) ? maxTokens : 240, 600),
-                  messages: [
+                  contents: [
                     {
-                      role: "system",
-                      content:
-                        lang === "ro"
-                          ? "Ești Rayna, asistent logistic. Răspunde scurt și concret. Dacă lipsesc date, pune o singură întrebare."
-                          : lang === "ca"
-                          ? "Ets Rayna, assistent de logística. Respon curt i directe. Si falten dades, fes una sola pregunta."
-                          : "Eres Rayna, asistente de logística. Responde corto y directo. Si faltan datos, haz una sola pregunta.",
+                      role: "user",
+                      parts: [{ text: `${system}\n\nUsuario: ${text}` }],
                     },
-                    { role: "user", content: text },
                   ],
+                  generationConfig: {
+                    maxOutputTokens: Math.min(Number.isFinite(maxTokens) ? maxTokens : 240, 800),
+                    temperature: 0.2,
+                  },
                 }),
               });
 
-              const raw = await groqRes.text();
+              const raw = await geminiRes.text();
 
-              if (!groqRes.ok) {
-                res.statusCode = groqRes.status;
+              if (!geminiRes.ok) {
+                res.statusCode = geminiRes.status;
                 res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ message: `Groq error ${groqRes.status}`, raw: raw.slice(0, 1500) }));
+                res.end(
+                  JSON.stringify({
+                    message: `Gemini error ${geminiRes.status}`,
+                    raw: raw.slice(0, 1500),
+                  })
+                );
                 return;
               }
 
               const data = JSON.parse(raw);
-              const answer = data?.choices?.[0]?.message?.content || "";
+              const answer =
+                data?.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("") || "";
 
               res.statusCode = 200;
               res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ model: data?.model || "groq", answer, usage: data?.usage || null }));
+              res.end(JSON.stringify({ model, answer, usage: data?.usageMetadata || null }));
             } catch (e) {
               console.error("[rayna-dev-api] error:", e);
               res.statusCode = 500;
