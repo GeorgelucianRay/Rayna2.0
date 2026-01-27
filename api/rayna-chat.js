@@ -4,21 +4,22 @@ import { groq } from "@ai-sdk/groq";
 
 export const config = { runtime: "nodejs" };
 
-const MODEL = "llama-3.1-8b-instant";
+const MODEL_ANSWER = "llama-3.1-8b-instant";
+const MODEL_NORMALIZE = "llama-3.1-8b-instant";
 
 /* ─────────────────────────────────────────────────────────────
    1) SYSTEM PROMPTS
    ───────────────────────────────────────────────────────────── */
 
 function systemPromptAnswer(lang = "es") {
-  // Groq e “humanizer”, DAR are voie doar pe baza CONTEXTULUI
+  // Pass 2 (humanize): STRICT pe baza CONTEXTULUI din DB
   if (lang === "ro") {
     return `
 Ești Rayna (componenta AI de formulare), asistent logistic.
 REGULI CRITICE:
 - NU inventa absolut nimic. Nu inventa coduri, locații, stocuri, numere, "almacén", "serie".
-- Folosește STRICT datele din CONTEXT (care vin din baza de date).
-- Dacă CONTEXT nu are informația cerută, spune clar: "Nu am găsit în sistem" și pune O SINGURĂ întrebare de clarificare.
+- Folosește STRICT datele din CONTEXT_DB_JSON (care vin din baza de date).
+- Dacă CONTEXT_DB_JSON nu are informația cerută, spune clar: "Nu am găsit în sistem" și pune O SINGURĂ întrebare de clarificare.
 - Răspunde scurt (2-4 propoziții), clar, prietenos.
 `.trim();
   }
@@ -27,8 +28,8 @@ REGULI CRITICE:
 Ets Rayna (component d'IA de redacció), assistent de logística.
 REGLES CRÍTIQUES:
 - No inventis res. No inventis codis, ubicacions, estocs, números.
-- Fes servir NOMÉS dades del CONTEXT (venen de la base de dades).
-- Si el CONTEXT no té la info, digues: "No ho trobo al sistema" i fes UNA sola pregunta de clarificació.
+- Fes servir NOMÉS dades del CONTEXT_DB_JSON (venen de la base de dades).
+- Si el CONTEXT_DB_JSON no té la info, digues: "No ho trobo al sistema" i fes UNA sola pregunta de clarificació.
 - Resposta curta (2-4 frases).
 `.trim();
   }
@@ -36,13 +37,13 @@ REGLES CRÍTIQUES:
 Eres Rayna (componente IA de redacción), asistente de logística.
 REGLAS CRÍTICAS:
 - NO inventes absolutamente nada. No inventes códigos, ubicaciones, stock, números.
-- Usa SOLO los datos del CONTEXT (vienen de la base de datos).
-- Si el CONTEXT no tiene la información, di: "No lo encuentro en el sistema" y haz UNA sola pregunta de aclaración.
+- Usa SOLO los datos del CONTEXT_DB_JSON (vienen de la base de datos).
+- Si el CONTEXT_DB_JSON no tiene la información, di: "No lo encuentro en el sistema" y haz UNA sola pregunta de aclaración.
 - Responde corto (2-4 frases), claro y amable.
 `.trim();
 }
 
-/* NORMALIZE: translator → intent + slots + normalized_text + detected_lang */
+/* Pass 1 (normalize): translator → normalized_text + suggested_intent + slots + detected_lang */
 function systemPromptNormalize() {
   return `
 Rolul tău: Ești un translator între limbaj natural și comenzi sistem pentru Rayna Hub, un asistent logistic.
@@ -123,6 +124,8 @@ Format răspuns JSON (DOAR JSON valid, fără markdown):
   "slots": { "slot_name": "value" },
   "detected_lang": "es|ro|ca"
 }
+
+IMPORTANT: Răspunde DOAR cu JSON valid (fără explicații, fără markdown, fără backticks).
 `.trim();
 }
 
@@ -221,7 +224,7 @@ export default async function handler(req, res) {
     const t0 = Date.now();
 
     /* ─────────────────────────────
-       MODE 1: normalize
+       MODE 1: normalize  (pass 1)
        ───────────────────────────── */
     if (String(mode) === "normalize") {
       // intents din RaynaHub (lista cu exemple) – optional; îl includem ca “hint”
@@ -234,7 +237,7 @@ export default async function handler(req, res) {
         `Răspunde DOAR cu JSON valid conform formatului cerut.`;
 
       const result = await generateText({
-        model: groq(MODEL),
+        model: groq(MODEL_NORMALIZE),
         system: systemPromptNormalize(),
         prompt,
         maxTokens: 320,
@@ -250,7 +253,7 @@ export default async function handler(req, res) {
           error: "normalize_bad_json",
           hint: "Model did not return valid JSON",
           raw: (result.text || "").slice(0, 2000),
-          model: MODEL,
+          model: MODEL_NORMALIZE,
           latency_ms,
         });
       }
@@ -260,13 +263,13 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ...out,
         usage: result.usage || null,
-        model: MODEL,
+        model: MODEL_NORMALIZE,
         latency_ms,
       });
     }
 
     /* ─────────────────────────────
-       MODE 2: answer (humanize)
+       MODE 2: answer (pass 2 humanize)
        - primește context real din DB
        ───────────────────────────── */
     const safeContext = context && typeof context === "object" ? context : null;
@@ -278,7 +281,7 @@ export default async function handler(req, res) {
       `Dacă nu există date suficiente în context, spune că nu ai găsit în sistem și pune o singură întrebare de clarificare.`;
 
     const result = await generateText({
-      model: groq(MODEL),
+      model: groq(MODEL_ANSWER),
       system: systemPromptAnswer(lang || "es"),
       prompt,
       maxTokens: Number.isFinite(Number(maxTokens)) ? Number(maxTokens) : 220,
@@ -291,7 +294,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       text: result.text || "",
       usage: result.usage || null,
-      model: MODEL,
+      model: MODEL_ANSWER,
       latency_ms,
     });
   } catch (err) {
