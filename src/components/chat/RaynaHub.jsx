@@ -716,6 +716,8 @@ const ai = aiRef.current;
       // 1) NLU direct
       // ─────────────────────────────────────────────
       let det = detectIntent(preNLU, intentsData);
+      window.__raynaLog("NLU/Direct", { preNLU, det }, "info");
+
 
       // reject wrong intent (greeting) for depot-like text
       if (det?.intent?.type && shouldRejectIntentForText(det.intent.type, userTextLocal)) {
@@ -803,6 +805,8 @@ const ai = aiRef.current;
         }
       } catch (e) {
         window.__raynaLog("AI/Normalize:FAIL", { message: e?.message || String(e) }, "error");
+        window.__raynaLog("NLU/AfterNormalize", { det }, "info");
+
         // nu blocăm fluxul
       }
 
@@ -880,6 +884,7 @@ const ai = aiRef.current;
       // ─────────────────────────────────────────────
       if (det?.intent?.type) {
         setSceneWithFade(pickScene({ intentType: det.intent.type, userText: userTextLocal }));
+        window.__raynaLog("ROUTE/WillRunIntent", { type: det.intent.type, slots: det.slots }, "info");
 
         await routeIntent({
           det,
