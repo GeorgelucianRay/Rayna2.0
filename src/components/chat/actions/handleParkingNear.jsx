@@ -6,13 +6,66 @@ import { getMapsLinkFromRecord } from "../helpers/gps";
 import { parseCoords, haversineKm, pointToSegmentKm } from "../helpers/geo";
 
 /* ============================================================
-   Parametri / constante
+   OSRM helpers
    ============================================================ */
-const TRUCK_MAX_KMH = 90;       // limitare fizică
-const TRUCK_AVG_KMH = 70;       // medie realistă pe drum
-const DRUM_FACTOR = 1.4;        // cât e mai lung drumul real față de linie dreaptă
+const OSRM_BASE = "https://router.project-osrm.org"; // demo public (pt test)
+const OSRM_PROFILE = "driving";
 
-// Conversie: minute disponibile → distanță maximă în linie dreaptă
+async function osrmRoute({ start, end, overview = "false", geometries = "geojson" }) {
+  // start/end: [lng, lat]
+  if (!start?.length || !end?.length) throw new Error("OSRM: missing start/end coords");
+
+  const [slng, slat] = start;
+  const [elng, elat] = end;
+
+  const url =
+    `${OSRM_BASE}/route/v1/${OSRM_PROFILE}/` +
+    `${slng},${slat};${elng},${elat}` +
+    `?overview=${encodeURIComponent(overview)}` +
+    `&geometries=${encodeURIComponent(geometries)}` +
+    `&alternatives=false&steps=false`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`OSRM route failed: ${res.status}`);
+  const json = await res.json();
+  if (!json?.routes?.length) throw new Error("OSRM: no routes returned");
+  return json.routes[0]; // { duration (sec), distance (m), geometry ... }
+}
+
+async function osrmDurationDistance(start, end) {
+  try {
+    const r = await osrmRoute({ start, end, overview: "false", geometries: "geojson" });
+    return { durationSec: r.duration, distanceM: r.distance };
+  } catch (e) {
+    console.warn("[osrmDurationDistance] fallback -> null", e);
+    return { durationSec: null, distanceM: null };
+  }
+}
+
+// mic utilitar: limităm concurența la OSRM ca să nu blocăm UI
+async function mapLimit(items, limit, mapper) {
+  const results = new Array(items.length);
+  let i = 0;
+
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      results[idx] = await mapper(items[idx], idx);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/* ============================================================
+   (Păstrate) constante vechi – acum estimateReachableKm NU mai e esențial
+   ============================================================ */
+const TRUCK_MAX_KMH = 90; // limitare fizică
+const TRUCK_AVG_KMH = 70; // medie realistă pe drum
+const DRUM_FACTOR = 1.4; // cât e mai lung drumul real față de linie dreaptă
+
 export function estimateReachableKm(minutes) {
   if (!minutes) return 0;
   const realKm = (minutes / 60) * TRUCK_AVG_KMH;
@@ -40,16 +93,18 @@ export function parseTimeToMinutes(raw) {
 }
 
 /* ============================================================
-   UI: Card pentru un parking
+   UI: Card pentru un parking (adăugat ETA)
    ============================================================ */
-function ParkingCard({ p, distKm }) {
+function ParkingCard({ p, distKm, etaMin }) {
   const km = Number.isFinite(distKm) ? `· ${distKm.toFixed(1)} km` : "";
+  const eta = Number.isFinite(etaMin) ? `· ~${Math.round(etaMin)} min` : "";
   const link = getMapsLinkFromRecord(p) || "#";
+
   return (
     <div className={styles.card}>
       <div className={styles.cardTitle}>{p.nombre}</div>
       <div className={styles.cardSubtitle}>
-        {(p.direccion || "").trim()} {km}
+        {(p.direccion || "").trim()} {km} {eta}
       </div>
       <div className={styles.cardActions}>
         <a
@@ -142,7 +197,10 @@ export async function handleParkingNearStart({
   if (!placeName) {
     setMessages((m) => [
       ...m,
-      { from: "bot", reply_text: 'Necesito el nombre del sitio. Ej.: «Búscame un parking cerca de TCB».' },
+      {
+        from: "bot",
+        reply_text: 'Necesito el nombre del sitio. Ej.: «Búscame un parking cerca de TCB».',
+      },
     ]);
     return;
   }
@@ -151,7 +209,10 @@ export async function handleParkingNearStart({
   if (!dest) {
     setMessages((m) => [
       ...m,
-      { from: "bot", reply_text: `No he encontrado el sitio «${placeName}». Intenta con el nombre tal y como aparece en GPS.` },
+      {
+        from: "bot",
+        reply_text: `No he encontrado el sitio «${placeName}». Intenta con el nombre tal y como aparece en GPS.`,
+      },
     ]);
     return;
   }
@@ -169,7 +230,8 @@ export async function handleParkingNearStart({
 
   let scored = parks.map((p) => {
     const dToDest = haversineKm(p._pos, destPos);
-    const segDist = userPos && destPos ? pointToSegmentKm(p._pos, userPos, destPos) : Number.POSITIVE_INFINITY;
+    const segDist =
+      userPos && destPos ? pointToSegmentKm(p._pos, userPos, destPos) : Number.POSITIVE_INFINITY;
     return { p, dToDest, segDist };
   });
 
@@ -189,19 +251,29 @@ export async function handleParkingNearStart({
     return;
   }
 
+  // OSRM ETA către primul parking (dacă avem userPos)
+  let etaMin = null;
+  if (userPos) {
+    const { durationSec } = await osrmDurationDistance(userPos, suggestions[0].p._pos);
+    if (Number.isFinite(durationSec)) etaMin = durationSec / 60;
+  }
+
   const first = suggestions[0];
   setMessages((m) => [
     ...m,
     { from: "bot", reply_text: "Claro, aquí puedes aparcar correctamente:" },
-    { from: "bot", reply_text: "", render: () => <ParkingCard p={first.p} distKm={first.dToDest} /> },
+    {
+      from: "bot",
+      reply_text: "",
+      render: () => <ParkingCard p={first.p} distKm={first.dToDest} etaMin={etaMin} />,
+    },
   ]);
 
-  const userToDestKm = userPos ? haversineKm(userPos, destPos) : null;
+  // dacă vrei, poți salva și OSRM dist/dur către dest (optional)
   setParkingCtx({
     type: "parking",
     dest: { id: dest.id, nombre: dest.nombre, pos: destPos },
     userPos: userPos || null,
-    userToDestKm,
     suggestions,
     index: 0,
   });
@@ -210,13 +282,13 @@ export async function handleParkingNearStart({
   if (/no llego/i.test(userText)) {
     setMessages((m) => [
       ...m,
-      { from: "bot", reply_text: "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" }
+      { from: "bot", reply_text: "¿Cuánto disco te queda? (ej.: 1:25 o 45 min)" },
     ]);
   }
 }
 
 /* ============================================================
-   1.5) Recalcul după timp
+   1.5) Recalcul după timp (ACUM pe OSRM duration)
    ============================================================ */
 export async function handleParkingRecomputeByTime({
   parkingCtx,
@@ -226,67 +298,97 @@ export async function handleParkingRecomputeByTime({
 }) {
   try {
     if (!parkingCtx?.dest?.pos) {
-      setMessages((m) => [...m, { from: "bot", reply_text: "No tengo el destino. Pide un parking de nuevo, por favor." }]);
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "No tengo el destino. Pide un parking de nuevo, por favor." },
+      ]);
       return;
     }
     if (!parkingCtx?.userPos) {
-      setMessages((m) => [...m, { from: "bot", reply_text: "No tengo tu ubicación. Activa ubicación y vuelve a pedirme otro parking." }]);
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "No tengo tu ubicación. Activa ubicación y vuelve a pedirme otro parking." },
+      ]);
       return;
     }
 
     const { dest, userPos } = parkingCtx;
     const destPos = dest.pos;
-    const reachKm = estimateReachableKm(minutes);
 
     const { data: parksRaw } = await listTable("gps_parkings");
     const parks = (parksRaw || [])
       .map((p) => ({ ...p, _pos: parseCoords(p.coordenadas) }))
       .filter((p) => p._pos);
 
-    let scored = parks.map((p) => {
-      const dToDest = haversineKm(p._pos, destPos);
-      const dFromUser = haversineKm(p._pos, userPos);
-      const segDist = pointToSegmentKm(p._pos, userPos, destPos);
-      return { p, dToDest, dFromUser, segDist };
-    });
-
-    const userToDestNow = haversineKm(userPos, destPos);
-    let reachable = scored.filter(
-      (x) => x.dFromUser <= reachKm && x.dToDest < userToDestNow + 0.3
-    );
-
-    let relaxed = false;
-    if (!reachable.length) {
-      reachable = scored.filter(
-        (x) => x.dFromUser <= reachKm * 1.2 && x.dToDest < userToDestNow + 0.3
-      );
-      relaxed = reachable.length > 0;
-    }
-
-    if (!reachable.length) {
-      setMessages((m) => [...m, {
-        from: "bot",
-        reply_text: `Con ${minutes} min (~${reachKm.toFixed(0)} km en línea recta) no alcanzo ningún parking por delante. ¿Te muestro el más cercano igualmente?`,
-      }]);
+    if (!parks.length) {
+      setMessages((m) => [...m, { from: "bot", reply_text: "No tengo parkings en la base de datos." }]);
       return;
     }
 
+    // 1) prefiltru rapid (haversine) ca să nu apelăm OSRM la sute
+    const pre = parks
+      .map((p) => {
+        const dToDest = haversineKm(p._pos, destPos);
+        const dFromUser = haversineKm(p._pos, userPos);
+        const segDist = pointToSegmentKm(p._pos, userPos, destPos);
+        return { p, dToDest, dFromUser, segDist };
+      })
+      // păstrăm "în față" către dest + relativ aproape de user
+      .filter((x) => x.dToDest <= haversineKm(userPos, destPos) + 0.5)
+      .sort((a, b) => a.dFromUser - b.dFromUser)
+      .slice(0, 25); // TOP 25 pentru OSRM
+
+    const budgetSec = Math.max(0, Number(minutes || 0)) * 60;
+
+    // 2) OSRM pentru fiecare candidat (concurență limitată)
+    const enriched = await mapLimit(pre, 5, async (x) => {
+      const { durationSec, distanceM } = await osrmDurationDistance(userPos, x.p._pos);
+      return { ...x, osrmDurationSec: durationSec, osrmDistanceM: distanceM };
+    });
+
+    // 3) filtrare strictă pe OSRM duration
+    let reachable = enriched.filter((x) => Number.isFinite(x.osrmDurationSec) && x.osrmDurationSec <= budgetSec);
+
+    // fallback: dacă OSRM a picat (duration null), păstrăm nimic (mai safe)
+    if (!reachable.length) {
+      setMessages((m) => [
+        ...m,
+        {
+          from: "bot",
+          reply_text:
+            `Con ${minutes} min no encuentro un parking alcanzable según el tiempo real de ruta. ` +
+            `¿Te muestro igualmente el más cercano?`,
+        },
+      ]);
+      return;
+    }
+
+    // sort: cel mai bun pentru dest + timp mic
     reachable.sort(
-      (a, b) => a.dToDest - b.dToDest || a.segDist - b.segDist || a.dFromUser - b.dFromUser
+      (a, b) =>
+        a.dToDest - b.dToDest ||
+        a.osrmDurationSec - b.osrmDurationSec ||
+        a.segDist - b.segDist ||
+        a.dFromUser - b.dFromUser
     );
 
     const suggestions = reachable.slice(0, 6);
+
+    // ETA pentru primul
     const first = suggestions[0];
+    const etaMin = first?.osrmDurationSec ? first.osrmDurationSec / 60 : null;
 
     setMessages((m) => [
       ...m,
       {
         from: "bot",
-        reply_text: relaxed
-          ? `He relajado un poco el radio (x1.2). Con ${minutes} min, te propongo esto:`
-          : `Con ${minutes} min (~${reachKm.toFixed(0)} km) te propongo este parking:`,
+        reply_text: `Con ${minutes} min (tiempo real de ruta) te propongo este parking:`,
       },
-      { from: "bot", reply_text: "", render: () => <ParkingCard p={first.p} distKm={first.dToDest} /> },
+      {
+        from: "bot",
+        reply_text: "",
+        render: () => <ParkingCard p={first.p} distKm={first.dToDest} etaMin={etaMin} />,
+      },
     ]);
 
     setParkingCtx({
@@ -294,7 +396,7 @@ export async function handleParkingRecomputeByTime({
       suggestions,
       index: 0,
       remainingMinutes: minutes,
-      mode: "time_filter",
+      mode: "time_filter_osrm",
     });
   } catch (e) {
     console.error("[handleParkingRecomputeByTime]", e);
@@ -303,26 +405,44 @@ export async function handleParkingRecomputeByTime({
 }
 
 /* ============================================================
-   2) Next
+   2) Next (calculăm ETA OSRM și la next, dacă avem userPos)
    ============================================================ */
 export async function handleParkingNext({ parkingCtx, setMessages }) {
   if (!parkingCtx || parkingCtx.type !== "parking" || !parkingCtx.suggestions?.length) {
-    setMessages((m) => [...m, { from: "bot", reply_text: "No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." }]);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "No tengo otra sugerencia ahora. Pide un parking de nuevo, por favor." },
+    ]);
     return;
   }
-  const { suggestions, index } = parkingCtx;
+
+  const { suggestions, index, userPos } = parkingCtx;
   const nextIdx = index + 1;
 
   if (nextIdx >= suggestions.length) {
-    setMessages((m) => [...m, { from: "bot", reply_text: "No tengo más opciones cercanas. ¿Quieres que busque más lejos?" }]);
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "No tengo más opciones cercanas. ¿Quieres que busque más lejos?" },
+    ]);
     return;
   }
 
   const next = suggestions[nextIdx];
+
+  let etaMin = null;
+  if (userPos && next?.p?._pos) {
+    const { durationSec } = await osrmDurationDistance(userPos, next.p._pos);
+    if (Number.isFinite(durationSec)) etaMin = durationSec / 60;
+  }
+
   setMessages((m) => [
     ...m,
     { from: "bot", reply_text: "Ah, perdona. Aquí hay otro parking:" },
-    { from: "bot", reply_text: "", render: () => <ParkingCard p={next.p} distKm={next.dToDest} /> },
+    {
+      from: "bot",
+      reply_text: "",
+      render: () => <ParkingCard p={next.p} distKm={next.dToDest} etaMin={etaMin} />,
+    },
   ]);
 
   parkingCtx.index = nextIdx;

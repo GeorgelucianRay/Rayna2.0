@@ -196,15 +196,21 @@ function preloadImage(url) {
   });
 }
 
-/* ---------- AI fallback: call /api/rayna-chat (dev middleware sau Vercel) ---------- */
+/* ─────────────────────────────────────────────────────────────
+   AI endpoint: /api/rayna-chat
+   - mode: "answer" (conversational)
+   - mode: "normalize" (NLU normalization)
+   ───────────────────────────────────────────────────────────── */
+
+/* ---------- callAiFallback: mode "answer" ---------- */
 async function callAiFallback({ text, lang, maxTokens = 240 }) {
   const r = await fetch("/api/rayna-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      mode: "answer",
       text,
       lang,
-      mode: "short",
       maxTokens,
     }),
   });
@@ -222,6 +228,73 @@ async function callAiFallback({ text, lang, maxTokens = 240 }) {
     window.__raynaLog?.("AI/Fallback:BAD_JSON", { raw }, "error");
     throw new Error(`AI returned invalid JSON: ${raw.slice(0, 500)}`);
   }
+}
+
+/* ---------- shrink intents for AI normalize (avoid huge payloads) ---------- */
+function serializeIntentsForAi(intentsData, { maxIntents = 80, maxExamples = 6 } = {}) {
+  const arr = Array.isArray(intentsData) ? intentsData : [];
+
+  const pickExamples = (it) => {
+    const ex =
+      it?.examples ||
+      it?.training ||
+      it?.utterances ||
+      it?.phrases ||
+      it?.samples ||
+      [];
+    return Array.isArray(ex) ? ex : [];
+  };
+
+  return arr
+    .slice(0, maxIntents)
+    .map((it) => ({
+      type: it?.type || it?.intent || it?.name || "",
+      examples: pickExamples(it)
+        .filter((x) => typeof x === "string" && x.trim())
+        .slice(0, maxExamples),
+      slots: it?.slots || it?.slot_schema || it?.entities || undefined,
+      tags: it?.tags || undefined,
+    }))
+    .filter((x) => x.type);
+}
+
+/* ---------- callAiNormalizer: mode "normalize" ---------- */
+async function callAiNormalizer({ text, lang, intentsData }) {
+  const intents = serializeIntentsForAi(intentsData);
+
+  const r = await fetch("/api/rayna-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mode: "normalize",
+      text,
+      lang,
+      intents, // listă scurtă pentru AI (nu ALL_INTENTS brut)
+    }),
+  });
+
+  const raw = await r.text().catch(() => "");
+
+  if (!r.ok) {
+    window.__raynaLog?.("AI/Normalize:HTTP_ERROR", { status: r.status, raw }, "error");
+    throw new Error(`AI normalize failed (${r.status}): ${raw.slice(0, 1500)}`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    window.__raynaLog?.("AI/Normalize:BAD_JSON", { raw }, "error");
+    throw new Error(`AI normalize returned invalid JSON: ${raw.slice(0, 500)}`);
+  }
+
+  return {
+    normalized_text: json?.normalized_text || json?.normalizedText || json?.text || "",
+    suggested_intent: json?.suggested_intent || json?.suggestedIntent || json?.intent || "",
+    slots: json?.slots && typeof json.slots === "object" ? json.slots : null,
+    detected_lang: json?.detected_lang || json?.lang || null,
+    raw: json,
+  };
 }
 
 /* ---------- log fallback NLU -> AI in Supabase ---------- */
@@ -624,7 +697,9 @@ export default function RaynaHub() {
       const preNLU = shortenForNLU(userTextLocal);
       const wantsDepot = isDepotRequest(userTextLocal);
 
-      // 1) NLU
+      // ─────────────────────────────────────────────
+      // 1) NLU direct
+      // ─────────────────────────────────────────────
       let det = detectIntent(preNLU, intentsData);
 
       // reject wrong intent (greeting) for depot-like text
@@ -633,12 +708,94 @@ export default function RaynaHub() {
         det = null;
       }
 
-      // inject limit in slots
+      // inject limit in slots (dacă avem intent deja)
       if (requestedLimitRef.current && det?.intent?.type) {
         det = { ...det, slots: { ...(det.slots || {}), limit: det?.slots?.limit ?? requestedLimitRef.current } };
       }
 
-      // 2) semantic fallback
+      // ─────────────────────────────────────────────
+      // 2) AI NORMALIZARE (NOU!)
+      // dacă nu avem intent sau confidence < 0.6
+      // ─────────────────────────────────────────────
+      try {
+        const conf =
+          typeof det?.confidence === "number"
+            ? det.confidence
+            : typeof det?.score === "number"
+              ? det.score
+              : typeof det?.prob === "number"
+                ? det.prob
+                : null;
+
+        if (!det?.intent?.type || (conf != null && conf < 0.6)) {
+          window.__raynaLog("AI/Normalize:START", { lang: langRef.current, text: preNLU, conf }, "info");
+
+          const aiNorm = await callAiNormalizer({
+            text: preNLU,
+            intentsData,
+            lang: langRef.current,
+          });
+
+          // dacă AI detectează altă limbă, o respectăm (opțional, dar util)
+          if (aiNorm?.detected_lang) {
+            const dl = normalizeLang(aiNorm.detected_lang);
+            if (dl) langRef.current = dl;
+          }
+
+          window.__raynaLog("AI/Normalize:OK", {
+            normalized_text: aiNorm.normalized_text,
+            suggested_intent: aiNorm.suggested_intent,
+            slots: aiNorm.slots,
+            detected_lang: aiNorm.detected_lang,
+          });
+
+          // NLU încercare 2 cu text normalizat
+          if (aiNorm.normalized_text) {
+            const det2 = detectIntent(aiNorm.normalized_text, intentsData);
+
+            if (det2?.intent?.type && shouldRejectIntentForText(det2.intent.type, userTextLocal)) {
+              window.__raynaLog("NLU2/RejectIntent", { intent: det2.intent.type, text: userTextLocal }, "info");
+              // keep previous det (or null)
+            } else if (det2?.intent?.type) {
+              det = det2;
+            }
+          }
+
+          // Adaugă slots extrase de AI (dacă avem det)
+          if (aiNorm.slots && det) {
+            det.slots = { ...(det.slots || {}), ...aiNorm.slots };
+          }
+
+          // inject limit și aici (dacă user a cerut)
+          if (requestedLimitRef.current && det?.intent?.type) {
+            det = { ...det, slots: { ...(det.slots || {}), limit: det?.slots?.limit ?? requestedLimitRef.current } };
+          }
+
+          // Dacă tot nu prindem intent, dar AI a sugerat un intent valid → îl folosim
+          if (!det?.intent?.type && aiNorm.suggested_intent) {
+            const s = String(aiNorm.suggested_intent || "").trim();
+            const match = (Array.isArray(intentsData) ? intentsData : []).find(
+              (it) => String(it?.type || "").toLowerCase() === s.toLowerCase()
+            );
+            if (match?.type) {
+              det = {
+                intent: match,
+                slots: { ...(aiNorm.slots || {}), limit: requestedLimitRef.current || undefined },
+                lang: langRef.current,
+                confidence: 0.6,
+              };
+              window.__raynaLog("AI/Normalize:UseSuggestedIntent", { type: match.type }, "info");
+            }
+          }
+        }
+      } catch (e) {
+        window.__raynaLog("AI/Normalize:FAIL", { message: e?.message || String(e) }, "error");
+        // nu blocăm fluxul
+      }
+
+      // ─────────────────────────────────────────────
+      // 3) semantic fallback (dacă tot nu avem intent)
+      // ─────────────────────────────────────────────
       if (!det?.intent?.type) {
         let addedNLULoading = false;
 
@@ -674,7 +831,7 @@ export default function RaynaHub() {
           } else {
             det = {
               intent: candidate,
-              slots: { limit: requestedLimitRef.current || undefined },
+              slots: { ...(det?.slots || {}), limit: requestedLimitRef.current || undefined },
               lang: langRef.current,
             };
           }
@@ -690,7 +847,9 @@ export default function RaynaHub() {
         }
       }
 
-      // 3) OVERRIDE: dacă user cere depot/containere și intentul nu e depot/container → force AI
+      // ─────────────────────────────────────────────
+      // 4) OVERRIDE depot: dacă user cere depot/containere și intentul nu e depot/container → force AI
+      // ─────────────────────────────────────────────
       const intentType = det?.intent?.type || "";
       const looksNonDepotIntent =
         !!intentType &&
@@ -703,7 +862,9 @@ export default function RaynaHub() {
         det = null;
       }
 
-      // 4) normal route intent
+      // ─────────────────────────────────────────────
+      // 5) route intent
+      // ─────────────────────────────────────────────
       if (det?.intent?.type) {
         setSceneWithFade(pickScene({ intentType: det.intent.type, userText: userTextLocal }));
 
@@ -722,7 +883,9 @@ export default function RaynaHub() {
         return;
       }
 
-      // 5) AI fallback
+      // ─────────────────────────────────────────────
+      // 6) AI answer fallback (ultima plasă)
+      // ─────────────────────────────────────────────
       try {
         window.__raynaLog("AI/Fallback:START", { lang: langRef.current, text: userTextLocal });
 
@@ -751,7 +914,10 @@ export default function RaynaHub() {
           userText: userTextLocal,
           nluText: preNLU,
           nluIntent: null,
-          nluMeta: { stage: "ai_fallback", requested_limit: requestedLimitRef.current || null },
+          nluMeta: {
+            stage: "ai_answer_fallback",
+            requested_limit: requestedLimitRef.current || null,
+          },
           aiModel: aiRes?.model || null,
           aiAnswer,
           aiUsage: aiRes?.usage || null,
@@ -823,12 +989,7 @@ export default function RaynaHub() {
         <div className={styles.msgColLeft}>
           <div className={styles.msgLabel}>{label}</div>
           <div className={styles.bubbleAi}>
-            <TypingText
-              text={botText}
-              speed={14}
-              enabled={typingAllowed}
-              onDone={() => typedDoneRef.current.add(i)}
-            />
+            <TypingText text={botText} speed={14} enabled={typingAllowed} onDone={() => typedDoneRef.current.add(i)} />
             {m.render ? <div className={styles.renderWrap}>{m.render()}</div> : null}
           </div>
         </div>
