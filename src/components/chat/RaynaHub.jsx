@@ -9,6 +9,7 @@ import { supabase } from "../../supabaseClient";
 import { shortenForNLU } from "./nlu/shorten";
 import { semanticMatch } from "./semanticFallback";
 import { detectLanguage, normalizeLang } from "./nlu/lang";
+import { createRaynaAiBridge } from "./ai/raynaAiBridge";
 import { STR, pushBot } from "./nlu/i18n";
 import { getIntentIndex } from "./nlu/semantic";
 import ALL_INTENTS from "../../intents";
@@ -509,6 +510,15 @@ export default function RaynaHub() {
   const [parkingCtx, setParkingCtx] = useState(null);
   const intentsData = useMemo(() => ALL_INTENTS || [], []);
   const langRef = useRef("es");
+  const aiRef = useRef(null);
+if (!aiRef.current) {
+  aiRef.current = createRaynaAiBridge({
+    intentsData,
+    langRef,
+    logger: (title, data, level) => window.__raynaLog?.(title, data, level),
+  });
+}
+const ai = aiRef.current;
 
   const endRef = useRef(null);
   useEffect(() => scrollToBottom(endRef), [messages]);
@@ -625,23 +635,28 @@ export default function RaynaHub() {
     if (!loading) getIntentIndex(intentsData).catch(() => {});
   }, [loading, intentsData]);
 
-  const runAction = (intent, slots, userText) =>
-    dispatchAction({
-      intent,
-      slots,
-      userText,
-      profile,
-      role,
-      setMessages,
-      setAwaiting,
-      saving,
-      setSaving,
-      parkingCtx,
-      setParkingCtx,
-      askUserLocationInteractive,
-      tryGetUserPos,
-    });
+  const runAction = async (intent, slots, userText) => {
+  const result = await dispatchAction({
+    intent,
+    slots,
+    userText,
+    profile,
+    role,
+    setMessages,
+    setAwaiting,
+    saving,
+    setSaving,
+    parkingCtx,
+    setParkingCtx,
+    askUserLocationInteractive,
+    tryGetUserPos,
+  });
 
+  // ✅ dacă acțiunea returnează {context}, bridge-ul îl reține
+  ai.captureContext(result);
+
+  return result;
+};
   const send = async () => {
     const userTextLocal = text.trim();
     if (!userTextLocal) return;
@@ -730,12 +745,10 @@ export default function RaynaHub() {
         if (!det?.intent?.type || (conf != null && conf < 0.6)) {
           window.__raynaLog("AI/Normalize:START", { lang: langRef.current, text: preNLU, conf }, "info");
 
-          const aiNorm = await callAiNormalizer({
-            text: preNLU,
-            intentsData,
-            lang: langRef.current,
-          });
-
+          const aiNorm = await ai.normalize({
+  text: preNLU,
+  lang: langRef.current,
+});
           // dacă AI detectează altă limbă, o respectăm (opțional, dar util)
           if (aiNorm?.detected_lang) {
             const dl = normalizeLang(aiNorm.detected_lang);
@@ -892,7 +905,11 @@ export default function RaynaHub() {
         pushBot(setMessages, "Conecto con IA…", { lang: langRef.current, _tag: "ai-status" });
 
         const t0 = performance.now();
-        const aiRes = await callAiFallback({ text: userTextLocal, lang: langRef.current, maxTokens: 300 });
+        const aiRes = await ai.answer({
+  text: userTextLocal,
+  lang: langRef.current,
+  maxTokens: 300,
+});
         const t1 = performance.now();
 
         setMessages((m) => m.filter((x) => x._tag !== "ai-status"));
