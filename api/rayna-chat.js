@@ -4,23 +4,45 @@ import { groq } from "@ai-sdk/groq";
 
 export const config = { runtime: "nodejs" };
 
-const MODEL_ANSWER = "llama-3.1-8b-instant";
-const MODEL_NORMALIZE = "llama-3.1-8b-instant"; // poți schimba cu alt model dacă vrei
-
-function systemPromptAnswer(lang = "es") {
-  if (lang === "ro") {
-    return "Ești Rayna, asistent logistic. Răspunde foarte scurt și la obiect (2-4 propoziții). Dacă lipsesc date, pune o singură întrebare clară.";
-  }
-  if (lang === "ca") {
-    return "Ets Rayna, assistent de logística. Respon molt curt i directe (2-4 frases). Si falten dades, fes una sola pregunta clara.";
-  }
-  return "Eres Rayna, asistente de logística. Responde muy corto y directo (2-4 frases). Si faltan datos, haz una sola pregunta clara.";
-}
+const MODEL = "llama-3.1-8b-instant";
 
 /* ─────────────────────────────────────────────────────────────
-   NORMALIZE SYSTEM PROMPT (după cerințele tale)
-   - întoarce DOAR JSON valid, fără text extra
+   1) SYSTEM PROMPTS
    ───────────────────────────────────────────────────────────── */
+
+function systemPromptAnswer(lang = "es") {
+  // Groq e “humanizer”, DAR are voie doar pe baza CONTEXTULUI
+  if (lang === "ro") {
+    return `
+Ești Rayna (componenta AI de formulare), asistent logistic.
+REGULI CRITICE:
+- NU inventa absolut nimic. Nu inventa coduri, locații, stocuri, numere, "almacén", "serie".
+- Folosește STRICT datele din CONTEXT (care vin din baza de date).
+- Dacă CONTEXT nu are informația cerută, spune clar: "Nu am găsit în sistem" și pune O SINGURĂ întrebare de clarificare.
+- Răspunde scurt (2-4 propoziții), clar, prietenos.
+`.trim();
+  }
+  if (lang === "ca") {
+    return `
+Ets Rayna (component d'IA de redacció), assistent de logística.
+REGLES CRÍTIQUES:
+- No inventis res. No inventis codis, ubicacions, estocs, números.
+- Fes servir NOMÉS dades del CONTEXT (venen de la base de dades).
+- Si el CONTEXT no té la info, digues: "No ho trobo al sistema" i fes UNA sola pregunta de clarificació.
+- Resposta curta (2-4 frases).
+`.trim();
+  }
+  return `
+Eres Rayna (componente IA de redacción), asistente de logística.
+REGLAS CRÍTICAS:
+- NO inventes absolutamente nada. No inventes códigos, ubicaciones, stock, números.
+- Usa SOLO los datos del CONTEXT (vienen de la base de datos).
+- Si el CONTEXT no tiene la información, di: "No lo encuentro en el sistema" y haz UNA sola pregunta de aclaración.
+- Responde corto (2-4 frases), claro y amable.
+`.trim();
+}
+
+/* NORMALIZE: translator → intent + slots + normalized_text + detected_lang */
 function systemPromptNormalize() {
   return `
 Rolul tău: Ești un translator între limbaj natural și comenzi sistem pentru Rayna Hub, un asistent logistic.
@@ -65,7 +87,7 @@ Intents disponibile:
    - "container 20 OT MSC pentru încărcare" → "pick container 20 ot MSC"
    - "sugerează-mi unde să iau un 45" → "pick container 45"
 
-5. DEPOZIT / CONTAINERE (din alte module)
+5. DEPOZIT / CONTAINERE
    Intent: "depot_query"
    Trigger words: "containere", "contenedores", "depot", "patio", "terminal"
    Slots: location, terminal, code
@@ -94,33 +116,24 @@ Instrucțiuni stricte:
 - Normalizează la minimum necesar pentru NLU
 - Identifică limba (ro/es/ca) din text
 
-Format răspuns JSON:
+Format răspuns JSON (DOAR JSON valid, fără markdown):
 {
   "normalized_text": "text simplificat pentru NLU",
-  "suggested_intent": "intent_name_or_null",
+  "suggested_intent": "intent_name" sau null,
   "slots": { "slot_name": "value" },
   "detected_lang": "es|ro|ca"
 }
-
-IMPORTANT:
-- Răspunde DOAR cu JSON valid (fără explicații, fără markdown, fără backticks).
 `.trim();
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Helpers
+   2) HELPERS
    ───────────────────────────────────────────────────────────── */
+
 function clampUserText(s, maxChars = 700) {
   const t = String(s || "").trim();
   if (t.length <= maxChars) return t;
   return t.slice(-maxChars);
-}
-
-function clampIntents(intents, maxChars = 6000) {
-  // payload control: serializăm și tăiem din capăt dacă e prea mare
-  const raw = JSON.stringify(intents || []);
-  if (raw.length <= maxChars) return raw;
-  return raw.slice(0, maxChars);
 }
 
 function stripJsonFences(s = "") {
@@ -161,10 +174,11 @@ function normalizeDetectedLang(x) {
 
 function coerceNormalizeShape(obj) {
   const normalized_text = String(obj?.normalized_text || "").trim();
+
   const suggested_intent =
     obj?.suggested_intent === null || obj?.suggested_intent === undefined
       ? null
-      : String(obj.suggested_intent).trim() || null;
+      : String(obj?.suggested_intent || "").trim() || null;
 
   const slots = obj?.slots && typeof obj.slots === "object" ? obj.slots : {};
   const detected_lang = normalizeDetectedLang(obj?.detected_lang);
@@ -173,8 +187,9 @@ function coerceNormalizeShape(obj) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Handler
+   3) HANDLER (2 moduri)
    ───────────────────────────────────────────────────────────── */
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -189,6 +204,7 @@ export default async function handler(req, res) {
         hint: "Set GROQ_API_KEY in Vercel env (prod) or in .env.local (vercel dev). Restart dev server.",
       });
     }
+
     // Verificare corectă pentru Groq (cheile încep cu gsk_):
     if (!key.startsWith("gsk_")) {
       return res.status(500).json({
@@ -197,32 +213,32 @@ export default async function handler(req, res) {
       });
     }
 
-    const { mode = "answer", text, lang, intents, maxTokens } = req.body || {};
+    const { mode = "answer", text, lang, intents, context, maxTokens } = req.body || {};
     const userText = clampUserText(text);
 
     if (!userText) return res.status(400).json({ error: "Missing text" });
 
     const t0 = Date.now();
 
-    // ─────────────────────────────────────────────
-    // MODE: NORMALIZE
-    // ─────────────────────────────────────────────
+    /* ─────────────────────────────
+       MODE 1: normalize
+       ───────────────────────────── */
     if (String(mode) === "normalize") {
-      // intents vine din RaynaHub (scurtat). Totuși, îl “clamp”-uim.
-      const intentsRaw = clampIntents(intents || []);
+      // intents din RaynaHub (lista cu exemple) – optional; îl includem ca “hint”
+      const intentsJson = Array.isArray(intents) ? intents : null;
 
       const prompt =
         `TEXT USER:\n${userText}\n\n` +
         `LANG (hint): ${String(lang || "es")}\n\n` +
-        `INTENTS (JSON, may be truncated):\n${intentsRaw}\n\n` +
-        `Răspunde acum DOAR cu JSON valid conform formatului cerut.`;
+        `INTENTS (optional, JSON):\n${intentsJson ? JSON.stringify(intentsJson) : "null"}\n\n` +
+        `Răspunde DOAR cu JSON valid conform formatului cerut.`;
 
       const result = await generateText({
-        model: groq(MODEL_NORMALIZE),
+        model: groq(MODEL),
         system: systemPromptNormalize(),
         prompt,
-        maxTokens: 260,
-        temperature: 0.0, // 🔒 pentru JSON stabil
+        maxTokens: 320,
+        temperature: 0.0, // stabil JSON
         topP: 0.9,
       });
 
@@ -234,7 +250,7 @@ export default async function handler(req, res) {
           error: "normalize_bad_json",
           hint: "Model did not return valid JSON",
           raw: (result.text || "").slice(0, 2000),
-          model: MODEL_NORMALIZE,
+          model: MODEL,
           latency_ms,
         });
       }
@@ -244,19 +260,28 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ...out,
         usage: result.usage || null,
-        model: MODEL_NORMALIZE,
+        model: MODEL,
         latency_ms,
       });
     }
 
-    // ─────────────────────────────────────────────
-    // MODE: ANSWER (comportamentul tău existent)
-    // ─────────────────────────────────────────────
+    /* ─────────────────────────────
+       MODE 2: answer (humanize)
+       - primește context real din DB
+       ───────────────────────────── */
+    const safeContext = context && typeof context === "object" ? context : null;
+
+    const prompt =
+      `USER_TEXT:\n${userText}\n\n` +
+      `CONTEXT_DB_JSON (source of truth):\n${safeContext ? JSON.stringify(safeContext) : "null"}\n\n` +
+      `Instrucțiuni: formulează un răspuns prietenos pentru utilizator folosind STRICT datele din CONTEXT_DB_JSON. ` +
+      `Dacă nu există date suficiente în context, spune că nu ai găsit în sistem și pune o singură întrebare de clarificare.`;
+
     const result = await generateText({
-      model: groq(MODEL_ANSWER),
+      model: groq(MODEL),
       system: systemPromptAnswer(lang || "es"),
-      prompt: userText,
-      maxTokens: Number.isFinite(Number(maxTokens)) ? Number(maxTokens) : 180,
+      prompt,
+      maxTokens: Number.isFinite(Number(maxTokens)) ? Number(maxTokens) : 220,
       temperature: 0.2,
       topP: 0.9,
     });
@@ -266,11 +291,10 @@ export default async function handler(req, res) {
     return res.status(200).json({
       text: result.text || "",
       usage: result.usage || null,
-      model: MODEL_ANSWER,
+      model: MODEL,
       latency_ms,
     });
   } catch (err) {
-    // aici vei vedea mesajul real (inclusiv 401 invalid_api_key)
     return res.status(500).json({
       error: "AI failed",
       message: err?.message || String(err),
