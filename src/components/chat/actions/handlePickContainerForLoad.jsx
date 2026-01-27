@@ -56,20 +56,66 @@ function parseSizeRich(text = "") {
  * ================================================================ */
 export async function startPickContainerForLoad({ userText, setMessages, setAwaiting }) {
   logUI("PickLoad/START", { userText });
-  clearCtx();
-  saveCtx({ step: "filters", filters: { base: null, special: null, naviera: null } });
 
-  setMessages((m) => [
-    ...m,
-    {
-      from: "bot",
-      reply_text:
-        "¿Qué tamaño necesitas? (20 / 20 OT / 40 bajo / 40 alto=HC / 40 OT / 45)\nTambién dime la naviera (Maersk, MSC, Evergreen…).",
-    },
-  ]);
+  clearCtx();
+
+  // ✅ parsează chiar din primul mesaj
+  const sizeObj = parseSizeRich(userText);
+  const nav = parseNavieraFromAnswer(userText); // string | null | undefined
+
+  // IMPORTANT:
+  // - undefined = nu am înțeles (nu ating)
+  // - null = explicit "fără preferință" (dar la tine naviera e obligatorie, deci o tratăm ca lipsă)
+  const filters = {
+    base: sizeObj.base ?? null,
+    special: sizeObj.special ?? null,
+    naviera: typeof nav === "string" && nav.trim() ? nav.trim() : null,
+  };
+
+  saveCtx({ step: "filters", filters });
+
+  logUI("PickLoad/START_PARSED", { filters });
+
+// ✅ STRICT: fără base + naviera nu căutăm nimic în DB
+if (filters.naviera && filters.base) {
+  return await _suggest(filters, setMessages, setAwaiting);
+}
+
+
+  // ✅ altfel întreabă DOAR ce lipsește
+  if (!filters.base && !filters.special) {
+    setMessages((m) => [
+      ...m,
+      {
+        from: "bot",
+        reply_text:
+          "¿Qué tamaño necesitas? (20 / 20 OT / 40 bajo / 40 alto=HC / 40 OT / 45)",
+      },
+    ]);
+    setAwaiting("pick_load_filters");
+    logUI("PickLoad/AWAITING", { awaiting: "pick_load_filters" });
+    return;
+  }
+
+  if (!filters.naviera) {
+    setMessages((m) => [
+      ...m,
+      {
+        from: "bot",
+        reply_text:
+          "¿De qué naviera lo necesitas? (Maersk, MSC, Evergreen, Hapag, ONE, COSCO, CMA, HMM, ZIM, Yang Ming, Messina…)",
+      },
+    ]);
+    setAwaiting("pick_load_naviera");
+    logUI("PickLoad/AWAITING", { awaiting: "pick_load_naviera" });
+    return;
+  }
+
+  // fallback safe
   setAwaiting("pick_load_filters");
   logUI("PickLoad/AWAITING", { awaiting: "pick_load_filters" });
 }
+
 
 /* ================================================================
  * 2) AWAITING — filtre + bucla de feedback
@@ -138,6 +184,29 @@ export async function handleAwaitingPickForLoad({
     logUI("PickLoad/ASK_NAVIERA", next);
     return true;
   }
+// ✅ obligatoriu: baza (20/40/45). Fără bază nu interogăm DB.
+if (!next.base) {
+  // dacă user a zis "OT" fără 20/40, întrebăm baza specific pentru OT
+  if (next.special === "ot") {
+    setMessages((m) => [
+      ...m,
+      { from: "bot", reply_text: "¿De qué base lo quieres: 20 o 40? (para el Open Top)" },
+    ]);
+    setAwaiting("pick_load_filters");
+    saveCtx({ ...ctx, step: "ask_base_ot" });
+    logUI("PickLoad/ASK_BASE_OT", next);
+    return true;
+  }
+
+  setMessages((m) => [
+    ...m,
+    { from: "bot", reply_text: "¿Qué tamaño necesitas? (20 / 40 / 45)" },
+  ]);
+  setAwaiting("pick_load_filters");
+  saveCtx({ ...ctx, step: "ask_base" });
+  logUI("PickLoad/ASK_BASE", next);
+  return true;
+}
 
   // 2) dacă avem special fără bază (ex.: “open top”)
   if (!next.base && next.special) {
@@ -157,7 +226,19 @@ export async function handleAwaitingPickForLoad({
 /* ——— funcție internă: suggest + follow-up loop ——— */
 async function _suggest(filters, setMessages, setAwaiting) {
   try {
+    // ✅ safety net: nu interogăm DB fără filtre complete
+    if (!filters?.base || !filters?.naviera) {
+      logUI("PickLoad/SUGGEST_BLOCKED_MISSING_FILTERS", { filters }, "info");
+      setMessages((m) => [
+        ...m,
+        { from: "bot", reply_text: "Necesito tamaño (20/40/45) y naviera para poder buscar." },
+      ]);
+      setAwaiting("pick_load_filters");
+      return true;
+    }
+
     const suggestion = await pickBestContainer(filters);
+
    saveCtx({ step: "suggested", lastSuggestion: suggestion || null });
 
     if (!suggestion) {
