@@ -472,12 +472,54 @@ function isGreetingIntent(intentType) {
     t === "hola"
   );
 }
+function isChitChatIntent(intentType) {
+  const t = String(intentType || "").toLowerCase();
+  return (
+    t === "static" ||
+    t.includes("smalltalk") ||
+    t.includes("gracias") ||
+    t.includes("thanks") ||
+    t.includes("mulțum") ||
+    t.includes("multum")
+  );
+}
+
+function looksLikePickContainerLoad(text) {
+  const t = String(text || "").toLowerCase();
+
+  const wantsPick =
+    t.includes("pentru încărcare") ||
+    t.includes("pentru incarcare") ||
+    t.includes("para cargar") ||
+    t.includes("cargar") ||
+    t.includes("pick") ||
+    t.includes("alege") ||
+    t.includes("sugerează") ||
+    t.includes("sugereaza");
+
+  const hasSize = /\b(20|40|45)\b/.test(t);
+
+  const hasContainerWord = t.includes("container") || t.includes("contenedor") || t.includes("conten");
+
+  return wantsPick && hasContainerWord && hasSize;
+}
+
 
 function shouldRejectIntentForText(intentType, userText) {
   if (!intentType) return false;
-  if (isDepotRequest(userText) && isGreetingIntent(intentType)) return true;
+
+  const depotLike = isDepotRequest(userText);
+  const pickLike = looksLikePickContainerLoad(userText);
+
+  // nu acceptăm greeting pentru cereri de containere
+  if (depotLike && isGreetingIntent(intentType)) return true;
+
+  // ✅ nu acceptăm smalltalk/static pentru cereri de containere / pick-load
+  if ((depotLike || pickLike) && isChitChatIntent(intentType)) return true;
+
   return false;
 }
+
 
 export default function RaynaHub() {
   useIOSNoInputZoom();
@@ -711,6 +753,8 @@ const ai = aiRef.current;
 
       const preNLU = shortenForNLU(userTextLocal);
       const wantsDepot = isDepotRequest(userTextLocal);
+      const wantsPickLoad = looksLikePickContainerLoad(userTextLocal);
+
 
       // ─────────────────────────────────────────────
       // 1) NLU direct
@@ -729,6 +773,12 @@ const ai = aiRef.current;
       if (requestedLimitRef.current && det?.intent?.type) {
         det = { ...det, slots: { ...(det.slots || {}), limit: det?.slots?.limit ?? requestedLimitRef.current } };
       }
+      // ✅ dacă NLU a dat chit-chat (static) pe mesaj logistic, îl anulăm ca să intre AI Normalize
+if (det?.intent?.type && isChitChatIntent(det.intent.type) && (wantsDepot || wantsPickLoad)) {
+  window.__raynaLog("NLU/ForceNormalizeFromChitChat", { intent: det.intent.type, text: userTextLocal }, "info");
+  det = null;
+}
+
 
       // ─────────────────────────────────────────────
       // 2) AI NORMALIZARE (NOU!)
@@ -874,10 +924,13 @@ const ai = aiRef.current;
         !String(intentType).toLowerCase().includes("container") &&
         !String(intentType).toLowerCase().includes("conten");
 
-      if (wantsDepot && (!det?.intent?.type || looksNonDepotIntent)) {
-        window.__raynaLog("Route/ForceAIForDepot", { intent: intentType || null, text: userTextLocal }, "info");
-        det = null;
-      }
+   // ✅ IMPORTANT: dacă e cerere de "pick container pentru încărcare", NU forțăm AI ca depot
+if (!wantsPickLoad) {
+  if (wantsDepot && (!det?.intent?.type || looksNonDepotIntent)) {
+    window.__raynaLog("Route/ForceAIForDepot", { intent: intentType || null, text: userTextLocal }, "info");
+    det = null;
+  }
+}
 
       // ─────────────────────────────────────────────
       // 5) route intent
