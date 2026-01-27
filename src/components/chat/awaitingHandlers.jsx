@@ -56,16 +56,21 @@ export async function handleAwaiting({
   });
     if (gpsHandled) return true;
 
-  // ───────── PICK FOR LOAD: colectare filtre (size/naviera)
-  if (awaiting === "pick_load_filters" || awaiting === "pick_load_naviera") {
-    const handled = await handleAwaitingPickForLoad({
-      awaiting,
-      userText,
-      setMessages,
-      setAwaiting,
-    });
-    return handled; // true dacă a consumat mesajul
-  }
+// ───────── PICK FOR LOAD: colectare filtre + feedback (size/naviera/feedback)
+if (
+  awaiting === "pick_load_filters" ||
+  awaiting === "pick_load_naviera" ||
+  awaiting === "pick_load_feedback"
+) {
+  const handled = await handleAwaitingPickForLoad({
+    awaiting,
+    userText,
+    setMessages,
+    setAwaiting,
+  });
+  return handled;
+}
+
 
   // ───────── PICK FOR LOAD: confirmare / „¿por qué?” / alternativă #2 / terminare
   if (awaiting === "pick_load_confirm") {
@@ -76,15 +81,6 @@ export async function handleAwaiting({
     });
     return handled; // true dacă a consumat mesajul
   }
-  
-    // 🟦 PICK FOR LOAD (flux nou) — lasă handlerul să decidă
-  const pickHandled = await handleAwaitingPickForLoad({
-    awaiting,
-    setAwaiting,
-    userText,
-    setMessages,
-  });
-  if (pickHandled) return true;
 
   /* ───────────────── REPORTARE PROBLEMĂ ───────────────── */
   if (awaiting === "report_error_text") {
