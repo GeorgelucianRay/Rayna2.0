@@ -838,18 +838,19 @@ if (det?.intent?.type && isChitChatIntent(det.intent.type) && (wantsDepot || wan
 
           // Dacă tot nu prindem intent, dar AI a sugerat un intent valid → îl folosim
           if (!det?.intent?.type && aiNorm.suggested_intent) {
-            const s = String(aiNorm.suggested_intent || "").trim();
-            const match = (Array.isArray(intentsData) ? intentsData : []).find(
-              (it) => String(it?.type || "").toLowerCase() === s.toLowerCase()
+            let s = String(aiNorm.suggested_intent || "").trim().toLowerCase();
+            if (s === "pick_container_load") s = "pick_container_for_load";
+            const match = (Array.isArray(intentsData) ? intentsData : []).find((it) =>
+              [it?.type, it?.intent, it?.id, it?.action].some((x) => String(x || "").toLowerCase() === s)
             );
-            if (match?.type) {
+            if (match && (match.type || match.id || match.action)) {
               det = {
                 intent: match,
                 slots: { ...(aiNorm.slots || {}), limit: requestedLimitRef.current || undefined },
                 lang: langRef.current,
                 confidence: 0.6,
               };
-              window.__raynaLog("AI/Normalize:UseSuggestedIntent", { type: match.type }, "info");
+              window.__raynaLog("AI/Normalize:UseSuggestedIntent", { type: match.type, id: match.id }, "info");
             }
           }
         }
@@ -939,8 +940,9 @@ if (!wantsPickLoad) {
         setSceneWithFade(pickScene({ intentType: det.intent.type, userText: userTextLocal }));
         window.__raynaLog("ROUTE/WillRunIntent", { type: det.intent.type, slots: det.slots }, "info");
 
+        const detWithOrig = { ...det, origText: userTextLocal };
         await routeIntent({
-          det,
+          det: detWithOrig,
           intentsData,
           role,
           profile,

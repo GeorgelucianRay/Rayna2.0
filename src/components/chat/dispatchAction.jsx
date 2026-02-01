@@ -108,7 +108,7 @@ if (
     depot_lookup: () => handleDepotChat({ userText, profile, setMessages }),
     depot_list:   () => handleDepotList({ userText, setMessages, setAwaiting }),
     pick_container_for_load: () =>
-  startPickContainerForLoad({ setMessages, setAwaiting }),
+      startPickContainerForLoad({ userText, setMessages, setAwaiting }),
   };
 
   try {

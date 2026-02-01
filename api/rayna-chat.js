@@ -291,8 +291,10 @@ export default async function handler(req, res) {
 
     const latency_ms = Date.now() - t0;
 
+    const replyText = (result.text || "").trim();
     return res.status(200).json({
-      text: result.text || "",
+      text: replyText,
+      reply_text: replyText,
       usage: result.usage || null,
       model: MODEL_ANSWER,
       latency_ms,

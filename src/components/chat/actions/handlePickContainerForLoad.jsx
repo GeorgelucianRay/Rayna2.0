@@ -24,7 +24,7 @@ const clearCtx = () => sessionStorage.removeItem(CTX_KEY);
 /* ---------- Parsere pentru SIZE (bogat) ----------
  * Returnează: { base: "20"|"40"|"45"|null, special: "hc"|"ot"|"bajo"|null }
  */
-function parseSizeRich(text = "") {
+export function parseSizeRich(text = "") {
   const t = String(text).toLowerCase();
 
   // 45
@@ -371,7 +371,7 @@ export function handlePickConfirm({ userText, setMessages, setAwaiting }) {
 }
 
 
-function buildMapHref(pos) {
+export function buildMapHref(pos) {
   const hrefBase = (location.hash && location.hash.startsWith("#/"))
     ? `/#${MAP3D_ROUTE}`   // HashRouter
     : MAP3D_ROUTE;         // BrowserRouter
@@ -382,8 +382,8 @@ function buildMapHref(pos) {
  * 3) Algoritm: dacă nu există “libre arriba”, alege minim mutări
  *    Suportă: 20, 20 OT, 40 bajo, 40 alto(HC), 40 OT, 45
  * ================================================================ */
-async function pickBestContainer({ base, special, naviera }) {
-  // 1) candidați (numai vacíos)
+export async function pickBestContainer({ base, special, naviera }) {
+  // 1) candidatos: solo vacíos — contenedores roto NO sirven para cargar
   let q = supabase
     .from("contenedores")
     .select("id,matricula_contenedor,naviera,tipo,posicion,estado,created_at")
@@ -416,6 +416,8 @@ if (naviera) q = q.ilike("naviera", `%${naviera}%`);
 
 let { data: candidates, error } = await q.order("created_at", { ascending: true });
 if (error) throw error;
+// Excluir explícitamente roto (contenedores roto no son válidos para cargar)
+candidates = (candidates || []).filter((r) => (r.estado || "").toLowerCase() !== "roto");
 
 // fallback: dacă special=hc și nu găsim nimic, relaxăm pe 40 generic
 if ((!candidates || !candidates.length) && base === "40" && special === "hc") {
@@ -427,7 +429,7 @@ if ((!candidates || !candidates.length) && base === "40" && special === "hc") {
   const { data: c2, error: e2 } =
     await q2.ilike("naviera", `%${naviera || ""}%`).order("created_at", { ascending: true });
   if (e2) throw e2;
-  candidates = c2 || [];
+  candidates = (c2 || []).filter((r) => (r.estado || "").toLowerCase() !== "roto");
 }
 
 logUI("PickLoad/SQL_RESULT", { candidates: candidates?.length || 0, base, special, naviera });
@@ -439,10 +441,12 @@ if (!candidates?.length) return null;
     .select("posicion,matricula_contenedor,estado");
   if (e2) throw e2;
 
-  const occupied = new Set((all || []).map((r) => String(r.posicion || "").trim().toUpperCase()));
+  const normPos = (p) => String(p || "").trim().toUpperCase().replace(/\s+/g, "");
+  const occupied = new Set((all || []).map((r) => normPos(r.posicion)));
 
   const parsePos = (p) => {
-    const m = String(p || "").trim().toUpperCase().match(/^([A-F])(\d{1,2})([A-Z])$/);
+    const s = normPos(p);
+    const m = s.match(/^([A-Z])(\d{1,2})([A-Z])$/);
     return m ? { row: m[1], col: m[2], level: m[3] } : null;
   };
   const abovePos = (p) => {
@@ -466,8 +470,8 @@ if (!candidates?.length) return null;
     return s ? s.level.charCodeAt(0) : 0;
   };
 
-  // 3) întâi cele libere deasupra
-  const freeTop = candidates.filter(r => countAbove(String(r.posicion || "").toUpperCase()) === 0);
+  // 3) întâi cele libere deasupra (poziție = rând E, col 5, înălțime C → E5C)
+  const freeTop = candidates.filter((r) => countAbove(normPos(r.posicion)) === 0);
   if (freeTop.length) {
      const ranked = freeTop
        .map(r => ({ row: r, moves: 0, lvl: levelRank(r.posicion) }))
@@ -476,9 +480,9 @@ if (!candidates?.length) return null;
    }
 
   // 4) fallback: minim mutări, apoi cât mai sus
-  const withScore = candidates.map(r => ({
+  const withScore = candidates.map((r) => ({
     row: r,
-    above: countAbove(String(r.posicion || "").toUpperCase()),
+    above: countAbove(normPos(r.posicion)),
     lvl: levelRank(r.posicion),
   }));
 
