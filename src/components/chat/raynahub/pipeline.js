@@ -1,6 +1,7 @@
 // src/components/chat/raynahub/pipeline.js
 // Core message processing pipeline extracted from RaynaHub.jsx
 
+import React from "react";
 import { detectIntent } from "../../../nlu";
 import { shortenForNLU } from "../nlu/shorten";
 import { semanticMatch } from "../semanticFallback";
@@ -9,6 +10,7 @@ import { pushBot, STR } from "../nlu/i18n";
 import { extractContainerCode } from "../actions/handleDepotChat.jsx";
 import { groqExtract, groqAnswer } from "../refactored/services/groqOrchestrator";
 import { pickContainerForLoad } from "../refactored/services/pickContainerForLoad";
+import ContainerCard from "../ui/ContainerCard";
 import {
     pickScene,
     SCENE_BY_INTENT,
@@ -17,6 +19,7 @@ import {
     shouldRejectIntentForText,
     isChitChatIntent,
 } from "./helpers";
+
 
 // Fallback i18n strings
 const FBTHINK = (lang) =>
@@ -165,44 +168,104 @@ export async function processUserMessage({
             const groq = await groqExtract({ text: userTextLocal, lang: langRef.current });
             const intentTypeG = String(groq?.intent || "").toLowerCase();
 
-            if (intentTypeG === "pick_container_for_load" || intentTypeG === "pick_container_load") {
-                const slots = groq.slots || {};
-                const size = slots.size || slots.tamano || slots.tipo || slots.SIZE || null;
-                const naviera = slots.naviera || slots.carrier || slots.nav || slots.linea || null;
+            window.__raynaLog("GROQ/Extract", { intent: groq.intent, confidence: groq.confidence, slots: groq.slots, missing: groq.missing }, "info");
 
+            // Only proceed if intent is pick_container_for_load AND confidence >= 0.6
+            if ((intentTypeG === "pick_container_for_load" || intentTypeG === "pick_container_load") && groq.confidence >= 0.6) {
+                const slots = groq.slots || {};
+                const size = slots.size || null;
+                const naviera = slots.naviera || null;
+
+                // Only proceed if we have both size and naviera
                 if (size && naviera) {
-                    const selected = await pickContainerForLoad({ supabase, naviera, size });
-                    if (selected) {
-                        const position = selected.posicion || selected.position || null;
-                        const context = { container: selected, position, size, naviera };
+                    window.__raynaLog("GROQ/PickFlow:START", { size, naviera }, "info");
+
+                    const result = await pickContainerForLoad({ supabase, naviera, size });
+
+                    if (result) {
+                        const { container, blockers, blockersCount } = result;
+                        const position = container.posicion || container.position || null;
+                        const containerCode = container.matricula_contenedor || container.matricula || null;
+
+                        window.__raynaLog("GROQ/PickFlow:Selected", { containerCode, position, blockersCount }, "info");
+
+                        // Build context for groqAnswer
+                        const context = {
+                            container_code: containerCode,
+                            position,
+                            size,
+                            naviera,
+                            blockers_count: blockersCount,
+                            blockers: blockers.map(b => `${b.code} (${b.position})`).join(", "),
+                        };
+
+                        // Format response with Groq
                         const ans = await groqAnswer({ text: userTextLocal, lang: langRef.current, context });
                         const answerText =
                             ans?.answerText ||
-                            `He encontrado el contenedor ${selected.matricula_contenedor || selected.matricula || ""} en posición ${position}`;
+                            `He encontrado el contenedor ${containerCode} en posición ${position}. ${blockersCount === 0 ? "No tiene bloqueadores." : `Tiene ${blockersCount} bloqueador(es).`}`;
 
+                        // Push bot message with card and actions
                         pushBot(setMessages, answerText, {
                             lang: langRef.current,
+                            render: () => React.createElement(ContainerCard, {
+                                container,
+                                position,
+                                blockers,
+                                blockersCount,
+                                size,
+                                naviera,
+                            }),
                             actions: [
-                                {
-                                    type: "view_position",
-                                    label: "Ver posición",
-                                    payload: { position, containerCode: selected.matricula_contenedor || selected.matricula || null },
-                                },
                                 {
                                     type: "programar",
                                     label: "Programar",
+                                    icon: "schedule",
                                     payload: {
-                                        containerCode: selected.matricula_contenedor || selected.matricula || null,
+                                        containerCode,
+                                        position,
+                                        size,
+                                        naviera,
+                                        blockers,
+                                        blockersCount,
+                                    },
+                                },
+                                {
+                                    type: "asignar",
+                                    label: "Asignar",
+                                    icon: "check_circle",
+                                    payload: {
+                                        containerCode,
                                         position,
                                         size,
                                         naviera,
                                     },
                                 },
+                                {
+                                    type: "view_position",
+                                    label: "Ver",
+                                    icon: "visibility",
+                                    payload: {
+                                        position,
+                                        containerCode,
+                                    },
+                                },
                             ],
                         });
+
                         setSceneWithFade(pickScene({ intentType: "depot", userText: userTextLocal }));
+                        return; // ✅ SHORTCIRCUIT: pick flow handled, exit pipeline
+                    } else {
+                        // No container found
+                        window.__raynaLog("GROQ/PickFlow:NoContainer", { size, naviera }, "info");
+                        pushBot(setMessages, `No he encontrado contenedores disponibles de ${size}' para ${naviera}.`, {
+                            lang: langRef.current,
+                        });
                         return;
                     }
+                } else {
+                    // Missing size or naviera - log and continue to normal pipeline
+                    window.__raynaLog("GROQ/PickFlow:MissingData", { size, naviera, missing: groq.missing }, "info");
                 }
             }
         } catch (e) {

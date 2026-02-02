@@ -407,6 +407,9 @@ export default function RaynaHub() {
                         } else if (a.type === "programar") {
                           setAwaiting({ type: "programar", data: a.payload });
                           pushBot(setMessages, "Iniciando programación...", { lang: langRef.current });
+                        } else if (a.type === "asignar") {
+                          window.__raynaLog?.("Action/Asignar", { payload: a.payload }, "info");
+                          pushBot(setMessages, "Función de asignación en preparación. Contenedor registrado.", { lang: langRef.current });
                         }
                       } catch (e) {
                         window.__raynaLog?.("Action/Err", { action: a, err: e?.message || String(e) }, "error");

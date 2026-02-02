@@ -2,11 +2,12 @@
 
 /**
  * Pick a container for load:
- * - matches naviera + size (heuristics on fields)
- * - must NOT have another container above it
- * - positions like A1A, A1B, A1C (last letter = height)
+ * - matches naviera + size
+ * - calculates blockers (containers above on same row+col)
+ * - selects container with minimum blockers
+ * - tie-break: prefer higher position (easier access) OR older created_at
  *
- * Returns a full DB row (selected container) or null.
+ * Returns: { container, blockers: [...], blockersCount: N } or null
  */
 
 function levelRank(ch) {
@@ -15,14 +16,31 @@ function levelRank(ch) {
   if (m === "A") return 1;
   if (m === "B") return 2;
   if (m === "C") return 3;
+  if (m === "D") return 4;
+  if (m === "E") return 5;
+  // extend as needed
   return 0;
 }
 
 function parsePosition(pos) {
-  if (!pos || typeof pos !== "string") return { base: null, level: null };
+  if (!pos || typeof pos !== "string") return { base: null, level: null, row: null, col: null };
   const s = pos.trim().toUpperCase();
-  if (s.length < 2) return { base: s, level: null };
-  return { base: s.slice(0, -1), level: s.slice(-1) };
+  if (s.length < 2) return { base: s, level: null, row: null, col: null };
+
+  // Position format: A1A, A1B, B2C, etc.
+  // row = first letter (A, B, C...)
+  // col = middle number(s) (1, 2, 10, 23...)
+  // height = last letter (A, B, C...)
+
+  const match = s.match(/^([A-Z])(\d+)([A-Z])$/);
+  if (!match) return { base: s, level: null, row: null, col: null };
+
+  const row = match[1];
+  const col = match[2];
+  const level = match[3];
+  const base = row + col; // e.g., "A1"
+
+  return { base, level, row, col };
 }
 
 function normalizeSize(size) {
@@ -64,6 +82,42 @@ function matchesNaviera(row, naviera) {
   return v.includes(nav);
 }
 
+/**
+ * Calculate blockers for a given position
+ * Blockers = containers above on same row+col (higher level)
+ */
+function calculateBlockers(position, allContainers) {
+  const parsed = parsePosition(position);
+  if (!parsed.base || !parsed.level) return [];
+
+  const myRank = levelRank(parsed.level);
+  if (!myRank) return [];
+
+  const blockers = [];
+
+  for (const other of allContainers) {
+    if (!other?.posicion) continue;
+    const otherParsed = parsePosition(other.posicion);
+    if (!otherParsed.base || !otherParsed.level) continue;
+
+    // Same base (row+col)?
+    if (otherParsed.base !== parsed.base) continue;
+
+    // Higher level?
+    const otherRank = levelRank(otherParsed.level);
+    if (otherRank > myRank) {
+      blockers.push({
+        code: other.matricula_contenedor || other.matricula || other.posicion,
+        position: other.posicion,
+        level: otherParsed.level,
+        rank: otherRank,
+      });
+    }
+  }
+
+  return blockers;
+}
+
 export async function pickContainerForLoad({ supabase, naviera, size }) {
   try {
     if (!supabase) return null;
@@ -71,12 +125,10 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
     const nav = String(naviera || "").trim();
     const s = normalizeSize(size);
 
-    // Query tabelă (după ce ai zis că handleDepotChat folosește "contenedores")
-    // NOTĂ: nu folosim q.filter(fn) (invalid în Supabase).
+    // Query tabelă
     let q = supabase.from("contenedores").select("*");
 
-    // Filtru naviera în SQL dacă există coloana "naviera"
-    // (dacă nu există, Supabase va da error și îl logăm -> return null)
+    // Filtru naviera în SQL dacă există
     if (nav) {
       q = q.ilike("naviera", `%${nav}%`);
     }
@@ -87,13 +139,13 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
     if (error) {
       try {
         window.__raynaLog?.("PickContainer/QueryError", { error, naviera: nav, size: s }, "error");
-      } catch {}
+      } catch { }
       return null;
     }
 
     if (!Array.isArray(data) || data.length === 0) return null;
 
-    // Candidați: trebuie să aibă posicion și să corespundă naviera+size (local heuristics)
+    // Candidați: trebuie să aibă posicion și să corespundă naviera+size
     const candidates = data
       .filter((r) => r && r.posicion)
       .filter((r) => matchesNaviera(r, nav))
@@ -101,45 +153,67 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
 
     if (candidates.length === 0) return null;
 
-    // Pregătim candidate info (base+level+rank)
-    const rows = candidates
+    // Calculate blockers for each candidate
+    const candidatesWithBlockers = candidates
       .map((r) => {
-        const p = parsePosition(r.posicion);
-        if (!p.base || !p.level) return null;
-        const rank = levelRank(p.level);
-        if (!rank) return null;
-        return { row: r, base: p.base, level: p.level, rank };
+        const blockers = calculateBlockers(r.posicion, data);
+        const blockersCount = blockers.length;
+        const parsed = parsePosition(r.posicion);
+        const rank = levelRank(parsed.level);
+
+        return {
+          container: r,
+          blockers,
+          blockersCount,
+          rank,
+          created_at: r.created_at || null,
+        };
       })
-      .filter(Boolean);
+      .filter((c) => c.rank > 0); // Only valid positions
 
-    if (rows.length === 0) return null;
+    if (candidatesWithBlockers.length === 0) return null;
 
-    // Un container e "accesibil" dacă NU există un alt container cu aceeași bază și rank mai mare
-    // Observație: verificăm în tot setul "data" ca să prindem și containerele care nu sunt în candidates
-    // (dar au aceeași bază și sunt deasupra).
-    const topCandidates = rows.filter((c) => {
-      const hasAbove = data.some((other) => {
-        if (!other?.posicion) return false;
-        const p = parsePosition(other.posicion);
-        if (!p.base || !p.level) return false;
-        if (p.base !== c.base) return false;
-        return levelRank(p.level) > c.rank;
-      });
-      return !hasAbove;
+    // Sort by:
+    // 1. Minimum blockers (ascending)
+    // 2. Tie-break: Higher position (rank descending) = easier access
+    // 3. Tie-break: Older created_at (ascending) = first in, first out
+    candidatesWithBlockers.sort((a, b) => {
+      // Primary: min blockers
+      if (a.blockersCount !== b.blockersCount) {
+        return a.blockersCount - b.blockersCount;
+      }
+
+      // Tie-break 1: prefer higher position (easier to access)
+      if (a.rank !== b.rank) {
+        return b.rank - a.rank; // descending
+      }
+
+      // Tie-break 2: prefer older created_at (FIFO)
+      if (a.created_at && b.created_at) {
+        return new Date(a.created_at) - new Date(b.created_at); // ascending
+      }
+
+      return 0;
     });
 
-    if (topCandidates.length === 0) return null;
+    const best = candidatesWithBlockers[0];
 
-    // Alegem cel mai bun:
-    // - preferăm cel mai sus (rank maxim) pentru că e top-of-stack și accesibil
-    // - dacă sunt mai multe, îl luăm pe primul după sortare
-    topCandidates.sort((a, b) => b.rank - a.rank);
+    window.__raynaLog?.("PickContainer/Selected", {
+      code: best.container.matricula_contenedor || best.container.matricula,
+      position: best.container.posicion,
+      blockersCount: best.blockersCount,
+      rank: best.rank,
+    });
 
-    return topCandidates[0].row || null;
+    return {
+      container: best.container,
+      blockers: best.blockers,
+      blockersCount: best.blockersCount,
+    };
   } catch (e) {
     try {
       window.__raynaLog?.("PickContainer/Error", { message: e?.message || String(e) }, "error");
-    } catch {}
+    } catch { }
     return null;
   }
 }
