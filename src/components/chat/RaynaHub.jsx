@@ -11,6 +11,8 @@ import { semanticMatch } from "./semanticFallback";
 import { detectLanguage, normalizeLang } from "./nlu/lang";
 import { createRaynaAiBridge } from "./ai/raynaAiBridge";
 import useRaynaChat from "./useRaynaChat";
+import { groqExtract, groqAnswer } from "./refactored/services/groqOrchestrator";
+import { pickContainerForLoad } from "./refactored/services/pickContainerForLoad";
 import { STR, pushBot } from "./nlu/i18n";
 import { getIntentIndex } from "./nlu/semantic";
 import ALL_INTENTS from "../../intents";
@@ -756,6 +758,40 @@ runActionRef.current = runAction;
       const wantsDepot = isDepotRequest(userTextLocal);
       const wantsPickLoad = looksLikePickContainerLoad(userTextLocal);
 
+      // Try GROQ normalization/extraction for every message (non-blocking)
+      try {
+        const groq = await groqExtract({ text: userTextLocal, lang: langRef.current });
+        const intentTypeG = String(groq?.intent || "").toLowerCase();
+
+        if (intentTypeG === "pick_container_for_load" || intentTypeG === "pick_container_load") {
+          const slots = groq.slots || {};
+          const size = slots.size || slots.tamano || slots.tipo || slots.SIZE || null;
+          const naviera = slots.naviera || slots.carrier || slots.nav || slots.linea || null;
+
+          if (size && naviera) {
+            const selected = await pickContainerForLoad({ supabase, naviera, size });
+            if (selected) {
+              const position = selected.posicion || selected.position || null;
+              const context = { container: selected, position, size, naviera };
+              const ans = await groqAnswer({ text: userTextLocal, lang: langRef.current, context });
+              const answerText = ans?.answerText || `He encontrado el contenedor ${selected.matricula_contenedor || selected.matricula_contenedor || selected.matricula || ''} en posición ${position}`;
+
+              pushBot(setMessages, answerText, {
+                lang: langRef.current,
+                actions: [
+                  { type: "view_position", label: "Ver posición", payload: { position, containerCode: selected.matricula_contenedor || selected.matricula || null } },
+                  { type: "programar", label: "Programar", payload: { containerCode: selected.matricula_contenedor || selected.matricula || null, position, size, naviera } },
+                ],
+              });
+              setSceneWithFade(pickScene({ intentType: "depot", userText: userTextLocal }));
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        window.__raynaLog?.("GROQ/FAIL", { message: e?.message || String(e) }, "error");
+      }
+
 
       // ─────────────────────────────────────────────
       // 1) NLU direct
@@ -1069,6 +1105,32 @@ if (!wantsPickLoad) {
           <div className={styles.bubbleAi}>
             <TypingText text={botText} speed={14} enabled={typingAllowed} onDone={() => typedDoneRef.current.add(i)} />
             {m.render ? <div className={styles.renderWrap}>{m.render()}</div> : null}
+            {m.actions ? (
+              <div className={styles.actionsRow}>
+                {m.actions.map((a, idx) => (
+                  <button
+                    key={idx}
+                    className={styles.actionBtn}
+                    type="button"
+                    onClick={() => {
+                      try {
+                        if (a.type === "view_position") {
+                          const pos = a.payload?.position;
+                          if (pos) window.__raynaOpenMap?.(pos);
+                        } else if (a.type === "programar") {
+                          setAwaiting({ type: "programar", data: a.payload });
+                          pushBot(setMessages, "Iniciando programación...", { lang: langRef.current });
+                        }
+                      } catch (e) {
+                        window.__raynaLog?.("Action/Err", { action: a, err: e?.message || String(e) }, "error");
+                      }
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
