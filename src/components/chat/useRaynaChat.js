@@ -339,7 +339,16 @@ export default function useRaynaChat({
           window.__raynaLog?.("ROUTE/WillRunIntent", { type: det.intent.type, slots: det.slots }, "info");
 
           const detWithOrig = { ...det, origText: userTextLocal };
-          const runActionCurrent = runActionRef?.current;
+          const runActionCurrent =
+            typeof runActionRef?.current === "function"
+              ? (...args) => runActionRef.current(...args)
+              : async (..._args) => {
+                  try {
+                    window.__raynaLog?.("runAction/Missing", { det: detWithOrig }, "error");
+                  } catch {}
+                  return null;
+                };
+
           await routeIntent({ det: detWithOrig, intentsData, role, profile, setMessages, setAwaiting, setSaving, runAction: runActionCurrent, lang: null });
           return;
         }
@@ -395,7 +404,7 @@ export default function useRaynaChat({
         setMessages((m) => [...m, { from: "bot", reply_text: "Ups, algo ha fallado procesando tu mensaje. Intenta de nuevo." }]);
       }
     },
-    [ai, intentsData, supabase, setSceneWithFade, handleDepotChat, handleAwaiting, routeIntent, runAction, setAwaiting, setSaving, saving, parkingCtx, setParkingCtx, askUserLocationInteractive, tryGetUserPos, requestedLimitRef, nluInitRef]
+    [ai, intentsData, supabase, setSceneWithFade, handleDepotChat, handleAwaiting, routeIntent, runActionRef, setAwaiting, setSaving, saving, parkingCtx, setParkingCtx, askUserLocationInteractive, tryGetUserPos, requestedLimitRef, nluInitRef]
   );
 
   return { messages, setMessages, sendMessage, typedDoneRef, lastBotIndex };
