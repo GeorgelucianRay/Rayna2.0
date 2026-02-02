@@ -10,6 +10,7 @@ import { shortenForNLU } from "./nlu/shorten";
 import { semanticMatch } from "./semanticFallback";
 import { detectLanguage, normalizeLang } from "./nlu/lang";
 import { createRaynaAiBridge } from "./ai/raynaAiBridge";
+import useRaynaChat from "./useRaynaChat";
 import { STR, pushBot } from "./nlu/i18n";
 import { getIntentIndex } from "./nlu/semantic";
 import ALL_INTENTS from "../../intents";
@@ -20,6 +21,7 @@ import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
 import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.jsx";
 import ErrorTray from "./ui/ErrorTray.jsx";
+import ChatLayout from "./ChatLayout.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
@@ -544,7 +546,6 @@ export default function RaynaHub() {
     navigate(target, { replace: true });
   }, [profile?.role, navigate, location]);
 
-  const [messages, _setMessages] = useState([]);
   const [text, setText] = useState("");
   const [awaiting, setAwaiting] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -571,37 +572,7 @@ const ai = aiRef.current;
   const [bgA, setBgA] = useState(SCENE_BY_INTENT.default);
   const [bgB, setBgB] = useState(SCENE_BY_INTENT.default);
   const [showA, setShowA] = useState(true);
-
-  // typing control: once a bot message finished typing, keep it static
-  const typedDoneRef = useRef(new Set());
-
-  // limit cerut de user (ex: “lista cu 20”)
-  const requestedLimitRef = useRef(null);
-
-  // setMessages “guarded”: taie listele de containere la limita cerută
-  const setMessages = useCallback(
-    (updater) => {
-      _setMessages((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-
-        const lim = requestedLimitRef.current;
-        if (!lim || !Array.isArray(next) || next.length === 0) return next;
-
-        const last = next[next.length - 1];
-        if (!last || last.from === "user") return next;
-
-        const botText = last.reply_text ?? last.text ?? "";
-        if (!botText) return next;
-
-        const trimmed = trimContainerListText(botText, lim);
-        if (trimmed === botText) return next;
-
-        const patched = { ...last, reply_text: trimmed };
-        return next.slice(0, -1).concat(patched);
-      });
-    },
-    [_setMessages]
-  );
+  // crossfade layers (A/B) state above
 
   const setSceneWithFade = useCallback(
     async (nextUrl) => {
@@ -618,6 +589,33 @@ const ai = aiRef.current;
     },
     [showA, bgA, bgB]
   );
+
+  // requestedLimitRef used to trim long container lists (kept in RaynaHub)
+  const requestedLimitRef = useRef(null);
+
+  // runActionRef will be set after we define runAction (so the hook can call it)
+  const runActionRef = useRef(null);
+
+  // initialize chat hook (manages messages, sendMessage, typing refs)
+  const { messages, setMessages, sendMessage, typedDoneRef, lastBotIndex: lastBotIndexFromHook } = useRaynaChat({
+    profile,
+    role,
+    intentsData,
+    ai,
+    supabase,
+    setSceneWithFade,
+    handleDepotChat,
+    handleAwaiting,
+    routeIntent,
+    runActionRef,
+    setAwaiting,
+    setSaving,
+    saving,
+    parkingCtx,
+    setParkingCtx,
+    requestedLimitRef,
+    nluInitRef,
+  });
 
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles,
@@ -699,6 +697,8 @@ const ai = aiRef.current;
 
   return result;
 };
+// expose runAction to the hook via ref
+runActionRef.current = runAction;
   const send = async () => {
     const userTextLocal = text.trim();
     if (!userTextLocal) return;
@@ -1087,106 +1087,32 @@ if (!wantsPickLoad) {
   };
 
   return (
-    <div className={styles.stage}>
-      <div className={styles.shell}>
-        {/* background layers (crossfade) */}
-        <div
-          className={styles.bgA}
-          style={{
-            "--chat-bg": `url("${bgA}")`,
-            opacity: showA ? 1 : 0,
-          }}
-        />
-        <div
-          className={styles.bgB}
-          style={{
-            "--chat-bg": `url("${bgB}")`,
-            opacity: showA ? 0 : 1,
-          }}
-        />
-
-        {/* veil */}
-        <div className={styles.bgVeil} />
-
-        <header className={styles.header}>
-          <div className={styles.headerLeft}>
-            <div className={styles.avatarLg}>
-              <img
-                src={RAYNA_AVATAR}
-                alt="Rayna"
-                onError={(e) => {
-                  e.currentTarget.style.visibility = "hidden";
-                }}
-              />
-            </div>
-            <div className={styles.headerTitles}>
-              <div className={styles.brand}>Rayna 2.0</div>
-              <div className={styles.tagline}>Hub de Logística</div>
-            </div>
-          </div>
-
-          <button className={styles.iconBtn} onClick={goHome} aria-label="Cerrar y volver al inicio">
-            <IconClose />
-          </button>
-        </header>
-
-        <div className={styles.chips}>
-          <button
-            type="button"
-            className={`${styles.chip} ${styles.chipPrimary}`}
-            onClick={quickAprender}
-            aria-label="Abrir Aprender"
-          >
-            <span className={styles.chipIcon}>
-              <IconStories />
-            </span>
-            <span className={styles.chipText}>Aprender</span>
-          </button>
-
-          <button type="button" className={styles.chip} onClick={quickReport} aria-label="Reclamar un error">
-            <span className={styles.chipIcon}>
-              <IconReport />
-            </span>
-            <span className={styles.chipText}>Reclamar</span>
-          </button>
-        </div>
-
-        <main className={styles.chat}>
-          {messages.map((m, i) => (m.from === "user" ? renderUser(m, i) : renderBot(m, i)))}
-          <div ref={endRef} />
-        </main>
-
-        <footer className={styles.inputWrap}>
-          <div className={styles.inputPill}>
-            <button
-              className={styles.attachBtn}
-              type="button"
-              aria-label="Adjuntar (en desarrollo)"
-              title="Adjuntar (en desarrollo)"
-            >
-              <IconAttach />
-            </button>
-
-            <input
-              className={styles.input}
-              placeholder="Escriba su consulta logística..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
-              inputMode="text"
-            />
-
-            <button className={styles.sendBtn} onClick={send} type="button">
-              <span className={styles.sendText}>Enviar</span>
-              <IconSend />
-            </button>
-          </div>
-
-          <div className={styles.safePad} />
-        </footer>
-
-        {isAdmin ? <ErrorTray /> : null}
-      </div>
-    </div>
+    <ChatLayout
+      styles={styles}
+      bgA={bgA}
+      bgB={bgB}
+      showA={showA}
+      messages={messages}
+      renderBot={renderBot}
+      renderUser={renderUser}
+      endRef={endRef}
+      text={text}
+      setText={setText}
+      send={() => {
+        const userTextLocal = text.trim();
+        if (!userTextLocal) return;
+        const reqLim = parseRequestedLimit(userTextLocal);
+        if (reqLim) {
+          requestedLimitRef.current = reqLim;
+          window.__raynaLog("ListLimit/Requested", { limit: reqLim, text: userTextLocal });
+        }
+        setText("");
+        sendMessage(userTextLocal);
+      }}
+      goHome={goHome}
+      quickAprender={quickAprender}
+      quickReport={quickReport}
+      isAdmin={isAdmin}
+    />
   );
 }

@@ -251,7 +251,13 @@ export function parseNavieraFromAnswer(text = "") {
     if (t.includes(k)) return k;
   }
   const m = text.match(/\bde\s+([A-Za-z0-9][\w\s-]{2,})/i);
-  return m ? m[1].trim().toUpperCase() : null;
+  if (!m) return null;
+  const captured = m[1].trim().toUpperCase();
+  // Nu trata ca naviera: "20 PARA CARGAR", "40", "PARA CARGAR", mărimi (20/40/45), OT, HC
+  if (/^\d+\s*(PARA|PENTRU|PER)?\s*(CARGAR|INCARCARE|CARRECAR)?/i.test(captured)) return null;
+  if (/^PARA\s+CARGAR|^PENTRU\s+INCARCARE|^PER\s+CARRECAR/i.test(captured)) return null;
+  if (/^(20|40|45)\b|OT|HC|BAJO|ALTO/i.test(captured) && captured.length < 15) return null;
+  return captured;
 }
 
 /* ─────────────────────────────
