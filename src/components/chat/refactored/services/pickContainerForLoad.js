@@ -62,10 +62,10 @@ function matchesSize(row, size) {
   const iso = String(row?.iso || "").toLowerCase();
   const descripcion = String(row?.descripcion || row?.description || "").toLowerCase();
 
-  // acceptăm dacă oricare câmp conține "20"/"40"/"45"
+  // Loose matching: "20" matches "20DV", "20GP", "20ft", etc.
   return (
     (tipo && tipo.includes(s)) ||
-    (sizeField && sizeField === s) ||
+    (sizeField && sizeField.includes(s)) || // Changed strict equality to includes
     (iso && iso.includes(s)) ||
     (descripcion && descripcion.includes(s))
   );
@@ -78,7 +78,7 @@ function matchesNaviera(row, naviera) {
   const v = String(row?.naviera || row?.shipping_line || row?.linea || "").trim().toLowerCase();
   if (!v) return false;
 
-  // dacă DB are exact, ok; dacă are "Maersk Line" etc, ok
+  // Partial match: "maersk" matches "MAERSK", "MAERSK LINE", "APM-MAERSK"
   return v.includes(nav);
 }
 
@@ -125,15 +125,21 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
     const nav = String(naviera || "").trim();
     const s = normalizeSize(size);
 
-    // Query tabelă
+    window.__raynaLog?.("PickContainer/Start", { naviera: nav, size: s }, "info");
+
+    // Query tabelă using ilike for naviera
     let q = supabase.from("contenedores").select("*");
 
-    // Filtru naviera în SQL dacă există
+    // Filtru naviera în SQL (case-insensitive partial match)
     if (nav) {
       q = q.ilike("naviera", `%${nav}%`);
     }
 
-    // Luăm un batch rezonabil și filtrăm local pentru size/posicion/etc.
+    // Optional: Filter by 'estado' loosely if needed, currently leaving permissive logic
+    // Acceptamos cualquer estado que no sea explícitamente "entregado" o "salida" o nul
+    // But for now, let's keep it broad and filter later if needed.
+
+    // Limit to get a good candidate pool
     const { data, error } = await q.limit(500);
 
     if (error) {
@@ -143,15 +149,35 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
       return null;
     }
 
-    if (!Array.isArray(data) || data.length === 0) return null;
+    if (!Array.isArray(data) || data.length === 0) {
+      window.__raynaLog?.("PickContainer/NoDataFromDB", { naviera: nav }, "warn");
+      return null;
+    }
 
-    // Candidați: trebuie să aibă posicion și să corespundă naviera+size
+    // Local filtering
     const candidates = data
       .filter((r) => r && r.posicion)
-      .filter((r) => matchesNaviera(r, nav))
       .filter((r) => matchesSize(r, s));
+    // Naviera handled by SQL ilike and verified by matchesNaviera implicitly if ilike works
+    // But we can double check locally just in case SQL ilike behaves unexpectedly with some chars
+    // .filter((r) => matchesNaviera(r, nav)); // Redundant if SQL is correct, but safe
 
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) {
+      // DEBUG: Log why we found 0 candidates
+      const debugTypes = [...new Set(data.map(r => r.tipo))].slice(0, 10);
+      const debugSizes = [...new Set(data.map(r => r.size))].slice(0, 10);
+      const debugNavieras = [...new Set(data.map(r => r.naviera))].slice(0, 10);
+
+      window.__raynaLog?.("PickContainer/NoCandidatesAfterFilter", {
+        requestedSize: s,
+        foundTypes: debugTypes,
+        foundSizes: debugSizes,
+        foundNavieras: debugNavieras,
+        totalRowsFetched: data.length
+      }, "warn");
+
+      return null;
+    }
 
     // Calculate blockers for each candidate
     const candidatesWithBlockers = candidates
@@ -171,7 +197,10 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
       })
       .filter((c) => c.rank > 0); // Only valid positions
 
-    if (candidatesWithBlockers.length === 0) return null;
+    if (candidatesWithBlockers.length === 0) {
+      window.__raynaLog?.("PickContainer/NoValidPositions", { count: candidates.length }, "warn");
+      return null;
+    }
 
     // Sort by:
     // 1. Minimum blockers (ascending)
