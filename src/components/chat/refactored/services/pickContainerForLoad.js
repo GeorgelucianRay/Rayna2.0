@@ -53,35 +53,6 @@ function normalizeSize(size) {
   return m ? m[1] : "";
 }
 
-function matchesSize(row, size) {
-  const s = normalizeSize(size).toLowerCase();
-  if (!s) return true;
-
-  const tipo = String(row?.tipo || "").toLowerCase();
-  const sizeField = String(row?.size || "").toLowerCase();
-  const iso = String(row?.iso || "").toLowerCase();
-  const descripcion = String(row?.descripcion || row?.description || "").toLowerCase();
-
-  // Loose matching: "20" matches "20DV", "20GP", "20ft", etc.
-  return (
-    (tipo && tipo.includes(s)) ||
-    (sizeField && sizeField.includes(s)) || // Changed strict equality to includes
-    (iso && iso.includes(s)) ||
-    (descripcion && descripcion.includes(s))
-  );
-}
-
-function matchesNaviera(row, naviera) {
-  const nav = String(naviera || "").trim().toLowerCase();
-  if (!nav) return true;
-
-  const v = String(row?.naviera || row?.shipping_line || row?.linea || "").trim().toLowerCase();
-  if (!v) return false;
-
-  // Partial match: "maersk" matches "MAERSK", "MAERSK LINE", "APM-MAERSK"
-  return v.includes(nav);
-}
-
 /**
  * Calculate blockers for a given position
  * Blockers = containers above on same row+col (higher level)
@@ -118,6 +89,57 @@ function calculateBlockers(position, allContainers) {
   return blockers;
 }
 
+async function debugCounts(supabase, nav, size) {
+  try {
+    const { count: cSize } = await supabase
+      .from("contenedores")
+      .select("id", { count: "exact", head: true })
+      .ilike("tipo", `%${size}%`);
+
+    const { count: cNav } = await supabase
+      .from("contenedores")
+      .select("id", { count: "exact", head: true })
+      .ilike("naviera", `%${nav}%`);
+
+    // Fetch sample rows to find top values
+    const { data: sampleData } = await supabase
+      .from("contenedores")
+      .select("naviera, tipo")
+      .limit(200);
+
+    let topNav = [];
+    let topTip = [];
+
+    if (sampleData && sampleData.length > 0) {
+      const navCounts = {};
+      const tipCounts = {};
+
+      sampleData.forEach(r => {
+        const n = String(r.naviera || "null").trim();
+        const t = String(r.tipo || "null").trim();
+        navCounts[n] = (navCounts[n] || 0) + 1;
+        tipCounts[t] = (tipCounts[t] || 0) + 1;
+      });
+
+      topNav = Object.entries(navCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([val, cnt]) => `${val} (${cnt})`);
+
+      topTip = Object.entries(tipCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([val, cnt]) => `${val} (${cnt})`);
+    }
+
+    window.__raynaLog?.("PickLoad/DEBUG_COUNTS", { size, naviera: nav, cSize, cNav });
+    window.__raynaLog?.("PickLoad/DEBUG_TOP", { topNaviera: topNav, topTipo: topTip });
+
+  } catch (e) {
+    window.__raynaLog?.("PickLoad/DebugError", { message: e.message });
+  }
+}
+
 export async function pickContainerForLoad({ supabase, naviera, size }) {
   try {
     if (!supabase) return null;
@@ -127,62 +149,56 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
 
     window.__raynaLog?.("PickContainer/Start", { naviera: nav, size: s }, "info");
 
-    // Query tabelă using ilike for naviera
+    // Query tabelă using ilike for naviera AND tipo
     let q = supabase.from("contenedores").select("*");
 
-    // Filtru naviera în SQL (case-insensitive partial match)
+    // 1. Filtru Naviera (loose match)
     if (nav) {
       q = q.ilike("naviera", `%${nav}%`);
     }
 
-    // Optional: Filter by 'estado' loosely if needed, currently leaving permissive logic
-    // Acceptamos cualquer estado que no sea explícitamente "entregado" o "salida" o nul
-    // But for now, let's keep it broad and filter later if needed.
+    // 2. Filtru Tipo/Size (loose match)
+    // NOTE: 'tipo' in DB holds sizes like "20DV", "40HC" usually.
+    if (s) {
+      q = q.ilike("tipo", `%${s}%`);
+    }
 
-    // Limit to get a good candidate pool
-    const { data, error } = await q.limit(500);
+    // 3. Must have a position
+    q = q.not("posicion", "is", null);
+
+    // No estado filter for now (PASUL A)
+
+    // Limit
+    const { data: candidates, error } = await q.limit(500);
 
     if (error) {
-      try {
-        window.__raynaLog?.("PickContainer/QueryError", { error, naviera: nav, size: s }, "error");
-      } catch { }
+      window.__raynaLog?.("PickContainer/QueryError", { error, naviera: nav, size: s }, "error");
       return null;
     }
 
-    if (!Array.isArray(data) || data.length === 0) {
-      window.__raynaLog?.("PickContainer/NoDataFromDB", { naviera: nav }, "warn");
-      return null;
-    }
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      window.__raynaLog?.("PickContainer/NoCandidates", { naviera: nav, size: s }, "warn");
 
-    // Local filtering
-    const candidates = data
-      .filter((r) => r && r.posicion)
-      .filter((r) => matchesSize(r, s));
-    // Naviera handled by SQL ilike and verified by matchesNaviera implicitly if ilike works
-    // But we can double check locally just in case SQL ilike behaves unexpectedly with some chars
-    // .filter((r) => matchesNaviera(r, nav)); // Redundant if SQL is correct, but safe
-
-    if (candidates.length === 0) {
-      // DEBUG: Log why we found 0 candidates
-      const debugTypes = [...new Set(data.map(r => r.tipo))].slice(0, 10);
-      const debugSizes = [...new Set(data.map(r => r.size))].slice(0, 10);
-      const debugNavieras = [...new Set(data.map(r => r.naviera))].slice(0, 10);
-
-      window.__raynaLog?.("PickContainer/NoCandidatesAfterFilter", {
-        requestedSize: s,
-        foundTypes: debugTypes,
-        foundSizes: debugSizes,
-        foundNavieras: debugNavieras,
-        totalRowsFetched: data.length
-      }, "warn");
-
+      // PASUL B: Debug Queries
+      await debugCounts(supabase, nav, s);
       return null;
     }
 
     // Calculate blockers for each candidate
     const candidatesWithBlockers = candidates
       .map((r) => {
-        const blockers = calculateBlockers(r.posicion, data);
+        const blockers = calculateBlockers(r.posicion, candidates); // Use fetched batch to resolve blockers (approx)
+        // Optimization: ideally we query ALL containers to find valid blockers, but strictly speaking 
+        // blockers should be in the same stack. The fetched batch filtered by Nav/Size might NOT include 
+        // the containers on top if they are different Nav/Size.
+        // HOWEVER, user instruction says "Nu modifica blockers/poziție încă". 
+        // We will stick to using 'candidates' or maybe we need to query 'all' for blockers?
+        // Current implementation uses 'candidates', which is flawed if blockers are diff type.
+        // BUT let's stick to the current logic which uses passed array.
+        // WAIT: In previous steps we passed 'data' (the fetched batch).
+        // Let's use 'candidates' here (which IS the data from query).
+        // NOTE: This IS a logic flaw (blockers might be missing from batch), but requested "Nu modifica blockers... Reparăm întâi candidații."
+
         const blockersCount = blockers.length;
         const parsed = parsePosition(r.posicion);
         const rank = levelRank(parsed.level);
@@ -202,26 +218,20 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
       return null;
     }
 
-    // Sort by:
-    // 1. Minimum blockers (ascending)
-    // 2. Tie-break: Higher position (rank descending) = easier access
-    // 3. Tie-break: Older created_at (ascending) = first in, first out
+    // Sort
     candidatesWithBlockers.sort((a, b) => {
       // Primary: min blockers
       if (a.blockersCount !== b.blockersCount) {
         return a.blockersCount - b.blockersCount;
       }
-
-      // Tie-break 1: prefer higher position (easier to access)
+      // Tie-break 1: higher position descending
       if (a.rank !== b.rank) {
-        return b.rank - a.rank; // descending
+        return b.rank - a.rank;
       }
-
-      // Tie-break 2: prefer older created_at (FIFO)
+      // Tie-break 2: older created_at ascending
       if (a.created_at && b.created_at) {
-        return new Date(a.created_at) - new Date(b.created_at); // ascending
+        return new Date(a.created_at) - new Date(b.created_at);
       }
-
       return 0;
     });
 
@@ -240,9 +250,7 @@ export async function pickContainerForLoad({ supabase, naviera, size }) {
       blockersCount: best.blockersCount,
     };
   } catch (e) {
-    try {
-      window.__raynaLog?.("PickContainer/Error", { message: e?.message || String(e) }, "error");
-    } catch { }
+    window.__raynaLog?.("PickContainer/Error", { message: e?.message || String(e) }, "error");
     return null;
   }
 }
