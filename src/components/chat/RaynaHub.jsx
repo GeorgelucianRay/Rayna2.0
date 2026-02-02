@@ -21,7 +21,7 @@ import { handleAwaiting } from "./awaitingHandlers";
 import { routeIntent } from "./routerIntent";
 import handleDepotChat, { extractContainerCode } from "./actions/handleDepotChat.jsx";
 import ErrorTray from "./ui/ErrorTray.jsx";
-import ChatLayout from "./ChatLayout.jsx";
+import ChatLayout from "./refactored/ChatLayout.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const RAYNA_AVATAR = "/AvatarRayna.PNG";
@@ -564,7 +564,6 @@ if (!aiRef.current) {
 const ai = aiRef.current;
 
   const endRef = useRef(null);
-  useEffect(() => scrollToBottom(endRef), [messages]);
 
   const nluInitRef = useRef(false);
 
@@ -616,6 +615,8 @@ const ai = aiRef.current;
     requestedLimitRef,
     nluInitRef,
   });
+
+  useEffect(() => scrollToBottom(endRef), [messages]);
 
   const { tryGetUserPos, askUserLocationInteractive } = makeGeoHelpers({
     styles,
